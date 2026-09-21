@@ -1389,7 +1389,7 @@ async function planos(){
     const pl=planosDe(p);
     return `<div class="list-card" onclick="detalleProd('${p.id}','archivos')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">📅 ${fmtDate(p.fecha_pactada)}</div></div></div>
       <div class="lc-meta">${pl.length?`<span class="badge teal">📄 ${pl.length} plano${pl.length!==1?'s':''}</span><span style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${esc(pl[0].nombre||'')}</span>`:'<span class="badge rojo">⚠️ Sin plano</span>'}${disBadge(p)}
-      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></div></div>`; }).join('');
+      <span style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">${tieneImg(p)?'':`<button class="btn btn-sm" style="background:#0284c7;color:#fff" onclick="event.stopPropagation();prodPickImagen('${p.id}')">🖼️ Imagen</button>`}<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></span></div></div>`; }).join('');
   setContent(`${banner}${fb}${rows.length?`<div class="card-list">${cards}</div>${pgMore('ps',rows)}`:empty(base.length?'Sin resultados':(_PS.f==='sin'?'¡Todos los ítems tienen plano!':'No hay ítems en esta vista'),base.length?'🔍':'📄')}`);
 }
 function psF(k){ psSet('f',k); }
@@ -3805,7 +3805,8 @@ planos:{icono:'📄',titulo:'Planos',
   que:'Lista de ítems activos para saber cuáles ya tienen plano y cuáles no, y subirlo.',
   pasos:[
    {t:'Filtrar',items:['Fila de arriba: **📄 Con plano, ⚠️ Sin plano** o Todos.','Segunda fila: **🖼️ Con imagen, Sin imagen** o Todos. Los dos filtros **se combinan**.','**Solo mis OP** deja solo lo asignado a ti.']},
-   {t:'Subir un plano',items:['Toca **📎 Subir** en la tarjeta.','Elige el archivo (PDF, dibujo, imagen…) y confirma.']}],
+   {t:'Subir un plano',items:['Toca **📎 Subir** en la tarjeta.','Elige el archivo (PDF, dibujo, imagen…) y confirma.']},
+   {t:'Subir la imagen de un ítem',items:['Si el ítem no tiene imagen, su tarjeta muestra el botón **🖼️ Imagen**. Tócalo.','Pega la captura con **Ctrl + V**, arrastra el archivo, o usa **📋 Pegar** / **📁 Elegir archivo**, y toca **✓ Guardar**.','La tarjeta cambia sola: deja de salir el botón y ya cuenta como **Con imagen**.']}],
   consejos:['Los planos antiguos vienen del sistema anterior y se abren con **Ver** dentro de la OP.']},
 op:{icono:'🛠️',titulo:'Trabajar una OP (paso a paso)',
   que:'Lo que se hace dentro de una OP, de principio a fin.',
