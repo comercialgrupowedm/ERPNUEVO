@@ -1580,12 +1580,16 @@ function impSel(k){ _IMP.sel=k; _IMP.rows=null; _IMP.fname=''; _IMP.skips={}; _I
 function impElegir(){ const i=document.getElementById('imp-file'); if(i) i.click(); }
 function impLeer(inp){
   const f=inp.files&&inp.files[0]; if(!f) return; const t=IMP_TIPOS.find(x=>x.k===_IMP.sel); const rd=new FileReader();
+  if(!/\.(csv|txt)$/i.test(f.name)) toast('El archivo no termina en .csv; intento leerlo igual','warn');
   rd.onload=()=>{ try{
-      const objs=csvObjs(rd.result); const ctx={}; const rows=[]; const skips={};
+      let txt=new TextDecoder('utf-8').decode(rd.result); if(txt.includes('\uFFFD')) txt=new TextDecoder('windows-1252').decode(rd.result);   // CSV guardados desde Excel
+      const objs=csvObjs(txt); const ctx={}; const rows=[]; const skips={};
       objs.forEach(o=>{ const r=t.map(o,ctx); if(r&&r.skip){ skips[r.skip]=(skips[r.skip]||0)+1; } else rows.push(r); });
+      if(!objs.length||!rows.length){ toast('❌ No encontré filas válidas: ¿es el archivo '+t.f+'?','error'); }
       Object.assign(_IMP,{rows,fname:f.name,skips,total:objs.length,log:[]}); subir();
     }catch(e){ toast('❌ No pude leer el archivo: '+errMsg(e),'error'); } };
-  rd.readAsText(f,'utf-8');
+  rd.onerror=()=>toast('❌ No pude abrir el archivo','error');
+  rd.readAsArrayBuffer(f);
 }
 function impLog(msg,cls){ _IMP.log.push([msg,cls||'']); const el=document.getElementById('imp-log'); if(el){ el.innerHTML=_IMP.log.map(([m,c])=>`<div class="${c}">${esc(m)}</div>`).join(''); el.scrollTop=el.scrollHeight; } }
 async function impSubir(){
@@ -1615,7 +1619,7 @@ function subir(){
   if(t){
     const sk=Object.entries(_IMP.skips).map(([k,v])=>`${v} ${k}`).join(' · ');
     panel=`<div class="dp-section" style="margin-top:14px"><h4>${t.ic} ${t.t}</h4><p style="font-size:12.5px;color:var(--muted);margin:6px 0 12px">${esc(t.ayuda)}</p>
-      <input type="file" id="imp-file" accept=".csv,text/csv" style="display:none" onchange="impLeer(this)">
+      <input type="file" id="imp-file" style="display:none" onchange="impLeer(this)">
       <button class="btn btn-ghost" onclick="impElegir()">📁 Elegir archivo ${esc(t.f)}</button>
       ${_IMP.rows?`<div style="margin-top:12px;font-size:13px"><b>${esc(_IMP.fname)}</b>: ${_IMP.total} filas leídas → <b style="color:#0f766e">${_IMP.rows.length} para subir</b>${sk?` · <span style="color:var(--danger)">se omiten: ${esc(sk)}</span>`:''}</div>
         <div style="margin:10px 0;font-size:11px;color:var(--muted);word-break:break-word">Ejemplo: ${esc(JSON.stringify(_IMP.rows[0]||{}).slice(0,260))}…</div>
