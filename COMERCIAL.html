@@ -1389,6 +1389,28 @@ kbd{
 .login-user-selected .u-info .u-rol{font-size:11px;color:var(--muted)}
 
 
+/* ═══ MANUAL DE USO ═══ */
+#help-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+#help-btn:active{transform:scale(.94)}
+.ay-que{font-size:14px;line-height:1.55;margin-bottom:8px}
+.ay-quien{font-size:12px;color:var(--muted);margin-bottom:10px}
+.ay-blk{margin:14px 0}
+.ay-blk h4{font-size:13px;font-weight:800;color:var(--accent,#2563eb);margin-bottom:6px}
+.ay-blk ol{padding-left:22px;font-size:13.5px;line-height:1.55}
+.ay-blk li{margin:6px 0}
+.ay-warn,.ay-tip{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin-top:10px}
+.ay-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4)}
+.ay-tip{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25)}
+.ay-warn ul,.ay-tip ul{padding-left:18px;margin-top:4px}
+.ay-warn li,.ay-tip li{margin:4px 0}
+details.ay-det{border:1px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:8px;background:var(--surface,#fff)}
+details.ay-det>summary{cursor:pointer;font-weight:800;font-size:14px;padding:12px 0;list-style:none;display:flex;align-items:center;gap:6px}
+details.ay-det>summary::-webkit-details-marker{display:none}
+details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
+details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
+details.ay-det[open]>summary::after{content:'▴'}
+details.ay-det[open]{padding-bottom:10px}
+
 </style>
 </head>
 <body>
@@ -1414,6 +1436,7 @@ kbd{
     <span style="color:var(--muted);font-size:14px">🔍</span>
     <input type="text" id="globalSearch" placeholder="Buscar..." oninput="_debounceGlobalSearch(this.value)">
   </div>
+  <div id="help-btn" onclick="ayudaAbrir()" title="Cómo se usa esta vista (ayuda)">❓</div>
   <div id="refresh-btn" onclick="refreshCurrent()" title="Actualizar">↻</div>
 </div>
 
@@ -1487,6 +1510,8 @@ kbd{
     <div class="nav-item" data-m="materiales" onclick="qaGo('materiales')"><span class="nav-icon">🧱</span>Materiales</div>
     <div class="nav-item" data-m="servicios" onclick="qaGo('servicios')"><span class="nav-icon">🛠️</span>Servicios</div>
     <div class="nav-item" data-m="procesos" onclick="qaGo('procesos')"><span class="nav-icon">⚙️</span>Procesos</div>
+    <div class="nav-section">Ayuda</div>
+    <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:8px;line-height:1.4">
@@ -5189,6 +5214,119 @@ setInterval(async()=>{
   }catch(e){}
 },60000);
 
+
+
+const AYUDA={
+general:{icono:'🚀',titulo:'Primeros pasos',
+  que:'Este es el ERP de Grupo WEDM. Aquí se cotiza, se lleva el control de producción y se despacha. Tu clave y tu rol definen qué módulos ves y qué puedes cambiar.',
+  pasos:[
+   {t:'Entrar',items:['Abre el enlace del ERP y **toca tu nombre** en la lista.','Escribe tu **clave de 4 dígitos**. Si te equivocas, la pantalla lo avisa y puedes intentar de nuevo.']},
+   {t:'Moverte',items:['El **menú lateral** (ícono arriba a la izquierda) tiene todos los módulos que tu rol puede ver: Cotizaciones, Ítems, Clientes, Control Producción, Remisiones y los catálogos.','En el celular también tienes la **barra de abajo** con los atajos principales y, arriba, los atajos rápidos (Mis cotizaciones, En espera…).','🔍 **Buscar** arriba encuentra por número, empresa o descripción. ↻ **Actualiza** los datos. ❓ abre la ayuda de la vista donde estás.']},
+   {t:'Tu rol',items:['**Comercial**: crea y sigue sus cotizaciones y clientes. **Diseño**: trabaja las OP que le asignan. **Compras**: registra las compras. **Producción** y **Calidad**: avanzan y aprueban los ítems. **Administración / Admin**: ven todo y autorizan. **Lectura**: solo consulta.']}],
+  consejos:['Si no ves un módulo, es porque tu rol no lo usa.','Los botones ✏️ (editar) y ＋ (crear) solo aparecen si tu rol puede cambiar esa información.']},
+dashboard:{icono:'📊',titulo:'Dashboard comercial',
+  que:'Es la pantalla de inicio: un resumen de cotizaciones y de producción para saber en qué estamos hoy.',
+  quien:'Todos los roles.',
+  pasos:[{t:'Cómo usarlo',items:['Mira las **tarjetas de resumen**: cotizaciones en espera y aprobadas, órdenes en proceso y vencidas, valores.','**Toca una tarjeta o un atajo** para ir a la lista ya filtrada (por ejemplo, las cotizaciones en espera).','Usa ↻ para traer los datos más recientes.']}],
+  consejos:['Si una cifra te llama la atención, tócala: te lleva al detalle en lugar de tener que buscarlo.']},
+cotizaciones:{icono:'📋',titulo:'Cotizaciones',
+  que:'Aquí se crean y se siguen las cotizaciones a los clientes: su estado, los ítems que las componen, el PDF y la orden de compra del cliente.',
+  quien:'Comercial (y admin). Los demás roles consultan.',
+  pasos:[
+   {t:'Crear una cotización',items:['Toca **＋ Nueva Cotización** (o el botón flotante ＋). El formulario tiene tres pestañas: **📅 Inicio, 🏢 Empresa y ✅ Estado**, y se avanza con **Siguiente →**.','**📅 Inicio:** el **Nº de cotización** lo asigna el sistema. Revisa la **Fecha de emisión**, elige el **Tipo** (al elegirlo ves su definición, condiciones y quién lo libera), el **Asesor** y escribe la **Descripción del proyecto**.','**🏢 Empresa:** empieza a escribir y **elige la empresa de la lista** (se completan NIT, ciudad, dirección, encargado y teléfono). Escribe el **Lead time** en días: la **Fecha de entrega pactada** se calcula sola y puedes ajustarla. Completa la **Forma de pago** y la **Validez**.','**✅ Estado:** deja **EN ESPERA** (o el que corresponda) y escribe las **observaciones especiales** si las hay.','Toca **Crear Cotización**. Ese botón aparece solo cuando ya están los datos obligatorios; si falta alguno verás un aviso naranja: tócalo y te lleva a la pestaña donde falta.']},
+   {t:'Agregar los ítems (lo que se cotiza)',items:['Abre la cotización (toca su tarjeta).','Toca **＋ Agregar Elemento** y llena el ítem (mira la ayuda de **Ítems**).','El **precio, el IVA y el total no se escriben**: se forman con la suma de los ítems. Cuando ya hay valor, la cotización muestra el total y el descuento.','Si cambiaste ítems y el total no se ve actualizado, toca **🔄 Recalcular Total**.']},
+   {t:'Cambiar el estado',items:['Toca la **etiqueta de estado** de la cotización (EN ESPERA, APROBADA, ANULADA, RECHAZADA, FACTURADA, CANCELADO) y elige el nuevo.','Cuando pasa a **APROBADA** aparecen los campos de la **orden de compra**: escribe el **número** y **adjunta el archivo** (foto o PDF). El archivo se sube al guardar.']},
+   {t:'PDF, duplicar y editar',items:['**Generar PDF / Imprimir / Guardar PDF** arma el documento para el cliente.','**Duplicar Cotización** copia la cotización: eliges el estado inicial, la fecha, la empresa y el asesor.','**✏️ Editar** cambia los datos generales. Si vas a cotizar algo parecido, duplicar es más rápido que empezar de cero.']},
+   {t:'Pasar a producción',items:['Cuando la cotización está **APROBADA** aparece el botón **Crear OP**. Sigue los pasos de la ayuda de **Control Producción**.']}],
+  reglas:['Obligatorios al crear: **Asesor, Descripción del proyecto, Empresa, Fecha de emisión y Fecha de entrega pactada**.','Una cotización que **ya tiene OP** queda con el estado bloqueado (🔒): no se puede cambiar.','El tipo **Garantía (GR)** no se elige al crear una cotización.'],
+  consejos:['Antes de crear la cotización revisa que la empresa exista en **Clientes**; si no, créala primero.','La fecha de entrega pactada que pongas se copia a la orden de producción.']},
+items:{icono:'🔩',titulo:'Ítems / Elementos',
+  que:'Un ítem es cada pieza o trabajo dentro de una cotización, con sus materiales, servicios, procesos y su precio.',
+  quien:'Comercial (y admin).',
+  pasos:[
+   {t:'Agregar un ítem',items:['Los ítems se crean **desde una cotización**: ábrela y toca **＋ Agregar Elemento**. (El botón ＋ de esta lista no crea ítems.)','Escribe el **Nº de ítem** y las **Unidades**, y describe el ítem.','**＋ Agregar Material:** elige el material del catálogo y las medidas; el costo sale del peso por el precio/kg.','**＋ Agregar Servicio:** elige el servicio externo (tratamientos, cortes…), con sus días y costo.','**＋ Agregar Proceso:** elige la máquina y el **tiempo**. Puedes escribirlo en **Horas**, en **H : MM** (horas y minutos) o en **Minutos**; los botones − / + cambian de 15 en 15 minutos.','Escribe el **costo del flete** si aplica y las **horas de diseño** (hay una calculadora de minutos a horas).']},
+   {t:'Fijar el precio',items:['Revisa el **Costo total** y el **Presupuesto unitario** que calcula el sistema.','Ajusta el **Sobremargen %** o escribe directamente el **Precio unitario** (obligatorio).','El sistema muestra el **Precio × ítem**. Toca **Guardar** para agregarlo a la cotización.']},
+   {t:'Otras acciones del ítem',items:['**Duplicar ítem** crea una copia dentro de la misma cotización.','**Copiar a otra cotización** lo lleva a la cotización que elijas.','**Subir plano** adjunta el plano del ítem.','**Eliminar** lo quita de la cotización.']}],
+  reglas:['Un ítem debe llevar una descripción o al menos un material o proceso para poder guardarse.','Si la cotización ya tiene OP, cambiar un ítem no cambia lo que ya está en producción.'],
+  consejos:['Si te faltan materiales, servicios o procesos en las listas, se agregan en los **Catálogos** (Materiales, Servicios, Procesos).']},
+clientes:{icono:'🏢',titulo:'Clientes',
+  que:'Directorio de las empresas a las que se cotiza. De aquí salen los datos que se copian a cada cotización.',
+  quien:'Comercial y admin crean y editan; los demás consultan.',
+  pasos:[
+   {t:'Crear un cliente',items:['Toca **Nuevo Cliente** (o ＋).','Escribe la **Empresa** (obligatoria) y, si los tienes, NIT, ciudad, dirección, correo, teléfono, contacto y **condición de pago**.','Elige el **asesor encargado** y agrega notas si hace falta. Toca **Guardar**.']},
+   {t:'Consultar y editar',items:['Toca una empresa para ver sus datos y **sus cotizaciones**.','Usa ✏️ para corregir los datos cuando cambien.']}],
+  consejos:['Un NIT y una dirección completos evitan tener que corregirlos en cada cotización o remisión.']},
+produccion:{icono:'🏭',titulo:'Control Producción',
+  que:'Aquí se ve todo lo que está en fabricación: cada orden de producción (OP), sus ítems y en qué etapa van. Una OP recorre: **Diseño → Compras → Producción → Calidad → Remisión → Despacho**.',
+  quien:'Todos ven; cada rol actúa sobre su etapa (diseño, compras, producción, calidad, administración).',
+  pasos:[
+   {t:'Crear una OP desde una cotización',items:['Abre una cotización **APROBADA** y toca **Crear OP**.','Revisa el **Nº OP** que propone el sistema y elige el **Diseñador**.','Elige la **Prioridad**, el **Tipo** y la **Entrega pactada**. Si cambias la fecha, escribe el **motivo del cambio**.','En **Observaciones** puedes escribir, hacer listas (• Lista) y pegar una imagen (🖼️ Imagen).','En **Ítems a producir** marca los ítems que entran. Toca **Crear orden de producción**.','Si la cotización ya tiene una OP y faltan ítems, el botón dice **Agregar ítems a OP-…**.']},
+   {t:'Seguir una OP',items:['Toca la tarjeta de la OP para ver su detalle: semáforo de etapas, ítems, materiales, archivos y observaciones.','Usa los filtros y los botones de resumen para ver, por ejemplo, lo pendiente de diseño, de compras, en producción o por despachar.']},
+   {t:'Lo que hace cada área',items:['**Diseño:** agrega los materiales que necesita el ítem, sube imagen y plano y marca **✅ Diseño terminado**.','**Compras:** en cada material toca **📨 Enviar a compras** (lo hace diseño) y luego **🛒 Registrar compra**; cuando llegó todo, **✅ Compras completas**. Con diseño y compras listos, el ítem **pasa a producción**.','**Producción:** actualiza el **avance %** (Guardar % o ✓ 100%), manda a **trabajo externo** cuando aplica y marca cuando **terminó**.','**Calidad:** aprueba el ítem o lo devuelve. Si hay unidades con problema, **Rechazar y crear reproceso** (indica cuántas unidades y el motivo). Al terminarlo, **✅ Reproceso terminado**.','**Remisión y despacho:** mira la ayuda de **Remisiones**.']}],
+  reglas:['La cotización debe estar **APROBADA** para crear la OP.','Una etapa solo la marca el rol que le corresponde; si no ves el botón, esa etapa no es de tu rol.','Los pasos se pueden **devolver** (↩) si se marcaron por error.'],
+  consejos:['El texto de las observaciones y las imágenes que pegues en la creación de la OP las ve todo el equipo.']},
+remisiones:{icono:'🚚',titulo:'Remisiones',
+  que:'La remisión es el documento con el que se despacha lo que ya fue aprobado por calidad.',
+  quien:'Lo pide quien maneja la OP; lo genera y despacha quien tenga permiso de despacho (administración).',
+  pasos:[
+   {t:'Pedir una remisión',items:['En **Remisiones** (o desde la OP) toca **Pedir remisión**.','Elige la **Orden de producción**. Solo salen los ítems **aprobados por calidad** que todavía tienen cantidad por despachar.','Confirma con **Pedir remisión**.']},
+   {t:'Generar y despachar',items:['La remisión pedida queda pendiente en la lista de **Remisiones**. Al **Generarla**, el sistema le asigna el número (**REM-…**) y arma el documento.','Cuando la mercancía sale se marca como **Despachada**.','Si se pidió por error, se puede **Cancelar** mientras no se haya despachado.']}],
+  reglas:['Si aparece "No hay ítems aprobados por calidad…", esos ítems todavía no pasaron por calidad o ya se despacharon completos.'],
+  consejos:['Revisa NIT, dirección y contacto del cliente antes de generar: se imprimen en el documento.']},
+usuarios:{icono:'👥',titulo:'Usuarios y roles',
+  que:'Aquí el administrador crea las personas que entran al ERP, con su rol y su clave.',
+  quien:'Solo administrador.',
+  pasos:[
+   {t:'Crear o editar un usuario',items:['Toca el botón ＋ para crear uno nuevo, o el ✏️ de uno existente.','Escribe el **Nombre**, elige el **Rol** y, si es comercial, el **Asesor** con el que aparece en las cotizaciones.','Escribe el **PIN de 4 dígitos**. Al editar, dejarlo vacío significa **no cambiarlo**.','Elige el **Estado** (activo o inactivo) y toca **Guardar**.']}],
+  reglas:['El **nombre** del diseñador debe coincidir con el que ya tienen sus OP (por ejemplo A. MEZA, F. GIRALDO) para que vea su bandeja.','Para que alguien deje de entrar, ponlo **inactivo**; no lo borres.'],
+  consejos:['Cambia el PIN de una persona que se retiró o cuando se sospeche que otro lo conoce.']},
+importar:{icono:'📥',titulo:'Importar hojas',
+  que:'Herramienta del desarrollador para cargar datos desde archivos CSV o Excel a las tablas del ERP.',
+  quien:'Solo desarrollador.',
+  pasos:[
+   {t:'Importar un archivo',items:['Elige la **tabla** (tarjeta): clientes, cotizaciones, ítems, producción, remisiones, catálogos, imágenes y planos.','Toca el recuadro y elige el archivo **CSV o Excel (.xlsx / .xls)**.','Revisa la **vista previa** y las columnas que reconoció.','Toca **Subir** y espera el registro de lotes hasta que diga que terminó.']}],
+  reglas:['Repetir una importación **actualiza** los registros (mismo id), no los duplica.','Orden recomendado: clientes → cotizaciones → ítems → producción → remisiones.','Los archivos de **planos e imágenes por OP** llevan un segundo paso: después de importarlos, se aplican a cada OP.'],
+  consejos:['Prueba primero con pocas filas. Si una fila falla, el registro muestra el motivo.']},
+materiales:{icono:'🧱',titulo:'Materiales (catálogo)',
+  que:'Lista de materiales con su densidad y su precio por kilo. Se usa para calcular el costo de los ítems.',
+  quien:'Admin / comercial.',
+  pasos:[{t:'Crear o actualizar un material',items:['Toca ＋ y escribe el **Material**, una descripción, la **Densidad (g/mm³)** y el **Precio por kg**.','Para cambiar un precio, toca el material y edítalo. Las cotizaciones nuevas usan el precio actualizado.']}],
+  consejos:['Mantén los precios al día: son la base de todos los costos de material.']},
+servicios:{icono:'🛠️',titulo:'Servicios externos (catálogo)',
+  que:'Servicios que se contratan fuera (tratamientos, cortes, etc.) con sus días de entrega y costos.',
+  quien:'Admin / comercial.',
+  pasos:[{t:'Crear o actualizar un servicio',items:['Toca ＋ y escribe el **Servicio**, su descripción y los **Días de entrega**.','Llena los costos: **Costo por kg**, **hasta 2 kg** y **hasta 10 kg**, según cómo cobre el proveedor.']}],
+  consejos:['El costo hasta 2 kg y hasta 10 kg sirve para piezas pequeñas donde el cobro por kilo no aplica.']},
+procesos:{icono:'⚙️',titulo:'Procesos / máquinas (catálogo)',
+  que:'Máquinas y procesos con su tarifa por hora. Se usan para costear el tiempo de cada ítem.',
+  quien:'Admin / comercial.',
+  pasos:[{t:'Crear o actualizar un proceso',items:['Toca ＋ y escribe el **Proceso / Máquina**, la descripción, el **Cuadrante** y la **Tarifa por hora**.','Al cotizar un ítem, el tiempo que escribas se multiplica por esta tarifa.']}],
+  consejos:['Si una máquina cambia de tarifa, edítala aquí y las nuevas cotizaciones la usarán.']}
+};
+
+
+// ═══ MANUAL DE USO (ayuda dentro de cada vista) ═══
+const _ay=s=>esc(String(s==null?'':s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+function ayudaSeccionHtml(m){
+  let h=`<div class="ay-que">${_ay(m.que||'')}</div>`;
+  if(m.quien) h+=`<div class="ay-quien">👤 ${_ay(m.quien)}</div>`;
+  (m.pasos||[]).forEach(p=>{ h+=`<div class="ay-blk"><h4>${_ay(p.t)}</h4><ol>${(p.items||[]).map(i=>`<li>${_ay(i)}</li>`).join('')}</ol></div>`; });
+  if(m.reglas&&m.reglas.length) h+=`<div class="ay-warn"><b>⚠️ Ten en cuenta</b><ul>${m.reglas.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
+  if(m.consejos&&m.consejos.length) h+=`<div class="ay-tip"><b>💡 Consejos</b><ul>${m.consejos.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
+  return h;
+}
+function ayudaAbrir(k){
+  if(!k){ k=(typeof _detailOpen!=='undefined'&&_detailOpen&&AYUDA.op)?'op':(typeof MOD!=='undefined'?MOD:''); } const m=AYUDA[k];
+  if(!m){ ayudaManual(); return; }
+  openModal(`${m.icono||'📖'} ${m.titulo}`,ayudaSeccionHtml(m),`<button class="btn btn-ghost" onclick="ayudaManual('${k}')">📖 Manual completo</button><button class="btn btn-primary" onclick="closeModal()">Entendido</button>`);
+}
+function ayudaManual(abierto){
+  const keys=Object.keys(AYUDA);
+  openModal('📖 Manual de uso',`<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Toca una vista para ver cómo se usa. El botón ❓ de arriba abre la ayuda de la vista en la que estás.</div>`
+    +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
+    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+  if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
 
 </script>
 </body>
