@@ -502,6 +502,8 @@ td.mono{font-family:var(--mono);font-size:11px}
 .cm-t{font-size:13px;font-weight:700;min-width:0}.cm-t small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:2px}
 .oc-tot{margin-top:12px;background:var(--card2);border-radius:10px;padding:10px 12px;font-size:13px}.oc-tot div{display:flex;justify-content:space-between;padding:3px 0}.oc-tot .t{border-top:2px solid var(--purple);margin-top:4px;padding-top:6px;font-size:15px;font-weight:900;color:var(--purple)}
 .ns-op{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.ns-op small{color:var(--muted)}.ns-op.on{border-color:var(--purple);background:rgba(13,148,136,.07)}
+.imp-on{border-color:var(--purple)!important;background:rgba(13,148,136,.07)}
+.imp-log{margin-top:12px;max-height:220px;overflow:auto;font-size:12px;line-height:1.5;background:var(--card2);border-radius:10px;padding:8px 10px}.imp-log .ok{color:#15803d;font-weight:700}.imp-log .err{color:var(--danger)}.imp-log:empty{display:none}
 #sel-bar{position:fixed;left:10px;right:10px;bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom,0px));z-index:250;background:#1e293b;color:#fff;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 8px 28px rgba(0,0,0,.3)}
 </style>
 </head>
@@ -544,6 +546,7 @@ td.mono{font-family:var(--mono);font-size:11px}
     <div class="nav-item" data-m="pedidos" onclick="nav('pedidos')"><span class="nav-icon">🛒</span>Pedidos de compra<span class="nav-badge" id="b-ped" style="display:none">0</span></div>
     <div class="nav-item" data-m="ordenes" onclick="nav('ordenes')"><span class="nav-icon">📄</span>Órdenes de compra<span class="nav-badge" id="b-oc" style="display:none">0</span></div>
     <div class="nav-item" data-m="proveedores" onclick="nav('proveedores')"><span class="nav-icon">🏭</span>Proveedores</div>
+    <div class="nav-item" data-m="subir" id="nav-subir" style="display:none" onclick="nav('subir')"><span class="nav-icon">⬆️</span>Subir datos anteriores</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px"></div>
@@ -983,7 +986,7 @@ async function doLogin(){
 //  ERP COMPRAS · GRUPO WEDM  — mismo backend y misma estructura que Comercial y Diseño
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores'};
+const TITLES={dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores',subir:'Subir datos anteriores'};
 const PG_BASE=60;
 const EST={SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
 const PROD_SEL='id,op,item_num,cot_num,empresa,descripcion,unidades,asesor,disenador,fecha_pactada,prioridad,imagen_thumb,imagen_drive_id,mp_ok,diseno_ok,despachado,estado,es_garantia';
@@ -1011,12 +1014,13 @@ async function cargarProds(extra){
   }
 }
 async function cargarTodo(refrescarOPs){
-  const [lin,ocs,provs]=await Promise.all([
+  const [lin,ocs,provs,ocl]=await Promise.all([
     GETALL('prod_materiales','select=*&estado=neq.PENDIENTE&order=created_at.desc,id.asc'),
     GETALL('ordenes_compra','select=*&order=numero.desc,id.asc'),
     GETALL('proveedores','select=*&order=nombre.asc,id.asc'),
+    GETALL('oc_lineas','select=*&order=id_oc.asc,orden.asc').catch(()=>[]),
   ]);
-  DB.lineas=lin||[]; DB.ocs=ocs||[]; DB.provs=provs||[];
+  DB.lineas=lin||[]; DB.ocs=ocs||[]; DB.provs=provs||[]; DB.ocLineas=ocl||[];
   if(refrescarOPs) DB.prods=new Map();
   await cargarProds();
   _SYNC.init=true;
@@ -1293,7 +1297,7 @@ async function ocGuardar(){
 // ── Documento de la orden de compra (imprimible / PDF) ─────────────
 function ocDocHtml(d){
   const E=EMPRESA_WEDM; const P=d.prov||{}; const $=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO');
-  const rows=(d.lineas||[]).map((l,i)=>{ const unit=l.qty>0?l.total/l.qty:l.total; return `<tr><td class="c">${i+1}</td><td>${esc(l.desc)}</td><td class="c">${esc(l.cant)}</td><td class="r">${$(unit)}</td><td class="r"><b>${$(l.total)}</b></td><td class="c">${l.dias?esc(l.dias)+' d':'—'}</td></tr>`; }).join('')
+  const rows=(d.lineas||[]).map((l,i)=>{ const unit=(l.unit!=null&&l.unit!=='')?l.unit:(l.qty>0?l.total/l.qty:l.total); return `<tr><td class="c">${i+1}</td><td>${esc(l.desc)}</td><td class="c">${esc(l.cant)}</td><td class="r">${$(unit)}</td><td class="r"><b>${$(l.total)}</b></td><td class="c">${l.dias?esc(l.dias)+' d':'—'}</td></tr>`; }).join('')
     +Array(Math.max(0,6-(d.lineas||[]).length)).fill('<tr class="e"><td colspan="6">&nbsp;</td></tr>').join('');
   const marca=(d.estado==='ANULADA'||d.estado==='BORRADOR')?`<div class="marca">${d.estado}</div>`:'';
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Orden de compra ${esc(d.numero)}</title><style>
@@ -1339,7 +1343,7 @@ function imprimirOC(id){
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor)||{};
   _abrirDocParaImprimir(ocDocHtml({numero:ocNum(o),fecha:o.fecha,estado:o.estado,prov:{nombre:o.prov_nombre,nit:o.prov_nit,tel:o.prov_telefono,email:o.prov_email,ciudad:o.prov_ciudad,dir:o.prov_direccion,contacto:o.prov_contacto,logo:pv.logo||''},
     proyecto:o.proyecto,iva_pct:o.iva_pct,validez:o.validez_dias,forma_pago:o.forma_pago,solicito:o.solicito,autorizo:o.autorizo,obs:o.observaciones,
-    lineas:ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})),
+    lineas:ls.length?ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})):(DB.ocLineas||[]).filter(x=>x.id_oc===id).map(x=>({desc:x.descripcion||'—',cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega})),
     subtotal:o.subtotal,iva:o.iva,total:o.total}),`${ocNum(o)}.pdf`);
 }
 
@@ -1350,21 +1354,21 @@ function ocEst(k){ ocSet('est',k); }
 let _ocT=null; function ocSetQ(v){ clearTimeout(_ocT); _ocT=setTimeout(()=>{ _OC.q=v; pgReset(); ordenes(); },220); }
 function ocToggle(id){ if(_OCX.has(id)) _OCX.delete(id); else _OCX.add(id); ordenes(); }
 function ocCard(o){
-  const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
+  const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=ls.length?[]:(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const nLin=ls.length||hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor); const open=_OCX.has(o.id);
-  return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${pv&&pv.logo?`<img src="${esc(pv.logo)}" class="lc-thumb" style="object-fit:contain;background:#fff" alt="">`:'<div class="lc-thumb ph">🏭</div>'}<div style="min-width:0"><div class="lc-id">${ocNum(o)} · ${fmtDate(o.fecha)}</div><div class="lc-title">${esc(o.prov_nombre)}</div><div class="lc-sub">${ls.length} línea${ls.length!==1?'s':''}${o.proyecto?' · '+esc(o.proyecto):''}</div></div></div>
+  return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${pv&&pv.logo?`<img src="${esc(pv.logo)}" class="lc-thumb" style="object-fit:contain;background:#fff" alt="">`:'<div class="lc-thumb ph">🏭</div>'}<div style="min-width:0"><div class="lc-id">${ocNum(o)} · ${fmtDate(o.fecha)}</div><div class="lc-title">${esc(o.prov_nombre)}</div><div class="lc-sub">${nLin} línea${nLin!==1?'s':''}${o.proyecto?' · '+esc(o.proyecto):''}</div></div></div>
     <div style="text-align:right;flex-shrink:0"><span class="badge ${cls}">${o.estado}</span><div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:4px">${fmt(o.total)}</div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-sm btn-ghost" onclick="imprimirOC('${o.id}')">🖨️ Imprimir</button>
-      ${puedeCompras()&&o.estado==='EMITIDA'?`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ocRecibirAbrir('${o.id}')">✅ Recibida</button><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="ocAnular('${o.id}')">✖ Anular</button>`:''}
+      ${o.historico?'<span class="badge gris" title="Viene del sistema anterior">Histórica</span>':''}${puedeCompras()&&o.estado==='EMITIDA'?`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ocRecibirAbrir('${o.id}')">✅ Recibida</button><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="ocAnular('${o.id}')">✖ Anular</button>`:''}
       <button class="btn btn-sm btn-ghost" style="margin-left:auto" onclick="ocToggle('${o.id}')">${open?'Ocultar ▴':'Ver líneas ▾'}</button></div>
-    ${open?`<div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px">${ls.map(m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-line">${linDesc(m)}<span style="font-size:11px">${m.dias_entrega?'⏱ '+m.dias_entrega+' d · ':''}<b>${fmt(m.costo_real)}</b> <span class="badge ${(EST[m.estado]||[0,'gris'])[1]}">${(EST[m.estado]||[m.estado])[0]}</span></span></div>`; }).join('')||mutedP('Sin líneas')}
+    ${open?`<div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px">${hl.map(x=>`<div class="cm-line"><div class="cm-t">${esc(x.descripcion||'—')}<small>${x.cantidad!=null?esc(String(Number(x.cantidad)))+' und':''}${x.op?' · OP-'+esc(x.op):''}</small></div><b style="font-size:12px">${fmt(x.valor_total)}</b></div>`).join('')}${ls.map(m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-line">${linDesc(m)}<span style="font-size:11px">${m.dias_entrega?'⏱ '+m.dias_entrega+' d · ':''}<b>${fmt(m.costo_real)}</b> <span class="badge ${(EST[m.estado]||[0,'gris'])[1]}">${(EST[m.estado]||[m.estado])[0]}</span></span></div>`; }).join('')||(hl.length?'':mutedP('Sin líneas'))}
       <div style="text-align:right;font-size:11px;color:var(--muted)">Subtotal ${fmt(o.subtotal)} · IVA ${Number(o.iva_pct)||0}% ${fmt(o.iva)}</div></div>`:''}</div>`;
 }
 function ordenes(){
   const all=DB.ocs||[]; const cnt=e=>all.filter(o=>o.estado===e).length; const q=_norm(_OC.q);
   const rows=all.filter(o=>(_OC.est==='TODAS'||o.estado===_OC.est)&&(!q||_norm([ocNum(o),o.prov_nombre,o.proyecto,o.forma_pago,o.solicito].join(' ')).includes(q)));
   const chips=chipsH([['EMITIDA','Emitidas',cnt('EMITIDA')],['RECIBIDA','Recibidas',cnt('RECIBIDA')],['ANULADA','Anuladas',cnt('ANULADA')],['TODAS','Todas',all.length]],_OC.est,'ocEst');
-  const banner=moduleBanner('📄','Órdenes de compra','Órdenes emitidas a proveedores',chips);
+  const banner=moduleBanner('📄','Órdenes de compra','Órdenes emitidas a proveedores',chips+(puedeImportar()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="impSel('oc');nav('subir')">⬆️ Subir órdenes anteriores</button></div>`:''));
   const emit=all.filter(o=>o.estado==='EMITIDA');
   const kp=`<div class="kstrip" style="margin-top:12px">${kchip(emit.length,'📄 Por recibir','#0f766e')}${kchip(fmt(emit.reduce((s,o)=>s+Number(o.total||0),0)),'💲 Valor por recibir','var(--gold)')}</div>`;
   const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OC, proveedor, proyecto…" value="${esc(_OC.q)}" autocomplete="off" data-fkey="ocq" oninput="ocSetQ(this.value)"></div><span class="filter-count">${rows.length}/${all.length}</span></div></div>`;
@@ -1390,13 +1394,13 @@ let _pvT=null; function pvSetQ(v){ clearTimeout(_pvT); _pvT=setTimeout(()=>{ _PV
 function provStats(p){ const oc=(DB.ocs||[]).filter(o=>o.id_proveedor===p.id&&o.estado!=='ANULADA'); return {n:oc.length,total:oc.reduce((s,o)=>s+Number(o.total||0),0)}; }
 function proveedores(){
   const all=DB.provs||[]; const q=_norm(_PV.q);
-  const rows=all.filter(p=>(_PV.est==='todos'||(_PV.est==='activos')===p.activo)&&(!q||_norm([p.nombre,p.nit,p.ciudad,p.categoria,p.contacto,p.email].join(' ')).includes(q)));
+  const rows=all.filter(p=>(_PV.est==='todos'||(_PV.est==='activos')===p.activo)&&(!q||_norm([p.nombre,p.nit,p.ciudad,p.categoria,p.tipo_proveedor,p.actividad,p.contacto,p.email].join(' ')).includes(q)));
   const chips=chipsH([['activos','Activos',all.filter(p=>p.activo).length],['inactivos','Inactivos',all.filter(p=>!p.activo).length],['todos','Todos',all.length]],_PV.est,'pvEst');
-  const banner=moduleBanner('🏭','Proveedores','Directorio de proveedores con sus datos para las órdenes',chips+(puedeCompras()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="abrirProv()">➕ Nuevo proveedor</button></div>`:''));
+  const banner=moduleBanner('🏭','Proveedores','Directorio de proveedores con sus datos para las órdenes',chips+(puedeCompras()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="abrirProv()">➕ Nuevo proveedor</button>${puedeImportar()?` <button class="btn btn-sm" style="background:rgba(255,255,255,.18);color:#fff" onclick="impSel('proveedores');nav('subir')">⬆️ Subir proveedores</button>`:''}</div>`:''));
   const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar proveedor, NIT, ciudad, categoría…" value="${esc(_PV.q)}" autocomplete="off" data-fkey="pvq" oninput="pvSetQ(this.value)"></div><span class="filter-count">${rows.length}/${all.length}</span></div></div>`;
-  const card=p=>{ const s=provStats(p); return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${p.logo?`<img src="${esc(p.logo)}" class="lc-thumb" style="object-fit:contain;background:#fff" alt="">`:'<div class="lc-thumb ph">🏭</div>'}<div style="min-width:0"><div class="lc-title">${esc(p.nombre)}</div><div class="lc-sub">${[p.categoria,p.ciudad].filter(Boolean).map(esc).join(' · ')||'—'}</div></div></div>${p.activo?'':'<span class="badge gris">Inactivo</span>'}</div>
-    <div class="lc-meta" style="flex-wrap:wrap">${p.nit?`<span style="font-size:11px">NIT ${esc(p.nit)}</span>`:''}${p.contacto?`<span style="font-size:11px">👤 ${esc(p.contacto)}</span>`:''}${p.telefono?`<a href="tel:${esc(p.telefono)}" style="font-size:11px;color:var(--info)">📞 ${esc(p.telefono)}</a>`:''}${p.email?`<a href="mailto:${esc(p.email)}" style="font-size:11px;color:var(--info)">✉️ ${esc(p.email)}</a>`:''}</div>
-    <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">${s.n} OC · ${fmt(s.total)}</span></div>
+  const card=p=>{ const s=provStats(p); return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${p.logo?`<img src="${esc(p.logo)}" class="lc-thumb" style="object-fit:contain;background:#fff" alt="">`:'<div class="lc-thumb ph">🏭</div>'}<div style="min-width:0"><div class="lc-title">${esc(p.nombre)}</div><div class="lc-sub">${[String(p.tipo_proveedor||p.categoria||'').replace(/^PROVEEDORES? DE /i,''),p.ciudad].filter(Boolean).map(esc).join(' · ')||'—'}</div></div></div>${p.activo?'':'<span class="badge gris">Inactivo</span>'}</div>
+    <div class="lc-meta" style="flex-wrap:wrap">${p.nit?`<span style="font-size:11px">NIT ${esc(p.nit)}</span>`:''}${p.contacto?`<span style="font-size:11px">👤 ${esc(p.contacto)}</span>`:''}${p.telefono?`<a href="tel:${esc(p.telefono)}" style="font-size:11px;color:var(--info)">📞 ${esc(p.telefono)}</a>`:''}${p.celular?`<a href="tel:${esc(p.celular)}" style="font-size:11px;color:var(--info)">📱 ${esc(p.celular)}</a>`:''}${p.plazo_pago?`<span style="font-size:11px">💳 ${esc(p.plazo_pago)}</span>`:''}${p.email?`<a href="mailto:${esc(p.email)}" style="font-size:11px;color:var(--info)">✉️ ${esc(p.email)}</a>`:''}</div>
+    <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">${s.n} OC · ${fmt(s.total)}</span></div>${p.actividad?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(String(p.actividad).slice(0,140))}</div>`:''}
     ${puedeCompras()?`<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-sm btn-ghost" onclick="abrirProv('${p.id}')">✏️ Editar</button><button class="btn btn-sm btn-ghost" onclick="pvActivo('${p.id}',${!p.activo})">${p.activo?'⏸ Desactivar':'▶ Activar'}</button></div>`:''}</div>`; };
   const pg=pgSlice('pv',rows);
   setContent(`${banner}${fb}${rows.length?`<div class="card-list">${pg.map(card).join('')}</div>${pgMore('pv',rows)}`:empty(all.length?'Sin resultados':'Todavía no hay proveedores',all.length?'🔍':'🏭')}`);
@@ -1406,7 +1410,7 @@ function abrirProv(id){
   openModal(p?'✏️ Editar proveedor':'➕ Nuevo proveedor',`<input type="hidden" id="pv-id" value="${esc(p?.id||'')}"><div class="form-grid">
     <div class="field span2"><label>Logo</label><div style="display:flex;gap:10px;align-items:center"><div id="pv-logo-prev" style="width:64px;height:64px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff">${p&&p.logo?`<img src="${esc(p.logo)}" style="max-width:100%;max-height:100%">`:'🏭'}</div><button class="btn btn-sm btn-ghost" onclick="pvElegirLogo()">📁 Elegir logo</button><button class="btn btn-sm btn-ghost" onclick="pvQuitarLogo()">🗑 Quitar</button></div></div>
     ${fld('Nombre / razón social *','pv-nombre',p?.nombre||'','',true)}${fld('NIT','pv-nit',p?.nit||'')}${fld('Teléfono','pv-tel',p?.telefono||'')}${fld('Email','pv-email',p?.email||'')}${fld('Ciudad','pv-ciudad',p?.ciudad||'')}
-    ${fld('Categoría','pv-cat',p?.categoria||'','placeholder="Aceros, tratamientos…"')}${fld('Encargado','pv-cont',p?.contacto||'')}${fld('Dirección','pv-dir',p?.direccion||'','',true)}
+    ${fld('Categoría','pv-cat',p?.categoria||'','placeholder="Aceros, tratamientos…"')}${fld('Encargado','pv-cont',p?.contacto||'')}${fld('Tipo de proveedor','pv-tipo',p?.tipo_proveedor||'')}${fld('Plazo de pago','pv-plazo',p?.plazo_pago||'','placeholder="Ej. 30 días"')}${fld('Celular','pv-cel',p?.celular||'')}${fld('Actividad económica','pv-act',p?.actividad||'','',true)}${fld('Dirección','pv-dir',p?.direccion||'','',true)}
     <div class="field span2"><label>Notas</label><textarea id="pv-obs">${esc(p?.observaciones||'')}</textarea></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarProv()">💾 Guardar</button>`);
 }
@@ -1421,7 +1425,7 @@ function imgLogo(file){
       im.src=fr.result; }; fr.readAsDataURL(file); });
 }
 async function guardarProv(){
-  const d={id:gv('pv-id')||null,nombre:gv('pv-nombre'),nit:gv('pv-nit'),telefono:gv('pv-tel'),email:gv('pv-email'),ciudad:gv('pv-ciudad'),categoria:gv('pv-cat'),contacto:gv('pv-cont'),direccion:gv('pv-dir'),observaciones:gv('pv-obs')};
+  const d={id:gv('pv-id')||null,nombre:gv('pv-nombre'),nit:gv('pv-nit'),telefono:gv('pv-tel'),email:gv('pv-email'),ciudad:gv('pv-ciudad'),categoria:gv('pv-cat'),contacto:gv('pv-cont'),direccion:gv('pv-dir'),observaciones:gv('pv-obs'),tipo_proveedor:gv('pv-tipo'),plazo_pago:gv('pv-plazo'),celular:gv('pv-cel'),actividad:gv('pv-act')};
   if(!d.nombre){ toast('Escribe el nombre','error'); return; }
   if(_PVLOGO!==undefined) d.logo=_PVLOGO;
   if(await rpcC('compras_prov_guardar',{p_data:d},'✅ Proveedor guardado')){ closeModal(); afterC(); }
@@ -1446,8 +1450,9 @@ function dashboard(){
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
-function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores}; if(mods[MOD]) mods[MOD](); }
+function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores,subir}; if(mods[MOD]) mods[MOD](); }
 function nav(m,keep){
+  if(m==='subir'&&!puedeImportar()){ toast('Solo el administrador puede subir datos','error'); return; }
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
   document.querySelectorAll('.bn-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -1487,6 +1492,7 @@ async function iniciarApp(){
     await Promise.all([cargarTodo(),cargarUsuarios()]);
     setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
+  const nsub=document.getElementById('nav-subir'); if(nsub) nsub.style.display=puedeImportar()?'':'none';
   avisarNuevas(); updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
   nav(TITLES[h]?h:'dashboard');
@@ -1507,6 +1513,120 @@ setInterval(async()=>{
     if(!_detailOpen&&!modal&&!typing) refreshCurrentView();
   }catch(e){}
 },60000);
+
+
+// ═══ SUBIR DATOS DEL SISTEMA ANTERIOR (proveedores, órdenes y compras) ═══
+const puedeImportar=()=>!!_SESSION&&['admin','desarrollador'].includes(_SESSION.rol);
+function csvParse(text){
+  const rows=[]; let row=[],cur='',q=false; const s=String(text||'').replace(/^\uFEFF/,'');
+  for(let i=0;i<s.length;i++){ const c=s[i];
+    if(q){ if(c==='"'){ if(s[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&s[i+1]==='\n') i++; row.push(cur); cur=''; rows.push(row); row=[]; }
+    else cur+=c; }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+const _hn=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+function csvObjs(text){
+  const rows=csvParse(text); if(!rows.length) return []; const head=rows[0].map(_hn);
+  return rows.slice(1).filter(r=>r.some(c=>String(c).trim()!=='')).map(r=>{ const o={}; head.forEach((h,i)=>{ const v=String(r[i]==null?'':r[i]).trim(); if(!(h in o)||(o[h]===''&&v!=='')) o[h]=v; }); return o; });
+}
+const gk=(o,...ks)=>{ for(const k of ks){ const v=o[_hn(k)]; if(v!==undefined&&v!=='') return v; } return ''; };
+const p2=n=>String(n).padStart(2,'0');
+function fechaX(s){   // «10/07/2025», «06/03/2026 13:56:29» o «Mon Mar 09 2026 00:00:00 GMT-0500 (…)» → {d:'2025-07-10', ts:'2025-07-10T00:00:00-05:00'}
+  s=String(s||'').trim(); if(!s) return null;
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m){ const d=`${m[3]}-${p2(m[2])}-${p2(m[1])}`; return {d,ts:`${d}T${p2(m[4]||0)}:${m[5]||'00'}:${m[6]||'00'}-05:00`}; }
+  const t=Date.parse(s.replace(/\s*\(.*\)\s*$/,'')); if(isNaN(t)) return null;
+  const x=new Date(t-5*3600e3).toISOString(); return {d:x.slice(0,10),ts:x.slice(0,10)+'T'+x.slice(11,19)+'-05:00'};
+}
+const numX=s=>{ s=String(s||'').trim(); return /^-?\d+(\.\d+)?$/.test(s)?Number(s):null; };
+const diasTxt=s=>{ s=String(s||'').trim(); return /^\d+$/.test(s)?s+' días':s; };
+const boolX=s=>String(s||'').trim().toUpperCase()==='TRUE';
+
+const IMP_TIPOS=[
+  {k:'proveedores',ic:'🏭',t:'1. Proveedores',f:'BD_PROVEEDORES.csv',fn:'compras_import_proveedores',
+   ayuda:'Nombre, NIT, contacto, teléfonos, correo, tipo, actividad y plazo de pago. El logo del sistema anterior no se trae.',
+   map:o=>{ const nombre=gk(o,'PROVEEDOR'); if(!nombre) return {skip:'sin nombre'};
+     return {id_legacy:gk(o,'ID_PROVEEDOR'),nombre,tipo_proveedor:gk(o,'TIPO DE PROVEEDOR'),actividad:gk(o,'ACTIVIDAD ECONOMICA'),plazo_pago:diasTxt(gk(o,'PLAZO DE PAGO DIAS')),nit:gk(o,'NIT Ó RUT','NIT O RUT'),contacto:gk(o,'CONTACTO'),direccion:gk(o,'DIRECCION'),ciudad:gk(o,'CIUDAD'),celular:gk(o,'CELULAR'),telefono:gk(o,'TELEFONO'),email:gk(o,'CORREO'),logo_ruta:gk(o,'LOGO')}; }},
+  {k:'oc',ic:'📄',t:'2. Órdenes de compra',f:'ORDEN_COMPRAS.csv',fn:'compras_import_oc',
+   ayuda:'Cada orden con su número, fecha, proveedor y totales. Las de los últimos 30 días quedan «Emitidas» (por recibir); las anteriores, «Recibidas». Las órdenes nuevas seguirán la numeración.',
+   map:o=>{ const numero=numX(gk(o,'ORDEN DE COMPRA')); if(numero==null) return {skip:'sin número de orden'}; const f=fechaX(gk(o,'FECHA')); if(!f) return {skip:'sin fecha válida'};
+     const op=gk(o,'OP'), desc=gk(o,'DESCRIPCION DE ORDEN DE COMPRA');
+     return {id_legacy:gk(o,'ID_ORDENCOMPRA'),numero,fecha:f.d,prov_legacy:gk(o,'PROVEEDOR'),prov_nombre:gk(o,'EMPRESA'),prov_nit:gk(o,'NIT O RUT'),prov_telefono:gk(o,'TELEFONO'),prov_email:gk(o,'E-MAIL'),prov_ciudad:gk(o,'CIUDAD'),prov_direccion:gk(o,'DIRECCION'),prov_contacto:gk(o,'CONTACTO'),
+       proyecto:[desc,op?'OP-'+op:''].filter(Boolean).join(' · '),forma_pago:diasTxt(gk(o,'FORMA DE PAGO')),solicito:gk(o,'SOLICITO'),autorizo:gk(o,'AUTORIZO'),observaciones:gk(o,'OBSERVACIONES'),
+       subtotal:numX(gk(o,'COSTO TOTAL')),iva:numX(gk(o,'COSTO SIN IVA')),total:numX(gk(o,'COSTO TOTAL OC CON IVA')),pdf_ruta:gk(o,'ORDEN DE COMPRA PDF')}; }},   // en el sistema anterior «COSTO SIN IVA» guardaba el valor del IVA
+  {k:'lineas',ic:'📋',t:'3. Líneas de las órdenes',f:'ELEMENTOS_OC.csv',fn:'compras_import_oc_lineas',
+   ayuda:'Lo que se compró en cada orden: descripción, cantidad, valor unitario y valor total. Súbelo después de las órdenes.',
+   map:(o,ctx)=>{ const oc=gk(o,'ID_ORDENCOMPRAS'); const id=gk(o,'ID_ITEM'); if(!id||!oc) return {skip:'sin id de orden o de línea'};
+     ctx.n=ctx.n||{}; ctx.n[oc]=(ctx.n[oc]||0)+1;
+     return {id_legacy:id,oc_legacy:oc,orden:ctx.n[oc],descripcion:gk(o,'DESCRIPCION ITEM'),cantidad:numX(gk(o,'UNIDADES')),valor_unit:numX(gk(o,'PRECIO UNITARIO')),valor_total:numX(gk(o,'PRECIO X ITEM')),dias:numX(gk(o,'DIAS SERVICIO E 1')),op:gk(o,'OP'),item:gk(o,'ITEM')}; }},
+  {k:'bs',ic:'🛒',t:'4. Compras (bienes y servicios)',f:'COMPRAS.csv',fn:'compras_import_bs',
+   ayuda:'Cada pedido de material o servicio por OP, con su estado (por comprar, comprado, recibido o rechazado), costos y fechas. Solo entran los de OP que existen en el ERP.',
+   map:o=>{ const id=gk(o,'IDCOMPRAS'); if(!id) return {skip:'sin id'}; const op=gk(o,'#OP'); if(!/^1[1-4]\d{3}$/.test(op)) return {skip:'OP no válida'};
+     const cant=gk(o,'CANT'); let cantidad=null,unidad='',extra=''; const m=cant.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+     if(m){ cantidad=Number(m[1].replace(',','.')); unidad=m[2].length<=20?m[2]:''; if(m[2].length>20) extra='Cant.: '+cant; } else if(cant) extra='Cant.: '+cant;
+     let obs=gk(o,'OBSERVACIONES'); if(obs==='0') obs=''; obs=[obs,extra].filter(Boolean).join(' · ');
+     const costo=[numX(gk(o,'$COSTO MP (PESOS)')),numX(gk(o,'COSTO SIN IVA'))].find(x=>x>0); const fp=fechaX(gk(o,'FECHA DE PEDIDO')), fc=fechaX(gk(o,'FECHA DE COMPRA')), fr=fechaX(gk(o,'FECHA RECIBIDO'));
+     const dias=gk(o,'DIAS PARA ENTREGA');
+     return {legacy_id:id,op,item:(gk(o,'ITEM').match(/^\d+$/)||[''])[0],producto:gk(o,'PRODUCTO'),tipo:/SERVICIO/i.test(gk(o,'TIPO DE PEDIDO'))?'SERVICIO EXTERNO':'MATERIAL',cantidad,unidad,obs,
+       autorizado:boolX(gk(o,'AUTORIZACION JUAN DIEGO')),comprado:boolX(gk(o,'COMPRADO')),recibido:boolX(gk(o,'RECIBIDO')),rechazado:boolX(gk(o,'RECHAZADO')),motivo:gk(o,'MOTIVO DE RECHAZO'),
+       costo_real:costo||null,costo_cotizado:numX(gk(o,'PRECIO COTIZADO'))||0,f_pedido:fp?fp.ts:null,f_compra:fc?fc.d:null,f_recibido:fr?fr.ts:null,factura:gk(o,'# FACTURA'),dias:/^\d+$/.test(dias)?Number(dias):null,colaborador:gk(o,'COLABORADOR')}; }},
+];
+let _IMP={sel:null,rows:null,fname:'',skips:{},total:0,log:[],running:false,done:{}};
+function impSel(k){ _IMP.sel=k; _IMP.rows=null; _IMP.fname=''; _IMP.skips={}; _IMP.total=0; _IMP.log=[]; subir(); }
+function impElegir(){ const i=document.getElementById('imp-file'); if(i) i.click(); }
+function impLeer(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return; const t=IMP_TIPOS.find(x=>x.k===_IMP.sel); const rd=new FileReader();
+  rd.onload=()=>{ try{
+      const objs=csvObjs(rd.result); const ctx={}; const rows=[]; const skips={};
+      objs.forEach(o=>{ const r=t.map(o,ctx); if(r&&r.skip){ skips[r.skip]=(skips[r.skip]||0)+1; } else rows.push(r); });
+      Object.assign(_IMP,{rows,fname:f.name,skips,total:objs.length,log:[]}); subir();
+    }catch(e){ toast('❌ No pude leer el archivo: '+errMsg(e),'error'); } };
+  rd.readAsText(f,'utf-8');
+}
+function impLog(msg,cls){ _IMP.log.push([msg,cls||'']); const el=document.getElementById('imp-log'); if(el){ el.innerHTML=_IMP.log.map(([m,c])=>`<div class="${c}">${esc(m)}</div>`).join(''); el.scrollTop=el.scrollHeight; } }
+async function impSubir(){
+  if(_IMP.running||!_IMP.rows||!_IMP.rows.length) return; const t=IMP_TIPOS.find(x=>x.k===_IMP.sel);
+  if(!confirm(`¿Subir ${_IMP.rows.length} registros de «${t.t}»? Se puede repetir sin duplicar.`)) return;
+  _IMP.running=true; _IMP.log=[]; const B=100, tot={}, errs=[]; const bar=document.getElementById('imp-bar'), btn=document.getElementById('imp-go'); if(btn) btn.disabled=true;
+  impLog(`Subiendo ${_IMP.rows.length} registros en lotes de ${B}…`);
+  try{
+    for(let i=0;i<_IMP.rows.length;i+=B){
+      const r=await sb.rpc(t.fn,{p_rows:_IMP.rows.slice(i,i+B)});
+      Object.entries(r||{}).forEach(([k,v])=>{ if(typeof v==='number') tot[k]=(tot[k]||0)+v; else if(Array.isArray(v)) errs.push(...v); });
+      const hecho=Math.min(i+B,_IMP.rows.length); if(bar) bar.style.width=Math.round(hecho/_IMP.rows.length*100)+'%';
+      impLog(`Lote ${Math.floor(i/B)+1}: ${hecho}/${_IMP.rows.length}`);
+    }
+    impLog('✅ Terminado: '+Object.entries(tot).map(([k,v])=>`${k.replace(/_/g,' ')}: ${v}`).join(' · '),'ok');
+    errs.slice(0,15).forEach(e=>impLog('⚠️ '+e,'err')); if(errs.length>15) impLog(`… y ${errs.length-15} avisos más`,'err');
+    _IMP.done[t.k]=true; await recargar(true); toast('✅ Datos subidos');
+  }catch(e){ impLog('❌ '+errMsg(e)+' — puedes volver a intentarlo, no se duplica.','err'); toast('❌ '+errMsg(e),'error'); }
+  finally{ _IMP.running=false; if(btn) btn.disabled=false; }
+}
+function subir(){
+  if(!puedeImportar()){ setContent(empty('Solo el administrador o el desarrollador pueden subir datos','🔒')); return; }
+  const banner=moduleBanner('⬆️','Subir datos anteriores','Trae proveedores, órdenes y compras del sistema anterior (archivos CSV)','');
+  const t=IMP_TIPOS.find(x=>x.k===_IMP.sel);
+  const cards=IMP_TIPOS.map(x=>`<div class="list-card ${_IMP.sel===x.k?'imp-on':''}" style="cursor:pointer" onclick="impSel('${x.k}')"><div class="lc-top"><div style="display:flex;gap:10px;align-items:center"><div class="lc-thumb ph">${x.ic}</div><div><div class="lc-title">${x.t}</div><div class="lc-sub">${esc(x.f)}</div></div></div>${_IMP.done[x.k]?'<span class="badge verde">✓ Subido</span>':''}</div></div>`).join('');
+  let panel='';
+  if(t){
+    const sk=Object.entries(_IMP.skips).map(([k,v])=>`${v} ${k}`).join(' · ');
+    panel=`<div class="dp-section" style="margin-top:14px"><h4>${t.ic} ${t.t}</h4><p style="font-size:12.5px;color:var(--muted);margin:6px 0 12px">${esc(t.ayuda)}</p>
+      <input type="file" id="imp-file" accept=".csv,text/csv" style="display:none" onchange="impLeer(this)">
+      <button class="btn btn-ghost" onclick="impElegir()">📁 Elegir archivo ${esc(t.f)}</button>
+      ${_IMP.rows?`<div style="margin-top:12px;font-size:13px"><b>${esc(_IMP.fname)}</b>: ${_IMP.total} filas leídas → <b style="color:#0f766e">${_IMP.rows.length} para subir</b>${sk?` · <span style="color:var(--danger)">se omiten: ${esc(sk)}</span>`:''}</div>
+        <div style="margin:10px 0;font-size:11px;color:var(--muted);word-break:break-word">Ejemplo: ${esc(JSON.stringify(_IMP.rows[0]||{}).slice(0,260))}…</div>
+        <div class="prog"><div class="prog-fill ok" id="imp-bar" style="width:0%"></div></div>
+        <button class="btn btn-primary" id="imp-go" style="margin-top:12px;width:100%" onclick="impSubir()">⬆️ Subir ${_IMP.rows.length} registros</button>`:''}
+      <div id="imp-log" class="imp-log">${_IMP.log.map(([m,c])=>`<div class="${c}">${esc(m)}</div>`).join('')}</div></div>`;
+  }
+  setContent(`${banner}<div class="card-list" style="margin-top:12px">${cards}</div>${panel}<div style="height:80px"></div>`);
+}
+
+function pickFile(accept,cb){ const i=document.createElement('input'); i.type='file'; i.accept=accept; i.onchange=()=>{ if(i.files&&i.files[0]) cb(i.files[0]); }; i.click(); }
 
 </script>
 </body>
