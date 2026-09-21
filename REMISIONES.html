@@ -1017,6 +1017,7 @@ const remNum=m=>m.numero?'REM-'+m.numero:'SIN NÚMERO';
 const esMosat=m=>/MOSAT/i.test(m.empresa||'');
 const fFecha=m=>m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10);
 const remDe=id=>(DB.remisiones||[]).find(x=>x.id===id)||null;
+const hoyISO=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 function remPendiente(m){
   if(esFinal(m)) return false; const r=rolActual();
   if(r==='comercial') return m.estado==='PEDIDA';
@@ -1079,11 +1080,11 @@ function remCard(m){
     <div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.proyecto||'')}</div></div>
     <div style="text-align:right;flex-shrink:0">${bRem(m.estado)}${remPendiente(m)?'<div style="margin-top:4px" title="Requiere tu acción">🔔</div>':''}${esMosat(m)?'<div style="margin-top:4px"><span class="badge gris" style="font-size:9px">🌐 EN</span></div>':''}</div></div>
     <div class="lc-meta" style="font-size:11.5px;color:var(--muted);gap:10px"><span>${opR(m)}</span><span>COT-${m.cot_num||'—'}</span><span>📅 ${fmtDate(fFecha(m))||'—'}</span><span>📦 ${ls.length} ítem${ls.length!==1?'s':''} · ${remUnd(m)} und</span></div>
-    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄 ${esMosat(m)?'Packing List':'PDF'}</button>`:''}${m.estado==='PEDIDA'||m.estado==='SELECCIONADA'?`<span style="font-size:11px;color:var(--muted);align-self:center">Espera a ${rolAccion(m)}</span>`:''}</div></div>`;
+    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?`<button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄 ${esMosat(m)?'Packing List':'PDF'}</button>`:''}${puedeLibre()&&!esFinal(m)?`<button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️ Editar</button>`:''}${m.estado==='PEDIDA'||m.estado==='SELECCIONADA'?`<span style="font-size:11px;color:var(--muted);align-self:center">Espera a ${rolAccion(m)}</span>`:''}</div></div>`;
 }
 function remTabla(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>REM #</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Ítems</th><th>Und</th><th></th></tr></thead><tbody>
-  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td><td onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}</td></tr>`; }).join('')}
+  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td><td onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td></tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
 function remisiones(){
@@ -1094,7 +1095,7 @@ function remisiones(){
   const rows=base.filter(m=>(!usaPer||perOk(m))&&(!_RM.emp||m.empresa===_RM.emp)&&(!q||_norm([m.numero,m.empresa,m.op,m.cot_num,m.proyecto,m.oc_cliente,m.asesor,m.estado].join(' ')).includes(q)));
   const chips=chipsH([...(['comercial','administracion','calidad'].includes(rolActual())?[['pend','🔔 Para mí',cnt.pend]]:[]),['curso','En curso',cnt.curso],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',all.length]],f,'rmF');
   const perH=usaPer?`<div style="margin-top:8px">${chipsH(RM_PER.map(([k,l])=>[k,l]),_RM.per,'rmPer')}</div>`:'';
-  const acc=puede('administracion')?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#c2410c;font-weight:800" onclick="formManual()">➕ Remisión manual</button></div>`:'';
+  const acc=puedeLibre()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#c2410c;font-weight:800" onclick="nuevaRemModal()">➕ Nueva remisión</button></div>`:'';
   const banner=moduleBanner('🚚','Remisiones','Pedida → seleccionada → generada → despachada',chips+perH+acc);
   const empresas=[...new Set(all.map(m=>m.empresa).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const fb=`<div class="filter-bar" style="margin:12px 0 8px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar REM, OP, COT, empresa, proyecto…" value="${esc(_RM.q)}" autocomplete="off" data-fkey="rmq" oninput="rmSetQ(this.value)"></div>
@@ -1125,11 +1126,14 @@ function detalleRem(id){
     if(esMosat(m)) b.push(btn('🌐','#1a3a6b','Packing List (EN)',`docRemision('${id}','packing')`));
     b.push(btn('🖨️','#7b1fa2','Formato de despacho',`docRemision('${id}','despacho')`));
   }
-  if(puede('administracion')&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
-  if(puede('administracion')&&!esFinal(m)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
+  if(puede('administracion')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
+  if(puedeLibre()&&!esFinal(m)) b.push(btn('📝','#7c3aed','Formulario libre',`formLibreRem('${id}')`));
+  if(puede('administracion')&&!esFinal(m)&&['PEDIDA','SELECCIONADA','GENERADA'].includes(m.estado)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
+  if(puede('administracion')&&m.estado!=='DESPACHADA') b.push(btn('🗑️','#991b1b','Eliminar',`remEliminar('${id}')`));
   const ls=m.lineas||[]; const dr=(l,v)=>`<div style="margin-bottom:8px"><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px">${l}</span><div style="font-size:13px;font-weight:500;white-space:pre-wrap">${v?esc(v):'—'}</div></div>`;
   openDetail(remNum(m),`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${remNum(m)} · ${opR(m)}</div><div class="cot-hero-empresa">${esc(m.empresa||'—')}</div><div class="cot-hero-sub">COT-${m.cot_num||'—'}${m.manual?' · remisión manual':''}</div></div><div class="cot-hero-right"><div class="cot-hero-total-label">Unidades</div><div class="cot-hero-total-value">${remUnd(m)}</div></div></div><div class="cot-hero-badges">${bRem(m.estado)}${m.asesor?`<span class="cot-hero-asesor">👤 ${esc(m.asesor)}</span>`:''}</div></div>
     ${remPendiente(m)?`<div style="margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:13px">🔔 <b>Esta remisión espera tu acción.</b></div>`:(!esFinal(m)?`<div style="margin:12px 0 0;font-size:12px;color:var(--muted)">⏳ Espera a <b>${rolAccion(m)}</b>.</div>`:'')}
+    ${m.libre?`<div style="margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);font-size:12px">📝 Remisión hecha con el <b>formulario libre</b>, sin pasos obligatorios.</div>`:''}
     ${stepperH(m)}
     ${b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:''}
     <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:340px"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map((l,i)=>`<tr><td class="td-center" style="font-weight:700">${l.item??i+1}</td><td style="max-width:230px;white-space:normal">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:800">${l.cantidad}${l.unidades&&Number(l.unidades)!==Number(l.cantidad)?`<div style="font-size:10px;color:var(--muted);font-weight:500">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP('Sin ítems seleccionados todavía')}</div>
@@ -1259,7 +1263,7 @@ function docHtmlRem(m,tipo){
 }
 function docRemision(id,tipo){
   const m=remDe(id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  if(!m.numero&&tipo!=='despacho'){ toast('La remisión aún no tiene número: la genera administración','error'); return; }
+  if(!m.numero&&tipo!=='despacho'){ toast('La remisión aún no tiene número','error'); return; }
   _abrirDocParaImprimir(docHtmlRem(m,tipo||'remision'),`${tipo==='packing'?'PackingList':'REM'}-${m.numero||'borrador'}.pdf`);
 }
 
@@ -1343,6 +1347,105 @@ setInterval(async()=>{
 },60000);
 
 
+// ═══ FORMULARIO LIBRE (sin pasos obligatorios) — se elige entre este y el flujo por pasos ═══
+const REM_EST_LIBRE={BORRADOR:['Borrador','gris'],ENVIADA:['Enviada','naranja'],RECIBIDA:['Recibida','azul'],FACTURADA:['Facturada','verde'],ANULADA:['Anulada','rojo']};
+Object.assign(REM_EST,REM_EST_LIBRE);
+const puedeLibre=()=>puede('comercial','administracion','calidad');
+let _RL=null;   // estado del formulario libre abierto
+function nuevaRemModal(){
+  openModal('➕ Nueva remisión',`<div style="display:flex;flex-direction:column;gap:10px">
+    <button class="btn btn-primary" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto" onclick="closeModal();nav('porpedir')"><div><b>📥 Paso a paso</b><div style="font-size:11.5px;font-weight:500;opacity:.85;margin-top:2px">Calidad pide la remisión de una OP; comercial elige qué se despacha y administración la genera.</div></div></button>
+    <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto;border-color:var(--purple)" onclick="closeModal();formLibreRem(null)"><div><b>✏️ Formulario libre</b><div style="font-size:11.5px;font-weight:500;color:var(--muted);margin-top:2px">Buscas la OP o cotización, completas todo tú mismo y decides el estado. Sin pasos obligatorios.</div></div></button></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`);
+}
+function rlItemsHtml(){
+  const its=(_RL.items||[]); const ls=_RL.lineas||[];
+  return `<datalist id="rl-items-dl">${its.map(x=>`<option value="OP-${x.op} ítem ${x.item}: ${x.descripcion}" data-id="${x.id_prod}">`).join('')}</datalist>
+    <div class="field span2"><label>Ítem de la OP/cotización</label><input id="rl-pick" list="rl-items-dl" placeholder="Escribe para buscar el ítem…" autocomplete="off"></div>
+    <div class="field"><label>Cantidad</label><input id="rl-cant" type="number" inputmode="decimal" value="1" min="0" step="any"></div>
+    <div class="field" style="justify-content:flex-end"><button class="btn btn-primary" style="width:100%;height:44px" onclick="rlAgregarItem()">＋ Agregar</button></div>
+    <div class="field span2"><label>Descripción personalizada (opcional)</label><input id="rl-desc" placeholder="Dejar vacío para usar la del ítem"></div>`;
+}
+function rlTablaHtml(){
+  const ls=_RL.lineas||[];
+  return `<table class="data-tbl" style="min-width:0"><thead><tr><th style="width:30px">#</th><th style="width:60px">Cant.</th><th>Descripción</th><th style="width:36px"></th></tr></thead><tbody>
+    ${ls.map((l,i)=>`<tr><td class="td-center">${i+1}</td><td class="td-center"><input type="number" value="${l.cantidad}" style="width:50px;text-align:center;border:1px solid var(--border);border-radius:6px" onchange="_RL.lineas[${i}].cantidad=Number(this.value)||0"></td><td><textarea style="width:100%;min-height:30px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12.5px" oninput="_RL.lineas[${i}].descripcion=this.value">${esc(l.descripcion)}</textarea></td><td><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="_RL.lineas.splice(${i},1);rlRefrescarTabla()">✕</button></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">Sin ítems todavía</td></tr>`}
+    </tbody></table><button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="rlAgregarManual()">＋ Agregar ítem manual</button>`;
+}
+function rlRefrescarTabla(){ const el=document.getElementById('rl-tabla'); if(el) el.innerHTML=rlTablaHtml(); }
+function rlAgregarItem(){
+  const v=gv('rl-pick'); const opt=[...document.querySelectorAll('#rl-items-dl option')].find(o=>o.value===v);
+  const cant=Number(gv('rl-cant'))||1; const desc=gv('rl-desc');
+  if(!opt&&!desc){ toast('Elige un ítem de la lista o escribe una descripción','error'); return; }
+  const item=opt?_RL.items.find(x=>x.id_prod===opt.dataset.id):null;
+  _RL.lineas.push({id_prod:item?item.id_prod:null,descripcion:desc||(item?item.descripcion:'')||'Ítem',cantidad:cant});
+  document.getElementById('rl-pick').value=''; document.getElementById('rl-desc').value=''; document.getElementById('rl-cant').value=1;
+  rlRefrescarTabla();
+}
+function rlAgregarManual(){ _RL.lineas.push({id_prod:null,descripcion:'',cantidad:1}); rlRefrescarTabla(); }
+let _rlBuscarT=null;
+function rlBuscar(){
+  clearTimeout(_rlBuscarT);
+  _rlBuscarT=setTimeout(async()=>{
+    const op=gv('rl-op')?parseInt(gv('rl-op')):null; const cot=gv('rl-cot')?parseInt(gv('rl-cot')):null;
+    if(!op&&!cot) return;
+    try{
+      const r=await sb.rpc('remision_buscar_libre',{p_op:op||null,p_cot:cot||null});
+      _RL.items=(r&&r.items)||[];
+      if(r&&r.cliente){
+        const c=r.cliente; const set=(id,v)=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=v||''; };
+        set('rl-emp',c.empresa); set('rl-nit',c.nit); set('rl-dir',c.direccion); set('rl-ciu',c.ciudad); set('rl-con',c.contacto); set('rl-tel',c.telefono); set('rl-oc',c.oc_cliente); set('rl-pro',c.proyecto);
+        if(!gv('rl-cot')&&c) document.getElementById('rl-cot').value=cot||document.getElementById('rl-cot').value;
+      }
+      const box=document.getElementById('rl-items-box'); if(box) box.innerHTML=rlItemsHtml();
+      toast(`${_RL.items.length} ítem(s) encontrados`);
+    }catch(e){ toast('❌ '+errMsg(e),'error'); }
+  },350);
+}
+function formLibreRem(id){
+  if(!puedeLibre()){ toast('Tu rol no puede usar el formulario libre','error'); return; }
+  const m=id?remDe(id):null;
+  _RL={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
+  const est=m?m.estado:'BORRADOR'; const estValido=REM_EST_LIBRE[est]?est:'BORRADOR';
+  const avisoPaso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)?`<div style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:12.5px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado actual: ${REM_EST[m.estado][0]}). Si la guardas aquí, pasa al formulario libre y deja de seguir esas aprobaciones.</div>`:'';
+  openModal(m?`✏️ Editando ${remNum(m)}`:'➕ Nueva remisión (formulario libre)',`${avisoPaso}<div class="form-grid">
+    <div class="field"><label>Fecha</label><input type="date" id="rl-fec" value="${esc(m?fFecha(m):hoyISO())}"></div>
+    <div class="field"><label>Estado</label><select id="rl-est">${Object.entries(REM_EST_LIBRE).map(([k,[l]])=>`<option value="${k}" ${estValido===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
+    <div class="cm-h" style="margin-top:12px">Buscar por OP o cotización</div><div class="form-grid">
+    <div class="field"><label>Orden de producción (OP)</label><input id="rl-op" type="number" inputmode="numeric" value="${m&&m.op!=null?m.op:''}" oninput="rlBuscar()"></div>
+    <div class="field"><label>Cotización</label><input id="rl-cot" type="number" inputmode="numeric" value="${m&&m.cot_num!=null?m.cot_num:''}" oninput="rlBuscar()"></div></div>
+    <div class="cm-h" style="margin-top:12px">Destinatario</div><div class="form-grid">
+    ${fldR('Cliente / Señores','rl-emp',m?.empresa||'','',true)}${fldR('NIT','rl-nit',m?.nit||'')}${fldR('Dirección','rl-dir',m?.direccion||'','',true)}${fldR('Ciudad','rl-ciu',m?.ciudad||'')}
+    ${fldR('Encargado','rl-con',m?.contacto||'')}${fldR('Teléfono','rl-tel',m?.telefono||'')}${fldR('Orden de compra del cliente','rl-oc',m?.oc_cliente||'')}${fldR('Proyecto','rl-pro',m?.proyecto||'','',true)}</div>
+    <div class="cm-h" style="margin-top:14px">Ítems de la remisión</div>
+    <div id="rl-items-box" class="form-grid">${rlItemsHtml()}</div>
+    <div id="rl-tabla" style="margin-top:10px">${rlTablaHtml()}</div>
+    <div class="field span2" style="margin-top:10px"><label>Observaciones</label><textarea id="rl-obs">${esc(m?.observaciones||'')}</textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ghost" onclick="rlImprimir()">🖨️ Imprimir / PDF</button><button class="btn btn-primary" onclick="rlGuardar()">💾 Guardar</button>`);
+  if(gv('rl-op')||gv('rl-cot')) rlBuscar();
+}
+function rlDatosForm(){
+  return {op:gv('rl-op')||null,cot_num:gv('rl-cot')||null,empresa:gv('rl-emp'),nit:gv('rl-nit'),direccion:gv('rl-dir'),ciudad:gv('rl-ciu'),contacto:gv('rl-con'),telefono:gv('rl-tel'),
+    oc_cliente:gv('rl-oc'),proyecto:gv('rl-pro'),observaciones:gv('rl-obs'),fecha:gv('rl-fec'),estado:gv('rl-est'),lineas:_RL.lineas.filter(l=>l.descripcion&&l.cantidad>0)};
+}
+async function rlGuardar(){
+  const d=rlDatosForm();
+  if(!d.empresa){ toast('Escribe el cliente','error'); return; }
+  const r=await rpcR('remision_guardar_libre',{p_id:_RL.id,p_data:d},'✅ Remisión guardada');
+  if(r){ closeModal(); _RM.f='todas'; nav('remisiones'); detalleRem(r.id||_RL.id); }
+}
+function rlImprimir(){
+  const d=rlDatosForm(); if(!d.empresa){ toast('Escribe el cliente para poder imprimir','error'); return; }
+  const m=_RL.id?remDe(_RL.id):{}; const prev={...m,...d,numero:m?.numero,manual:false};
+  docRemision.__preview=prev; _abrirDocParaImprimir(docHtmlRem(prev,'remision'),`REM-${prev.numero||'borrador'}.pdf`);
+}
+async function remEliminar(id){
+  const m=remDe(id); if(!m) return;
+  if(!confirm('¿Eliminar '+remNum(m)+' definitivamente? Esta acción no se puede deshacer.')) return;
+  if(await rpcR('remision_eliminar',{p_id:id},'🗑️ Remisión eliminada')){ closeDetail(); refreshCurrentView(); }
+}
+
+
 const AYUDA={
 general:{icono:'🚀',titulo:'Primeros pasos',
   que:'Este módulo lleva las remisiones: el documento con el que se despacha lo que ya fue aprobado por calidad. Cada remisión pasa por cuatro pasos y cada paso lo hace un área distinta.',
@@ -1355,16 +1458,17 @@ dashboard:{icono:'📊',titulo:'Inicio',
   que:'Resumen de cómo van los despachos y de lo que te toca hacer.',
   pasos:[{t:'Cómo usarlo',items:['Las tarjetas muestran: **esperan mi acción, OP por pedir, pedidas, seleccionadas, generadas** y **despachadas este mes**. Toca una para ir a la lista.','Abajo ves **lo que espera tu acción** (con su botón para hacerlo ahí mismo) y las **últimas despachadas**.']}]},
 remisiones:{icono:'🚚',titulo:'Remisiones',
-  que:'Todas las remisiones, las nuevas y las históricas. Desde aquí se avanza cada una al siguiente paso y se imprimen sus documentos.',
-  quien:'Calidad pide y despacha; comercial selecciona; administración genera, edita y cancela. Los demás consultan.',
+  que:'Todas las remisiones, las nuevas y las históricas. No hay un único camino obligatorio: al crear una remisión eliges entre el **paso a paso** (con aprobaciones de cada área) o el **formulario libre** (lo completas todo tú mismo, sin pasos). Los dos conviven y se pueden imprimir igual.',
+  quien:'Calidad pide y despacha; comercial selecciona; administración genera, edita y cancela. El formulario libre lo puede usar comercial, administración y calidad.',
   pasos:[
+   {t:'Elegir cómo crearla',items:['Toca **➕ Nueva remisión** y elige: **📥 Paso a paso** (calidad la pide, comercial elige qué se despacha, administración la genera) o **✏️ Formulario libre** (buscas la OP o la cotización, completas todo y decides el estado).','En cualquier remisión que no esté despachada o cancelada, el botón **📝 Formulario libre** la abre para editarla completa, sin importar cómo se creó.']},
    {t:'Buscar y filtrar',items:['Arriba elige la lista: **🔔 Para mí, En curso, Despachadas, Canceladas** o **Todas**. Cada botón muestra cuántas hay.','En Despachadas, Canceladas y Todas aparece el **periodo** (1 mes, 3 meses, 6 meses, 1 año o Todo).','Busca por número, empresa, OP, cotización o proyecto, y filtra por **empresa**. Cambia entre **Tarjetas** y **Tabla**.']},
    {t:'Seleccionar qué se despacha (comercial)',items:['En una remisión **Pedida** toca **☑️ Seleccionar** (o **Cambiar selección** si ya la hiciste y administración aún no la genera).','Escribe la **cantidad** de cada ítem (solo aparece lo aprobado por calidad). Puedes despachar parcial o todo con **Todo lo disponible**.','Toca **Guardar selección**: pasa a administración.']},
    {t:'Generar (administración)',items:['En una remisión **Seleccionada** toca **🧾 Generar** y confirma. Se le asigna el **número consecutivo** y ya no cambia lo seleccionado.','Antes o después puedes **✏️ Editar datos**: cliente, NIT, dirección, ciudad, encargado, teléfono, orden de compra del cliente, proyecto, fecha y observaciones.']},
    {t:'Despachar (calidad)',items:['En una remisión **Generada** imprime el **🖨️ Formato de despacho** para verificar lo que sale y toca **🚚 Despachar**.','Se descuentan las unidades de producción. Si el ítem se despachó completo, la OP queda como despachada.']},
    {t:'Cancelar o corregir',items:['Administración puede **✖️ Cancelar** una remisión que aún no se despachó: lo que estaba reservado queda disponible otra vez.','Para corregir datos impresos usa **✏️ Editar datos**; los ítems y cantidades no se cambian ahí (cancela y vuelve a pedir si hay que rehacerlos).']},
-   {t:'Remisión manual (administración)',items:['Toca **➕ Remisión manual** para un despacho que no pasa por producción (por ejemplo un servicio).','Escribe el cliente (si ya existe, se completan sus datos), el proyecto, la orden de compra y los **ítems** con cantidad y descripción. Toca **🧾 Generar remisión**.','Queda **Generada** con su número; calidad la marca **Despachada** después.']}],
-  reglas:['No se puede pedir una remisión si la OP ya tiene una **pedida o seleccionada** en trámite.','Una remisión **despachada** o **cancelada** ya no cambia de estado.','La cantidad disponible descuenta lo ya despachado y lo reservado en otras remisiones generadas.'],
+   {t:'Formulario libre (sin pasos)',items:['Escribe la **OP** o la **cotización** para traer sus ítems y los datos del cliente; puedes cambiarlos si hace falta.','Agrega ítems desde la lista o toca **＋ Agregar ítem manual** para uno que no está en la OP. Cambia la cantidad o la descripción directo en la tabla.','Elige el **Estado** (Borrador, Enviada, Recibida, Facturada o Anulada) y toca **💾 Guardar**. También puedes **🖨️ Imprimir / PDF** antes de guardar.','Aquí no hay aprobaciones: cualquiera de los tres roles puede crear, cambiar el estado o corregir los ítems en cualquier momento.']}],
+  reglas:['No se puede pedir una remisión si la OP ya tiene una **pedida o seleccionada** en trámite.','Una remisión **despachada** o **cancelada** ya no cambia de estado.','La cantidad disponible descuenta lo ya despachado y lo reservado en otras remisiones generadas — eso solo aplica al paso a paso; el formulario libre no lo valida.','Editar con el formulario libre una remisión que va por pasos la saca de ese flujo: ya no sigue las aprobaciones.'],
   consejos:['El icono 🔔 marca lo que espera tu acción; la palabra "Espera a…" te dice quién sigue.']},
 porpedir:{icono:'📥',titulo:'Por pedir',
   que:'Las OP que ya tienen ítems aprobados por calidad, con unidades por despachar y sin remisión en trámite.',
