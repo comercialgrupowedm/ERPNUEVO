@@ -1078,8 +1078,18 @@ function cmpUrg(a,b){
 // Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
 const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
 const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
+// Miniaturas de Drive: carga diferida y, si una dirección falla, prueba otras antes de mostrar el ícono
+const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
+function imgErr(el){
+  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
+  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
+  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
+  if(el.dataset.hide){ el.style.display='none'; return; }
+  const ph=document.createElement('div'); ph.className=el.dataset.ph||''; ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
+}
+const imgTag=(p,w,style,cls)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d}${cls?` class="${cls}" data-ph="${cls} ph"`:''} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
 const thumbProd=(p,sz=38)=>imgSrcOP(p,sz*3)
-  ?`<img src="${esc(imgSrcOP(p,sz*3))}" alt="" onerror="this.style.visibility='hidden'" style="width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`
+  ?imgTag(p,sz*3,`width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0`)
   :(p.tiene_imagen?`<div class="lz-th" data-pid="${p.id}" data-sz="${sz}" style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`
   :`<div style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
 
@@ -1398,7 +1408,7 @@ function detalleProd(id,tab){
   const colD=d==null?'var(--muted)':d<0?'var(--danger)':d<5?'var(--warn)':'var(--accent)';
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">OP-${p.op} · ÍTEM ${p.item_num??'—'}</div>
     <div class="cot-hero-empresa">${esc(p.descripcion||'Sin descripción')}</div><div class="cot-hero-sub">COT-${p.cot_num||'—'} · ${esc(p.empresa||'—')}</div></div>
-    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" onerror="this.style.display='none'" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:''}</div></div>
+    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" loading="lazy" referrerpolicy="no-referrer" ${p.imagen_thumb?'':`data-did="${esc(p.imagen_drive_id||'')}" data-w="300" data-hide="1"`} onerror="imgErr(this)" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:''}</div></div>
     <div class="cot-hero-badges">${bProd(p.estado)}${gar(p)} ${bPrior(p.prioridad)}${p.tipo?bTipo(p.tipo):''}<span class="cot-hero-asesor">🎨 ${esc(p.disenador||'Sin diseñador')}</span>${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
   const kpis=`<div class="cot-kpis"><div class="kpi-mini"><span class="ki">⚙️</span><div class="kv">${Number(p.avance||0).toFixed(0)}%</div><div class="kl">Avance general</div></div>
     <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${Number(p.cant_despachada||0)}/${p.unidades}</div><div class="kl">Despachado</div></div>
@@ -1601,7 +1611,7 @@ async function prodHojaRuta(id){
     .c{text-align:center}.mono{font-family:'Courier New',monospace}.nb td{border:none}h1{font-size:15px;margin-bottom:4px}h2{font-size:12px;margin:10px 0 4px}tbody tr{height:30px}
     @media print{body{padding:10px}}</style></head><body>
     <table class="nb"><tr><td style="width:110px"><img src="${LOGO_B64_PNG}" style="width:100px"></td><td><h1>HOJA DE RUTA</h1><div style="font-size:9px;color:#555;line-height:1.6"><em>${esc(E.lema)}</em><br>${esc(E.dir)} · ${esc(E.ciudad)}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)} · NIT ${esc(E.nit)}</div></td>
-    <td style="width:90px;text-align:center">${p.imagen_thumb?`<img src="${esc(p.imagen_thumb)}" style="width:80px;height:80px;object-fit:cover;border:1px solid #999">`:''}</td></tr></table>
+    <td style="width:90px;text-align:center">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" style="width:80px;height:80px;object-fit:cover;border:1px solid #999">`:''}</td></tr></table>
     <table><tr><td><b>OP</b></td><td>OP-${p.op}</td><td><b>Ítem</b></td><td>${p.item_num??'—'}</td><td><b>Cantidad</b></td><td>${p.unidades}</td></tr>
     <tr><td><b>Cliente</b></td><td colspan="3">${esc(p.empresa||'—')}</td><td><b>COT</b></td><td>${p.cot_num||'—'}</td></tr>
     <tr><td><b>Descripción</b></td><td colspan="5">${esc(p.descripcion||'—')}</td></tr>
