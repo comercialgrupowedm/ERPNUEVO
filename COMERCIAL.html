@@ -4357,6 +4357,42 @@ const CSV_MAP_ITEMS = {
   'PLANO':                       'plano_url',
 };
 
+// ── Módulo COMPRAS: proveedores y órdenes de compra (CSV de AppSheet «Solicitud de bienes y servicios») ──
+// Las cabeceras llegan ya normalizadas por importHandleFile (sin tildes ni saltos de línea).
+const CSV_MAP_PROVEEDORES = {
+  'ID_PROVEEDOR':        'id',
+  'PROVEEDOR':           'nombre',
+  'ACTIVIDAD ECONOMICA': 'categoria',
+  'NIT o RUT':           'nit',
+  'CONTACTO':            'contacto',
+  'DIRECCION':           'direccion',
+  'CIUDAD':              'ciudad',
+  'CELULAR':             'telefono',
+  'CORREO':              'email',
+};
+const CSV_MAP_ORDENES_COMPRA = {
+  'ID_ORDENCOMPRA':                 'id',
+  'ORDEN DE COMPRA':                'numero',
+  'PROVEEDOR':                      'id_proveedor',
+  'EMPRESA':                        'prov_nombre',
+  'DIRECCION':                      'prov_direccion',
+  'CIUDAD':                         'prov_ciudad',
+  'CONTACTO':                       'prov_contacto',
+  'NIT O RUT':                      'prov_nit',
+  'TELEFONO':                       'prov_telefono',
+  'E-MAIL':                         'prov_email',
+  'FECHA':                          'fecha',
+  'DESCRIPCION DE ORDEN DE COMPRA': 'proyecto',
+  'ESTADO':                         'estado',
+  'SOLICITO':                       'solicito',
+  'AUTORIZO':                       'autorizo',
+  'OBSERVACIONES':                  'observaciones',
+  'COSTO TOTAL':                    'subtotal',   // en la hoja «COSTO TOTAL» es el valor SIN IVA
+  'COSTO SIN IVA':                  'iva',        // y «COSTO SIN IVA» realmente trae el valor del IVA
+  'COSTO TOTAL OC CON IVA':         'total',
+  'FORMA DE PAGO':                  'forma_pago',
+};
+
 const IMPORT_TABLES = {
   cotizaciones: {
     key:'id', label:'Cotizaciones', icon:'📋', color:'#0d9c94',
@@ -4493,6 +4529,30 @@ const IMPORT_TABLES = {
       created_at:'ts', updated_at:'ts'
     }
   },
+  proveedores: {
+    key:'id', label:'Proveedores (Compras)', icon:'🏭', color:'#0f766e',
+    csvMap: CSV_MAP_PROVEEDORES,
+    preprocessRow: 'proveedores',
+    note: 'CSV «BD PROVEEDORES». El tipo de proveedor, el plazo de pago y el teléfono fijo se guardan dentro de <b>Observaciones</b>; el logo no se importa. Sube esta tabla <b>antes</b> que las órdenes de compra.',
+    cols:{
+      id:'str', nombre:'str', nit:'str', telefono:'str', email:'str',
+      ciudad:'str', direccion:'str', contacto:'str', categoria:'str',
+      observaciones:'str', activo:'bool'
+    }
+  },
+  ordenes_compra: {
+    key:'id', label:'Órdenes de compra (Compras)', icon:'📄', color:'#0369a1',
+    csvMap: CSV_MAP_ORDENES_COMPRA,
+    preprocessRow: 'ordenes_compra',
+    note: 'CSV «ORDEN COMPRAS». Requiere que los <b>proveedores ya estén cargados</b>. Entran como <b>RECIBIDA</b> (histórico) para no llenar la lista de pendientes; la OP se agrega al campo Proyecto.',
+    cols:{
+      id:'str', numero:'int', fecha:'ts', id_proveedor:'str', prov_nombre:'str',
+      prov_nit:'str', prov_telefono:'str', prov_email:'str', prov_ciudad:'str',
+      prov_direccion:'str', prov_contacto:'str', proyecto:'str', iva_pct:'float',
+      forma_pago:'str', solicito:'str', autorizo:'str', observaciones:'str',
+      subtotal:'float', iva:'float', total:'float', estado:'str', created_by:'str'
+    }
+  },
 };
 
 let _importState = { table:null, rows:[], headers:[], fileName:'' };
@@ -4558,6 +4618,7 @@ function importSelectTable(tbl){
       <b>🔀 Mapeo automático de columnas</b><br>
       Esta tabla tiene un mapeo configurado para CSVs exportados de AppSheet. Las cabeceras del CSV se traducen automáticamente a los nombres de columnas de Supabase.<br>
       ${hasDiscount ? '<br><b>⚡ Descuento aplicado:</b> El precio unitario y total de cada ítem se ajustará con el descuento de la cotización (columna DESCUENTO%).' : ''}
+      ${cfg2.note ? '<br><br>'+cfg2.note : ''}
     </div>` : '';
 
   setContent(banner+`
@@ -5039,6 +5100,35 @@ function importBuildRecords(headers, rows, cfg){
         if(typeof obj[k]==='number' && obj[k]<0){ fixes.push(`ID ${obj.id}: ${k} ${obj[k]}% → 0%`); obj[k]=0; }
       });
       if(typeof obj.unidades==='number' && obj.unidades<=0){ fixes.push(`ID ${obj.id}: unidades ${obj.unidades} → vacía`); obj.unidades=null; }
+    }
+
+    if(cfg.preprocessRow === 'proveedores') {
+      const g = h => String(row[hIdx[h]] ?? '').trim();
+      if(obj.id) obj.id = String(obj.id).trim();
+      const tipo = g('TIPO DE PROVEEDOR'), plazo = g('PLAZO DE PAGO DIAS'), fijo = g('TELEFONO');
+      if(!obj.categoria && tipo) obj.categoria = tipo.replace(/^PROVEEDORES?\s+DE\s+/i,'');
+      if(!obj.telefono && fijo) obj.telefono = fijo;                    // sin celular → se usa el fijo
+      const obs = [];
+      if(tipo)  obs.push('Tipo: '+tipo);
+      if(plazo) obs.push('Plazo de pago: '+(/^\d+$/.test(plazo) ? plazo+' días' : plazo));
+      if(fijo && obj.telefono !== fijo) obs.push('Tel. fijo: '+fijo);
+      if(obs.length) obj.observaciones = obs.join(' · ');
+      obj.activo = true;
+    }
+
+    if(cfg.preprocessRow === 'ordenes_compra') {
+      const g = h => String(row[hIdx[h]] ?? '').trim();
+      if(obj.id) obj.id = String(obj.id).trim();
+      // La app solo maneja EMITIDA / RECIBIDA / ANULADA. «APROBADO» (AppSheet) y vacíos entran como RECIBIDA (histórico).
+      const est = String(obj.estado || '').toUpperCase();
+      obj.estado = ['EMITIDA','RECIBIDA','ANULADA'].includes(est) ? est : 'RECIBIDA';
+      // Proyecto: «OP 12394-1 · CORTE LASER»
+      const op = g('OP'), it = g('ITEM');
+      obj.proyecto = [op ? 'OP '+op+(it ? '-'+it : '') : '', obj.proyecto || ''].filter(Boolean).join(' · ') || null;
+      // IVA %: se deduce del valor del IVA sobre el subtotal
+      obj.iva_pct = (obj.subtotal > 0 && obj.iva > 0) ? Math.round(obj.iva / obj.subtotal * 10000) / 100 : 0;
+      if((obj.total == null) && obj.subtotal != null) obj.total = obj.subtotal + (obj.iva || 0);
+      obj.created_by = 'importación';
     }
 
     return obj;
