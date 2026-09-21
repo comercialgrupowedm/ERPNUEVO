@@ -3703,7 +3703,17 @@ function filtrarExacto(mod,rows,extra){
 // Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
 const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
 const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
-const thumbProd=p=>imgSrcOP(p,120)?`<img src="${esc(imgSrcOP(p,120))}" alt="" onerror="this.style.visibility='hidden'" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`:(p.tiene_imagen?`<div class="lz-th" data-pid="${p.id}" style="width:38px;height:38px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`:`<div style="width:38px;height:38px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
+// Miniaturas de Drive: carga diferida y, si una dirección falla, prueba otras antes de mostrar el ícono
+const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
+function imgErr(el){
+  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
+  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
+  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
+  if(el.dataset.hide){ el.style.display='none'; return; }
+  const ph=document.createElement('div'); ph.className=el.dataset.ph||''; ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
+}
+const imgTag=(p,w,style,cls)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d}${cls?` class="${cls}" data-ph="${cls} ph"`:''} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
+const thumbProd=p=>imgSrcOP(p,120)?imgTag(p,120,'width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0'):(p.tiene_imagen?`<div class="lz-th" data-pid="${p.id}" style="width:38px;height:38px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`:`<div style="width:38px;height:38px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
 const pactadaTag=p=>{ const d=diasPactada(p); return (p.despachado||d==null)?fmtDate(p.fecha_pactada):`${fmtDate(p.fecha_pactada)} <span style="font-size:10px">${diasTag(d)}</span>`; };
 function produccion(){
   const all=DB.produccion||[]; const modo=pvFiltro(); const rol=rolActual();
@@ -3744,7 +3754,7 @@ function detalleProd(id,tab){
   const colD=d==null?'var(--muted)':d<0?'var(--danger)':d<5?'var(--warn)':'var(--accent)';
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">OP-${p.op} · ÍTEM ${p.item_num??'—'}</div>
     <div class="cot-hero-empresa">${esc(p.descripcion||'Sin descripción')}</div><div class="cot-hero-sub">COT-${p.cot_num||'—'} · ${esc(p.empresa||'—')}</div></div>
-    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" onerror="this.style.display='none'" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:(pr?`<div class="cot-hero-total-label">Valor ítem</div><div class="cot-hero-total-value">${fmt(p.precio_total)}</div>`:'')}</div></div>
+    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" loading="lazy" referrerpolicy="no-referrer" ${p.imagen_thumb?'':`data-did="${esc(p.imagen_drive_id||'')}" data-w="300" data-hide="1"`} onerror="imgErr(this)" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:(pr?`<div class="cot-hero-total-label">Valor ítem</div><div class="cot-hero-total-value">${fmt(p.precio_total)}</div>`:'')}</div></div>
     <div class="cot-hero-badges">${bProd(p.estado)}${gar(p)} ${bPrior(p.prioridad)}${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
   const kpis=`<div class="cot-kpis"><div class="kpi-mini"><span class="ki">⚙️</span><div class="kv">${Number(p.avance).toFixed(0)}%</div><div class="kl">Avance general</div></div>
     <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${Number(p.cant_despachada||0)}/${p.unidades}</div><div class="kl">Despachado</div></div>
@@ -5327,6 +5337,37 @@ function ayudaManual(abierto){
     `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
   if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
 }
+
+
+
+// ── Revisar qué imágenes de Drive no cargan (herramienta del desarrollador) ──
+async function imgDiagnostico(){
+  const out=document.getElementById('imgdiag-out'), bar=document.getElementById('imgdiag-bar'), btn=document.getElementById('imgdiag-btn');
+  const ps=(DB.produccion||[]).filter(p=>p.imagen_drive_id);
+  if(!ps.length){ out.textContent='No hay OP con imagen de Drive cargada en esta sesión. Toca ↻ y vuelve a intentar.'; return; }
+  btn.disabled=true; out.textContent='Revisando '+ps.length+' imágenes…';
+  const prueba=(id,ms)=>new Promise(res=>{ const im=new Image(); let fin=false; const f=v=>{ if(!fin){ fin=true; res(v); } };
+    const t=setTimeout(()=>f(false),ms); im.onload=()=>{ clearTimeout(t); f(im.naturalWidth>1); }; im.onerror=()=>{ clearTimeout(t); f(false); }; im.referrerPolicy='no-referrer'; im.src=driveImg(id,64); });
+  let i=0, hechas=0, mal=[]; const N=5;
+  await Promise.all(Array.from({length:N},async()=>{ while(i<ps.length){ const p=ps[i++]; const ok=await prueba(p.imagen_drive_id,12000); if(!ok) mal.push(p); hechas++; if(bar) bar.style.width=Math.round(hechas/ps.length*100)+'%'; } }));
+  // segunda vuelta, despacio: separa lo que falló por exceso de peticiones de lo que de verdad no existe
+  const reales=[]; for(const p of mal){ await new Promise(r=>setTimeout(r,500)); if(!(await prueba(p.imagen_drive_id,15000))) reales.push(p); }
+  const csv='op,item,id_drive\n'+reales.map(p=>`${p.op},${p.item_num??''},${p.imagen_drive_id}`).join('\n');
+  window._imgMalCSV=csv;
+  out.innerHTML=`<b style="color:#15803d">${ps.length-reales.length} cargan bien</b> · <b style="color:${reales.length?'var(--danger)':'#15803d'}">${reales.length} no cargan</b>${mal.length>reales.length?` <span style="color:var(--muted)">(${mal.length-reales.length} fallaron la primera vez y cargaron al reintentar: es el límite de peticiones de Google, no un enlace roto)</span>`:''}`
+    +(reales.length?`<div style="margin:8px 0;max-height:180px;overflow:auto;font-size:12px;background:var(--card2);border-radius:8px;padding:8px">${reales.slice(0,300).map(p=>`OP-${p.op} · ítem ${p.item_num??'—'}`).join('<br>')}${reales.length>300?'<br>…':''}</div><button class="btn btn-sm btn-ghost" onclick="navigator.clipboard.writeText(window._imgMalCSV).then(()=>toast(\'Lista copiada\'))">📋 Copiar lista (CSV)</button>`:'');
+  btn.disabled=false;
+}
+const _importarBase=importar;
+importar=function(){
+  _importarBase.apply(this,arguments);
+  const c=document.getElementById('content'); if(!c||!_esDev()) return;
+  c.insertAdjacentHTML('beforeend',`<div class="dp-section" style="margin:18px 0 90px"><h4>🖼️ Revisar imágenes de Drive</h4>
+    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 10px">Prueba una por una las imágenes enlazadas a las OP y dice cuáles no cargan (archivo borrado o no público). Tarda un par de minutos.</p>
+    <button class="btn btn-primary" id="imgdiag-btn" onclick="imgDiagnostico()">🔍 Revisar ahora</button>
+    <div class="prog" style="margin-top:10px"><div class="prog-fill ok" id="imgdiag-bar" style="width:0%"></div></div>
+    <div id="imgdiag-out" style="margin-top:10px;font-size:13px"></div></div>`);
+};
 
 </script>
 </body>
