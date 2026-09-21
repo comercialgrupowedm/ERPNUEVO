@@ -1018,6 +1018,16 @@ const PROD_SEL='id,op,item_num,cot_num,empresa,descripcion,unidades,asesor,disen
 // Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
 const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
 const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
+// Miniaturas de Drive: carga diferida y, si una dirección falla, prueba otras antes de mostrar el ícono
+const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
+function imgErr(el){
+  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
+  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
+  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
+  if(el.dataset.hide){ el.style.display='none'; return; }
+  const ph=document.createElement('div'); ph.className=el.dataset.ph||''; ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
+}
+const imgTag=(p,w,style,cls)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d}${cls?` class="${cls}" data-ph="${cls} ph"`:''} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
 const puedeCompras=()=>puede('compras');
 const puedeAut=()=>puede('administracion');
 const ocNum=o=>'OC-'+String(o.numero).padStart(4,'0');
@@ -1118,7 +1128,7 @@ function lineaCard(m){
     else if(m.estado==='COMPRADO'){ btns.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();abrirRecibir(['${m.id}'])">✅ Recibido</button>`); if(!m.id_oc) btns.push(`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();devolverLinea('${m.id}')">↩</button>`); }
     else if(m.estado==='RECHAZADO') btns.push(`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();reabrirLinea('${m.id}')">↩ Reabrir</button>`);
   }
-  const thumb=imgSrcOP(p,150)?`<img src="${esc(imgSrcOP(p,150))}" class="lc-thumb" alt="" onerror="this.style.visibility='hidden'">`:`<div class="lc-thumb ph">${m.tipo==='SERVICIO EXTERNO'?'🛠':'🪨'}</div>`;
+  const thumb=imgSrcOP(p,150)?imgTag(p,150,'','lc-thumb'):`<div class="lc-thumb ph">${m.tipo==='SERVICIO EXTERNO'?'🛠':'🪨'}</div>`;
   return `<div class="bk-wrap"><label class="bk-ck" onclick="event.stopPropagation()" style="${sel?'':'display:none'}"><input type="checkbox" ${_SEL.has(m.id)?'checked':''} onchange="selToggle('${m.id}',this.checked)"></label>
   <div class="list-card" onclick="${puedeCompras()?`abrirEditar('${m.id}')`:''}"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumb}<div style="min-width:0">
     <div class="lc-id">OP-${p.op??'—'} · ÍTEM ${p.item_num??'—'}${p.es_garantia?' · 🛡️':''}</div><div class="lc-title">${esc(m.material)}</div>
