@@ -2496,6 +2496,7 @@ function detailCot(id){
         <td style="max-width:120px">${esc(it.material||'—')}</td><td style="max-width:120px">${esc(it.proceso||'—')}</td><td style="max-width:120px">${esc(it.servicio||'—')}</td>
         <td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num" style="color:var(--gold);font-weight:700">${fmt(totalItem(it))}</td>
         <td onclick="event.stopPropagation()">${edit?`<div class="it-row-actions"><button class="btn btn-ghost btn-sm" title="Editar ítem" onclick="formItem('${it.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Histórico del ítem" onclick="verHistoricoItem('${it.id}')">🕘</button>
           <button class="btn btn-ghost btn-sm" title="Copiar a otra COT" onclick="modalCopiarItem('${it.id}')">📋</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger)" title="Eliminar" onclick="deleteItem('${it.id}')">🗑</button></div>`:''}</td></tr>`).join('')}</tbody></table></div>`
     :`<p style="font-size:12px;color:var(--muted);padding:6px 0">Sin ítems${edit?' — agrega uno con “Agregar Item”':''}</p>`;
@@ -2918,6 +2919,38 @@ function items(){
   updateFilterCount('items',data.length,all.length);
 }
 function _costRow(label,val,extra=''){ return dr(label,`<span style="font-family:var(--mono)">${fmt(val)}</span>${extra}`); }
+// ── Histórico del ítem: mismos ítems (misma descripción) en otras cotizaciones, con su producción y compras ──
+const _normItemKey=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+function verHistoricoItem(id){
+  const it=DB.items.find(x=>x.id===id); if(!it) return;
+  const key=_normItemKey(it.descripcion);
+  if(!key){ toast('Este ítem no tiene descripción para comparar con otros','error'); return; }
+  const iguales=DB.items.filter(x=>_normItemKey(x.descripcion)===key)
+    .sort((a,b)=>Number(cotDe(b)?.cotizacion||0)-Number(cotDe(a)?.cotizacion||0));
+  (async()=>{
+    if(!_SYNC.init){ showBusy(); try{ await prodLoadFull(); }catch(e){} hideBusy(); }
+    _renderHistoricoItem(it,iguales);
+  })();
+}
+function _renderHistoricoItem(itBase,iguales){
+  const conProd=iguales.filter(x=>(DB.produccion||[]).some(p=>p.id_item===x.id)).length;
+  const filas=iguales.map(x=>{
+    const c=cotDe(x); const prod=(DB.produccion||[]).find(p=>p.id_item===x.id);
+    const mats=prod?(DB.prodMats||[]).filter(m=>m.id_prod===prod.id):[];
+    const totalMat=mats.reduce((s,m)=>s+Number(m.costo_real??m.costo_cotizado??0),0);
+    return `<div class="list-card" style="cursor:pointer" onclick="detailItem('${x.id}')">
+      <div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">COT-${c?.cotizacion??'—'} · ítem ${x.item??'—'}${x.id===itBase.id?' <span class="badge azul" style="font-size:9px">este</span>':''}</div>
+      <div class="lc-title">${esc(c?.empresa||'Sin empresa')}</div><div class="lc-sub">${fmtDate(c?.fecha_emision)}${c?.estado?' · '+esc(c.estado):''}</div></div>
+      <div style="text-align:right;flex-shrink:0"><div style="font-weight:800;color:var(--gold)">${fmt(x.precio_unit)}</div><div style="font-size:11px;color:var(--muted)">× ${x.unidades||0} = ${fmt(totalItem(x))}</div></div></div>
+      ${prod?`<div class="lc-meta" style="margin-top:6px;font-size:11px;color:var(--muted)">🏭 OP-${prod.op}${prod.terminado?' · terminada':''}${prod.despachado?' · despachada':''}${mats.length?` · ${mats.length} material${mats.length!==1?'es':''} comprado${mats.length!==1?'s':''} por ${fmt(totalMat)}`:' · sin materiales registrados'}</div>
+        ${mats.length?`<div style="font-size:10.5px;color:var(--muted);margin-top:2px;padding-left:16px">${mats.map(m=>`${esc(m.material)}: ${fmt(m.costo_real??m.costo_cotizado??0)}`).join(' · ')}</div>`:''}`:`<div class="lc-meta" style="margin-top:6px;font-size:11px;color:var(--muted)">No ha pasado a producción</div>`}
+    </div>`;
+  }).join('');
+  openDetail('🕘 Histórico del ítem',`
+    <div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-empresa">${esc(itBase.descripcion||'Sin descripción')}</div>
+    <div class="cot-hero-sub">Aparece ${iguales.length} ${iguales.length===1?'vez':'veces'} en cotizaciones · ${conProd} en producción</div></div></div></div>
+    <div class="card-list" style="margin-top:12px">${filas||empty('Sin coincidencias')}</div>`);
+}
 function detailItem(id){
   const it=DB.items.find(x=>x.id===id); if(!it) return; const c=cotDe(it)||null; const est=_normEstado(c?.estado||'EN ESPERA');
   const cant=Number(it.unidades||0); const pu=Number(it.precio_unit||0); const pt=totalItem(it); const edit=canEdit();
@@ -2935,7 +2968,8 @@ function detailItem(id){
     <div class="cot-action-grid">${edit?`<button class="cot-action-btn" onclick="formItem('${id}')"><span class="cot-action-ic" style="background:#1565c0">✏️</span><span class="cot-action-lbl">Editar Ítem</span></button>
       <button class="cot-action-btn" onclick="duplicarItem('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Ítem</span></button>
       <button class="cot-action-btn" onclick="modalCopiarItem('${id}')"><span class="cot-action-ic" style="background:#2e7d32">📤</span><span class="cot-action-lbl">Copiar a otra COT</span></button>`:''}
-      ${c?`<button class="cot-action-btn" onclick="detailCot('${c.id}')"><span class="cot-action-ic" style="background:#7b1fa2">📋</span><span class="cot-action-lbl">Ver Cotización</span></button>`:''}</div>
+      ${c?`<button class="cot-action-btn" onclick="detailCot('${c.id}')"><span class="cot-action-ic" style="background:#7b1fa2">📋</span><span class="cot-action-lbl">Ver Cotización</span></button>`:''}
+      <button class="cot-action-btn" onclick="verHistoricoItem('${id}')"><span class="cot-action-ic" style="background:#b45309">🕘</span><span class="cot-action-lbl">Histórico del Ítem</span></button></div>
     ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formItem('${id}')">✏️ Editar</button><button class="btn btn-danger-soft btn-sm" onclick="deleteItem('${id}')" style="margin-left:auto">🗑</button></div>`:''}
     <div class="dp-tabs"><div class="dp-tab active" onclick="switchDpTab(this,'resumen')">📋 Resumen</div><div class="dp-tab" onclick="switchDpTab(this,'costos')">🧮 Costos</div></div>
     <div class="dp-tabpanel active" data-panel="resumen">
