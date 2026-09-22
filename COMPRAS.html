@@ -505,6 +505,28 @@ td.mono{font-family:var(--mono);font-size:11px}
 .imp-on{border-color:var(--purple)!important;background:rgba(13,148,136,.07)}
 .imp-log{margin-top:12px;max-height:220px;overflow:auto;font-size:12px;line-height:1.5;background:var(--card2);border-radius:10px;padding:8px 10px}.imp-log .ok{color:#15803d;font-weight:700}.imp-log .err{color:var(--danger)}.imp-log:empty{display:none}
 #sel-bar{position:fixed;left:10px;right:10px;bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom,0px));z-index:250;background:#1e293b;color:#fff;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 8px 28px rgba(0,0,0,.3)}
+/* ═══ MANUAL DE USO ═══ */
+#help-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+#help-btn:active{transform:scale(.94)}
+.ay-que{font-size:14px;line-height:1.55;margin-bottom:8px}
+.ay-quien{font-size:12px;color:var(--muted);margin-bottom:10px}
+.ay-blk{margin:14px 0}
+.ay-blk h4{font-size:13px;font-weight:800;color:var(--accent,#2563eb);margin-bottom:6px}
+.ay-blk ol{padding-left:22px;font-size:13.5px;line-height:1.55}
+.ay-blk li{margin:6px 0}
+.ay-warn,.ay-tip{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin-top:10px}
+.ay-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4)}
+.ay-tip{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25)}
+.ay-warn ul,.ay-tip ul{padding-left:18px;margin-top:4px}
+.ay-warn li,.ay-tip li{margin:4px 0}
+details.ay-det{border:1px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:8px;background:var(--surface,#fff)}
+details.ay-det>summary{cursor:pointer;font-weight:800;font-size:14px;padding:12px 0;list-style:none;display:flex;align-items:center;gap:6px}
+details.ay-det>summary::-webkit-details-marker{display:none}
+details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
+details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
+details.ay-det[open]>summary::after{content:'▴'}
+details.ay-det[open]{padding-bottom:10px}
+
 </style>
 </head>
 <body>
@@ -525,6 +547,7 @@ td.mono{font-family:var(--mono);font-size:11px}
     <span style="color:var(--muted);font-size:14px">🔍</span>
     <input type="text" id="globalSearch" placeholder="Buscar pedido…" oninput="onGlobalSearch(this.value)">
   </div>
+  <div id="help-btn" onclick="ayudaAbrir()" title="Cómo se usa esta vista (ayuda)">❓</div>
   <div id="refresh-btn" onclick="refreshCurrent()" title="Actualizar">↻</div>
 </div>
 
@@ -547,6 +570,8 @@ td.mono{font-family:var(--mono);font-size:11px}
     <div class="nav-item" data-m="ordenes" onclick="nav('ordenes')"><span class="nav-icon">📄</span>Órdenes de compra<span class="nav-badge" id="b-oc" style="display:none">0</span></div>
     <div class="nav-item" data-m="proveedores" onclick="nav('proveedores')"><span class="nav-icon">🏭</span>Proveedores</div>
     <div class="nav-item" data-m="subir" id="nav-subir" style="display:none" onclick="nav('subir')"><span class="nav-icon">⬆️</span>Subir datos anteriores</div>
+    <div class="nav-section">Ayuda</div>
+    <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px"></div>
@@ -1644,6 +1669,82 @@ function subir(){
 }
 
 function pickFile(accept,cb){ const i=document.createElement('input'); i.type='file'; i.accept=accept; i.onchange=()=>{ if(i.files&&i.files[0]) cb(i.files[0]); }; i.click(); }
+
+
+const AYUDA={
+general:{icono:'🚀',titulo:'Primeros pasos',
+  que:'Este módulo es para comprar: recibe lo que diseño pide para cada OP, permite hacer las órdenes de compra a los proveedores y controlar lo que llega.',
+  pasos:[
+   {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','Abajo tienes **Inicio, Pedidos, Órdenes y Proveedores**. Los números rojos avisan cuántos pedidos están por comprar y cuántas órdenes están por recibir.','🔍 busca por material, OP, empresa, proveedor u orden. ↻ actualiza. ❓ abre la ayuda de la vista.']},
+   {t:'El recorrido de un pedido',items:['Diseño envía el material → queda **Por comprar**.','Compras lo compra (con o sin orden de compra) → pasa a **Comprado**.','Cuando llega → **Recibido**. Si no se va a comprar → **Rechazado** (con motivo).','Cuando todo lo de una OP está comprado o recibido, la OP puede seguir a producción.']}],
+  reglas:['**Compras** y **admin** hacen las acciones. **Administración** autoriza. Los demás roles solo consultan.'],
+  consejos:['Cada vez que llega un pedido nuevo verás un aviso "🆕 pedido nuevo por comprar".']},
+dashboard:{icono:'📊',titulo:'Inicio',
+  que:'Resumen de lo que hay que hacer: pedidos por comprar, por recibir, sin autorizar y cuánto se compró en el mes.',
+  pasos:[{t:'Cómo usarlo',items:['Mira las tarjetas: **Por comprar, Por recibir, Sin autorizar, Comprado este mes** y **Recibidos este mes**.','**Toca una tarjeta** para ir a la lista de pedidos filtrada.','Abajo ves **lo más urgente por comprar** (ordenado por la fecha de entrega de la OP), las **órdenes por recibir** y los **proveedores del mes**.']}],
+  consejos:['Empieza siempre por lo urgente: las OP con la entrega vencida aparecen primero.']},
+pedidos:{icono:'🛒',titulo:'Pedidos de compra',
+  que:'Cada material o servicio que piden las OP, con su estado. Desde aquí se compra, se recibe o se rechaza.',
+  quien:'Compras y admin actúan; administración autoriza; los demás consultan.',
+  pasos:[
+   {t:'Ver los pedidos',items:['Arriba elige **Por comprar, Comprados, Recibidos, Rechazados** o **Todos**. Cada botón muestra cuántos hay.','Filtra por **Materiales / Servicios** y busca por OP, empresa, proveedor u orden.','En cada tarjeta ves la OP, el material, la cantidad, el costo cotizado, los días de espera y la **fecha de entrega de la OP** (en rojo si ya venció).']},
+   {t:'Comprar sin orden de compra',items:['En un pedido **Por comprar** toca **🛒 Comprar**.','Escribe el **proveedor** (elige de la lista o escribe uno nuevo), la **fecha**, los **días de entrega** y el **costo sin IVA** de cada línea.','Toca **💾 Guardar**: pasa a **Comprado**.']},
+   {t:'Comprar con una orden de compra (varios materiales al mismo proveedor)',items:['**Marca varias tarjetas** con el cuadro de la izquierda (o **☑ Seleccionar todo**).','En la barra de abajo toca **📄 Generar OC**.','Escribe el **proveedor**: si ya está en el directorio se llenan sus datos. Ajusta **IVA %**, validez, forma de pago, quién solicita y quién autoriza.','Escribe el **costo total** de cada línea (y los días de entrega). Abajo ves subtotal, IVA y total.','Toca **🖨️ Vista previa** para revisar el PDF, o **💾 Guardar y generar**: se crea la orden con su número, los pedidos pasan a **Comprado** y se abre el PDF para imprimir.']},
+   {t:'Recibir',items:['En un pedido **Comprado** toca **✅ Recibido** (o marca varios y **✅ Marcar recibido**).','Escribe la **fecha** y el **número de factura**. Pasa a **Recibido**.']},
+   {t:'Rechazar, devolver, corregir',items:['**✖** en un pedido por comprar: escribe el **motivo** y queda **Rechazado**. **↩ Reabrir** lo devuelve a por comprar.','**↩** en un pedido comprado sin orden lo devuelve a por comprar.','**✏️ Editar** cambia descripción, cantidad, proveedor, costos, fechas y observaciones.']},
+   {t:'Crear una solicitud tú mismo',items:['Toca **➕ Nueva solicitud**.','**Busca la OP** (por número o empresa) y elígela.','Elige **Material** o **Servicio externo**, describe qué se necesita, cantidad, proveedor y costo si ya los sabes.','Marca **"comprado de una vez"** solo si ya tienes proveedor y costo. Toca **💾 Crear solicitud**.']},
+   {t:'Autorizar (administración)',items:['Selecciona los pedidos y toca **✔ Autorizar**. Quedan marcados como autorizados; en la orden de compra sale quién autorizó.']}],
+  reglas:['Las líneas de una orden de compra deben tener **costo** para poder guardarse.','Un pedido que pertenece a una orden emitida no se puede devolver: **anula la orden** primero.','Para pasar una OP a producción, todos sus materiales deben estar **comprados o recibidos** (los rechazados no cuentan).'],
+  consejos:['Junta en una sola orden lo que se le compra al mismo proveedor: es un PDF, un número y un pago.']},
+ordenes:{icono:'📄',titulo:'Órdenes de compra',
+  que:'Las órdenes emitidas a los proveedores, con su número, sus líneas y su PDF. Las de antes del sistema nuevo aparecen marcadas como **Histórica**.',
+  quien:'Compras y admin actúan; los demás consultan.',
+  pasos:[
+   {t:'Consultar una orden',items:['Elige **Emitidas** (por recibir), **Recibidas**, **Anuladas** o **Todas** y usa la búsqueda.','Toca **Ver líneas ▾** para ver qué incluye y cuánto cuesta cada línea.','**🖨️ Imprimir** abre el PDF de la orden (con logo, proveedor, líneas, IVA, total y firmas).']},
+   {t:'Recibir una orden',items:['En una orden **Emitida** toca **✅ Recibida**.','Escribe la **fecha** y la **factura**. Todas sus líneas pasan a **Recibido**.']},
+   {t:'Anular una orden',items:['Toca **✖ Anular** y confirma. La orden queda **Anulada** y sus pedidos vuelven a **Por comprar**.']}],
+  reglas:['Una orden **ya recibida** no se puede anular.','Las órdenes nuevas se numeran automáticamente: siguen la numeración del sistema anterior.'],
+  consejos:['Antes de enviar el PDF al proveedor, usa **Vista previa** al crearla: se corrige antes de que exista el número.']},
+proveedores:{icono:'🏭',titulo:'Proveedores',
+  que:'Directorio de proveedores. Sus datos se copian solos a cada orden de compra.',
+  quien:'Compras y admin crean y editan.',
+  pasos:[
+   {t:'Crear o editar',items:['Toca **➕ Nuevo proveedor**.','Escribe el **nombre / razón social** (obligatorio) y, si los tienes, NIT, teléfono, celular, correo, ciudad, dirección, encargado, tipo, plazo de pago y actividad.','Puedes subir el **logo**: aparece en la orden de compra.','Toca **💾 Guardar**. Para cambiar algo después, toca **✏️ Editar**.']},
+   {t:'Activar o desactivar',items:['**⏸ Desactivar** saca al proveedor de las listas sin borrar su historial. **▶ Activar** lo devuelve.']},
+   {t:'Consultar',items:['Filtra **Activos / Inactivos / Todos** y busca por nombre, NIT, ciudad, tipo o actividad.','Cada tarjeta muestra cuántas órdenes tiene y cuánto se ha comprado; toca el teléfono o el correo para llamar o escribir.']}],
+  consejos:['Si al hacer una orden escribes un proveedor nuevo, marca **"Guardar este proveedor en el directorio"**.']},
+subir:{icono:'⬆️',titulo:'Subir datos anteriores',
+  que:'Carga el historial del sistema de compras anterior (proveedores, órdenes, sus líneas y las compras) desde archivos CSV.',
+  quien:'Solo administrador o desarrollador.',
+  pasos:[
+   {t:'Subir los archivos, en este orden',items:['**1. Proveedores** (`BD_PROVEEDORES.csv`). **2. Órdenes de compra** (`ORDEN_COMPRAS.csv`). **3. Líneas de las órdenes** (`ELEMENTOS_OC.csv`). **4. Compras** (`COMPRAS.csv`).','Toca la tarjeta del archivo y luego **📁 Elegir archivo**.','Revisa cuántas filas leyó y cuántas se omiten (y por qué), y toca **⬆️ Subir**.','Espera a que el registro diga **Terminado**. La tarjeta queda con ✓ Subido.']}],
+  reglas:['Se puede **repetir** cualquier carga: no se duplican los datos.','Las compras solo se cargan para OP que existen en el ERP.'],
+  consejos:['Si el archivo aparece atenuado en el celular, en el selector activa **Mostrar todos los archivos**.']}
+};
+
+
+// ═══ MANUAL DE USO (ayuda dentro de cada vista) ═══
+const _ay=s=>esc(String(s==null?'':s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+function ayudaSeccionHtml(m){
+  let h=`<div class="ay-que">${_ay(m.que||'')}</div>`;
+  if(m.quien) h+=`<div class="ay-quien">👤 ${_ay(m.quien)}</div>`;
+  (m.pasos||[]).forEach(p=>{ h+=`<div class="ay-blk"><h4>${_ay(p.t)}</h4><ol>${(p.items||[]).map(i=>`<li>${_ay(i)}</li>`).join('')}</ol></div>`; });
+  if(m.reglas&&m.reglas.length) h+=`<div class="ay-warn"><b>⚠️ Ten en cuenta</b><ul>${m.reglas.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
+  if(m.consejos&&m.consejos.length) h+=`<div class="ay-tip"><b>💡 Consejos</b><ul>${m.consejos.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
+  return h;
+}
+function ayudaAbrir(k){
+  if(!k){ k=(typeof _detailOpen!=='undefined'&&_detailOpen&&AYUDA.op)?'op':(typeof MOD!=='undefined'?MOD:''); } const m=AYUDA[k];
+  if(!m){ ayudaManual(); return; }
+  openModal(`${m.icono||'📖'} ${m.titulo}`,ayudaSeccionHtml(m),`<button class="btn btn-ghost" onclick="ayudaManual('${k}')">📖 Manual completo</button><button class="btn btn-primary" onclick="closeModal()">Entendido</button>`);
+}
+function ayudaManual(abierto){
+  const keys=Object.keys(AYUDA);
+  openModal('📖 Manual de uso',`<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Toca una vista para ver cómo se usa. El botón ❓ de arriba abre la ayuda de la vista en la que estás.</div>`
+    +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
+    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+  if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
 
 </script>
 </body>
