@@ -2892,32 +2892,32 @@ function generarPDFCotizacion(id){
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important;font-weight:700}.azul-light{background:#2d5fa6!important;color:#fff!important;font-weight:700}
-    .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{font-weight:700}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
-    .total-row{background:#1a3a6b!important;color:#fff!important;font-weight:700}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
+    table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-light{background:#2d5fa6!important;color:#fff!important}
+    .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
+    .total-row{background:#1a3a6b!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
-      <div style="font-size:9px;color:#444;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br><b>Tel:</b> ${EMPRESA_WEDM.tel} &nbsp; <b>Cel:</b> ${EMPRESA_WEDM.cel}<br><b>Email:</b> ${EMPRESA_WEDM.email}<br><b>NIT:</b> ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
-      <td style="width:45%;vertical-align:top"><table style="font-size:9.5px;width:100%">
+      <div style="color:#444;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br>Tel: ${EMPRESA_WEDM.tel} &nbsp; Cel: ${EMPRESA_WEDM.cel}<br>Email: ${EMPRESA_WEDM.email}<br>NIT: ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
+      <td style="width:45%;vertical-align:top"><table style="width:100%">
         <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">FECHA:</td><td>${hoy}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CLIENTE:</td><td>${cl(c.empresa)}</td></tr>
         <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">NIT:</td><td>${cl(c.nit||cli.nit)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">DIRECCIÓN:</td><td>${cl(c.direccion||cli.direccion)}</td></tr>
         <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CIUDAD:</td><td>${cl(c.ciudad||cli.ciudad)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">ENCARGADO:</td><td>${cl(c.encargado||cli.contacto)}</td></tr>
         <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">TELÉFONO:</td><td>${cl(c.telefono||cli.telefono)}</td></tr></table>
-        <table style="margin-top:10px;font-size:9.5px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
-    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;font-size:12px;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;font-size:13px;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
+        <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
+    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
-      <tbody>${rows}${its.length<3?Array(3-its.length).fill('<tr><td class="borde" colspan="5" style="height:22px"></td></tr>').join(''):''}</tbody></table>
-    <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;font-size:9px;vertical-align:top;line-height:1.6;color:#444;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
+      <tbody>${rows}</tbody></table>
+    <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;vertical-align:top;line-height:1.6;color:#444;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
       <td class="azul-light borde right" style="width:20%">SUBTOTAL</td><td class="borde right mono negrita" style="width:20%">${money(sub)}</td></tr>
       <tr><td class="azul-light borde right">I.V.A</td><td class="borde right mono">${money(iva)}</td></tr>
       ${descVal>0?`<tr><td class="azul-light borde right">DESCUENTO${descPct?` (${descPct}%)`:''}</td><td class="borde right mono">-${money(descVal)}</td></tr>`:''}
-      <tr><td class="total-row borde right" style="font-size:11px">TOTAL</td><td class="total-row borde right mono" style="font-size:11px">${money(total)}</td></tr></table>
-    <p style="font-size:8.5px;color:#555;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
-    ${c.observaciones_especiales?`<p style="font-size:9px;margin-bottom:12px"><b>OBSERVACIONES:</b> ${esc(c.observaciones_especiales)}</p>`:''}
-    <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="font-size:9.5px;width:100%">
+      <tr><td class="total-row borde right">TOTAL</td><td class="total-row borde right mono">${money(total)}</td></tr></table>
+    <p style="color:#555;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
+    ${c.observaciones_especiales?`<p style="margin-bottom:12px">OBSERVACIONES: ${esc(c.observaciones_especiales)}</p>`:''}
+    <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="width:100%">
       <tr><td class="azul borde" style="width:50%">VALIDEZ COT. (días)</td><td class="borde center">${c.validez_dias||30}</td><td rowspan="3" class="azul borde center" style="font-size:10px">ATENTAMENTE</td></tr>
       <tr><td class="azul borde">FORMA DE PAGO</td><td class="borde center">${esc(pago)}</td></tr><tr><td class="azul borde">ENTREGA (días)</td><td class="borde center">${c.lead_time_dias??'—'}</td></tr></table></td>
-      <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-weight:700;font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="font-size:8.5px;color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
+      <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
     </body></html>`;
   _abrirDocParaImprimir(html,`COT-${c.cotizacion}-${_slugArchivo(c.empresa)}.pdf`,'cotizaciones');
 }
