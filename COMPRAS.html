@@ -526,6 +526,13 @@ details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
 details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
 details.ay-det[open]>summary::after{content:'▴'}
 details.ay-det[open]{padding-bottom:10px}
+.ay-form{margin-bottom:14px;border:1px solid rgba(37,99,235,.25);border-radius:10px;overflow:hidden;background:rgba(37,99,235,.05)}
+.ay-form-tog{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:none;border:none;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent,#2563eb);text-align:left}
+.ay-form-car{transition:transform .15s}
+.ay-form-body{display:none;padding:0 12px 12px;font-size:12.5px;line-height:1.5}
+.ay-form-body .ay-blk{margin:8px 0}.ay-form-body .ay-blk h4{font-size:12px}.ay-form-body .ay-blk ol{padding-left:18px;font-size:12px}
+.ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
+
 
 </style>
 </head>
@@ -1172,7 +1179,7 @@ const linDesc=m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-t">${es
 function abrirComprar(ids){
   const ms=ids.map(linDe).filter(Boolean); if(!ms.length||ms.some(m=>m.estado!=='SOLICITADO')){ toast('Elige líneas por comprar','error'); return; }
   const provs=[...new Set(ms.map(m=>m.proveedor).filter(Boolean))];
-  openModal('🛒 Marcar como comprado',`${dlProvs()}<div class="form-grid">
+  openModal('🛒 Marcar como comprado',`${dlProvs()}${ayudaForm(`Escribe el **proveedor** y el **costo sin IVA** de cada línea. Al guardar, los pedidos pasan de «Por comprar» a «Comprado».`)}<div class="form-grid">
     <div class="field span2"><label>Proveedor *</label><input id="cm-prov" list="dl-provs" value="${esc(provs.length===1?provs[0]:'')}" placeholder="Nombre del proveedor" autocomplete="off"></div>
     <div class="field"><label>Fecha de compra</label><input type="date" id="cm-fecha" value="${hoyISO()}"></div>
     <div class="field"><label>Días para entrega</label><input type="number" inputmode="numeric" id="cm-dias" min="0" placeholder="0"></div>
@@ -1191,7 +1198,7 @@ async function devolverLinea(id){ if(!confirm('¿Devolver esta línea a "Por com
 // — Recibir —
 function abrirRecibir(ids){
   const ms=ids.map(linDe).filter(Boolean); if(!ms.length||ms.some(m=>m.estado!=='COMPRADO')){ toast('Elige líneas compradas','error'); return; }
-  openModal('✅ Marcar como recibido',`<div class="form-grid"><div class="field"><label>Fecha de recibido</label><input type="date" id="mr-fecha" value="${hoyISO()}"></div>
+  openModal('✅ Marcar como recibido',`${ayudaForm(`Pon la **fecha** y el **número de factura**. Las líneas pasan a «Recibido».`)}<div class="form-grid"><div class="field"><label>Fecha de recibido</label><input type="date" id="mr-fecha" value="${hoyISO()}"></div>
     ${fld('# Factura','mr-fact',ms.length===1?(ms[0].factura||''):'')}
     <div class="field span2"><label>Observaciones</label><textarea id="mr-obs"></textarea></div></div>
     <div class="cm-lines"><div class="cm-h">${ms.length} línea(s)</div>${ms.map(m=>`<div class="cm-line">${linDesc(m)}<b style="font-size:12px">${fmt(costoDe(m))}</b></div>`).join('')}</div>`,
@@ -1205,7 +1212,7 @@ async function guardarRecibir(ids){
 // — Rechazar / reabrir —
 function abrirRechazar(id){
   const m=linDe(id); if(!m) return;
-  openModal('❌ Rechazar pedido',`<div style="font-size:13px;margin-bottom:10px"><b>${esc(m.material)}</b></div><div class="field"><label>Motivo del rechazo *</label><textarea id="mj-motivo" placeholder="¿Por qué no se compra?"></textarea></div>`,
+  openModal('❌ Rechazar pedido',`${ayudaForm(`Escribe el **motivo**: queda visible para quien lo pidió. Se puede **reabrir** después si hace falta.`)}<div style="font-size:13px;margin-bottom:10px"><b>${esc(m.material)}</b></div><div class="field"><label>Motivo del rechazo *</label><textarea id="mj-motivo" placeholder="¿Por qué no se compra?"></textarea></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" style="background:#dc2626" onclick="guardarRechazo('${id}')">❌ Rechazar</button>`);
 }
 async function guardarRechazo(id){ if(await rpcC('compras_rechazar',{p_id:id,p_motivo:gv('mj-motivo')},'❌ Pedido rechazado')){ closeModal(); afterC(); } }
@@ -1242,7 +1249,7 @@ async function guardarEditar(id){
 let _NS={prod:null,t:null};
 function abrirNueva(){
   _NS={prod:null,t:null};
-  openModal('➕ Nueva solicitud de compra',`${dlProvs()}<div class="field"><label>Buscar OP * <small style="text-transform:none;font-weight:600">(número, empresa o descripción)</small></label><input id="ns-q" placeholder="Ej. 12500 o AMCOR" oninput="nsBuscar(this.value)" autocomplete="off"></div>
+  openModal('➕ Nueva solicitud de compra',`${dlProvs()}${ayudaForm(`Busca la **OP** por número o empresa y elígela. Si ya sabes el proveedor y el costo, marca **«comprado de una vez»** para no repetir el paso.`)}<div class="field"><label>Buscar OP * <small style="text-transform:none;font-weight:600">(número, empresa o descripción)</small></label><input id="ns-q" placeholder="Ej. 12500 o AMCOR" oninput="nsBuscar(this.value)" autocomplete="off"></div>
     <div id="ns-res" style="margin:8px 0"></div><div id="ns-form" style="display:none"><div class="form-grid">
     <div class="field"><label>Tipo *</label><select id="ns-tipo"><option value="MATERIAL">Material</option><option value="SERVICIO EXTERNO">Servicio externo</option></select></div>
     <div class="field"><label>Días para entrega</label><input type="number" inputmode="numeric" id="ns-dias"></div>
@@ -1284,7 +1291,7 @@ function abrirOC(ids){
   const ms=ids.map(linDe).filter(Boolean); if(!ms.length||ms.some(m=>m.estado!=='SOLICITADO')){ toast('Elige líneas por comprar','error'); return; }
   const ops=[...new Set(ms.map(m=>{ const p=prodDe(m.id_prod)||{}; return 'OP-'+p.op; }))];
   const provs=[...new Set(ms.map(m=>m.proveedor).filter(Boolean))]; _OCM={ids};
-  openModal('📄 Generar orden de compra',`${dlProvs()}<div class="form-grid">
+  openModal('📄 Generar orden de compra',`${dlProvs()}${ayudaForm(`Si escribes un proveedor que ya existe, sus datos se llenan solos. Pon el **costo de cada línea**: abajo se calculan el subtotal, el IVA y el total. Revisa con **🖨️ Vista previa** antes de guardar, porque al guardar el número de la orden queda asignado.`)}<div class="form-grid">
     <div class="field span2"><label>Proveedor (razón social) *</label><input id="oc-prov" list="dl-provs" value="${esc(provs.length===1?provs[0]:'')}" placeholder="Nombre del proveedor" oninput="ocProvChange()" onchange="ocProvChange()" autocomplete="off"></div>
     ${fld('NIT','oc-nit')}${fld('Teléfono','oc-tel')}${fld('Email','oc-email')}${fld('Ciudad','oc-ciudad')}${fld('Dirección','oc-dir','','',true)}${fld('Encargado','oc-enc','','',true)}
     ${fld('Proyecto','oc-proy',ops.join(', '),'',true)}
@@ -1445,7 +1452,7 @@ function proveedores(){
 }
 function abrirProv(id){
   const p=id?(DB.provs||[]).find(x=>x.id===id):null; _PVLOGO=undefined;
-  openModal(p?'✏️ Editar proveedor':'➕ Nuevo proveedor',`<input type="hidden" id="pv-id" value="${esc(p?.id||'')}"><div class="form-grid">
+  openModal(p?'✏️ Editar proveedor':'➕ Nuevo proveedor',`${ayudaForm(`Solo el **nombre** es obligatorio. Completa NIT, contacto y plazo de pago para que salgan solos en cada orden de compra.`)}<input type="hidden" id="pv-id" value="${esc(p?.id||'')}"><div class="form-grid">
     <div class="field span2"><label>Logo</label><div style="display:flex;gap:10px;align-items:center"><div id="pv-logo-prev" style="width:64px;height:64px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff">${p&&p.logo?`<img src="${esc(p.logo)}" style="max-width:100%;max-height:100%">`:'🏭'}</div><button class="btn btn-sm btn-ghost" onclick="pvElegirLogo()">📁 Elegir logo</button><button class="btn btn-sm btn-ghost" onclick="pvQuitarLogo()">🗑 Quitar</button></div></div>
     ${fld('Nombre / razón social *','pv-nombre',p?.nombre||'','',true)}${fld('NIT','pv-nit',p?.nit||'')}${fld('Teléfono','pv-tel',p?.telefono||'')}${fld('Email','pv-email',p?.email||'')}${fld('Ciudad','pv-ciudad',p?.ciudad||'')}
     ${fld('Categoría','pv-cat',p?.categoria||'','placeholder="Aceros, tratamientos…"')}${fld('Encargado','pv-cont',p?.contacto||'')}${fld('Tipo de proveedor','pv-tipo',p?.tipo_proveedor||'')}${fld('Plazo de pago','pv-plazo',p?.plazo_pago||'','placeholder="Ej. 30 días"')}${fld('Celular','pv-cel',p?.celular||'')}${fld('Actividad económica','pv-act',p?.actividad||'','',true)}${fld('Dirección','pv-dir',p?.direccion||'','',true)}
@@ -1744,6 +1751,11 @@ function ayudaManual(abierto){
     +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
     `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
   if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
+
+// ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
+function ayudaForm(texto){
+  return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
 
 </script>
