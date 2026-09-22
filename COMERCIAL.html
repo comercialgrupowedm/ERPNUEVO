@@ -2995,10 +2995,11 @@ function formItem(itOrId,cotId){
       <div class="form-grid"><div class="field span2"><label>Costo Total</label><div id="costo-total-it" style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--muted);padding:8px">${fmt(it.costo_total||0)}</div></div>
         <div class="field span2"><label>Presupuesto Unitario</label><div id="presup-unit" style="font-family:var(--mono);font-size:16px;color:var(--muted);padding:8px">${fmt(it.presup_unit||0)}</div></div>
         <div class="field"><label>Sobremargen %</label><input type="number" id="imargen" value="${it.margen_pct||''}" placeholder="0" step="0.01" oninput="onMargenInput()"></div><div class="field"></div>
+        <div class="field span2" id="margen-aviso-wrap" style="display:none"><div id="margen-aviso" style="font-size:11.5px;padding:8px 10px;border-radius:8px;font-weight:700"></div></div>
         <div class="field span2"><label>Precio Unitario ★</label><div class="money-row"><span class="money-sign">$</span><input type="number" id="ipunit" value="${it.precio_unit||0}" oninput="onPrecioInput()"></div></div>
         <div class="field span2"><label>Precio × Item</label><div id="precio-x-item" style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--gold);padding:8px">${fmt(totalItem(it))}</div></div></div></div>`,
     itemFooterHtml(0));
-  itRenderRows('mat'); itRenderRows('svc'); itRenderRows('prc'); _IT.mats.forEach((_,i)=>matCalc(i,false,!isNew)); _IT.prcs.forEach((_,i)=>prcCalc(i,!isNew)); recalcItem(false);
+  itRenderRows('mat'); itRenderRows('svc'); itRenderRows('prc'); _IT.mats.forEach((_,i)=>matCalc(i,false,!isNew)); _IT.prcs.forEach((_,i)=>prcCalc(i,!isNew)); chequearMargenUrgencia();
 }
 function itemFooterHtml(idx){
   let h=`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`;
@@ -3174,7 +3175,17 @@ function recalcItem(){
   const ip=document.getElementById('ipunit'); if(ip&&!_IT.precioManual) ip.value=Math.round(t.precio);
   set('precio-x-item',fmt(gn('ipunit')*t.cant));
 }
-function onMargenInput(){ _IT.precioManual=false; recalcItem(); }
+function chequearMargenUrgencia(){
+  const wrap=document.getElementById('margen-aviso-wrap'), av=document.getElementById('margen-aviso'); if(!wrap||!av||!_IT) return;
+  const esUrgencia=String(_IT.tipoCot||'').trim().toUpperCase().startsWith('UR');
+  if(!esUrgencia){ wrap.style.display='none'; recalcItem(); return; }
+  const im=document.getElementById('imargen'); const m=Number(im?.value)||0;
+  wrap.style.display=''; av.style.cssText='font-size:11.5px;padding:8px 10px;border-radius:8px;font-weight:700;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.4);color:#991b1b';
+  if(m<50){ im.value=50; _IT.precioManual=false; av.innerHTML='⚠️ Estabas por debajo del margen mínimo — por ser <b>Urgencia</b>, el sobremargen se subió al 50%.'; }
+  else{ av.innerHTML='⚠️ Observación: por ser <b>Urgencia</b>, el margen debe superar el 50%.'; }
+  recalcItem();
+}
+function onMargenInput(){ _IT.precioManual=false; chequearMargenUrgencia(); }
 function onPrecioInput(){
   _IT.precioManual=true; const t=itemTotales(); const precio=gn('ipunit'); const im=document.getElementById('imargen');
   if(im&&t.presup>0) im.value=((precio/t.presup-1)*100).toFixed(2); recalcItem();
