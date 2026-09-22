@@ -681,7 +681,7 @@ const SESS_KEY='_wedm_rem_s';
 let _SESSION = null;
 try{ _SESSION = JSON.parse(localStorage.getItem(SESS_KEY)||'null'); }catch(e){ _SESSION=null; }
 if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
-const ROLES_REM = ['comercial','administracion','calidad','produccion','diseno','compras','lectura','admin','desarrollador'];
+const ROLES_REM = ['administracion','admin','desarrollador'];
 const rolActual = () => _SESSION?.rol || '';
 const _esAdmin  = () => rolActual()==='admin' || rolActual()==='desarrollador';
 const puede = (...roles) => _esAdmin() || roles.includes(rolActual());
