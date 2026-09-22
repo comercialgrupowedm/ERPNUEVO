@@ -480,36 +480,6 @@ td.mono{font-family:var(--mono);font-size:11px}
 .pst-zone.drag{border-color:var(--purple);background:#f5f0ff}
 .pst-t{font-size:14px;font-weight:700;margin-top:6px}.pst-s{font-size:12px;color:var(--muted);margin-top:2px}
 .pst-btns{display:flex;gap:8px;margin-top:12px}.pst-btns .btn{flex:1}
-@media(max-width:600px){
-  #topbar{gap:8px}
-  .tb-search{width:40px;height:36px;padding:0;justify-content:center;flex-shrink:0;overflow:hidden;cursor:text}
-  .tb-search input{width:0;padding:0;min-width:0}
-  .tb-search:focus-within,.tb-search:has(input:not(:placeholder-shown)){flex:1;width:auto;padding:5px 10px;justify-content:flex-start}
-  .tb-search:focus-within input,.tb-search:has(input:not(:placeholder-shown)) input{width:100%}
-  #topbar:has(.tb-search:focus-within) #page-title,#topbar:has(.tb-search:focus-within) #topbar-logo,#topbar:has(.tb-search input:not(:placeholder-shown)) #page-title,#topbar:has(.tb-search input:not(:placeholder-shown)) #topbar-logo{display:none}
-}
-/* ═══ MANUAL DE USO ═══ */
-#help-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-#help-btn:active{transform:scale(.94)}
-.ay-que{font-size:14px;line-height:1.55;margin-bottom:8px}
-.ay-quien{font-size:12px;color:var(--muted);margin-bottom:10px}
-.ay-blk{margin:14px 0}
-.ay-blk h4{font-size:13px;font-weight:800;color:var(--accent,#2563eb);margin-bottom:6px}
-.ay-blk ol{padding-left:22px;font-size:13.5px;line-height:1.55}
-.ay-blk li{margin:6px 0}
-.ay-warn,.ay-tip{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin-top:10px}
-.ay-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4)}
-.ay-tip{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25)}
-.ay-warn ul,.ay-tip ul{padding-left:18px;margin-top:4px}
-.ay-warn li,.ay-tip li{margin:4px 0}
-details.ay-det{border:1px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:8px;background:var(--surface,#fff)}
-details.ay-det>summary{cursor:pointer;font-weight:800;font-size:14px;padding:12px 0;list-style:none;display:flex;align-items:center;gap:6px}
-details.ay-det>summary::-webkit-details-marker{display:none}
-details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
-details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
-details.ay-det[open]>summary::after{content:'▴'}
-details.ay-det[open]{padding-bottom:10px}
-
 </style>
 </head>
 <body>
@@ -526,11 +496,10 @@ details.ay-det[open]{padding-bottom:10px}
   <div id="menu-btn" onclick="toggleSidebar()">🎨</div>
   <img src="" id="topbar-logo" alt="GRUPOWEDM" style="height:28px;width:auto;margin-right:4px;flex-shrink:0">
   <h2 id="page-title">Inicio</h2>
-  <div class="tb-search" onclick="document.getElementById('globalSearch').focus()">
+  <div class="tb-search">
     <span style="color:var(--muted);font-size:14px">🔍</span>
     <input type="text" id="globalSearch" placeholder="Buscar OP…" oninput="onGlobalSearch(this.value)">
   </div>
-  <div id="help-btn" onclick="ayudaAbrir()" title="Cómo se usa esta vista (ayuda)">❓</div>
   <div id="refresh-btn" onclick="refreshCurrent()" title="Actualizar">↻</div>
 </div>
 
@@ -555,8 +524,6 @@ details.ay-det[open]{padding-bottom:10px}
     <div class="nav-item" data-m="produccion" onclick="nav('produccion')"><span class="nav-icon">🗂️</span>Producción · todos los ítems</div>
     <div class="nav-item" data-m="pedidos" onclick="nav('pedidos')"><span class="nav-icon">🧱</span>Pedidos de material</div>
     <div class="nav-item" data-m="planos" onclick="nav('planos')"><span class="nav-icon">📄</span>Planos</div>
-    <div class="nav-section">Ayuda</div>
-    <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px"></div>
@@ -692,7 +659,7 @@ let USUARIOS = [];
 let USUARIOS_DIS = [];
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
-  USUARIOS_DIS = USUARIOS.filter(u=>['diseno','admin'].includes(u.rol)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  USUARIOS_DIS = USUARIOS.filter(u=>['A. MEZA','F. GIRALDO','M. GÓMEZ'].includes(u.nombre)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){
@@ -1078,18 +1045,8 @@ function cmpUrg(a,b){
 // Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
 const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
 const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
-// Miniaturas de Drive: carga diferida y, si una dirección falla, prueba otras antes de mostrar el ícono
-const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
-function imgErr(el){
-  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
-  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
-  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
-  if(el.dataset.hide){ el.style.display='none'; return; }
-  const ph=document.createElement('div'); ph.className=el.dataset.ph||''; ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
-}
-const imgTag=(p,w,style,cls)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d}${cls?` class="${cls}" data-ph="${cls} ph"`:''} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
 const thumbProd=(p,sz=38)=>imgSrcOP(p,sz*3)
-  ?imgTag(p,sz*3,`width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0`)
+  ?`<img src="${esc(imgSrcOP(p,sz*3))}" alt="" onerror="this.style.visibility='hidden'" style="width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`
   :(p.tiene_imagen?`<div class="lz-th" data-pid="${p.id}" data-sz="${sz}" style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`
   :`<div style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
 
@@ -1389,7 +1346,7 @@ async function planos(){
     const pl=planosDe(p);
     return `<div class="list-card" onclick="detalleProd('${p.id}','archivos')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">📅 ${fmtDate(p.fecha_pactada)}</div></div></div>
       <div class="lc-meta">${pl.length?`<span class="badge teal">📄 ${pl.length} plano${pl.length!==1?'s':''}</span><span style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${esc(pl[0].nombre||'')}</span>`:'<span class="badge rojo">⚠️ Sin plano</span>'}${disBadge(p)}
-      <span style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">${tieneImg(p)?'':`<button class="btn btn-sm" style="background:#0284c7;color:#fff" onclick="event.stopPropagation();prodPickImagen('${p.id}')">🖼️ Imagen</button>`}<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></span></div></div>`; }).join('');
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></div></div>`; }).join('');
   setContent(`${banner}${fb}${rows.length?`<div class="card-list">${cards}</div>${pgMore('ps',rows)}`:empty(base.length?'Sin resultados':(_PS.f==='sin'?'¡Todos los ítems tienen plano!':'No hay ítems en esta vista'),base.length?'🔍':'📄')}`);
 }
 function psF(k){ psSet('f',k); }
@@ -1408,7 +1365,7 @@ function detalleProd(id,tab){
   const colD=d==null?'var(--muted)':d<0?'var(--danger)':d<5?'var(--warn)':'var(--accent)';
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">OP-${p.op} · ÍTEM ${p.item_num??'—'}</div>
     <div class="cot-hero-empresa">${esc(p.descripcion||'Sin descripción')}</div><div class="cot-hero-sub">COT-${p.cot_num||'—'} · ${esc(p.empresa||'—')}</div></div>
-    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" loading="lazy" referrerpolicy="no-referrer" ${p.imagen_thumb?'':`data-did="${esc(p.imagen_drive_id||'')}" data-w="300" data-hide="1"`} onerror="imgErr(this)" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:''}</div></div>
+    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" onerror="this.style.display='none'" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:''}</div></div>
     <div class="cot-hero-badges">${bProd(p.estado)}${gar(p)} ${bPrior(p.prioridad)}${p.tipo?bTipo(p.tipo):''}<span class="cot-hero-asesor">🎨 ${esc(p.disenador||'Sin diseñador')}</span>${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
   const kpis=`<div class="cot-kpis"><div class="kpi-mini"><span class="ki">⚙️</span><div class="kv">${Number(p.avance||0).toFixed(0)}%</div><div class="kl">Avance general</div></div>
     <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${Number(p.cant_despachada||0)}/${p.unidades}</div><div class="kl">Despachado</div></div>
@@ -1611,7 +1568,7 @@ async function prodHojaRuta(id){
     .c{text-align:center}.mono{font-family:'Courier New',monospace}.nb td{border:none}h1{font-size:15px;margin-bottom:4px}h2{font-size:12px;margin:10px 0 4px}tbody tr{height:30px}
     @media print{body{padding:10px}}</style></head><body>
     <table class="nb"><tr><td style="width:110px"><img src="${LOGO_B64_PNG}" style="width:100px"></td><td><h1>HOJA DE RUTA</h1><div style="font-size:9px;color:#555;line-height:1.6"><em>${esc(E.lema)}</em><br>${esc(E.dir)} · ${esc(E.ciudad)}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)} · NIT ${esc(E.nit)}</div></td>
-    <td style="width:90px;text-align:center">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" style="width:80px;height:80px;object-fit:cover;border:1px solid #999">`:''}</td></tr></table>
+    <td style="width:90px;text-align:center">${p.imagen_thumb?`<img src="${esc(p.imagen_thumb)}" style="width:80px;height:80px;object-fit:cover;border:1px solid #999">`:''}</td></tr></table>
     <table><tr><td><b>OP</b></td><td>OP-${p.op}</td><td><b>Ítem</b></td><td>${p.item_num??'—'}</td><td><b>Cantidad</b></td><td>${p.unidades}</td></tr>
     <tr><td><b>Cliente</b></td><td colspan="3">${esc(p.empresa||'—')}</td><td><b>COT</b></td><td>${p.cot_num||'—'}</td></tr>
     <tr><td><b>Descripción</b></td><td colspan="5">${esc(p.descripcion||'—')}</td></tr>
@@ -3764,85 +3721,6 @@ setInterval(async()=>{
   }catch(e){}
 },60000);
 
-
-
-const AYUDA={
-general:{icono:'🚀',titulo:'Primeros pasos',
-  que:'Este módulo es para el equipo de diseño: aquí ves las órdenes de producción (OP) que te tocan, las preparas (imagen, plano, materiales, hoja de ruta) y las marcas como diseñadas.',
-  pasos:[
-   {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','La **barra de abajo** tiene: Inicio, Mi bandeja, Planta, Producción, Pedidos y Planos. El menú lateral tiene lo mismo.','🔍 busca una OP por número, empresa o ítem. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']},
-   {t:'Una OP por dentro',items:['Toca cualquier tarjeta para abrir la OP. Arriba ves el **resumen**: cliente, ítem, fechas, etapa y las **reglas del tipo** de trabajo.','En la OP hay una cuadrícula de botones: **Diseño terminado**, **Pedido de material**, **Ver pedidos**, **Notas del diseñador**, **Hoja de ruta**, **Formato QA**, **Imagen del ítem**, **Subir plano**, **Ver plano** y **Asignar diseñador**. Mira la ayuda **Trabajar una OP**.']}],
-  consejos:['Cuando llegan pedidos nuevos, la app te avisa con un mensaje y el número rojo en **Mi bandeja**.']},
-dashboard:{icono:'📊',titulo:'Inicio',
-  que:'Resumen de tu trabajo: cuántas OP tienes por diseñar, con pedidos por enviar y cuáles están retrasadas.',
-  pasos:[{t:'Cómo usarlo',items:['Mira las tarjetas de resumen (por diseñar, nuevas, sin plano, vencidas…).','**Toca una tarjeta** para ir a la lista ya filtrada.']}],
-  reglas:['"Pendiente de diseño" cuenta solo los ítems con el diseño sin terminar y que **no estén cancelados, pausados ni terminados**.']},
-bandeja:{icono:'🎨',titulo:'Mi bandeja',
-  que:'Tu lista de trabajo: las OP asignadas a ti con el diseño pendiente o con pedidos de material sin enviar.',
-  pasos:[
-   {t:'Trabajar la bandeja',items:['Arriba elige la lista: **Mi bandeja** (lo tuyo pendiente), **En curso** (lo tuyo ya diseñado o en marcha), **Sin diseñador** (sin asignar) o **Todo el equipo**.','Los indicadores muestran **Pendientes, Nuevas, Urgentes (entrega en 3 días o menos)** y **Mat. por enviar**.','Toca una OP para abrirla y trabajarla. Cuando termines el diseño, toca **Diseño terminado**.']},
-   {t:'Acciones masivas',items:['Marca varias tarjetas con el **cuadro de la izquierda**.','Aparece una barra abajo con **🎨 Diseño terminado** (marca todas), **👤 Asignar** (las pasa a otro diseñador) y **✕ Limpiar**.']}],
-  reglas:['Un ítem cancelado, pausado o terminado ya no aparece en la bandeja.'],
-  consejos:['Si no ves una OP tuya, revisa que tu nombre esté bien escrito en la OP (F. GIRALDO y F.GIRALDO se reconocen como la misma persona).']},
-planta:{icono:'🏭',titulo:'Planta · todas las OP',
-  que:'Vista de todas las OP de la empresa, con sus etapas, para saber cómo va cada una.',
-  pasos:[
-   {t:'Ver y filtrar',items:['Elige el **alcance**: Activas, Despachadas o Todas.','Elige cómo verlas: **Por OP**, **Por ítem**, **Tabla** o **🗂️ Kanban**.','Con **⚙️ Filtros** filtras por estado, empresa, diseñador, prioridad, tipo, etapa y antigüedad.']},
-   {t:'Tablero Kanban',items:['Tiene 6 columnas: **Por diseñar, Por comprar, En producción, En calidad, Por despachar y Con reproceso**. Cada ítem está en una sola.','En **Por diseñar** hay un botón rápido **✓ Diseño terminado** sin abrir la OP.','Desliza a los lados para ver todas las columnas.']}],
-  reglas:['Las OP canceladas, pausadas o terminadas no aparecen en el Kanban.']},
-produccion:{icono:'🗂️',titulo:'Producción · todos los ítems',
-  que:'Todos los ítems de Control Producción, de cualquier estado, con filtros para buscar lo que necesites.',
-  pasos:[
-   {t:'Buscar en todo el historial',items:['Elige el **periodo**: 1 mes, 3 meses, 6 meses, 1 año o Todo (por la fecha de inicio).','Toca los **botones rápidos**: En proceso, Terminado, Pend. MP, Pend. diseño, Pend. despacho o Trabajo externo. Cada uno muestra cuántos hay.','Con **⚙️ Filtros** afinas por estado, tipo, prioridad, asesor, diseñador y semana. **✕ Limpiar** los quita.','Cambia entre **Tarjetas** y **Tabla** (en la tabla ves más columnas: fechas, horas, semana).']}],
-  consejos:['Si buscas algo viejo y no aparece, cambia el periodo a **Todo**.']},
-pedidos:{icono:'🧱',titulo:'Pedidos de material',
-  que:'Los materiales que se han pedido para cada OP y en qué estado están: por enviar, solicitado, comprado, recibido o rechazado.',
-  pasos:[
-   {t:'Revisar los pedidos',items:['Usa la **búsqueda** y elige **Mis OP** o **Todo el equipo**.','Cada línea muestra su estado. Toca una para ir a esa OP, pestaña **Materiales**.']},
-   {t:'Pedir un material nuevo',items:['Abre la OP y toca **🧱 Pedido de material**.','Agrega los materiales y toca **🧱 Confirmar y enviar a compras**: el pedido queda **Solicitado** y compras lo ve al instante.']}],
-  reglas:['Una vez enviado, el pedido lo maneja **compras**. Cuando lo compra y lo recibe, el estado cambia a **Comprado** y **Recibido**.','Si compras lo **rechaza**, aparece como Rechazado con el motivo.']},
-planos:{icono:'📄',titulo:'Planos',
-  que:'Lista de ítems activos para saber cuáles ya tienen plano y cuáles no, y subirlo.',
-  pasos:[
-   {t:'Filtrar',items:['Fila de arriba: **📄 Con plano, ⚠️ Sin plano** o Todos.','Segunda fila: **🖼️ Con imagen, Sin imagen** o Todos. Los dos filtros **se combinan**.','**Solo mis OP** deja solo lo asignado a ti.']},
-   {t:'Subir un plano',items:['Toca **📎 Subir** en la tarjeta.','Elige el archivo (PDF, dibujo, imagen…) y confirma.']},
-   {t:'Subir la imagen de un ítem',items:['Si el ítem no tiene imagen, su tarjeta muestra el botón **🖼️ Imagen**. Tócalo.','Pega la captura con **Ctrl + V**, arrastra el archivo, o usa **📋 Pegar** / **📁 Elegir archivo**, y toca **✓ Guardar**.','La tarjeta cambia sola: deja de salir el botón y ya cuenta como **Con imagen**.']}],
-  consejos:['Los planos antiguos vienen del sistema anterior y se abren con **Ver** dentro de la OP.']},
-op:{icono:'🛠️',titulo:'Trabajar una OP (paso a paso)',
-  que:'Lo que se hace dentro de una OP, de principio a fin.',
-  pasos:[
-   {t:'1 · Imagen y plano',items:['Toca **🖼️ Imagen del ítem** o **📎 Subir plano** (y **📄 Ver plano** para abrirlo).','Se abre un cuadro con cuatro formas de subir: **arrastrar** el archivo, **Ctrl + V** (pegar una captura), el botón **📋 Pegar** o **📁 Elegir archivo**.','También puedes abrir la OP y **pegar con Ctrl + V**: se abre el cuadro con la imagen ya cargada.','En celular usa **Elegir archivo** o **Pegar**.']},
-   {t:'2 · Materiales',items:['Toca **🧱 Pedido de material** (si ya hiciste uno, dice **Pedir más material**). Se abre el formulario del pedido.','Agrega cada material con su descripción, medidas y cantidad, y toca **🧱 Confirmar y enviar a compras**.','Con **🧾 Ver pedidos** ves cómo va cada material (solicitado, comprado, recibido).']},
-   {t:'3 · Hoja de ruta',items:['Toca **🗺️ Hoja de ruta**. Agrega los **procesos** en orden (máquina, tiempo, instrucciones, cotas).','El tiempo se puede escribir en **Horas**, **H : MM** o **Minutos**.','Guarda; después aparece **🖨️ Imprimir hoja de ruta**. Las **notas del diseñador** se precargan como observaciones.']},
-   {t:'4 · Formato QA',items:['Toca **✅ Formato QA**: llena las medidas de control y las máquinas (vienen de los procesos).','Guarda e **imprime en horizontal**.']},
-   {t:'5 · Notas y responsable',items:['**📝 Notas del diseñador:** escribe observaciones (hasta 4.000 caracteres). Las ve todo el equipo.','**👤 Asignar / Cambiar diseñador:** elige a la persona, o "sin asignar"; puedes aplicarlo a toda la OP.']},
-   {t:'6 · Terminar el diseño',items:['Cuando todo está listo, toca **🎨 Diseño terminado**. Si se marcó por error, aparece **↩️ Devolver diseño**.','Con el diseño y las compras completos, el ítem pasa a producción.']}],
-  reglas:['Solo diseño y admin pueden editar notas, materiales y archivos de diseño.']}
-};
-
-
-// ═══ MANUAL DE USO (ayuda dentro de cada vista) ═══
-const _ay=s=>esc(String(s==null?'':s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
-function ayudaSeccionHtml(m){
-  let h=`<div class="ay-que">${_ay(m.que||'')}</div>`;
-  if(m.quien) h+=`<div class="ay-quien">👤 ${_ay(m.quien)}</div>`;
-  (m.pasos||[]).forEach(p=>{ h+=`<div class="ay-blk"><h4>${_ay(p.t)}</h4><ol>${(p.items||[]).map(i=>`<li>${_ay(i)}</li>`).join('')}</ol></div>`; });
-  if(m.reglas&&m.reglas.length) h+=`<div class="ay-warn"><b>⚠️ Ten en cuenta</b><ul>${m.reglas.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
-  if(m.consejos&&m.consejos.length) h+=`<div class="ay-tip"><b>💡 Consejos</b><ul>${m.consejos.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
-  return h;
-}
-function ayudaAbrir(k){
-  if(!k){ k=(typeof _detailOpen!=='undefined'&&_detailOpen&&AYUDA.op)?'op':(typeof MOD!=='undefined'?MOD:''); } const m=AYUDA[k];
-  if(!m){ ayudaManual(); return; }
-  openModal(`${m.icono||'📖'} ${m.titulo}`,ayudaSeccionHtml(m),`<button class="btn btn-ghost" onclick="ayudaManual('${k}')">📖 Manual completo</button><button class="btn btn-primary" onclick="closeModal()">Entendido</button>`);
-}
-function ayudaManual(abierto){
-  const keys=Object.keys(AYUDA);
-  openModal('📖 Manual de uso',`<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Toca una vista para ver cómo se usa. El botón ❓ de arriba abre la ayuda de la vista en la que estás.</div>`
-    +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
-    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
-  if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
-}
 
 </script>
 </body>
