@@ -2094,7 +2094,9 @@ async function cargarUsuarios(){
 }
 function asesoresLista(){ return [...new Set(USUARIOS.filter(u=>u.asesor).map(u=>u.asesor))]; }
 const ROLES_COMERCIAL=['comercial','produccion','calidad','administracion','admin','desarrollador'];
-const NOMBRES_VISIBLES_COM=['Mauricio García','Eduardo Cabal','Gerson Ramos','Juan Diego García','F. GIRALDO'];
+const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
+const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
+const NOMBRES_VISIBLES_COM=['Mauricio García','Eduardo Cabal','Gerson Ramos','Juan Diego García','F. GIRALDO','admin'];
 function mostrarLogin(){
   const spl=document.getElementById('splash'); if(spl) spl.classList.add('hidden');
   document.getElementById('login-overlay')?.remove();
@@ -2109,9 +2111,9 @@ function mostrarLogin(){
     <div class="login-card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);color:#e8f0fe">
       <div class="login-step active" id="login-step-user">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;text-align:center">¿Quién eres?</div>
-        <div class="user-grid" id="login-user-grid">${USUARIOS.filter(u=>NOMBRES_VISIBLES_COM.includes(u.nombre)).map(u=>`
+        <div class="user-grid" id="login-user-grid">${USUARIOS.filter(u=>NOMBRES_VISIBLES_COM.includes(u.nombre)).sort((a,b)=>NOMBRES_VISIBLES_COM.indexOf(a.nombre)-NOMBRES_VISIBLES_COM.indexOf(b.nombre)).map(u=>`
           <div class="user-btn" style="background:rgba(255,255,255,.06)" data-u="${esc(u.nombre)}" onclick="_loginSelectUser(this.dataset.u)">
-            <div class="u-avatar">${u.rol==='lectura'?'👁️':'👤'}</div><div class="u-name" style="color:#e8f0fe">${esc(u.nombre)}</div><div class="u-rol" style="color:#6b7db3">${esc(u.rol)}</div>
+            <div class="u-avatar">${u.rol==='lectura'?'👁️':'👤'}</div><div class="u-name" style="color:#e8f0fe">${esc(nombreLindo(u.nombre))}</div><div class="u-rol" style="color:#6b7db3">${esc(u.rol)}</div>
           </div>`).join('')}</div>
         <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)"><button type="button" onclick="_loginDevOpen()" style="background:none;border:none;color:#4a5a86;font-size:12px;cursor:pointer;padding:6px 12px">🛠 Desarrollador</button></div>
       </div>
