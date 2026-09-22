@@ -522,6 +522,13 @@ details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
 details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
 details.ay-det[open]>summary::after{content:'▴'}
 details.ay-det[open]{padding-bottom:10px}
+.ay-form{margin-bottom:14px;border:1px solid rgba(37,99,235,.25);border-radius:10px;overflow:hidden;background:rgba(37,99,235,.05)}
+.ay-form-tog{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:none;border:none;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent,#2563eb);text-align:left}
+.ay-form-car{transition:transform .15s}
+.ay-form-body{display:none;padding:0 12px 12px;font-size:12.5px;line-height:1.5}
+.ay-form-body .ay-blk{margin:8px 0}.ay-form-body .ay-blk h4{font-size:12px}.ay-form-body .ay-blk ol{padding-left:18px;font-size:12px}
+.ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
+
 
 </style>
 </head>
@@ -1156,7 +1163,7 @@ function formSelRem(id){
   const rows=(DB.prods||[]).filter(p=>p.op===m.op).map(p=>({p,disp:dispProd(p,m.id)})).filter(x=>x.disp>0).sort((a,b)=>Number(a.p.item_num)-Number(b.p.item_num));
   if(!rows.length){ toast('No hay ítems aprobados por calidad con cantidad por despachar','error'); return; }
   const cur={}; (m.lineas||[]).forEach(l=>{ cur[l.id_prod]=Number(l.cantidad); });
-  openModal('☑️ ¿Qué se despacha?',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.empresa||'')} · OP-${m.op}. Indica la cantidad de cada ítem (solo lo aprobado por calidad). Puedes despachar parcial o todo.</div>
+  openModal('☑️ ¿Qué se despacha?',`${ayudaForm(`Escribe la **cantidad** de cada ítem que sale hoy; puede ser parcial. Solo aparece lo que calidad ya aprobó. Toca **Todo lo disponible** para marcar el máximo de cada uno.`)}<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.empresa||'')} · OP-${m.op}. Indica la cantidad de cada ítem (solo lo aprobado por calidad). Puedes despachar parcial o todo.</div>
     <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value=i.dataset.max)">Todo lo disponible</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value='')">Limpiar</button></div>
     ${rows.map(({p,disp})=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div class="lc-title">Ítem ${p.item_num}${p.es_garantia?' 🛡️':''}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><div class="field" style="margin:0;width:96px"><input type="number" class="rsel" data-p="${p.id}" data-max="${disp}" min="0" max="${disp}" step="1" value="${cur[p.id]??''}" placeholder="0"></div><span style="font-size:12px;color:var(--muted)">de ${disp} por despachar (total ${p.unidades})</span><button class="btn btn-ghost btn-sm" onclick="this.parentNode.querySelector('.rsel').value=${disp}">Todo</button></div></div>`).join('')}`,
@@ -1183,7 +1190,7 @@ async function remCancelar(id){
 // ── Editar los datos del documento ─────────────────────────────────
 function formEditarRem(id){
   const m=remDe(id); if(!m) return;
-  openModal('✏️ Datos de '+remNum(m),`<div class="form-grid">${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
+  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí solo se corrige lo que sale **impreso**: cliente, dirección, orden de compra, fecha. Los ítems y las cantidades no se cambian desde este formulario.`)}<div class="form-grid">${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
     ${fldR('Orden de compra del cliente','er-oc',m.oc_cliente||'')}<div class="field"><label>Fecha del documento</label><input type="date" id="er-fec" value="${esc(fFecha(m))}"></div>${fldR('Proyecto','er-pro',m.proyecto||'','',true)}
     <div class="field span2"><label>Observaciones</label><textarea id="er-obs">${esc(m.observaciones||'')}</textarea></div></div>
     <div style="font-size:11.5px;color:var(--muted);margin-top:8px">Solo cambia lo que sale impreso en el documento. Los ítems y cantidades no se editan aquí.</div>`,
@@ -1411,7 +1418,7 @@ function formLibreRem(id){
   _RL={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
   const est=m?m.estado:'BORRADOR'; const estValido=REM_EST_LIBRE[est]?est:'BORRADOR';
   const avisoPaso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)?`<div style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:12.5px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado actual: ${REM_EST[m.estado][0]}). Si la guardas aquí, pasa al formulario libre y deja de seguir esas aprobaciones.</div>`:'';
-  openModal(m?`✏️ Editando ${remNum(m)}`:'➕ Nueva remisión (formulario libre)',`${avisoPaso}<div class="form-grid">
+  openModal(m?`✏️ Editando ${remNum(m)}`:'➕ Nueva remisión (formulario libre)',`${ayudaForm(`Escribe la **OP** o la **cotización** para traer sus ítems y los datos del cliente. Agrega ítems desde la lista o con **＋ Agregar ítem manual**. Elige el **Estado** y toca **💾 Guardar**; aquí no hay pasos obligatorios.`)}${avisoPaso}<div class="form-grid">
     <div class="field"><label>Fecha</label><input type="date" id="rl-fec" value="${esc(m?fFecha(m):hoyISO())}"></div>
     <div class="field"><label>Estado</label><select id="rl-est">${Object.entries(REM_EST_LIBRE).map(([k,[l]])=>`<option value="${k}" ${estValido===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
     <div class="cm-h" style="margin-top:12px">Buscar por OP o cotización</div><div class="form-grid">
@@ -1507,6 +1514,11 @@ function ayudaManual(abierto){
     +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
     `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
   if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
+
+// ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
+function ayudaForm(texto){
+  return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
 
 </script>
