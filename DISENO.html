@@ -657,15 +657,18 @@ const esMia = p => { const d=_normNom(p.disenador); return !!d && _misNombres().
 
 let USUARIOS = [];
 let USUARIOS_DIS = [];
+const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
+const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
-  USUARIOS_DIS = USUARIOS.filter(u=>['A. MEZA','F. GIRALDO','M. GÓMEZ'].includes(u.nombre)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  const ORDEN_DIS=['A. MEZA','F. GIRALDO','M. GÓMEZ','admin'];
+  USUARIOS_DIS = USUARIOS.filter(u=>ORDEN_DIS.includes(u.nombre)).sort((a,b)=>ORDEN_DIS.indexOf(a.nombre)-ORDEN_DIS.indexOf(b.nombre)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){
   const g=document.getElementById('login-user-grid'); if(!g) return;
   g.innerHTML = USUARIOS_DIS.length
-    ? USUARIOS_DIS.map(u=>`<div class="user-btn" data-u="${esc(u.nombre)}" onclick="_loginSelectUser(this.dataset.u)"><div class="u-avatar">🎨</div><div class="u-name">${esc(u.nombre)}</div><div class="u-rol">${esc(u.rol)}</div></div>`).join('')
+    ? USUARIOS_DIS.map(u=>`<div class="user-btn" data-u="${esc(u.nombre)}" onclick="_loginSelectUser(this.dataset.u)"><div class="u-avatar">🎨</div><div class="u-name">${esc(nombreLindo(u.nombre))}</div><div class="u-rol">${esc(u.rol)}</div></div>`).join('')
     : `<div style="grid-column:1/-1;text-align:center;color:#9b7de8;font-size:12px;padding:10px">No se pudo cargar la lista de usuarios.<br><button type="button" class="login-back" style="margin-top:6px" onclick="_cargarUsuariosDis()">↻ Reintentar</button></div>`;
 }
 
