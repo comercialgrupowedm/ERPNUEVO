@@ -2596,14 +2596,24 @@ function wizTab(prefix,idx){
   document.querySelectorAll(`.wiz-step[id^="${prefix}-"]`).forEach((s,i)=>s.style.display=i===idx?'':'none');
   if(prefix==='wiz-cot'&&typeof cotPie==='function') cotPie(idx);
 }
+function _leadAvisoDomingos(domingos,dias){
+  const av=document.getElementById('lead-domingos'); if(!av) return;
+  av.textContent = domingos>0 ? `Se salta ${domingos} domingo${domingos!==1?'s':''} — ${dias} día${dias!==1?'s':''} hábil${dias!==1?'es':''} de trabajo, sin contar domingos.` : 'Días hábiles de trabajo, sin contar domingos.';
+}
 function calcFechaEntrega(){
   const lt=Number(document.getElementById('fd')?.value||0); const fe=document.getElementById('fe'); const ff=document.getElementById('ff');
-  if(!lt||!ff) return; const base=fe?.value?new Date(fe.value+'T00:00:00'):new Date(); base.setDate(base.getDate()+lt);
-  ff.value=base.getFullYear()+'-'+String(base.getMonth()+1).padStart(2,'0')+'-'+String(base.getDate()).padStart(2,'0');
+  if(!lt||!ff) return; const base=fe?.value?new Date(fe.value+'T00:00:00'):new Date();
+  let d=new Date(base.getTime()), restan=lt, domingos=0;
+  while(restan>0){ d.setDate(d.getDate()+1); if(d.getDay()===0){ domingos++; continue; } restan--; }
+  ff.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  _leadAvisoDomingos(domingos,lt);
 }
 function calcLeadTimeDesdeEntrega(){
   const fe=document.getElementById('fe'),ff=document.getElementById('ff'),fd=document.getElementById('fd'); if(!ff?.value||!fd) return;
-  const base=fe?.value?new Date(fe.value+'T00:00:00'):new Date(); const dias=Math.round((new Date(ff.value+'T00:00:00')-base)/86400000); if(dias>=0) fd.value=dias;
+  const base=fe?.value?new Date(fe.value+'T00:00:00'):new Date(); const target=new Date(ff.value+'T00:00:00'); if(target<base) return;
+  let d=new Date(base.getTime()), dias=0, domingos=0;
+  while(d<target){ d.setDate(d.getDate()+1); if(d.getDay()===0){ domingos++; continue; } dias++; }
+  fd.value=dias; _leadAvisoDomingos(domingos,dias);
 }
 function calcTotalCot(){
   const sin=gn('f8'), iva=gn('f9'), total=sin+iva;
@@ -2642,7 +2652,7 @@ function formCot(c){
       <div class="field span2"><label>Dirección</label><input id="fdir" value="${esc(c.direccion||'')}"></div>
       <div class="field"><label>Encargado</label><input id="fenc" value="${esc(c.encargado||'')}"></div>
       <div class="field"><label>Teléfono</label><input id="ftel" value="${esc(c.telefono||'')}"></div>
-      <div class="field"><label>Lead Time (días)</label><input type="number" id="fd" value="${c.lead_time_dias??8}" oninput="calcFechaEntrega()"></div>
+      <div class="field"><label>Lead Time (días)</label><input type="number" id="fd" value="${c.lead_time_dias??8}" oninput="calcFechaEntrega()"><div id="lead-domingos" style="font-size:10.5px;color:var(--muted);margin-top:3px"></div></div>
       <div class="field"><label>Fecha Entrega Pactada ★</label><input type="date" id="ff" value="${toISODate(c.fecha_entrega_pactada)}" oninput="calcLeadTimeDesdeEntrega()"></div>
       <div class="field"><label>Forma de Pago</label><input id="fc" list="fc-list" value="${esc(c.forma_de_pago||'30')}" placeholder="30, CONTADO…"><datalist id="fc-list"><option>CONTADO</option><option>15</option><option>30</option><option>45</option><option>60</option><option>90</option></datalist></div>
       <div class="field"><label>Validez COT (días)</label><input type="number" id="fval" value="${c.validez_dias??30}"></div></div></div>
@@ -2852,10 +2862,10 @@ function generarPDFCotizacion(id){
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
       <div style="font-size:9px;color:#444;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br><b>Tel:</b> ${EMPRESA_WEDM.tel} &nbsp; <b>Cel:</b> ${EMPRESA_WEDM.cel}<br><b>Email:</b> ${EMPRESA_WEDM.email}<br><b>NIT:</b> ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
       <td style="width:45%;vertical-align:top"><table style="font-size:9.5px;width:100%">
-        <tr><td style="color:#1a3a6b;font-weight:700;width:90px">FECHA:</td><td>${hoy}</td></tr><tr><td style="color:#1a3a6b;font-weight:700">SEÑORES:</td><td>${cl(c.empresa)}</td></tr>
-        <tr><td style="color:#1a3a6b;font-weight:700">NIT:</td><td>${cl(c.nit||cli.nit)}</td></tr><tr><td style="color:#1a3a6b;font-weight:700">DIRECCIÓN:</td><td>${cl(c.direccion||cli.direccion)}</td></tr>
-        <tr><td style="color:#1a3a6b;font-weight:700">CIUDAD:</td><td>${cl(c.ciudad||cli.ciudad)}</td></tr><tr><td style="color:#1a3a6b;font-weight:700">ENCARGADO:</td><td>${cl(c.encargado||cli.contacto)}</td></tr>
-        <tr><td style="color:#1a3a6b;font-weight:700">TELÉFONO:</td><td>${cl(c.telefono||cli.telefono)}</td></tr></table>
+        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">FECHA:</td><td>${hoy}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CLIENTE:</td><td>${cl(c.empresa)}</td></tr>
+        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">NIT:</td><td>${cl(c.nit||cli.nit)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">DIRECCIÓN:</td><td>${cl(c.direccion||cli.direccion)}</td></tr>
+        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CIUDAD:</td><td>${cl(c.ciudad||cli.ciudad)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">ENCARGADO:</td><td>${cl(c.encargado||cli.contacto)}</td></tr>
+        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">TELÉFONO:</td><td>${cl(c.telefono||cli.telefono)}</td></tr></table>
         <table style="margin-top:10px;font-size:9.5px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
     <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;font-size:12px;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;font-size:13px;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
@@ -4171,12 +4181,12 @@ function docRemision(id,modo){
   const rows=ls.map((l,i)=>`<tr class="${i%2?'azul-row':''}"><td class="center borde">${l.item??i+1}</td><td class="borde" style="white-space:pre-wrap">${cl(l.descripcion)}</td><td class="center borde negrita">${l.cantidad}</td>${des?'<td class="center borde" style="width:60px">☐</td>':''}</tr>`).join('');
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${des?'Formato de despacho':'Remisión'} ${m.numero||''}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important;font-weight:700}.azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.negrita{font-weight:700}.center{text-align:center}
+    table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.negrita{}.center{text-align:center}
     @page{size:letter portrait;margin:10mm 16mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
     <table style="margin-bottom:14px"><tr><td style="width:55%;vertical-align:top"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"><div style="font-size:9px;color:#444;line-height:1.7;margin-top:6px"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br><b>Tel:</b> ${EMPRESA_WEDM.tel} &nbsp; <b>Cel:</b> ${EMPRESA_WEDM.cel}<br><b>NIT:</b> ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
       <td style="width:45%;vertical-align:top"><table><tr><td class="azul borde center" style="font-size:12px">${des?'FORMATO DE DESPACHO':'REMISIÓN'}</td></tr><tr><td class="borde center negrita" style="font-size:15px">${m.numero?'No. '+m.numero:'—'}</td></tr><tr><td class="borde center" style="font-size:10px">Fecha: ${fecha}</td></tr></table></td></tr></table>
-    <table style="margin-bottom:12px;font-size:10px"><tr><td class="azul borde" style="width:14%">SEÑORES</td><td class="borde" style="width:36%">${cl(m.empresa)}</td><td class="azul borde" style="width:14%">NIT</td><td class="borde">${cl(m.nit)}</td></tr>
+    <table style="margin-bottom:12px;font-size:10px"><tr><td class="azul borde" style="width:14%">CLIENTE</td><td class="borde" style="width:36%">${cl(m.empresa)}</td><td class="azul borde" style="width:14%">NIT</td><td class="borde">${cl(m.nit)}</td></tr>
       <tr><td class="azul borde">DIRECCIÓN</td><td class="borde">${cl(m.direccion)}</td><td class="azul borde">CIUDAD</td><td class="borde">${cl(m.ciudad)}</td></tr>
       <tr><td class="azul borde">CONTACTO</td><td class="borde">${cl(m.contacto)}</td><td class="azul borde">TELÉFONO</td><td class="borde">${cl(m.telefono)}</td></tr>
       <tr><td class="azul borde">ORDEN PROD.</td><td class="borde">${opR(m)}</td><td class="azul borde">COTIZACIÓN</td><td class="borde">COT-${m.cot_num||'—'}</td></tr></table>
