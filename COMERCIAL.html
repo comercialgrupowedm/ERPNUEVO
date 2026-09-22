@@ -2424,7 +2424,7 @@ function cotizaciones(){
     {key:'__search__',label:'Buscar empresa, descripción, OP...',type:'text'},
     {key:'empresa',label:'Cliente',type:'combo',opts:uniq('empresa')},
     {key:'estado',label:'Estado',type:'select',opts:uniq('estado')},{key:'tipo',label:'Tipo',type:'select',opts:uniq('tipo')},
-    {key:'asesor',label:'Asesor',type:'select',opts:uniq('asesor')},{key:'ciudad',label:'Ciudad',type:'select',opts:uniq('ciudad')},
+    {key:'asesor',label:'Asesor',type:'select',opts:uniq('asesor')},
     {key:'__desde__',label:'Desde',type:'date'},{key:'__hasta__',label:'Hasta',type:'date'},
   ]);
   const banner=moduleBanner('📋','Cotizaciones','Gestión de cotizaciones y presupuestos',rangoSelector('cotizaciones')+verTodoPill(),'linear-gradient(135deg,#1d4ed8,#3b82f6)');
