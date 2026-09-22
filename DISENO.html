@@ -509,6 +509,13 @@ details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
 details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
 details.ay-det[open]>summary::after{content:'▴'}
 details.ay-det[open]{padding-bottom:10px}
+.ay-form{margin-bottom:14px;border:1px solid rgba(37,99,235,.25);border-radius:10px;overflow:hidden;background:rgba(37,99,235,.05)}
+.ay-form-tog{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:none;border:none;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent,#2563eb);text-align:left}
+.ay-form-car{transition:transform .15s}
+.ay-form-body{display:none;padding:0 12px 12px;font-size:12.5px;line-height:1.5}
+.ay-form-body .ay-blk{margin:8px 0}.ay-form-body .ay-blk h4{font-size:12px}.ay-form-body .ay-blk ol{padding-left:18px;font-size:12px}
+.ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
+
 
 </style>
 </head>
@@ -1702,7 +1709,7 @@ async function pedidoMaterial(id){
   const p=prodDe(id); if(!p) return; if(!okAjena(p)) return;
   Object.assign(_PM,{pid:id,items:[],fused:false,backup:null,und:Number(p.unidades)||1,missing:[],tec:null,tecErr:''});
   openModal(`🧱 Pedido de material — OP-${p.op} · Ítem ${p.item_num??''}`,`<div style="font-size:12px">
-    <div style="background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--purple)">
+    ${ayudaForm(`Agrega cada material con su descripción, medidas y cantidad. Cuando estén todos, toca **🧱 Confirmar y enviar a compras**: el pedido queda **Solicitado** y compras lo ve al instante.`)}<div style="background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--purple)">
       <div style="display:flex;justify-content:space-between"><b style="color:var(--purple)">OP-${p.op} · ÍTEM ${p.item_num??'—'}</b><span style="color:var(--muted)">COT-${p.cot_num||'—'}</span></div>
       <div>${esc(p.empresa||'—')}</div><div style="color:var(--muted)">${esc(p.descripcion||'—')} · ×${p.unidades}</div>
       <div id="pm-estado" style="color:var(--purple);margin-top:4px;font-size:11px">⏳ Cargando lo cotizado…</div></div>
@@ -3464,7 +3471,7 @@ function prodAsignarDis(id){
   const nombres=(USUARIOS||[]).filter(u=>u.rol==='diseno').map(u=>u.nombre).sort((a,b)=>a.localeCompare(b,'es'));
   const cur=_normNom(p.disenador);
   const nOp=(DB.produccion||[]).filter(x=>x.op===p.op&&!x.despachado).length;
-  openModal('Diseñador · OP-'+p.op+' ítem '+(p.item_num??''),`<div class="field"><label>Diseñador</label>
+  openModal('Diseñador · OP-'+p.op+' ítem '+(p.item_num??''),`${ayudaForm(`Elige la persona o **«sin asignar»**. Si marcas **aplicar a toda la OP**, el cambio se hace en todos sus ítems, no solo en este.`)}<div class="field"><label>Diseñador</label>
     <select id="asg1"><option value="">(sin asignar)</option>${nombres.map(n=>`<option value="${esc(n)}" ${_normNom(n)===cur?'selected':''}>${esc(n)}</option>`).join('')}</select></div>
     ${p.disenador&&!nombres.some(n=>_normNom(n)===cur)?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Actual: <b>${esc(p.disenador)}</b> (sin usuario activo)</div>`:''}
     ${nOp>1?`<label style="display:flex;gap:10px;align-items:center;margin-top:14px;font-size:13px"><input type="checkbox" id="asg2" style="width:20px;height:20px"> Aplicar a los ${nOp} ítems activos de la OP-${p.op}</label>`:''}`,
@@ -3597,7 +3604,7 @@ function prodArchivoModal(id,kind,file){
   const p=prodDe(id); if(!p||!okAjena(p)) return;
   _PST={id,kind,file:null,url:null}; const im=kind==='imagen';
   openModal(im?'🖼️ Imagen del ítem':'📎 Plano del ítem',`
-    <div id="pst-zone" class="pst-zone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="pstDrop(event)">
+    ${ayudaForm(`**Arrastra** el archivo, pega una captura con **Ctrl + V**, o usa **📋 Pegar** / **📁 Elegir archivo**. Al terminar toca **✓ Guardar**.`)}<div id="pst-zone" class="pst-zone" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="pstDrop(event)">
       <div id="pst-prev" class="pst-prev"><div style="font-size:34px">${im?'🖼️':'📎'}</div><div class="pst-t">Pega aquí con <b>Ctrl + V</b></div><div class="pst-s">o arrastra un archivo hasta este recuadro</div></div></div>
     <div class="pst-btns"><button class="btn btn-ghost" onclick="pstElegir()">📁 Elegir archivo</button><button class="btn btn-ghost" onclick="pstPegarBtn()">📋 Pegar</button></div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px">${im?'Se guarda como la imagen del ítem (miniatura).':'Imagen o PDF de hasta 3.5 MB.'}</div>`,
@@ -3657,7 +3664,7 @@ function notasDisHtml(p){
 }
 function prodNotasDis(id){
   const p=prodDe(id); if(!p||!okAjena(p)) return; const t=p.notas_diseno||'';
-  openModal('📝 Notas del diseñador · OP-'+p.op+' ítem '+(p.item_num??''),`<div class="field"><label>Notas y observaciones</label>
+  openModal('📝 Notas del diseñador · OP-'+p.op+' ítem '+(p.item_num??''),`${ayudaForm(`Anota lo que producción y calidad necesitan saber: materiales, tolerancias críticas, cambios de diseño o advertencias. Se precarga sola en la hoja de ruta.`)}<div class="field"><label>Notas y observaciones</label>
     <textarea id="nd1" maxlength="4000" placeholder="Materiales, tolerancias críticas, cambios de diseño, advertencias para producción y calidad…" style="min-height:190px" oninput="document.getElementById('nd-c').textContent=this.value.length+' / 4000'">${esc(t)}</textarea>
     <div id="nd-c" style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px">${t.length} / 4000</div></div>
     <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Se precargan en la hoja de ruta como observaciones del ingeniero.</div>`,
@@ -3845,6 +3852,11 @@ function ayudaManual(abierto){
     +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
     `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
   if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
+
+// ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
+function ayudaForm(texto){
+  return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
 
 </script>
