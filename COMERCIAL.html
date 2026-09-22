@@ -1421,6 +1421,8 @@ details.ay-det[open]{padding-bottom:10px}
 /* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
 input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:uppercase}
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -2834,7 +2836,39 @@ function numeroALetras(n){
   if(num%1000) s+=g(num%1000);
   return s.trim()+' PESOS M/CTE.';
 }
-function _abrirDocParaImprimir(html){
+
+// ── Guardar una copia del documento en Google Drive (además de abrir el diálogo de impresión) ──
+const DRIVE_PDF_URL='https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec';
+async function _guardarPdfDrive(html,nombre,carpeta){
+  if(!carpeta||typeof html2canvas==='undefined'||typeof window.jspdf==='undefined') return;
+  let ifr;
+  try{
+    ifr=document.createElement('iframe'); ifr.style.cssText='position:fixed;left:-99999px;top:0;width:794px;height:1123px;border:none;opacity:0';
+    document.body.appendChild(ifr);
+    const doc=ifr.contentDocument||ifr.contentWindow.document; doc.open(); doc.write(html); doc.close();
+    await new Promise(res=>{
+      const imgs=[...(doc.images||[])]; if(!imgs.length){ res(); return; }
+      let n=imgs.length; const fin=()=>{ if(--n<=0) res(); };
+      imgs.forEach(im=>im.complete?fin():(im.onload=im.onerror=fin)); setTimeout(res,4000);
+    });
+    await new Promise(res=>setTimeout(res,150));
+    const canvas=await html2canvas(doc.body,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+    ifr.remove(); ifr=null;
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'pt',format:'a4'});
+    const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
+    const imgW=pageW, imgH=canvas.height*(imgW/canvas.width); const dataUrl=canvas.toDataURL('image/jpeg',0.92);
+    let heightLeft=imgH, pos=0;
+    pdf.addImage(dataUrl,'JPEG',0,pos,imgW,imgH); heightLeft-=pageH;
+    while(heightLeft>0){ pos=heightLeft-imgH; pdf.addPage(); pdf.addImage(dataUrl,'JPEG',0,pos,imgW,imgH); heightLeft-=pageH; }
+    const base64=pdf.output('datauristring').split(',')[1];
+    const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta,nombre,base64})});
+    const j=await r.json().catch(()=>null);
+    if(j&&j.ok) toast('📤 Copia guardada en Drive');
+    else toast('⚠️ No se pudo guardar la copia en Drive','error');
+  }catch(e){ if(ifr) ifr.remove(); toast('⚠️ No se pudo guardar la copia en Drive','error'); }
+}
+function _abrirDocParaImprimir(html,nombre,carpeta){
+  if(nombre&&carpeta) _guardarPdfDrive(html,nombre,carpeta);
   try{
     document.getElementById('_print_iframe')?.remove();
     const f=document.createElement('iframe'); f.id='_print_iframe'; f.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0';
@@ -2884,7 +2918,7 @@ function generarPDFCotizacion(id){
       <tr><td class="azul borde">FORMA DE PAGO</td><td class="borde center">${esc(pago)}</td></tr><tr><td class="azul borde">ENTREGA (días)</td><td class="borde center">${c.lead_time_dias??'—'}</td></tr></table></td>
       <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-weight:700;font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="font-size:8.5px;color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
     </body></html>`;
-  _abrirDocParaImprimir(html);
+  _abrirDocParaImprimir(html,`COT-${c.cotizacion}.pdf`,'cotizaciones');
 }
 
 // ══ ÍTEMS ═══════════════════════════════════════════════════════
@@ -4241,7 +4275,7 @@ function docRemision(id,modo){
     <table><tr><td style="width:33%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>${des?esc(m.despachada_por||'Despachó (Calidad)'):'Elaboró'}</b><div style="font-size:9px;color:#555">${des?'Despachó — Calidad':'Administración — Grupo WEDM'}</div></td>
       <td style="width:33%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>Transportó</b><div style="font-size:9px;color:#555">Nombre / placa</div></td>
       <td style="width:34%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>Recibí conforme</b><div style="font-size:9px;color:#555">Nombre · C.C. · Fecha</div></td></tr></table></body></html>`;
-  _abrirDocParaImprimir(html);
+  _abrirDocParaImprimir(html,`REM-${m.numero||'borrador'}.pdf`,'remisiones');
 }
 
 // ── USUARIOS (solo desarrollador) ───────────────────────────────
