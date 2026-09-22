@@ -1368,14 +1368,14 @@ function ocDocHtml(d){
   table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 6px;vertical-align:middle}.nb td{border:none;padding:2px 4px}
   th{background:#0f766e;color:#fff;font-size:9px;text-transform:uppercase}.c{text-align:center}.r{text-align:right}tr.e td{height:22px}
   .tit{font-size:20px;font-weight:900;color:#0f766e;letter-spacing:.5px}.box{border:2px solid #0f766e;border-radius:6px;padding:8px 12px;text-align:center}
-  .lbl{font-size:8px;font-weight:700;color:#555;text-transform:uppercase}.marca{position:fixed;top:38%;left:8%;font-size:96px;font-weight:900;color:rgba(220,38,38,.13);transform:rotate(-24deg);z-index:0}
+  .lbl{font-size:8px;color:#555;text-transform:uppercase}.marca{position:fixed;top:38%;left:8%;font-size:96px;font-weight:900;color:rgba(220,38,38,.13);transform:rotate(-24deg);z-index:0}
   .tot td{border:none;padding:3px 6px}.tot .t td{border-top:2px solid #0f766e;font-size:13px;font-weight:900;color:#0f766e}
   .firma{border-top:1px solid #111;padding-top:4px;margin-top:38px;font-size:9px;text-align:center}</style></head><body>${marca}
   <table class="nb"><tr><td style="width:130px"><img src="${LOGO_B64_PNG}" style="width:120px"></td>
     <td><div style="font-size:9px;line-height:1.6;color:#444"><b style="font-size:12px;color:#111">${esc(E.nombre)}</b><br><em>${esc(E.lema)}</em><br>${esc(E.dir)} · ${esc(E.ciudad||'')}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)}</div></td>
     <td style="width:170px"><div class="box"><div class="tit">ORDEN DE COMPRA</div><div style="font-size:15px;font-weight:900;margin-top:2px">${esc(d.numero)}</div><div style="margin-top:4px"><span class="lbl">Fecha</span><br><b>${fmtDate(d.fecha)}</b></div></div></td></tr></table>
-  <table style="margin-top:10px"><tr><td style="width:70px"><span class="lbl">Señores</span></td><td colspan="3"><b style="font-size:12px">${esc(P.nombre||'—')}</b></td>${P.logo?`<td rowspan="3" style="width:90px;text-align:center"><img src="${esc(P.logo)}" style="max-width:80px;max-height:60px"></td>`:''}</tr>
-    <tr><td><span class="lbl">NIT</span></td><td>${esc(P.nit||'—')}</td><td style="width:70px"><span class="lbl">Ciudad</span></td><td>${esc(P.ciudad||'—')}</td></tr>
+  <table style="margin-top:10px"><tr><td style="white-space:nowrap"><span class="lbl">Proveedor</span></td><td colspan="3"><b style="font-size:12px">${esc(P.nombre||'—')}</b></td>${P.logo?`<td rowspan="3" style="width:90px;text-align:center"><img src="${esc(P.logo)}" style="max-width:80px;max-height:60px"></td>`:''}</tr>
+    <tr><td><span class="lbl">NIT</span></td><td>${esc(P.nit||'—')}</td><td style="white-space:nowrap"><span class="lbl">Ciudad</span></td><td>${esc(P.ciudad||'—')}</td></tr>
     <tr><td><span class="lbl">Dirección</span></td><td>${esc(P.dir||'—')}</td><td><span class="lbl">Teléfono</span></td><td>${esc(P.tel||'—')}</td></tr>
     <tr><td><span class="lbl">Encargado</span></td><td>${esc(P.contacto||'—')}</td><td><span class="lbl">Email</span></td><td colspan="${P.logo?2:1}">${esc(P.email||'—')}</td></tr>
     ${d.proyecto?`<tr><td><span class="lbl">Proyecto</span></td><td colspan="${P.logo?4:3}">${esc(d.proyecto)}</td></tr>`:''}</table>
