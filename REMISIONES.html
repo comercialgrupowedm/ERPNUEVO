@@ -695,7 +695,7 @@ let USUARIOS = [];
 let USUARIOS_DIS = [];
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
-  USUARIOS_DIS = USUARIOS.filter(u=>u.rol!=='desarrollador').map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  USUARIOS_DIS = USUARIOS.filter(u=>['Adriana Wallis','Cristian Posada'].includes(u.nombre)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){
