@@ -1410,6 +1410,13 @@ details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
 details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
 details.ay-det[open]>summary::after{content:'▴'}
 details.ay-det[open]{padding-bottom:10px}
+.ay-form{margin-bottom:14px;border:1px solid rgba(37,99,235,.25);border-radius:10px;overflow:hidden;background:rgba(37,99,235,.05)}
+.ay-form-tog{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:none;border:none;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent,#2563eb);text-align:left}
+.ay-form-car{transition:transform .15s}
+.ay-form-body{display:none;padding:0 12px 12px;font-size:12.5px;line-height:1.5}
+.ay-form-body .ay-blk{margin:8px 0}.ay-form-body .ay-blk h4{font-size:12px}.ay-form-body .ay-blk ol{padding-left:18px;font-size:12px}
+.ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
+
 
 </style>
 </head>
@@ -2601,6 +2608,7 @@ function formCot(c){
   c=c||{}; const isNew=!c.id; const tipoActual=c.tipo||'PE. Proyecto externo'; window._cotCliId=c.id_cliente||null; window._cotEditId=c.id||''; window._cotTab=0; window._ocFile=null;
   const asesores=_esAdmin()?asesoresLista():[_asesorActual()]; const its=isNew?[]:itemsDe(c.id);
   openModal(isNew?'Nueva Cotización':'Editar COT-'+c.cotizacion,`
+    ${ayudaForm(`Se llena en tres pasos: **📅 Inicio** (tipo, asesor y descripción), **🏢 Empresa** (cliente, lead time y fecha pactada) y **✅ Estado**. **Crear Cotización** aparece solo cuando ya están los datos obligatorios; si falta alguno, un aviso naranja te lleva al paso correcto. El precio no se escribe aquí: se forma con los ítems que agregues después.`)}
     <div class="wiz-tabs" id="wiz-cot-tabs"><div class="wiz-tab active" onclick="wizTab('wiz-cot',0)">📅 Inicio</div><div class="wiz-tab" onclick="wizTab('wiz-cot',1)">🏢 Empresa</div><div class="wiz-tab" onclick="wizTab('wiz-cot',2)">✅ Estado</div></div>
     <div class="wiz-step" id="wiz-cot-0"><div class="form-grid">
       <div class="field"><label>Nº Cotización</label><div style="font-family:var(--mono);font-size:${isNew?'14':'20'}px;font-weight:800;color:var(--accent);padding:10px 0">${isNew?'Se asignará al guardar':'COT-'+c.cotizacion}</div></div>
@@ -2936,7 +2944,7 @@ function formItem(itOrId,cotId){
   if(!isNew){ const calc=Math.round(nOr(it.presup_unit)*(1+nOr(it.margen_pct)/100)); _IT.precioManual=Math.abs(nOr(it.precio_unit)-calc)>1; }
   const nextNum=isNew?Math.max(0,...itemsDe(cotId).map(x=>Number(x.item)||0))+1:it.item;
   openModal(isNew?`Nuevo Item — COT-${cot.cotizacion}`:`Editar Item ${it.item}`,`
-    <div class="wiz-tabs" id="wiz-item-tabs"><div class="wiz-tab active" onclick="wizItemTab(0)">📦 Datos</div><div class="wiz-tab" onclick="wizItemTab(1)">🧱 Materiales</div><div class="wiz-tab" onclick="wizItemTab(2)">🛠 Servicios</div><div class="wiz-tab" onclick="wizItemTab(3)">⚙️ Procesos</div><div class="wiz-tab" onclick="wizItemTab(4)">💰 Precios</div></div>
+    ${ayudaForm(`Describe el ítem y agrega **material**, **servicio** o **proceso** con los botones ＋. El tiempo de cada proceso se puede escribir en horas, en **H : MM** o en minutos. Al final ajusta el **sobremargen** o escribe el **precio unitario** directamente; el sistema calcula el resto.`)}<div class="wiz-tabs" id="wiz-item-tabs"><div class="wiz-tab active" onclick="wizItemTab(0)">📦 Datos</div><div class="wiz-tab" onclick="wizItemTab(1)">🧱 Materiales</div><div class="wiz-tab" onclick="wizItemTab(2)">🛠 Servicios</div><div class="wiz-tab" onclick="wizItemTab(3)">⚙️ Procesos</div><div class="wiz-tab" onclick="wizItemTab(4)">💰 Precios</div></div>
     <datalist id="mat-list"><option value="ESPECIAL">${DB.materiales.filter(m=>m.material!=='ESPECIAL'&&m.material!=='NO APLICA').map(m=>`<option value="${esc(m.material)}">`).join('')}</datalist>
     <datalist id="svc-list">${DB.servicios.map(s=>`<option value="${esc(s.servicio)}">`).join('')}</datalist>
     <datalist id="prc-list">${DB.procesos.filter(p=>p.maquina!=='DISEÑO').map(p=>`<option value="${esc(p.proceso)}">`).join('')}</datalist>
@@ -3289,7 +3297,7 @@ function detailCliente(id){
 function formCliente(c,volverCot){
   c=c||{}; const isNew=!c.id; const lock=!isNew&&!_esAdmin();
   window._cliVolverCot=!!volverCot;
-  openModal(isNew?'Nuevo Cliente':'Editar '+c.empresa,`<div class="form-grid">
+  openModal(isNew?'Nuevo Cliente':'Editar '+c.empresa,`${ayudaForm(`Solo la **Empresa** es obligatoria. Completa NIT, dirección y contacto ahora para no tener que repetirlos en cada cotización o remisión de este cliente.`)}<div class="form-grid">
     <div class="field span2"><label>Empresa ★ ${lock?'<span style="font-size:9px;color:var(--muted)">(solo admin)</span>':''}</label><input id="c0" value="${esc(c.empresa||'')}" ${lock?'readonly style="opacity:.6"':''}></div>
     <div class="field"><label>NIT ${lock?'<span style="font-size:9px;color:var(--muted)">(solo admin)</span>':''}</label><input id="c1" value="${esc(c.nit||'')}" ${lock?'readonly style="opacity:.6"':''}></div>
     <div class="field"><label>Ciudad</label><input id="c2" value="${esc(c.ciudad||'')}"></div>
@@ -4033,7 +4041,7 @@ function formCrearOP(cotId){
   const fpCalc=fpEx||addDias(hoy,Number(c.lead_time_dias||0));
   window._opFpCalc=fpCalc;
   const opInfo=opEx?`Esta cotización ya tiene la <b>OP-${opEx}</b> — se agregarán a esa misma OP los ítems que marques abajo.`:`Se creará una nueva OP (el número lo asigna el sistema al guardar) con los ítems que marques abajo.`;
-  openModal(opEx?`Agregar ítems a OP-${opEx}`:'Crear orden de producción',`<div style="font-size:12.5px;margin-bottom:10px"><b>COT-${c.cotizacion}</b> · ${esc(c.empresa||'')} ${c.tipo?`<span class="badge azul" style="margin-left:4px">${esc(c.tipo)}</span>`:''}</div>
+  openModal(opEx?`Agregar ítems a OP-${opEx}`:'Crear orden de producción',`${ayudaForm(`Revisa el **Nº OP** y elige el **Diseñador**, la **Prioridad** y la **Entrega pactada**. Marca en la lista los **ítems** que entran a producción y toca **Crear orden de producción**. Solo puedes crear la OP si la cotización está **APROBADA**.`)}<div style="font-size:12.5px;margin-bottom:10px"><b>COT-${c.cotizacion}</b> · ${esc(c.empresa||'')} ${c.tipo?`<span class="badge azul" style="margin-left:4px">${esc(c.tipo)}</span>`:''}</div>
     <div style="background:#0d2137;border:1px solid #1565c0;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:#90caf9">${opInfo}</div>
     ${pct>0?`<div style="background:#fef2e2;border:1px solid #f6cd97;color:#b5650a;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px">💸 La cotización tiene <b>${pct.toFixed(2).replace(/\.?0+$/,'')}% de descuento</b>: se aplica a todos los ítems y ese precio es el que carga producción.</div>`:''}
     <div class="dp-section"><h4>Ítems a producir</h4>
@@ -5342,6 +5350,11 @@ function ayudaManual(abierto){
     +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
     `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
   if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
+}
+
+// ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
+function ayudaForm(texto){
+  return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
 
 
