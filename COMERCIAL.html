@@ -2093,6 +2093,7 @@ async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
 }
 function asesoresLista(){ return [...new Set(USUARIOS.filter(u=>u.asesor).map(u=>u.asesor))]; }
+const ROLES_COMERCIAL=['comercial','produccion','calidad','administracion','admin','desarrollador'];
 function mostrarLogin(){
   const spl=document.getElementById('splash'); if(spl) spl.classList.add('hidden');
   document.getElementById('login-overlay')?.remove();
@@ -2167,6 +2168,7 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos').replace('PIN','clave'); document.getElementById('dev-pass').value=''; return; }
+    if(!ROLES_COMERCIAL.includes(r.rol)){ err.textContent='Sin acceso al módulo Comercial'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
@@ -2195,6 +2197,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
+    if(!ROLES_COMERCIAL.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo Comercial'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
