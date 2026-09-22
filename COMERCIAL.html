@@ -2143,7 +2143,7 @@ function mostrarLogin(){
       <div class="login-step" id="login-step-dev">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;text-align:center">🛠 Acceso desarrollador</div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <input id="dev-user" type="text" placeholder="Usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" style="padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#e8f0fe;font-size:15px;outline:none">
+          <input id="dev-user" type="text" placeholder="Usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" data-no-upper="1" style="padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#e8f0fe;font-size:15px;outline:none">
           <input id="dev-pass" type="password" placeholder="Clave" autocomplete="current-password" style="padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#e8f0fe;font-size:15px;outline:none" onkeydown="if(event.key==='Enter') doLoginDev()">
           <div class="login-error" id="dev-err"></div>
           <button type="button" class="btn btn-primary" onclick="doLoginDev()" style="width:100%">Ingresar</button>
