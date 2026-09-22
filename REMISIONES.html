@@ -530,6 +530,8 @@ details.ay-det[open]{padding-bottom:10px}
 .ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
 
 
+/* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
+input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -766,6 +768,19 @@ function diasTag(d){
 const pactadaTag = p => { const d=diasPactada(p); return (p.despachado||d==null)?fmtDate(p.fecha_pactada):`${fmtDate(p.fecha_pactada)} ${diasTag(d)}`; };
 function dr(label,val){ return `<div class="dp-row"><span class="dp-label">${label}</span><span class="dp-val">${val??'—'}</span></div>`; }
 function gv(id){ const el=document.getElementById(id); return el?String(el.value).trim():''; }
+// ── Mayúsculas en todo el ERP: lo que se escriba en cualquier campo de texto queda en mayúsculas, también al imprimir ──
+document.addEventListener('input', function(e){
+  const el=e.target; if(!el) return; const tag=el.tagName;
+  if(tag!=='INPUT' && tag!=='TEXTAREA') return;
+  const type=(el.type||'text').toLowerCase();
+  if(['password','number','date','time','datetime-local','month','week','range','color','file','checkbox','radio','hidden','tel'].includes(type)) return;
+  if(el.dataset.noUpper==='1') return;
+  const up=el.value.toUpperCase(); if(up===el.value) return;
+  const s=el.selectionStart, en=el.selectionEnd;
+  el.value=up;
+  if(s!=null && typeof el.setSelectionRange==='function'){ try{ el.setSelectionRange(s,en); }catch(err){} }
+}, true);
+
 function gn(id){ return Number(gv(id))||0; }
 function prog(pct){ const p=Math.min(100,Math.max(0,Number(pct)||0)); const cls=p>=70?'ok':p>=40?'mid':'low'; return `<div class="prog"><div class="prog-fill ${cls}" style="width:${p}%"></div></div>`; }
 const _IDX={};
