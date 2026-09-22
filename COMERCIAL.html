@@ -4514,6 +4514,16 @@ const IMPORT_TABLES = {
       created_at:'ts', updated_at:'ts'
     }
   },
+  registro_tiempos: {
+    key:'id', label:'Registro de tiempos (planta)', icon:'⏱️', color:'#b45309',
+    // CSV registro_tiempos_listo.csv — ya viene limpio (horas en decimal, fechas DD/MM/AAAA, OP/ítem separados).
+    cols:{
+      id:'str', marca_temporal:'ts', fecha:'ts', colaborador:'str', maquina:'str', tipo_registro:'str',
+      op:'int', item_raw:'str', item_num:'int', verifico_medidas:'str', tipo_parada:'str',
+      hora_inicio:'str', hora_fin:'str', duracion_horas:'float', turno:'str',
+      muestra_externa:'str', cantidad_muestras:'int', indicaciones_claras:'str', descripcion_mantenimiento:'str'
+    }
+  },
   op_enlaces_drive: {
     key:'idqr', label:'Imágenes y planos por OP (Drive)', icon:'🖼️', color:'#0d9488',
     // CSV enlaces_drive_op.csv: idqr (= id de la OP), imagen_drive_id, plano_drive_id. Después se aplican a cada OP.
