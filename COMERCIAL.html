@@ -2518,6 +2518,7 @@ function detailCot(id){
       <div class="delivery-bar-footer"><span>Inicio cotización</span><span style="color:${colorPlazo};font-weight:700">${pct.toFixed(0)}% transcurrido</span><span>Entrega pactada</span></div></div>`:''}
     <div class="cot-action-grid">
       <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}')"><span class="cot-action-ic" style="background:#d32f2f">📄</span><span class="cot-action-lbl">Generar PDF</span></button>
+      <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}',true)"><span class="cot-action-ic" style="background:#0d9488">💾</span><span class="cot-action-lbl">Guardar PDF</span></button>
       ${edit?`<button class="cot-action-btn" onclick="actualizarItemsCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">🔄</span><span class="cot-action-lbl">Actualizar Items</span></button>
       <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
       <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button>`:''}
@@ -2878,7 +2879,7 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
   const w=window.open('','_blank','width=900,height=1200'); if(!w){ toast('Permite ventanas emergentes para generar el PDF','error'); return; }
   w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500);
 }
-function generarPDFCotizacion(id){
+function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
   const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; };
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -2922,7 +2923,9 @@ function generarPDFCotizacion(id){
       <tr><td class="azul borde">FORMA DE PAGO</td><td class="borde center">${esc(pago)}</td></tr><tr><td class="azul borde">ENTREGA (días)</td><td class="borde center">${c.lead_time_dias??'—'}</td></tr></table></td>
       <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
     </body></html>`;
-  _abrirDocParaImprimir(html,`COT-${c.cotizacion}-${_slugArchivo(c.empresa)}.pdf`,'cotizaciones');
+  const _nombrePdf=`COT-${c.cotizacion}-${_slugArchivo(c.empresa)}.pdf`;
+  if(soloGuardar){ _guardarPdfDrive(html,_nombrePdf,'cotizaciones').then(()=>{}); return; }
+  _abrirDocParaImprimir(html,_nombrePdf,'cotizaciones');
 }
 
 // ══ ÍTEMS ═══════════════════════════════════════════════════════
