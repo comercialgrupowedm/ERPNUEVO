@@ -2517,7 +2517,7 @@ function detailCot(id){
       <div class="delivery-bar"><div class="delivery-bar-fill" style="width:${pct}%;background:${colorPlazo}"></div></div>
       <div class="delivery-bar-footer"><span>Inicio cotización</span><span style="color:${colorPlazo};font-weight:700">${pct.toFixed(0)}% transcurrido</span><span>Entrega pactada</span></div></div>`:''}
     <div class="cot-action-grid">
-      <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}')"><span class="cot-action-ic" style="background:#d32f2f">📄</span><span class="cot-action-lbl">Generar PDF</span></button>
+      <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}')"><span class="cot-action-ic" style="background:#d32f2f">🖨️</span><span class="cot-action-lbl">Imprimir</span></button>
       <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}',true)"><span class="cot-action-ic" style="background:#0d9488">💾</span><span class="cot-action-lbl">Guardar PDF</span></button>
       ${edit?`<button class="cot-action-btn" onclick="actualizarItemsCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">🔄</span><span class="cot-action-lbl">Actualizar Items</span></button>
       <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
