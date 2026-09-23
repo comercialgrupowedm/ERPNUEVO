@@ -2897,11 +2897,14 @@ function generarPDFCotizacion(id){
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
       <div style="color:#444;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br>Tel: ${EMPRESA_WEDM.tel} &nbsp; Cel: ${EMPRESA_WEDM.cel}<br>Email: ${EMPRESA_WEDM.email}<br>NIT: ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
-      <td style="width:45%;vertical-align:top"><table style="width:100%">
-        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">FECHA:</td><td>${hoy}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CLIENTE:</td><td>${cl(c.empresa)}</td></tr>
-        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">NIT:</td><td>${cl(c.nit||cli.nit)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">DIRECCIÓN:</td><td>${cl(c.direccion||cli.direccion)}</td></tr>
-        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">CIUDAD:</td><td>${cl(c.ciudad||cli.ciudad)}</td></tr><tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">ENCARGADO:</td><td>${cl(c.encargado||cli.contacto)}</td></tr>
-        <tr><td style="color:#1a3a6b;white-space:nowrap;padding-right:6px">TELÉFONO:</td><td>${cl(c.telefono||cli.telefono)}</td></tr></table>
+      <td style="width:45%;vertical-align:top"><div style="line-height:1.75">
+        <div><span style="color:#1a3a6b">FECHA:</span> ${hoy}</div>
+        <div><span style="color:#1a3a6b">CLIENTE:</span> ${cl(c.empresa)}</div>
+        <div><span style="color:#1a3a6b">NIT:</span> ${cl(c.nit||cli.nit)}</div>
+        <div><span style="color:#1a3a6b">DIRECCIÓN:</span> ${cl(c.direccion||cli.direccion)}</div>
+        <div><span style="color:#1a3a6b">CIUDAD:</span> ${cl(c.ciudad||cli.ciudad)}</div>
+        <div><span style="color:#1a3a6b">ENCARGADO:</span> ${cl(c.encargado||cli.contacto)}</div>
+        <div><span style="color:#1a3a6b">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
         <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
     <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
