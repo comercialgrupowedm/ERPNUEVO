@@ -2042,7 +2042,7 @@ function filterBar(mod,fields){
     return '';
   }).join('');
   return `<div class="filter-bar" id="fb-${mod}"><div class="filter-bar-top">
-    <div class="filter-search-wrap"><input type="text" id="fb-search-${mod}" placeholder="${textField?textField.label:'Buscar...'}" value="${esc(f.__search__||'')}" autocomplete="off" oninput="_debounceSearch(this.value,'${mod}')"></div>
+    ${textField?`<div class="filter-search-wrap"><input type="text" id="fb-search-${mod}" placeholder="${textField.label}" value="${esc(f.__search__||'')}" autocomplete="off" oninput="_debounceSearch(this.value,'${mod}')"></div>`:''}
     ${others.length?`<button class="filter-toggle-btn ${active?'active':''}" id="ftb-${mod}" onclick="_toggleFilterSelects('${mod}')">⚙️ Filtros${active?` <span style="background:var(--accent);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;font-weight:800">${active}</span>`:''}</button>`:''}
     <span class="filter-count" id="fc-${mod}" style="display:none"></span></div>
     ${others.length?`<div class="filter-bar-selects" id="fbs-${mod}">${selects}<button class="filter-reset" onclick="resetFilters('${mod}')">✕ Limpiar</button></div>`:''}</div>`;
@@ -2440,7 +2440,6 @@ function cotizaciones(){
   const data=filterData('cotizaciones',all);
   const uniq=k=>[...new Set(base.map(c=>c[k]).filter(Boolean))].sort();
   const fb=filterBar('cotizaciones',[
-    {key:'__search__',label:'Buscar empresa, descripción, OP...',type:'text'},
     {key:'empresa',label:'Cliente',type:'combo',opts:uniq('empresa')},
     {key:'estado',label:'Estado',type:'select',opts:uniq('estado')},{key:'tipo',label:'Tipo',type:'select',opts:uniq('tipo')},
     {key:'asesor',label:'Asesor',type:'select',opts:uniq('asesor')},
