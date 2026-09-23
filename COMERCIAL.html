@@ -4570,6 +4570,11 @@ const IMPORT_TABLES = {
     // CSV enlaces_drive_op.csv: idqr (= id de la OP), imagen_drive_id, plano_drive_id. Después se aplican a cada OP.
     cols:{ idqr:'str', imagen_drive_id:'str', plano_drive_id:'str' }
   },
+  imagen_drive_map: {
+    key:'nombre', label:'Imágenes por archivo (mapa de Drive)', icon:'🖼️', color:'#0d9488',
+    // Mapa nombre de archivo → id de Drive. Se aplica solo, sin pasos extra, cada vez que subes Control Producción.
+    cols:{ nombre:'str', drive_id:'str' }
+  },
   plano_drive_map: {
     key:'nombre', label:'Planos históricos (mapa de Drive)', icon:'📐', color:'#0d9488',
     // CSV que genera mapa_planos_drive.gs: nombre del archivo → ID en Drive. Después se enlazan a sus ítems.
@@ -5337,6 +5342,12 @@ async function importConfirm(real){
   if(okTotal>0){
     log('🔄 Recargando datos del ERP…','inf');
     setTimeout(()=>cargarTodo().then(updateBadges).catch(()=>{}),900);
+  }
+  if(okTotal>0 && table==='produccion'){
+    try{
+      const r=await sb.rpc('imagenes_drive_enlazar',{});
+      log(`🖼️ Imágenes enlazadas automáticamente: <b class="ok">${r.imagenes_enlazadas}</b> (de ${r.op_candidatas} OP con foto sin enlazar aún, usando ${r.archivos_en_mapa} archivos conocidos)`,'ok');
+    }catch(e){ log('⚠️ No se pudo enlazar las imágenes automáticamente: '+esc(errMsg(e)),'inf'); }
   }
   if(errTotal>0){
     log('💡 Si ves errores RLS: ejecuta la función <b>dev_import_upsert</b> en el SQL Editor de Supabase (ver comentario en el código).','inf');
