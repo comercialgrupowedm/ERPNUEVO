@@ -1058,7 +1058,7 @@ const rolAccion=m=>({PEDIDA:'comercial',SELECCIONADA:'administración',GENERADA:
 async function cargarTodo(){
   const [rem,prods]=await Promise.all([
     GETALL('remisiones','select=*&order=pedida_fecha.desc.nullslast,numero.desc.nullslast,id.asc'),
-    GETALL('produccion','select='+PROD_SEL_R+'&calidad_estado=eq.APROBADA&despachado=eq.false&order=op.desc,item_num.asc').catch(()=>[]),
+    GETALL('produccion','select='+PROD_SEL_R+'&despachado=eq.false&order=op.desc,item_num.asc').catch(()=>[]),
   ]);
   DB.remisiones=(rem||[]).sort((a,b)=>{ const an=a.numero==null?1e9:a.numero, bn=b.numero==null?1e9:b.numero; return bn-an||String(b.pedida_fecha||'').localeCompare(String(a.pedida_fecha||'')); });
   DB.prods=prods||[]; _SYNC.init=true;
@@ -1116,11 +1116,11 @@ function remTabla(rows){
 }
 function remisiones(){
   const all=DB.remisiones||[]; const f=remFiltro(); const q=_norm(_RM.q);
-  const cnt={pend:all.filter(remPendiente).length,curso:all.filter(m=>!esFinal(m)).length,desp:all.filter(m=>m.estado==='DESPACHADA').length,canc:all.filter(m=>m.estado==='CANCELADA').length};
-  const base=all.filter(m=>f==='pend'?remPendiente(m):f==='curso'?!esFinal(m):f==='desp'?m.estado==='DESPACHADA':f==='canc'?m.estado==='CANCELADA':true);
+  const cnt={pend:all.filter(remPendiente).length,ped:all.filter(m=>m.estado==='PEDIDA').length,curso:all.filter(m=>!esFinal(m)).length,desp:all.filter(m=>m.estado==='DESPACHADA').length,canc:all.filter(m=>m.estado==='CANCELADA').length};
+  const base=all.filter(m=>f==='pend'?remPendiente(m):f==='ped'?m.estado==='PEDIDA':f==='curso'?!esFinal(m):f==='desp'?m.estado==='DESPACHADA':f==='canc'?m.estado==='CANCELADA':true);
   const usaPer=['desp','canc','todas'].includes(f);
   const rows=base.filter(m=>(!usaPer||perOk(m))&&(!_RM.emp||m.empresa===_RM.emp)&&(!q||_norm([m.numero,m.empresa,m.op,m.cot_num,m.proyecto,m.oc_cliente,m.asesor,m.estado].join(' ')).includes(q)));
-  const chips=chipsH([...(['comercial','administracion','calidad'].includes(rolActual())?[['pend','🔔 Para mí',cnt.pend]]:[]),['curso','En curso',cnt.curso],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',all.length]],f,'rmF');
+  const chips=chipsH([...(['comercial','administracion','calidad'].includes(rolActual())?[['pend','🔔 Para mí',cnt.pend]]:[]),['ped','⏳ Pedidas',cnt.ped],['curso','En curso',cnt.curso],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',all.length]],f,'rmF');
   const perH=usaPer?`<div style="margin-top:8px">${chipsH(RM_PER.map(([k,l])=>[k,l]),_RM.per,'rmPer')}</div>`:'';
   const acc=puedeLibre()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#c2410c;font-weight:800" onclick="nuevaRemModal()">➕ Nueva remisión</button></div>`:'';
   const banner=moduleBanner('🚚','Remisiones','Pedida → seleccionada → generada → despachada',chips+perH+acc);
@@ -1129,7 +1129,7 @@ function remisiones(){
     <select onchange="rmSet('emp',this.value)" style="height:40px;border-radius:11px;border:1.5px solid var(--border);background:var(--surface);padding:0 8px;font-size:12px;max-width:150px"><option value="">Empresas</option>${empresas.map(e=>`<option value="${esc(e)}" ${_RM.emp===e?'selected':''}>${esc(e)}</option>`).join('')}</select>
     <span class="filter-count">${rows.length}/${base.length}</span></div></div>
     <div class="chips" style="margin-bottom:10px">${[['cards','▦ Tarjetas'],['tabla','⊞ Tabla']].map(([k,l])=>`<button class="chip ${_RM.vista===k?'on':''}" onclick="rmVista('${k}')">${l}</button>`).join('')}</div>`;
-  if(!all.length){ setContent(banner+empty('Aún no hay remisiones — calidad las pide cuando un ítem queda aprobado','📦')); return; }
+  if(!all.length){ setContent(banner+empty('Aún no hay remisiones — pídelas desde «Por pedir» cuando una OP tenga unidades pendientes','📦')); return; }
   const pg=pgSlice('rm',rows);
   setContent(`${banner}${fb}${rows.length?(_RM.vista==='tabla'?remTabla(pg):`<div class="card-list">${pg.map(remCard).join('')}</div>`)+pgMore('rm',rows):empty('Sin resultados con estos filtros','🔍')}`);
 }
@@ -1327,13 +1327,13 @@ function docRemision(id,tipo){
 
 // ── POR PEDIR (calidad pide la remisión de una OP) ─────────────────
 function porpedir(){
-  const ops=opsPorPedir(); const puedePedir=puede('calidad');
-  const banner=moduleBanner('📥','Por pedir','OP con ítems aprobados por calidad y cantidad por despachar');
+  const ops=opsPorPedir(); const puedePedir=puede('calidad','comercial','administracion');
+  const banner=moduleBanner('📥','Por pedir','OP activas con unidades pendientes de remisionar');
   if(!ops.length){ setContent(banner+empty('No hay OP esperando remisión','✅')); return; }
   const cards=ops.map(o=>{ const und=o.items.reduce((s,x)=>s+x.d,0);
     return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">OP-${o.op}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub">COT-${o.cot||'—'}${o.asesor?' · 👤 '+esc(o.asesor):''}</div></div><div style="text-align:right;flex-shrink:0"><span class="badge verde">${o.items.length} ítem${o.items.length!==1?'s':''}</span><div style="font-size:11px;margin-top:4px;color:var(--muted)">${und} und</div></div></div>
-      <div style="margin-top:8px;font-size:12px;color:var(--muted)">${o.items.slice(0,4).map(x=>`<div>Ítem ${x.p.item_num}: ${esc(String(x.p.descripcion||'').slice(0,70))} <b style="color:var(--text)">· ${x.d} und</b></div>`).join('')}${o.items.length>4?`<div>… y ${o.items.length-4} más</div>`:''}</div>
-      <div style="margin-top:10px">${puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">La pide calidad</span>'}</div></div>`; }).join('');
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">${o.items.slice(0,4).map(x=>`<div>Ítem ${x.p.item_num}: ${esc(String(x.p.descripcion||'').slice(0,70))} <b style="color:var(--text)">· ${x.d} und</b>${x.p.calidad_estado==='APROBADA'?' <span class=\"badge verde\" style=\"font-size:9px\">Calidad OK</span>':' <span class=\"badge gris\" style=\"font-size:9px\">Sin aprobar calidad</span>'}</div>`).join('')}${o.items.length>4?`<div>… y ${o.items.length-4} más</div>`:''}</div>
+      <div style="margin-top:10px">${puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">Sin permiso para pedirla</span>'}</div></div>`; }).join('');
   setContent(`${banner}<div class="card-list" style="margin-top:12px">${cards}</div><div style="height:80px"></div>`);
 }
 
@@ -1341,7 +1341,7 @@ function porpedir(){
 function dashboard(){
   const all=DB.remisiones||[]; const mes=new Date().toISOString().slice(0,7); const pend=all.filter(remPendiente);
   const banner=moduleBanner('📊','Remisiones',`${all.filter(m=>!esFinal(m)).length} en curso · ${opsPorPedir().length} OP por pedir`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(pend.length,'🔔 Esperan mi acción','#ea580c',"_RM.f='pend';nav('remisiones')")}${kchip(opsPorPedir().length,'📥 OP por pedir','#0d9488',"nav('porpedir')")}${kchip(all.filter(m=>m.estado==='PEDIDA').length,'⏳ Pedidas (comercial)','var(--warn)',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='SELECCIONADA').length,'☑️ Seleccionadas (admón.)','var(--info)',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='GENERADA').length,'🧾 Generadas (por despachar)','#7b1fa2',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='DESPACHADA'&&fFecha(m).slice(0,7)===mes).length,'✅ Despachadas este mes','#16a34a')}</div>`;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(pend.length,'🔔 Esperan mi acción','#ea580c',"_RM.f='pend';nav('remisiones')")}${kchip(opsPorPedir().length,'📥 OP por pedir','#0d9488',"nav('porpedir')")}${kchip(all.filter(m=>m.estado==='PEDIDA').length,'⏳ Pedidas (comercial)','var(--warn)',"_RM.f='ped';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='SELECCIONADA').length,'☑️ Seleccionadas (admón.)','var(--info)',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='GENERADA').length,'🧾 Generadas (por despachar)','#7b1fa2',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='DESPACHADA'&&fFecha(m).slice(0,7)===mes).length,'✅ Despachadas este mes','#16a34a')}</div>`;
   const parami=`<div class="dp-section" style="margin-top:14px"><h4>🔔 Lo que espera tu acción</h4>${pend.length?`<div class="card-list">${pend.slice(0,8).map(remCard).join('')}</div>`:mutedP('Nada pendiente para tu rol 🎉')}</div>`;
   const ult=all.filter(m=>m.estado==='DESPACHADA').slice(0,5); const ultH=`<div class="dp-section" style="margin-top:14px"><h4>✅ Últimas despachadas</h4>${ult.map(m=>`<div class="cm-line" style="cursor:pointer" onclick="detalleRem('${m.id}')"><div class="cm-t">${remNum(m)} · ${esc(m.empresa||'—')}<small>${opR(m)} · ${fmtDate(fFecha(m))} · ${remUnd(m)} und</small></div></div>`).join('')||mutedP('Sin despachos todavía')}</div>`;
   setContent(`${banner}${kp}${parami}${ultH}<div style="height:80px"></div>`);
@@ -1506,9 +1506,9 @@ async function remEliminar(id){
 
 const AYUDA={
 general:{icono:'🚀',titulo:'Primeros pasos',
-  que:'Este módulo lleva las remisiones: el documento con el que se despacha lo que ya fue aprobado por calidad. Cada remisión pasa por cuatro pasos y cada paso lo hace un área distinta.',
+  que:'Este módulo lleva las remisiones: el documento con el que se despacha la producción. Cada remisión pasa por cuatro pasos y cada paso lo hace un área distinta.',
   pasos:[
-   {t:'El recorrido de una remisión',items:['**1 · Pedida — Calidad.** Cuando un ítem queda aprobado por calidad, calidad pide la remisión de esa OP.','**2 · Seleccionada — Comercial.** El comercial dueño de la cotización elige qué ítems y cuántas unidades se despachan (puede ser parcial).','**3 · Generada — Administración.** Administración revisa y **genera** la remisión: el sistema le asigna el número consecutivo (REM-…).','**4 · Despachada — Calidad.** Cuando la mercancía sale, calidad marca **Despachada** y se descuenta de producción.']},
+   {t:'El recorrido de una remisión',items:['**1 · Pedida.** Cuando una OP tiene unidades pendientes de despachar, comercial, administración o calidad piden su remisión desde «Por pedir».','**2 · Seleccionada — Comercial.** El comercial dueño de la cotización elige qué ítems y cuántas unidades se despachan (puede ser parcial).','**3 · Generada — Administración.** Administración revisa y **genera** la remisión: el sistema le asigna el número consecutivo (REM-…).','**4 · Despachada — Calidad.** Cuando la mercancía sale, calidad marca **Despachada** y se descuenta de producción.']},
    {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','Abajo tienes **Inicio, Remisiones y Por pedir**. Un **número rojo** en Remisiones te dice cuántas esperan tu acción.','🔍 busca por número, empresa, OP o cotización. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']}],
   reglas:['Solo ves los botones de tu paso. Si una remisión no espera nada de ti, la app te dice a quién le toca.','Cuando una remisión pasa a tu área, te llega un aviso 🔔 en pantalla.'],
   consejos:['Empieza siempre por **🔔 Para mí** en la lista de Remisiones: es lo que te toca hoy.']},
@@ -1517,11 +1517,11 @@ dashboard:{icono:'📊',titulo:'Inicio',
   pasos:[{t:'Cómo usarlo',items:['Las tarjetas muestran: **esperan mi acción, OP por pedir, pedidas, seleccionadas, generadas** y **despachadas este mes**. Toca una para ir a la lista.','Abajo ves **lo que espera tu acción** (con su botón para hacerlo ahí mismo) y las **últimas despachadas**.']}]},
 remisiones:{icono:'🚚',titulo:'Remisiones',
   que:'Todas las remisiones, las nuevas y las históricas. No hay un único camino obligatorio: al crear una remisión eliges entre el **paso a paso** (con aprobaciones de cada área) o el **formulario libre** (lo completas todo tú mismo, sin pasos). Los dos conviven y se pueden imprimir igual.',
-  quien:'Calidad pide y despacha; comercial selecciona; administración genera, edita y cancela. El formulario libre lo puede usar comercial, administración y calidad.',
+  quien:'Comercial, administración y calidad pueden pedirla desde «Por pedir»; comercial selecciona; administración genera, edita y cancela; calidad despacha. El formulario libre lo puede usar comercial, administración y calidad.',
   pasos:[
-   {t:'Elegir cómo crearla',items:['Toca **➕ Nueva remisión** y elige: **📥 Paso a paso** (calidad la pide, comercial elige qué se despacha, administración la genera) o **✏️ Formulario libre** (buscas la OP o la cotización, completas todo y decides el estado).','En cualquier remisión que no esté despachada o cancelada, el botón **📝 Formulario libre** la abre para editarla completa, sin importar cómo se creó.']},
-   {t:'Buscar y filtrar',items:['Arriba elige la lista: **🔔 Para mí, En curso, Despachadas, Canceladas** o **Todas**. Cada botón muestra cuántas hay.','En Despachadas, Canceladas y Todas aparece el **periodo** (1 mes, 3 meses, 6 meses, 1 año o Todo).','Busca por número, empresa, OP, cotización o proyecto, y filtra por **empresa**. Cambia entre **Tarjetas** y **Tabla**.']},
-   {t:'Seleccionar qué se despacha (comercial)',items:['En una remisión **Pedida** toca **☑️ Seleccionar** (o **Cambiar selección** si ya la hiciste y administración aún no la genera).','Escribe la **cantidad** de cada ítem (solo aparece lo aprobado por calidad). Puedes despachar parcial o todo con **Todo lo disponible**.','Toca **Guardar selección**: pasa a administración.']},
+   {t:'Elegir cómo crearla',items:['Toca **➕ Nueva remisión** y elige: **📥 Paso a paso** (se pide desde «Por pedir», comercial elige qué se despacha, administración la genera) o **✏️ Formulario libre** (buscas la OP o la cotización, completas todo y decides el estado).','En cualquier remisión que no esté despachada o cancelada, el botón **📝 Formulario libre** la abre para editarla completa, sin importar cómo se creó.']},
+   {t:'Buscar y filtrar',items:['Arriba elige la lista: **🔔 Para mí, ⏳ Pedidas, En curso, Despachadas, Canceladas** o **Todas**. Cada botón muestra cuántas hay.','En Despachadas, Canceladas y Todas aparece el **periodo** (1 mes, 3 meses, 6 meses, 1 año o Todo).','Busca por número, empresa, OP, cotización o proyecto, y filtra por **empresa**. Cambia entre **Tarjetas** y **Tabla**.']},
+   {t:'Seleccionar qué se despacha (comercial)',items:['En una remisión **Pedida** toca **☑️ Seleccionar** (o **Cambiar selección** si ya la hiciste y administración aún no la genera).','Escribe la **cantidad** de cada ítem; puedes despachar parcial o todo con **Todo lo disponible**.','Toca **Guardar selección**: pasa a administración.']},
    {t:'Generar (administración)',items:['En una remisión **Seleccionada** toca **🧾 Generar** y confirma. Se le asigna el **número consecutivo** y ya no cambia lo seleccionado.','Antes o después puedes **✏️ Editar datos**: cliente, NIT, dirección, ciudad, encargado, teléfono, orden de compra del cliente, proyecto, fecha y observaciones.']},
    {t:'Despachar (calidad)',items:['En una remisión **Generada** imprime el **🖨️ Formato de despacho** para verificar lo que sale y toca **🚚 Despachar**.','Se descuentan las unidades de producción. Si el ítem se despachó completo, la OP queda como despachada.']},
    {t:'Cancelar o corregir',items:['Administración puede **✖️ Cancelar** una remisión que aún no se despachó: lo que estaba reservado queda disponible otra vez.','Para corregir datos impresos usa **✏️ Editar datos**; los ítems y cantidades no se cambian ahí (cancela y vuelve a pedir si hay que rehacerlos).']},
@@ -1529,11 +1529,11 @@ remisiones:{icono:'🚚',titulo:'Remisiones',
   reglas:['No se puede pedir una remisión si la OP ya tiene una **pedida o seleccionada** en trámite.','Una remisión **despachada** o **cancelada** ya no cambia de estado.','La cantidad disponible descuenta lo ya despachado y lo reservado en otras remisiones generadas — eso solo aplica al paso a paso; el formulario libre no lo valida.','Editar con el formulario libre una remisión que va por pasos la saca de ese flujo: ya no sigue las aprobaciones.'],
   consejos:['El icono 🔔 marca lo que espera tu acción; la palabra "Espera a…" te dice quién sigue.']},
 porpedir:{icono:'📥',titulo:'Por pedir',
-  que:'Las OP que ya tienen ítems aprobados por calidad, con unidades por despachar y sin remisión en trámite.',
-  quien:'Calidad pide; los demás consultan.',
-  pasos:[{t:'Pedir una remisión',items:['Cada tarjeta muestra la OP, la empresa, los ítems aprobados y cuántas unidades hay por despachar.','Toca **📦 Pedir remisión** y confirma. La remisión pasa al comercial para que elija qué se despacha.']}],
-  reglas:['Solo aparecen ítems **aprobados por calidad**. Lo demás todavía no se puede despachar.'],
-  consejos:['Si una OP no aparece, revisa que calidad haya aprobado el ítem y que no tenga ya una remisión pedida.']},
+  que:'Todas las OP activas con unidades pendientes de despachar y sin remisión en trámite, estén o no ya aprobadas por calidad.',
+  quien:'Comercial, administración y calidad pueden pedirla.',
+  pasos:[{t:'Pedir una remisión',items:['Cada tarjeta muestra la OP, la empresa, los ítems y cuántas unidades hay por despachar, con una etiqueta que indica si calidad ya aprobó ese ítem.','Toca **📦 Pedir remisión** y confirma. La remisión pasa al comercial para que elija qué se despacha.']}],
+  reglas:['Se puede pedir en cualquier momento, aunque calidad todavía no haya aprobado los ítems.'],
+  consejos:['Si una OP no aparece, revisa que tenga unidades pendientes y que no tenga ya una remisión pedida o seleccionada en trámite.']},
 docs:{icono:'🖨️',titulo:'Documentos para imprimir',
   que:'Cada remisión generada o despachada tiene sus documentos, listos para imprimir o guardar en PDF.',
   pasos:[{t:'Imprimir',items:['Abre la remisión y toca **📄 Remisión (PDF)**: el documento para el cliente, con su número, cliente, proyecto, orden de compra, ítems y observaciones.','Si el cliente es **MOSAT**, también aparece **🌐 Packing List (EN)**: el mismo documento en inglés, con fecha MM/DD/AAAA y los datos de MOSAT.','**🖨️ Formato de despacho**: para verificar lo que sale; trae casillas para marcar cada ítem y líneas de firma (despachó / recibió).','En el celular elige **Guardar como PDF** en la ventana de impresión.']}],
