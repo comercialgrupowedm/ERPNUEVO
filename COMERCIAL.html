@@ -2371,6 +2371,35 @@ function dashTopCliente(i){
 
 // ══ COTIZACIONES ════════════════════════════════════════════════
 // v14: OP(s) de cada cotización (desde producción, por número de cotización); si tiene varias se muestra la mayor y "+N"
+/* ── Semáforo de producción (igual que «SEMAFORO DE AVANCE» de AppSheet) ── */
+const _PROD_FIN=['TERMINADO','PENDIENTE DESPACHO','CALIDAD APROBADA','REMISIÓN SOLICITADA','REMISIÓN GENERADA','DESPACHADO'];
+const SEM_CLS={'EN PROCESO':'verde','TERMINADO':'azul','DESPACHADO':'gris','TRABAJO EXTERNO':'urg','REPROCESO':'rojo','CANCELADO':'rojo','PAUSADO':'naranja'};
+const _prodFin=p=>!!p.despachado||_PROD_FIN.includes(p.estado);
+function semProd(rows){   // rows: filas de Control Producción de una cotización o de un ítem
+  rows=(rows||[]).filter(Boolean); if(!rows.length) return null;
+  const vivos=rows.filter(p=>p.despachado||!['CANCELADO','PAUSADO'].includes(p.estado));
+  if(!vivos.length) return {estado:rows.every(p=>p.estado==='PAUSADO')?'PAUSADO':'CANCELADO',n:0,m:rows.length,av:0,op:rows[0].op};
+  const fin=vivos.filter(_prodFin).length; let e;
+  if(fin===vivos.length) e=vivos.every(p=>p.estado==='DESPACHADO')?'DESPACHADO':'TERMINADO';
+  else if(vivos.some(p=>p.estado==='REPROCESO')) e='REPROCESO';
+  else if(vivos.some(p=>p.estado==='TRABAJO EXTERNO')) e='TRABAJO EXTERNO';
+  else if(fin>0||vivos.some(p=>p.estado==='EN PROCESO')) e='EN PROCESO';
+  else {   // todo pendiente: se muestra la etapa MENOS avanzada (lo que frena la OP)
+    e=['PENDIENTE MP Y DISEÑO','PENDIENTE DISEÑO','PENDIENTE MP'].find(x=>vivos.some(p=>p.estado===x));
+    if(!e){ const c={}; vivos.forEach(p=>{ c[p.estado]=(c[p.estado]||0)+1; }); e=Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]; }
+  }
+  const av=Math.round(vivos.reduce((t,p)=>t+(p.despachado?100:Math.min(100,Math.max(0,Number(p.avance)||0))),0)/vivos.length);
+  return {estado:e||'—',n:fin,m:vivos.length,av,op:vivos[0].op};
+}
+const bSem=s=>{ if(!s) return '<span style="color:var(--muted)">—</span>';
+  const cls=SEM_CLS[s.estado]||'naranja', ok=(s.estado==='TERMINADO'||s.estado==='DESPACHADO')?' ✅':'';
+  return `<span class="badge ${cls}" title="${s.n} de ${s.m} ítems terminados · ${s.av}% de avance" style="white-space:nowrap">${esc(s.estado)}${ok}</span>`; };
+function rowsPorCot(){ const m={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; (m[p.cot_num]||(m[p.cot_num]=[])).push(p); }); return m; }
+const rowsDeCot=c=>(DB.produccion||[]).filter(p=>p.cot_num===c.cotizacion||(p.id_cotizacion&&p.id_cotizacion===c.id));
+const rowsDeItem=(it,c)=>{ const l=(DB.produccion||[]).filter(p=>p.id_item===it.id); return l.length?l:(DB.produccion||[]).filter(p=>c&&p.cot_num===c.cotizacion&&p.item_num===it.item); };
+const bSemItem=(it,c)=>{ const rs=rowsDeItem(it,c), s=semProd(rs); if(!s) return '<span style="color:var(--muted)">Sin OP</span>';
+  return `<div style="cursor:pointer" onclick="event.stopPropagation();detalleProd('${rs[0].id}')">${bSem(s)}<div style="font-size:10px;color:var(--muted);margin-top:2px">OP-${s.op} · ${s.av}%</div></div>`; };
+
 function opsPorCot(){ const m={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null||p.op==null) return;
     const x=m[p.cot_num]||(m[p.cot_num]={ops:new Set(),w:0,wa:0}); x.ops.add(Number(p.op));
     const hrs=(p.procesos||[]).reduce((t,e)=>t+(Number(e&&e.horas)||0),0); const w=hrs>0?hrs:1;   // peso = horas del ítem (o 1 si no tiene procesos)
@@ -2381,15 +2410,16 @@ function cotTieneOp(c){ if(!c) return false; const m=window._opmRender; if(m) re
 function cotizaciones(){
   const _om=opsPorCot();
   window._opmRender=_om;   // mientras se dibuja la lista, cotTieneOp() usa este mapa
-  const base=misCots().map(c=>{ const x=_om[c.cotizacion]; const l=x?[...x.ops].sort((a,b)=>b-a):[];
-    return {...c,_opNum:l.length?l[0]:'',_op:l.length?('OP-'+l[0]+(l.length>1?' +'+(l.length-1):'')):'',_opTip:l.map(y=>'OP-'+y).join(', '),_opAv:(x&&x.w>0)?Math.round(x.wa/x.w):null}; });
+  const _rc=rowsPorCot();
+  const base=misCots().map(c=>{ const x=_om[c.cotizacion]; const l=x?[...x.ops].sort((a,b)=>b-a):[]; const _s=semProd(_rc[c.cotizacion]);
+    return {...c,_sem:_s,_semTxt:_s?_s.estado:'',_opNum:l.length?l[0]:'',_op:l.length?('OP-'+l[0]+(l.length>1?' +'+(l.length-1):'')):'',_opTip:l.map(y=>'OP-'+y).join(', '),_opAv:(x&&x.w>0)?Math.round(x.wa/x.w):null}; });
   const all=base.filter(cotEnRango).sort((a,b)=>Number(b.cotizacion||0)-Number(a.cotizacion||0));
   const data=filterData('cotizaciones',all);
   const uniq=k=>[...new Set(base.map(c=>c[k]).filter(Boolean))].sort();
   const fb=filterBar('cotizaciones',[
     {key:'__search__',label:'Buscar empresa, descripción, OP...',type:'text'},
     {key:'empresa',label:'Cliente',type:'combo',opts:uniq('empresa')},
-    {key:'estado',label:'Estado',type:'select',opts:uniq('estado')},{key:'tipo',label:'Tipo',type:'select',opts:uniq('tipo')},
+    {key:'estado',label:'Estado',type:'select',opts:uniq('estado')},{key:'_semTxt',label:'Producción',type:'select',opts:uniq('_semTxt')},{key:'tipo',label:'Tipo',type:'select',opts:uniq('tipo')},
     {key:'asesor',label:'Asesor',type:'select',opts:uniq('asesor')},{key:'ciudad',label:'Ciudad',type:'select',opts:uniq('ciudad')},
     {key:'__desde__',label:'Desde',type:'date'},{key:'__hasta__',label:'Hasta',type:'date'},
   ]);
@@ -2398,12 +2428,13 @@ function cotizaciones(){
   const sorted=sortData('cotizaciones',data);
   if(getView('cotizaciones')==='table'){
     setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>
-      ${thSort('cotizaciones','_opNum','OP')}${thSort('cotizaciones','cotizacion','COT #')}${thSort('cotizaciones','estado','Estado')}${thSort('cotizaciones','tipo','Tipo')}
+      ${thSort('cotizaciones','_semTxt','Semáforo de avance')}${thSort('cotizaciones','_opNum','OP')}${thSort('cotizaciones','cotizacion','COT #')}${thSort('cotizaciones','estado','Estado')}${thSort('cotizaciones','tipo','Tipo')}
       ${thSort('cotizaciones','empresa','Empresa')}${thSort('cotizaciones','descripcion_proyecto','Descripción')}${thSort('cotizaciones','asesor','Asesor')}
       ${thSort('cotizaciones','encargado','Encargado')}${thSort('cotizaciones','ciudad','Ciudad')}${thSort('cotizaciones','fecha_emision','Fecha Emisión')}
       ${thSort('cotizaciones','fecha_entrega_pactada','Entrega Pactada')}${thSort('cotizaciones','lead_time_dias','Lead Time')}
       ${thSort('cotizaciones','precio_sin_iva','Sin IVA')}${thSort('cotizaciones','precio_total','Total')}${thSort('cotizaciones','forma_de_pago','Forma Pago')}</tr></thead><tbody>
       ${sorted.length?pgSlice('cot',sorted).map(c=>`<tr onclick="detailCot('${c.id}')">
+        <td style="white-space:nowrap">${bSem(c._sem)}</td>
         <td title="${esc(c._opTip)}" style="white-space:nowrap"><span style="color:var(--accent);font-weight:700">${c._op?esc(c._op):'—'}</span></td>
         <td><span style="color:var(--accent);font-weight:700">COT-${c.cotizacion||'—'}</span></td>
         <td onclick="event.stopPropagation()">${bEstCot(c.id,c.estado)}${c._opAv!=null?`<div title="Avance general de ${esc(c._op)}" style="margin-top:5px;min-width:96px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</td><td>${bTipo(c.tipo)}</td>
@@ -2411,13 +2442,13 @@ function cotizaciones(){
         <td>${esc(c.asesor||'—')}</td><td>${esc(c.encargado||'—')}</td><td>${esc(c.ciudad||'—')}</td>
         <td>${fmtDate(c.fecha_emision)}</td><td>${fmtDate(c.fecha_entrega_pactada)}</td><td class="td-num">${c.lead_time_dias??0}d</td>
         <td class="td-num">${fmt(c.precio_sin_iva)}</td><td class="td-num">${fmt(c.precio_total)}</td><td>${esc(c.forma_de_pago||'—')}</td></tr>`).join('')
-        :'<tr><td colspan="15" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
+        :'<tr><td colspan="16" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
   }else{
     setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('cot',sorted).map(c=>`
       <div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div><div class="lc-id">${c._op?esc(c._op)+' · ':''}COT-${c.cotizacion}</div>
         <div class="lc-title">${esc(c.empresa||'Sin empresa')}</div><div class="lc-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
         <div style="text-align:right;flex-shrink:0">${bTipo(c.tipo)}<br><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(c.precio_total)}</span></div></div>
-        <div class="lc-meta">${bEstCot(c.id,c.estado)}<span style="font-size:11px;color:var(--muted)">Lead: ${c.lead_time_dias??0}d</span><span style="font-size:11px;color:var(--muted)">${esc(c.asesor||'')}</span></div>${c._opAv!=null?`<div style="margin-top:6px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</div>`).join(''):empty('Sin resultados para los filtros aplicados')}</div>`);
+        <div class="lc-meta">${c._sem?bSem(c._sem):''}${bEstCot(c.id,c.estado)}<span style="font-size:11px;color:var(--muted)">Lead: ${c.lead_time_dias??0}d</span><span style="font-size:11px;color:var(--muted)">${esc(c.asesor||'')}</span></div>${c._opAv!=null?`<div style="margin-top:6px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</div>`).join(''):empty('Sin resultados para los filtros aplicados')}</div>`);
   }
   window._opmRender=null;
   updateFilterCount('cotizaciones',data.length,all.length);
@@ -2440,11 +2471,12 @@ function detailCot(id){
   const desc=Number(c.descuento||0), totalPagar=Number(c.precio_total||0)-desc;
   const edit=canEdit();
   const itemsHtml=its.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:560px"><thead><tr>
-      <th>#</th><th>Descripción</th><th>Cant</th><th>Material</th><th>Proceso</th><th>Servicio</th><th>Precio Unit.</th><th>Precio×Item</th><th></th></tr></thead><tbody>
+      <th>#</th><th>Descripción</th><th>Cant</th><th>Material</th><th>Proceso</th><th>Servicio</th><th>Precio Unit.</th><th>Precio×Item</th><th>Producción</th><th></th></tr></thead><tbody>
       ${its.map(it=>`<tr onclick="detailItem('${it.id}')" style="cursor:pointer"><td class="td-center" style="font-weight:700;color:var(--accent)">${it.item??'—'}</td>
         <td style="max-width:200px;font-weight:500">${esc(it.descripcion||'—')}</td><td class="td-center">${it.unidades||0}</td>
         <td style="max-width:120px">${esc(it.material||'—')}</td><td style="max-width:120px">${esc(it.proceso||'—')}</td><td style="max-width:120px">${esc(it.servicio||'—')}</td>
         <td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num" style="color:var(--gold);font-weight:700">${fmt(totalItem(it))}</td>
+        <td style="white-space:nowrap">${bSemItem(it,c)}</td>
         <td onclick="event.stopPropagation()">${edit?`<div class="it-row-actions"><button class="btn btn-ghost btn-sm" title="Editar ítem" onclick="formItem('${it.id}')">✏️</button>
           <button class="btn btn-ghost btn-sm" title="Copiar a otra COT" onclick="modalCopiarItem('${it.id}')">📋</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger)" title="Eliminar" onclick="deleteItem('${it.id}')">🗑</button></div>`:''}</td></tr>`).join('')}</tbody></table></div>`
@@ -2454,7 +2486,7 @@ function detailCot(id){
       <div class="cot-hero-id">COT-${c.cotizacion}<button class="cot-hero-copy" onclick="copyText('COT-${c.cotizacion}')" title="Copiar ID">⧉</button></div>
       <div class="cot-hero-empresa">${esc(c.empresa||'Sin empresa')}</div><div class="cot-hero-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
       <div class="cot-hero-right"><div class="cot-hero-total-label">Total COT</div><div class="cot-hero-total-value">${fmt(c.precio_total)}</div></div></div>
-      <div class="cot-hero-badges">${bTipo(c.tipo)} ${bEst(c.estado)}${c.asesor?`<span class="cot-hero-asesor">👤 ${esc(c.asesor)}</span>`:''}${c.fecha_emision?`<span style="font-size:10px;opacity:.7;margin-left:auto">📅 ${fmtDate(c.fecha_emision)}</span>`:''}</div></div>
+      <div class="cot-hero-badges">${bTipo(c.tipo)} ${bEst(c.estado)} ${bSem(semProd(rowsDeCot(c)))}${c.asesor?`<span class="cot-hero-asesor">👤 ${esc(c.asesor)}</span>`:''}${c.fecha_emision?`<span style="font-size:10px;opacity:.7;margin-left:auto">📅 ${fmtDate(c.fecha_emision)}</span>`:''}</div></div>
     ${timelineH(COT_STEPS,est,{'EN ESPERA':c.fecha_emision,'APROBADA':c.fecha_entrega_pactada})}
     <div class="cot-kpis">
       <div class="kpi-mini gold-kpi"><span class="ki">💰</span><div class="kv gold">${fmt(c.precio_total)}</div><div class="kl">Valor Total</div></div>
@@ -2828,31 +2860,31 @@ function generarPDFCotizacion(id){
 // ══ ÍTEMS ═══════════════════════════════════════════════════════
 function itemRows(){
   const enRango=new Set(misCots().filter(cotEnRango).map(c=>c.id));
-  return DB.items.filter(it=>enRango.has(it.id_cotizacion)).map(it=>{ const c=cotDe(it)||{}; return {...it,_cot:c.cotizacion,_empresa:c.empresa,_estado:_normEstado(c.estado),_asesor:c.asesor}; })
+  return DB.items.filter(it=>enRango.has(it.id_cotizacion)).map(it=>{ const c=cotDe(it)||{}; const _ps=prodDeItem(it.id); const _sm=_ps?semProd([_ps]):null; return {...it,_cot:c.cotizacion,_empresa:c.empresa,_estado:_normEstado(c.estado),_asesor:c.asesor,_sem:_sm,_semTxt:_sm?_sm.estado:'',_opItem:_ps?_ps.op:''}; })
     .sort((a,b)=>Number(b._cot||0)-Number(a._cot||0)||Number(a.item||0)-Number(b.item||0));
 }
 function items(){
   const all=itemRows(); const data=filterData('items',all);
   const uniq=k=>[...new Set(all.map(i=>i[k]).filter(Boolean))].sort();
-  const fb=filterBar('items',[{key:'__search__',label:'Buscar descripción, empresa...',type:'text'},{key:'_empresa',label:'Cliente',type:'combo',opts:uniq('_empresa')},{key:'_estado',label:'Estado',type:'select',opts:uniq('_estado')},{key:'_asesor',label:'Asesor',type:'select',opts:uniq('_asesor')}]);
+  const fb=filterBar('items',[{key:'__search__',label:'Buscar descripción, empresa...',type:'text'},{key:'_empresa',label:'Cliente',type:'combo',opts:uniq('_empresa')},{key:'_estado',label:'Estado',type:'select',opts:uniq('_estado')},{key:'_semTxt',label:'Producción',type:'select',opts:uniq('_semTxt')},{key:'_asesor',label:'Asesor',type:'select',opts:uniq('_asesor')}]);
   const banner=moduleBanner('🔩','Ítems / Elementos','Detalle técnico de cada ítem cotizado',rangoSelector('cotizaciones')+verTodoPill(),'linear-gradient(135deg,#b45309,#fbbf24)');
   if(!DB.items.length){ setContent(banner+empty('Sin ítems — agrégalos desde una cotización')); return; }
   const sorted=sortData('items',data);
   if(getView('items')==='table'){
     setContent(banner+fb+viewToggleBtns('items')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>
-      <th></th>${thSort('items','item','Item')}${thSort('items','_cot','COT')}${thSort('items','_empresa','Empresa')}${thSort('items','descripcion','Descripción')}${thSort('items','_estado','Estado')}
+      <th></th>${thSort('items','item','Item')}${thSort('items','_cot','COT')}${thSort('items','_empresa','Empresa')}${thSort('items','descripcion','Descripción')}${thSort('items','_estado','Estado')}${thSort('items','_semTxt','Producción')}
       ${thSort('items','unidades','Cant')}${thSort('items','material','Material')}${thSort('items','precio_unit','Precio Unit.')}${thSort('items','precio_total','Precio×Item')}</tr></thead><tbody>
       ${sorted.length?pgSlice('items',sorted).map(it=>`<tr onclick="detailItem('${it.id}')"><td style="width:46px;padding:4px 6px">${thumbItem(it)}</td><td style="font-weight:700;color:var(--accent)">Item ${it.item??'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--accent);cursor:pointer;font-weight:700" onclick="event.stopPropagation();detailCot('${it.id_cotizacion}')" title="Abrir COT-${it._cot||''}">COT-${it._cot||'—'}</td>
-        <td style="max-width:150px;font-size:12px">${esc(it._empresa||'—')}</td><td style="max-width:200px">${esc(it.descripcion||'Sin descripción')}</td><td>${bEst(it._estado)}</td>
+        <td style="max-width:150px;font-size:12px">${esc(it._empresa||'—')}</td><td style="max-width:200px">${esc(it.descripcion||'Sin descripción')}</td><td>${bEst(it._estado)}</td><td style="white-space:nowrap" onclick="${it._sem?`event.stopPropagation();detalleProd('${(prodDeItem(it.id)||{}).id}')`:''}">${bSem(it._sem)}${it._opItem?`<div style="font-size:10px;color:var(--muted)">OP-${it._opItem}</div>`:''}</td>
         <td class="td-num">${it.unidades||0}</td><td style="max-width:140px">${esc(it.material||'—')}</td><td class="td-num">${fmt(it.precio_unit)}</td>
-        <td class="td-num" style="color:var(--gold);font-weight:700">${fmt(totalItem(it))}</td></tr>`).join(''):'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
+        <td class="td-num" style="color:var(--gold);font-weight:700">${fmt(totalItem(it))}</td></tr>`).join(''):'<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
   }else{
     setContent(banner+fb+viewToggleBtns('items')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('items',sorted).map(it=>`
       <div class="list-card" onclick="detailItem('${it.id}')"><div class="lc-top"><div style="display:flex;gap:10px;align-items:center;min-width:0">${thumbItem(it)}<div style="min-width:0"><div class="lc-id">Item ${it.item??'—'} · COT-${it._cot||'—'}</div>
         <div class="lc-title">${esc(it.descripcion||'Sin descripción')}</div><div class="lc-sub">${esc(it._empresa||'')}</div></div></div>
         <div style="text-align:right;flex-shrink:0"><div style="font-family:var(--mono);font-size:12px;color:var(--gold)">${fmt(it.precio_unit)}</div><div style="font-size:11px;color:var(--muted)">×${it.unidades||0}</div></div></div>
-        <div class="lc-meta">${bEst(it._estado)}<span style="font-size:10px;color:var(--muted)">${esc(it.material||'')}</span></div></div>`).join(''):empty('Sin resultados')}</div>`);
+        <div class="lc-meta">${it._sem?bSem(it._sem):''}${bEst(it._estado)}<span style="font-size:10px;color:var(--muted)">${it._opItem?'OP-'+it._opItem+' · ':''}${esc(it.material||'')}</span></div></div>`).join(''):empty('Sin resultados')}</div>`);
   }
   updateFilterCount('items',data.length,all.length);
 }
@@ -4517,9 +4549,9 @@ let _impF=null;
 function impFullCard(){
   return `<div class="imp-card" style="border-color:#dc2626;background:rgba(220,38,38,.05)" onclick="document.getElementById('impfull-file').click()">
     <div class="imp-icon" style="background:linear-gradient(135deg,#7c2d12,#dc2626)">📚</div>
-    <div class="imp-info"><div class="imp-name">Importar Excel completo</div>
-    <div class="imp-sub">GRUPO_WEDM.xlsx · cotizaciones, ítems, producción, imágenes y planos</div></div><div class="imp-arrow">›</div>
-    <input type="file" id="impfull-file" accept=".xlsx,.xls" style="display:none" onclick="event.stopPropagation()" onchange="impFullPick(this.files[0]);this.value=''"></div>
+    <div class="imp-info"><div class="imp-name">Importar Excel o CSV (uno o varios archivos)</div>
+    <div class="imp-sub">Excel GRUPO_WEDM.xlsx y/o los CSV de cotizaciones, ítems, control producción e imágenes · se comparan antes de subir</div></div><div class="imp-arrow">›</div>
+    <input type="file" id="impfull-file" accept=".xlsx,.xls,.csv,text/csv" multiple style="display:none" onclick="event.stopPropagation()" onchange="impFullPick(Array.from(this.files));this.value=''"></div>
     <div id="impfull-out"></div>`;
 }
 
@@ -4618,26 +4650,54 @@ const _impDriveId=v=>{ const m=String(v||'').match(/(?:\/d\/|[?&]id=)([-\w]{20,}
 const _impStr=v=>String(v??'').trim().replace(/\.0+$/,'');
 
 /* ── Paso 1: leer, comparar y mostrar resumen ── */
-async function impFullPick(file){
-  if(!file) return;
+/* Reconoce a qué hoja corresponde un CSV por sus cabeceras (y, si ayuda, por el nombre del archivo) */
+function impDetectSheet(headers,nombre){
+  const H=new Set(headers);
+  if(H.has('idqr')&&H.has('imagen_drive_id')) return 'EXPORT_IMAGENES_OP';
+  const maps={COTIZACIONES:CSV_MAP_COTIZACIONES,ELEMENTOS:CSV_MAP_ITEMS,'CONTROL PRODUCCIÓN':CSV_MAP_PRODUCCION};
+  const pts={COTIZACIONES:0,ELEMENTOS:0,'CONTROL PRODUCCIÓN':0};
+  Object.keys(maps).forEach(k=>{ headers.forEach(h=>{ if(maps[k][h]) pts[k]++; }); });
+  const n=String(nombre||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/PRODUCCION/.test(n)) pts['CONTROL PRODUCCIÓN']+=5;
+  if(/ELEMENTOS|ITEMS/.test(n)) pts.ELEMENTOS+=5;
+  if(/COTIZACIONES/.test(n)) pts.COTIZACIONES+=5;
+  const mejor=Object.entries(pts).sort((a,b)=>b[1]-a[1])[0];
+  return mejor[1]>=8?mejor[0]:null;
+}
+async function impFullPick(files){
+  files=(Array.isArray(files)?files:(files&&files.name?[files]:Array.from(files||[]))).filter(Boolean);
+  if(!files.length) return;
   if(!_esDev()){ toast('Solo el desarrollador puede importar datos','error'); return; }
   if(typeof XLSX==='undefined'){ toast('No cargó SheetJS (revisa tu conexión)','error'); return; }
   const out=document.getElementById('impfull-out'); if(!out) return;
   const say=h=>{ out.innerHTML=`<div class="imp-log" style="max-height:none;margin-top:10px">${h}</div>`; };
   _impF=null;
   try{
-    say('📖 Leyendo <b>'+esc(file.name)+'</b>… puede tardar unos segundos.'); await _impTick();
-    const buf=await file.arrayBuffer();
-    const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellNF:true,cellFormula:false,cellHTML:false,cellText:false,
-      sheets:['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP']});
+    const fuentes=new Map(), avisos=[];      // nombre de hoja -> {headers, rows}
+    for(const file of files){
+      say('📖 Leyendo <b>'+esc(file.name)+'</b>… puede tardar unos segundos.'); await _impTick();
+      if(/\.csv$/i.test(file.name)||/^text\//.test(file.type||'')){
+        const parsed=importParseCSV((await file.text()).replace(/^\uFEFF/,''));
+        const headers=(parsed[0]||[]).map(_impNormH), rows=parsed.slice(1).filter(r=>r.some(c=>String(c).trim()!==''));
+        const hoja=impDetectSheet(headers,file.name);
+        if(!hoja){ avisos.push('No reconocí el CSV «'+file.name+'» (revisa que tenga la fila de cabeceras).'); continue; }
+        fuentes.set(hoja,{headers,rows,origen:file.name});
+      }else{
+        const buf=await file.arrayBuffer();
+        const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellNF:true,cellFormula:false,cellHTML:false,cellText:false,
+          sheets:['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP']});
+        ['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP'].forEach(n=>{ if(wb.Sheets[n]) fuentes.set(n,{...impSheetRows(wb.Sheets[n]),origen:file.name}); });
+      }
+    }
+    if(!fuentes.size){ say('❌ No encontré datos que reconocer en los archivos.'+(avisos.length?'<br>'+avisos.map(esc).join('<br>'):'')); return; }
     const plan=[], cotDesc={}, cotIdByNum=new Map(), itemKey=new Map(), planoProd=new Map(), imgIds=new Set(), planoItem=new Map(), itemOk=new Set();
     window._impCotDesc=cotDesc;
     for(const sp of IMPFULL_SPECS){
-      const ws=wb.Sheets[sp.sheet];
-      if(!ws){ plan.push({...sp,error:'No encontré la hoja "'+sp.sheet+'" en el Excel'}); continue; }
+      const fuente=fuentes.get(sp.sheet);
+      if(!fuente) continue;                 // esa hoja no viene en los archivos subidos: no se toca esa tabla
       say('🔎 Analizando <b>'+esc(sp.sheet)+'</b>…'); await _impTick();
       const cfg=IMPORT_TABLES[sp.table];
-      const {headers,rows}=impSheetRows(ws);
+      const {headers,rows}=fuente;
       const built=importBuildRecords(headers,rows,cfg);
       if(sp.table==='produccion') await impFixDupIds(built.records);   // IDQR repetidos: emparejar por OP + ítem
       if(sp.table==='items') await impFixItemIds(built.records);        // IDs dañados por Excel: emparejar por cotización + ítem
@@ -4706,12 +4766,12 @@ async function impFullPick(file){
 
     /* Imágenes y planos (hoja EXPORT_IMAGENES_OP) */
     let img=null;
-    const wsI=wb.Sheets['EXPORT_IMAGENES_OP'];
-    if(wsI){
+    const srcI=fuentes.get('EXPORT_IMAGENES_OP');
+    if(srcI||planoProd.size||planoItem.size||imgIds.size){
       say('🖼 Comparando imágenes y planos…'); await _impTick();
-      const {headers,rows}=impSheetRows(wsI); const ix=n=>headers.indexOf(n);
+      const {headers,rows}=srcI||{headers:[],rows:[]}; const ix=n=>headers.indexOf(n);
       const iId=ix('idqr'), iImg=ix('imagen_drive_id'), iPl=ix('plano_drive_id'), iPn=ix('plano_nombre'), iOp=ix('op'), iIt=ix('item');
-      if(iId<0||iImg<0){ img={error:'La hoja EXPORT_IMAGENES_OP no tiene las columnas idqr / imagen_drive_id'}; }
+      if(srcI&&(iId<0||iImg<0)){ img={error:'La hoja EXPORT_IMAGENES_OP no tiene las columnas idqr / imagen_drive_id'}; }
       else{
         const prods=await GETALL('produccion','select=id,op,item_num,id_item,imagen_drive_id&order=id.asc');
         const pMap=new Map(prods.map(p=>[String(p.id),p]));
@@ -4749,7 +4809,7 @@ async function impFullPick(file){
         img={imgSet,planoNuevo,sinOp,igualesImg,enProd:imgIds.size,planosProd:planoProd.size,planosItem};
       }
     }
-    _impF={plan,img,busy:false,file:file.name};
+    _impF={plan,img,busy:false,file:files.map(f=>f.name).join(' + '),avisos,fuentes:[...fuentes.keys()]};
     impFullPreview();
   }catch(e){ console.error(e); say('❌ Error leyendo el Excel: '+esc(errMsg(e))); }
 }
@@ -4785,7 +4845,7 @@ function impFullPreview(){
       <div style="font-size:11px;color:var(--muted)">La imagen sale de la columna IMAGEN_B64 y el plano de PLANO_URL (Control Producción); la hoja EXPORT_IMAGENES_OP solo completa lo que falte. La imagen queda en la OP y se ve también en el ítem de la cotización; el plano se agrega a la OP y a su ítem.</div></div>`;
   }
   out.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
-    <div style="font-size:12px;color:var(--muted)">📄 ${esc(_impF.file)} — <b>nada se ha subido todavía</b>. Revisa el resumen y pulsa aplicar.</div>${blk}${imgBlk}
+    <div style="font-size:12px;color:var(--muted)">📄 ${esc(_impF.file)} — <b>nada se ha subido todavía</b>. Revisa el resumen y pulsa aplicar.<br>Se compararon: <b>${_impF.fuentes.map(esc).join(', ')}</b>${(_impF.avisos||[]).map(a=>'<br><span style="color:#b45309">⚠️ '+esc(a)+'</span>').join('')}</div>${blk}${imgBlk}
     <div style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="document.getElementById('impfull-out').innerHTML='';_impF=null">Cancelar</button><button class="btn btn-primary" id="impf-apply" onclick="impFullApply()" style="flex:1">⬆️ Aplicar cambios a Supabase</button></div>
     <div id="impf-log" class="imp-log" style="display:none;max-height:260px"></div></div>`;
 }
