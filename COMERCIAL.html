@@ -4570,6 +4570,50 @@ function impSame(tipo,a,b){
 }
 const _impShort=v=>{ if(v===null||v===undefined||v==='') return '∅'; let s=typeof v==='object'?JSON.stringify(v):String(v); return s.length>28?s.slice(0,27)+'…':s; };
 const _impTick=()=>new Promise(r=>setTimeout(r,20));
+/* IDQR repetidos en el Excel (dos OP con el mismo código): el importador les pone sufijo -2, -3… según el ORDEN de las filas,
+   y ese orden cambia entre exportaciones (se intercambiaban los datos de las dos OP). Aquí se emparejan con lo que ya hay en la
+   base por OP + ítem; solo las filas realmente nuevas reciben un sufijo libre. */
+async function impFixDupIds(records){
+  const ex=await GETALL('produccion','select=id,op,item_num&order=id.asc');
+  const base=id=>String(id).replace(/-\d+$/,'');
+  const fam=new Map(); records.forEach(r=>{ const b=base(r.id); if(!fam.has(b)) fam.set(b,[]); fam.get(b).push(r); });
+  const exFam=new Map(); ex.forEach(e=>{ const b=base(e.id); if(!exFam.has(b)) exFam.set(b,[]); exFam.get(b).push(e); });
+  let n=0;
+  fam.forEach((rs,b)=>{
+    if(rs.length<2) return;
+    const es=exFam.get(b)||[], usados=new Set(), destino=new Map();
+    rs.forEach(r=>{ const m=es.find(e=>!usados.has(e.id)&&String(e.op)===String(r.op)&&String(e.item_num??'')===String(r.item_num??'')); if(m){ usados.add(m.id); destino.set(r,m.id); } });
+    const libres=[]; for(let k=1;libres.length<rs.length+2;k++){ const id=k===1?b:b+'-'+k; if(!usados.has(id)&&!es.some(e=>e.id===id)) libres.push(id); }
+    rs.forEach(r=>{ if(!destino.has(r)) destino.set(r,libres.shift()); });
+    rs.forEach(r=>{ const d=destino.get(r); if(d!==r.id){ n++; r.id=d; } });
+  });
+  /* Paso 2: el IDQR del Excel a veces está mal escrito (copiado de otra fila, con un dígito cambiado…). La clave real es OP + ítem:
+     si el ID no existe o pertenece a otra OP/ítem, se usa el ID que la base ya tiene para esa OP + ítem (si es uno solo). */
+  const exById=new Map(ex.map(e=>[String(e.id),e]));
+  const porOpItem=new Map(); ex.forEach(e=>{ if(e.op==null) return; const k=e.op+'|'+(e.item_num??''); if(!porOpItem.has(k)) porOpItem.set(k,[]); porOpItem.get(k).push(e); });
+  const mismo=(r,e)=>e&&String(e.op)===String(r.op)&&String(e.item_num??'')===String(r.item_num??'');
+  const tomados=new Set(); const pend=[];
+  records.forEach(r=>{ const e=exById.get(String(r.id)); if(mismo(r,e)) tomados.add(String(r.id)); else pend.push(r); });
+  pend.forEach(r=>{
+    if(r.op==null) return;
+    const cands=(porOpItem.get(r.op+'|'+(r.item_num??''))||[]).filter(e=>!tomados.has(String(e.id)));
+    if(cands.length===1){ tomados.add(String(cands[0].id)); if(String(r.id)!==String(cands[0].id)){ n++; r.id=cands[0].id; } }
+  });
+  return n;
+}
+/* Ítems: Excel a veces daña los IDs de AppSheet (p. ej. «15feb2007» se vuelve fecha «2007-02-15», «1486feb3» cambia de mayúsculas).
+   Se emparejan por COTIZACIÓN + Nº DE ÍTEM con el ID que la base ya tiene (si es uno solo). */
+async function impFixItemIds(records){
+  const ex=await GETALL('items','select=id,id_cotizacion,item&order=id.asc');
+  const exById=new Map(ex.map(e=>[String(e.id),e]));
+  const porKey=new Map(); ex.forEach(e=>{ if(!e.id_cotizacion) return; const k=e.id_cotizacion+'|'+(e.item??''); if(!porKey.has(k)) porKey.set(k,[]); porKey.get(k).push(e); });
+  const mismo=(r,e)=>e&&String(e.id_cotizacion??'')===String(r.id_cotizacion??'')&&String(e.item??'')===String(r.item??'');
+  const tomados=new Set(), pend=[]; let n=0;
+  records.forEach(r=>{ const e=exById.get(String(r.id)); if(mismo(r,e)) tomados.add(String(r.id)); else pend.push(r); });
+  pend.forEach(r=>{ if(!r.id_cotizacion) return; const c=(porKey.get(r.id_cotizacion+'|'+(r.item??''))||[]).filter(e=>!tomados.has(String(e.id)));
+    if(c.length===1){ tomados.add(String(c[0].id)); if(String(r.id)!==String(c[0].id)){ n++; r.id=c[0].id; } } });
+  return n;
+}
 const _impDriveId=v=>{ const m=String(v||'').match(/(?:\/d\/|[?&]id=)([-\w]{20,})/); return m?m[1]:''; };
 const _impStr=v=>String(v??'').trim().replace(/\.0+$/,'');
 
@@ -4595,6 +4639,8 @@ async function impFullPick(file){
       const cfg=IMPORT_TABLES[sp.table];
       const {headers,rows}=impSheetRows(ws);
       const built=importBuildRecords(headers,rows,cfg);
+      if(sp.table==='produccion') await impFixDupIds(built.records);   // IDQR repetidos: emparejar por OP + ítem
+      if(sp.table==='items') await impFixItemIds(built.records);        // IDs dañados por Excel: emparejar por cotización + ítem
       if(sp.table==='cotizaciones') built.records.forEach(r=>{ if(r.descuento_pct!=null) cotDesc[r.id]=r.descuento_pct; });
       // solo columnas que existen en Supabase y con valor (vacío ≠ borrar)
       const allowed=new Set(IMPFULL_DBCOLS[sp.table]);
@@ -4613,31 +4659,49 @@ async function impFullPick(file){
       const exMap=new Map(exist.map(e=>[String(e.id),e]));
       if(sp.table==='cotizaciones'){ exist.forEach(e=>{ if(e.cotizacion!=null) cotIdByNum.set(String(e.cotizacion),e.id); }); recs.forEach(r=>{ if(r.cotizacion!=null) cotIdByNum.set(String(r.cotizacion),r.id); }); }
       if(sp.table==='items'){ exist.forEach(e=>itemOk.add(e.id)); recs.forEach(r=>itemOk.add(r.id)); exist.forEach(e=>{ if(e.id_cotizacion&&e.item!=null) itemKey.set(e.id_cotizacion+'|'+e.item,e.id); }); recs.forEach(r=>{ if(r.id_cotizacion&&r.item!=null) itemKey.set(r.id_cotizacion+'|'+r.item,r.id); }); }
-      const nuevos=[], cambios=[], omitidas=[], colCount={}; let iguales=0;
+      const nuevos=[], cambios=[], omitidas=[], conflictos=[], colCount={}; let iguales=0;
+      const IDENT={cotizaciones:['cotizacion'],items:['id_cotizacion','item'],produccion:['op','item_num']}[sp.table]||[];
+      const _baseId=id=>String(id).replace(/-\d+$/,'');
+      const itemOcupado=new Set(); if(sp.table==='produccion') exist.forEach(e=>{ if(e.id_item) itemOcupado.add(e.id_item); });
+      const opCot=new Map(); if(sp.table==='produccion') exist.forEach(e=>{ if(e.op!=null&&e.id_cotizacion&&!opCot.has(e.op)) opCot.set(e.op,e.id_cotizacion); });   // regla de la base (trigger _prod_op_unica_cot): una OP = una sola cotización
+      const cotLibre=(op,cot)=>!cot?false:(!opCot.has(op)||opCot.get(op)===cot);   // la base solo permite UNA fila de producción por ítem (índice produccion_id_item_uq)
+      const exItemKey=new Map(); if(sp.table==='items') exist.forEach(e=>{ if(e.id_cotizacion&&e.item!=null&&!exItemKey.has(e.id_cotizacion+'|'+e.item)) exItemKey.set(e.id_cotizacion+'|'+e.item,e.id); });
+      const exOpItem=new Map(); if(sp.table==='produccion') exist.forEach(e=>{ if(e.op==null) return; const k=e.op+'|'+(e.item_num??''); if(!exOpItem.has(k)) exOpItem.set(k,[]); exOpItem.get(k).push(e); });
       recs.forEach(r=>{
         // OP → cotización / ítem (para que Producción quede enlazada como el resto del ERP)
         let linkCot=null, linkItem=null;
         if(sp.table==='produccion'){ linkCot=cotIdByNum.get(String(r.cot_num))||null; linkItem=(linkCot&&r.item_num!=null)?(itemKey.get(linkCot+'|'+r.item_num)||null):null; }
         const e=exMap.get(r.id);
         if(!e){
-          if(sp.table==='produccion'){ if(r.op==null){ omitidas.push(r.id); return; } if(linkCot) r.id_cotizacion=linkCot; if(linkItem) r.id_item=linkItem; }
+          if(sp.table==='items'){
+            if(!r.id_cotizacion){ omitidas.push(r.id); return; }   // fila sin cotización (plantilla vacía): no se crea
+            const g=exItemKey.get(r.id_cotizacion+'|'+r.item);
+            if(g&&g!==r.id){ conflictos.push({id:r.id,campo:'ítem '+r.item+' de esa cotización',base:'ya existe como '+g,excel:'código '+r.id}); return; }
+          }
+          if(sp.table==='produccion'){ if(r.op==null){ omitidas.push(r.id); return; }
+            // esa OP + ítem ya existe en la base con OTRO código (IDQR corregido en el Excel): crearla duplicaría la OP
+            const gemelo=(exOpItem.get(r.op+'|'+(r.item_num??''))||[]).find(x=>_baseId(x.id)!==_baseId(r.id));
+            if(gemelo){ conflictos.push({id:r.id,campo:'OP '+r.op+' ítem '+(r.item_num??'—'),base:'ya está en la base como '+gemelo.id,excel:'código '+r.id}); return; }
+            if(linkCot&&cotLibre(r.op,linkCot)){ r.id_cotizacion=linkCot; opCot.set(r.op,linkCot); } if(linkItem&&!itemOcupado.has(linkItem)){ r.id_item=linkItem; itemOcupado.add(linkItem); } }
           nuevos.push(r); return;
         }
+        const choque=IDENT.find(k=>r[k]!=null&&e[k]!=null&&String(r[k])!==String(e[k]));
+        if(choque){ conflictos.push({id:r.id,campo:choque,base:e[choque],excel:r[choque]}); return; }   // mismo ID pero otra OP/cotización/ítem: no se toca
         const ch={}, old={};
         Object.keys(r).forEach(k=>{
           if(k==='id'||(sp.table==='items'&&IMPFULL_JSONCOLS.includes(k))) return;
           if(!impSame(cfg.cols[k],e[k],r[k])){ ch[k]=r[k]; old[k]=e[k]; colCount[k]=(colCount[k]||0)+1; }
         });
         if(sp.table==='produccion'){
-          if(!e.id_cotizacion&&linkCot){ ch.id_cotizacion=linkCot; old.id_cotizacion=null; colCount.id_cotizacion=(colCount.id_cotizacion||0)+1; }
-          if(!e.id_item&&linkItem){ ch.id_item=linkItem; old.id_item=null; colCount.id_item=(colCount.id_item||0)+1; }
+          if(!e.id_cotizacion&&linkCot&&cotLibre(r.op,linkCot)){ opCot.set(r.op,linkCot); ch.id_cotizacion=linkCot; old.id_cotizacion=null; colCount.id_cotizacion=(colCount.id_cotizacion||0)+1; }
+          if(!e.id_item&&linkItem&&!itemOcupado.has(linkItem)){ ch.id_item=linkItem; old.id_item=null; itemOcupado.add(linkItem); colCount.id_item=(colCount.id_item||0)+1; }
         }
         if(Object.keys(ch).length) cambios.push({id:r.id,op:r.op??e.op,ch,old}); else iguales++;
       });
       // estados que el ERP no conoce (p. ej. CANCELADO del AppSheet) → desmarcados por defecto
       let estadoRaro=0;
       if(sp.table==='produccion') cambios.forEach(c=>{ if(c.ch.estado!==undefined && !PROD_EST[c.ch.estado]) estadoRaro++; });
-      plan.push({...sp,total:recs.length,nuevos,cambios,iguales,omitidas,colCount,estadoRaro,fixes:built.fixes||[],imgIds,planoProd});
+      plan.push({...sp,total:recs.length,nuevos,cambios,iguales,omitidas,conflictos,colCount,estadoRaro,fixes:built.fixes||[],imgIds,planoProd});
     }
 
     /* Imágenes y planos (hoja EXPORT_IMAGENES_OP) */
@@ -4646,18 +4710,23 @@ async function impFullPick(file){
     if(wsI){
       say('🖼 Comparando imágenes y planos…'); await _impTick();
       const {headers,rows}=impSheetRows(wsI); const ix=n=>headers.indexOf(n);
-      const iId=ix('idqr'), iImg=ix('imagen_drive_id'), iPl=ix('plano_drive_id'), iPn=ix('plano_nombre');
+      const iId=ix('idqr'), iImg=ix('imagen_drive_id'), iPl=ix('plano_drive_id'), iPn=ix('plano_nombre'), iOp=ix('op'), iIt=ix('item');
       if(iId<0||iImg<0){ img={error:'La hoja EXPORT_IMAGENES_OP no tiene las columnas idqr / imagen_drive_id'}; }
       else{
-        const prods=await GETALL('produccion','select=id,id_item,imagen_drive_id&order=id.asc');
+        const prods=await GETALL('produccion','select=id,op,item_num,id_item,imagen_drive_id&order=id.asc');
         const pMap=new Map(prods.map(p=>[String(p.id),p]));
+        const porOpItemImg=new Map(); prods.forEach(p=>{ if(p.op==null) return; const k=p.op+'|'+(p.item_num??''); if(!porOpItemImg.has(k)) porOpItemImg.set(k,[]); porOpItemImg.get(k).push(p); });
         const pn=plan.find(p=>p.table==='produccion'); if(pn) pn.nuevos.forEach(r=>{ if(!pMap.has(r.id)) pMap.set(r.id,{id:r.id,id_item:r.id_item||null,imagen_drive_id:null}); });
         const arch=await GETALL('prod_archivos','select=id,id_prod,id_item,data&tipo=eq.plano&data=like.http*&order=id.asc');
         const yaPlano=new Set(); arch.forEach(a=>{ const d=_impDriveId(a.data); if(!d) return; if(a.id_prod) yaPlano.add('p:'+a.id_prod+'|'+d); if(a.id_item) yaPlano.add('i:'+a.id_item+'|'+d); });
         const imgSet=[], planoNuevo=[], cand=[], nombres=new Map(); let sinOp=0, igualesImg=0;
         rows.forEach(r=>{
-          const id=_impStr(r[iId]); if(!id) return;
-          const p=pMap.get(id); if(!p){ sinOp++; return; }
+          let id=_impStr(r[iId]); if(!id) return;
+          let p=pMap.get(id);
+          if(iOp>=0&&iIt>=0&&(!p||(p.op!=null&&(String(p.op)!==_impStr(r[iOp])||String(p.item_num??'')!==_impStr(r[iIt]))))){   // idqr mal escrito: buscar por OP + ítem
+            const c=(porOpItemImg.get(_impStr(r[iOp])+'|'+_impStr(r[iIt]))||[]); if(c.length===1){ id=String(c[0].id); p=pMap.get(id); }
+          }
+          if(!p){ sinOp++; return; }
           const di=_impStr(r[iImg]);   // respaldo: solo si Control Producción no trae la imagen de esa OP
           if(di && !imgIds.has(id)){ if(p.imagen_drive_id!==di) imgSet.push({id,drive_id:di}); else igualesImg++; }
           const dp=iPl>=0?_impStr(r[iPl]):''; if(dp){ cand.push({id,dp}); const nm=iPn>=0?String(r[iPn]||'').trim():''; if(nm) nombres.set(dp,nm); }
@@ -4700,7 +4769,8 @@ function impFullPreview(){
     return `<div style="border:1.5px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
       <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px"><input type="checkbox" id="impf-inc-${p.table}" checked> ${p.icon} ${esc(p.label)} <span style="font-weight:500;font-size:11px;color:var(--muted)">hoja ${esc(p.sheet)} · ${n(p.total)} filas</span></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px">
-        <span class="imp-badge-ok">🆕 ${n(p.nuevos.length)} nuevas</span><span class="imp-badge-ok" style="background:#fef3c7;color:#92400e">✏️ ${n(p.cambios.length)} con cambios</span><span class="imp-badge-ok" style="background:#e0f2fe;color:#0369a1">✔ ${n(p.iguales)} sin cambios</span>${p.omitidas.length?`<span class="imp-badge-err">⏭ ${p.omitidas.length} omitidas (sin OP)</span>`:''}</div>
+        <span class="imp-badge-ok">🆕 ${n(p.nuevos.length)} nuevas</span><span class="imp-badge-ok" style="background:#fef3c7;color:#92400e">✏️ ${n(p.cambios.length)} con cambios</span><span class="imp-badge-ok" style="background:#e0f2fe;color:#0369a1">✔ ${n(p.iguales)} sin cambios</span>${p.omitidas.length?`<span class="imp-badge-err">⏭ ${p.omitidas.length} omitidas (sin OP / sin cotización)</span>`:''}${p.conflictos.length?`<span class="imp-badge-err">⛔ ${p.conflictos.length} en conflicto</span>`:''}</div>
+      ${p.conflictos.length?`<div style="margin-top:2px;font-size:11.5px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:6px 9px">⛔ Estas filas tienen el mismo ID que otra en la base pero <b>distinta ${'OP / ítem / cotización'}</b>; no se actualizan para no mezclar datos. Revísalas en el Excel:<br>${p.conflictos.slice(0,6).map(c=>`ID ${esc(c.id)} · ${esc(c.campo)}: base ${esc(_impShort(c.base))} ≠ Excel ${esc(_impShort(c.excel))}`).join('<br>')}${p.conflictos.length>6?'<br>…':''}</div>`:''}
       ${cols.length?`<div style="font-size:11px;color:var(--muted);margin:6px 0 2px">Columnas a actualizar en las filas existentes (desmarca las que no quieras tocar):</div><div>${chips}</div>`:''}
       ${p.estadoRaro>0?`<div style="margin-top:6px;font-size:11.5px;color:#b45309;background:#fffbeb;border-radius:8px;padding:6px 9px">⚠️ ${n(p.estadoRaro)} filas traen un <b>estado</b> que el ERP no maneja (p. ej. CANCELADO). Por eso <b>estado</b> quedó desmarcado; márcalo solo si quieres traerlo.</div>`:''}
       ${p.table==='items'?`<div style="margin-top:6px;font-size:11px;color:var(--muted)">Los materiales, servicios y procesos (cotizador) solo se cargan en ítems <b>nuevos</b>; en los existentes no se tocan.</div>`:''}
@@ -4732,8 +4802,9 @@ async function impFullSend(table,key,payload,log,B=25){
         catch(e2){ err++; if(err<=15) log(`❌ ${esc(table)} ${esc(rec[key])}: ${esc(errMsg(e2).slice(0,170))}`,'err'); }
       }
     }
-    if((i/B)%20===19) log(`… ${esc(table)}: ${Math.min(i+B,payload.length)} / ${payload.length}`,'inf');
+    if((i/B)%4===3||i+B>=payload.length) log(`… ${esc(table)}: ${Math.min(i+B,payload.length)} / ${payload.length} · ${ok} OK · ${err} errores`,err?'err':'inf');
   }
+  if(err>15) log(`… y ${err-15} errores más en ${esc(table)} (solo se listan los primeros 15)`,'err');
   return {ok,err};
 }
 async function impFullApply(){
@@ -4758,8 +4829,9 @@ async function impFullApply(){
   if(!nN&&!nC&&!nI&&!nP){ toast('No hay nada que subir con la selección actual','info'); return; }
   if(!await askConfirm('⬆️ Aplicar cambios',`Se agregarán <b>${nN}</b> filas nuevas, se actualizarán <b>${nC}</b> filas existentes${doImg?`, se enlazarán <b>${nI}</b> imágenes y se agregarán <b>${nP}</b> planos`:''}.<div style="margin-top:8px">Solo se tocan las columnas marcadas; las celdas vacías del Excel no borran nada.</div>`)) return;
   _impF.busy=true;
+  let _wl=null; try{ if(typeof navigator!=='undefined'&&navigator.wakeLock) _wl=await navigator.wakeLock.request('screen'); }catch(e){}
   const btn=document.getElementById('impf-apply'); if(btn){ btn.disabled=true; btn.textContent='Subiendo…'; }
-  const logEl=document.getElementById('impf-log'); logEl.style.display=''; logEl.innerHTML='';
+  const logEl=document.getElementById('impf-log'); logEl.style.display=''; logEl.innerHTML='<div class="inf">⏳ Subiendo… <b>no apagues la pantalla ni cambies de aplicación</b> hasta ver «Listo».</div>';
   const log=(m,c='inf')=>{ logEl.innerHTML+=`<div class="${c}">${m}</div>`; logEl.scrollTop=logEl.scrollHeight; };
   let totErr=0;
   try{
@@ -4782,6 +4854,7 @@ async function impFullApply(){
     log(`<br>${totErr?'⚠️':'✅'} Listo${totErr?' con '+totErr+' errores (arriba está el detalle)':' sin errores'}. Recargando datos del ERP…`,totErr?'err':'ok');
     setTimeout(()=>cargarTodo().then(updateBadges).catch(()=>{}),900);
   }catch(e){ log('❌ '+esc(errMsg(e)),'err'); }
+  try{ if(_wl) await _wl.release(); }catch(e){}
   _impF.busy=false; if(btn){ btn.disabled=false; btn.textContent='⬆️ Aplicar de nuevo'; }
 }
 
