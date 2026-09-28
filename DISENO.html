@@ -564,6 +564,8 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="produccion" onclick="nav('produccion')"><span class="nav-icon">🗂️</span>Producción · todos los ítems</div>
     <div class="nav-item" data-m="pedidos" onclick="nav('pedidos')"><span class="nav-icon">🧱</span>Pedidos de material</div>
     <div class="nav-item" data-m="planos" onclick="nav('planos')"><span class="nav-icon">📄</span>Planos</div>
+    <div class="nav-section">Antes de la OP</div>
+    <div class="nav-item" data-m="itemscot" onclick="nav('itemscot')"><span class="nav-icon">📋</span>Ítems cotizados</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
@@ -582,6 +584,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div class="bn-item" data-m="produccion" onclick="nav('produccion')"><div class="bn-icon">🗂️</div><div>Producción</div></div>
   <div class="bn-item" data-m="pedidos" onclick="nav('pedidos')"><div class="bn-icon">🧱</div><div>Pedidos</div></div>
   <div class="bn-item" data-m="planos" onclick="nav('planos')"><div class="bn-icon">📄</div><div>Planos</div></div>
+  <div class="bn-item" data-m="itemscot" onclick="nav('itemscot')"><div class="bn-icon">📋</div><div>Ítems cot.</div></div>
 </div>
 
 <div class="overlay" id="modal-overlay">
@@ -935,7 +938,7 @@ function obsHtml(s){
 // ══ ESTADO GLOBAL ═════════════════════════════════════════════════
 const DB = {};
 let MOD = 'dashboard';
-const TITLES = {dashboard:'Inicio', bandeja:'Mi bandeja', planta:'Planta · todas las OP', pedidos:'Pedidos de material', produccion:'Producción · todos los ítems', planos:'Planos'};
+const TITLES = {dashboard:'Inicio', bandeja:'Mi bandeja', planta:'Planta · todas las OP', pedidos:'Pedidos de material', produccion:'Producción · todos los ítems', planos:'Planos', itemscot:'Ítems cotizados'};
 
 // ══ CARGA / SINCRONIZACIÓN (mismo esquema que el ERP Comercial) ═══
 const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at,semana,notas_diseno,notas_diseno_por,notas_diseno_at';
@@ -1138,7 +1141,7 @@ function nav(m,keep){
   refreshCurrentView();
 }
 function refreshCurrentView(){
-  const mods={dashboard,bandeja,planta,pedidos,produccion,planos};
+  const mods={dashboard,bandeja,planta,pedidos,produccion,planos,itemscot};
   if(mods[MOD]) mods[MOD]();
 }
 window.addEventListener('popstate',function(e){
@@ -1155,13 +1158,14 @@ function onGlobalSearch(v){
     if(MOD==='bandeja'){ _BD.q=v; pgReset(); bandeja(); }
     else if(MOD==='planos'){ _PS.q=v; pgReset(); planos(); }
     else if(MOD==='planta'){ _PL.q=v; pgReset(); planta(); }
+    else if(MOD==='itemscot'){ _IC.q=v; pgReset(); itemscot(); }
     else if(String(v).trim()) plantaGo({q:v});
   },220);
 }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
   try{
-    await prodLoadFull(); await cargarCatalogos(); await cargarUsuarios(); DB.archMeta=null;
+    await prodLoadFull(); await cargarCatalogos(); await cargarUsuarios(); DB.archMeta=null; DB.itemsCot=null;
     avisarNuevas(); updateBadges(); refreshCurrentView(); toast('Datos actualizados');
   }catch(e){ toast(errMsg(e),'error'); }
   finally{ if(btn) btn.classList.remove('spinning'); }
@@ -1272,7 +1276,11 @@ function bandeja(){
   const chips=chipsH(Object.keys(BD_SCOPES).map(k=>[k,BD_SCOPES[k][0],cnt[k]]),_BD.scope,'bdScope');
   const banner=moduleBanner('🎨',TITLES.bandeja,'Lo que te asignó el comercial y sigue pendiente de diseño o de envío a compras',chips);
   const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)')}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)')}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)')}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)')}</div>`;
-  const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OP, cotización, empresa, ítem…" value="${esc(_BD.q)}" autocomplete="off" data-fkey="bdq" oninput="bdSetQ(this.value)"></div><span class="filter-count">${rows.length}/${base.length}</span></div></div>`;
+  // Progreso de ingeniería (antes pestaña «Ingeniería»): de los ítems activos, cuántos ya tienen el diseño aprobado
+  const ingBase=all.filter(p=>!p.despachado&&!estSinDiseno(p)&&(_BD.scope==='equipo'||_BD.scope==='sindis'?true:esMia(p)));
+  const ingOk=ingBase.filter(p=>p.diseno_ok).length, ingPct=ingBase.length?Math.round(ingOk/ingBase.length*100):0;
+  const ing=ingBase.length?`<div class="dash-card" style="padding:10px 14px;margin:6px 0 4px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:6px"><b>⚙️ Ingeniería ${_BD.scope==='equipo'||_BD.scope==='sindis'?'del equipo':'de mis OP'}</b><span style="color:var(--muted)">✅ ${ingOk} aprobadas · ⏳ ${ingBase.length-ingOk} pendientes · <b style="color:var(--text)">${ingPct}%</b></span></div>${prog(ingPct)}</div>`:'';
+  const fb=`${ing}<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OP, cotización, empresa, ítem…" value="${esc(_BD.q)}" autocomplete="off" data-fkey="bdq" oninput="bdSetQ(this.value)"></div><span class="filter-count">${rows.length}/${base.length}</span></div></div>`;
   const vacio={mia:['🎉','No tienes ítems pendientes de diseño'],curso:['📭','No tienes ítems en curso'],sindis:['✅','No hay ítems sin diseñador'],equipo:['🎉','El equipo no tiene ítems pendientes']}[_BD.scope];
   const pg=pgSlice('bd',rows);
   setContent(`${banner}${kp}${fb}${rows.length?`<div class="card-list">${pg.map(bkCard).join('')}</div>${pgMore('bd',rows)}`:empty(base.length?'Sin resultados para la búsqueda':vacio[1],base.length?'🔍':vacio[0])}`);
@@ -1479,6 +1487,7 @@ function pdMateriales(p){
     <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" style="background:#b45309" onclick="pedidoMaterial('${p.id}')">🧱 Pedido de material</button><button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}')">＋ Agregar material</button></div>
     ${mats.length?mats.map(m=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(m.material)}</b>${m.detalle?`<div style="font-size:11px;color:var(--muted)">${esc(m.detalle)}</div>`:''}<div style="font-size:11px;color:var(--muted)">${String(m.material||'').startsWith('SERVICIO')?'servicio externo':Number(m.cantidad_kg||0)+' kg'}${m.proveedor?' · '+esc(m.proveedor):''}</div></div><span class="badge ${estCol[m.estado]||'gris'}">${m.estado}</span></div>
       <div style="display:flex;gap:14px;margin-top:6px;font-size:12px;font-family:var(--mono)"><span>Cotizado: <b>${fmt(m.costo_cotizado)}</b></span><span>Real: <b>${m.costo_real!=null?fmt(m.costo_real):'—'}</b></span></div>
+      ${peSeguimiento(m)}
       ${m.estado==='PENDIENTE'?`<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}','${m.id}')">✏️ Editar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delMatProd('${m.id}','${p.id}')">🗑</button></div>`:''}</div>`).join(''):mutedP('Sin materiales — agrega los que necesita la OP')}
     ${mats.length?`<div style="margin-top:12px;background:var(--card2);border-radius:10px;padding:10px 12px;font-size:12.5px;font-family:var(--mono)">Total cotizado: <b>${fmt(cot)}</b><br>Total gastado: <b>${fmt(real)}</b></div>`:''}</div>`;
 }
@@ -3576,10 +3585,25 @@ function pedidos(){
   const pg=pgSlice('pe',rows);
   const card=({m,p})=>{ const [lbl,cls]=PE_EST[m.estado]||[m.estado,'gris'];
     return `<div class="list-card" onclick="detalleProd('${p.id}','materiales')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-id">OP-${p.op} · ÍTEM ${p.item_num??'—'} · ${esc(p.empresa||'')}</div><div class="lc-title">${esc(m.material)}</div>${m.detalle?`<div class="lc-sub">${esc(m.detalle)}</div>`:''}</div><span class="badge ${cls}">${lbl}</span></div>
-      <div class="lc-meta"><span style="font-size:12px">⚖️ ${Number(m.cantidad_kg||0)} kg</span><span style="font-size:12px;color:var(--muted)">Cotizado ${fmt(m.costo_cotizado)}${m.costo_real?` · Real <b>${fmt(m.costo_real)}</b>`:''}</span>${m.proveedor?`<span style="font-size:11px;color:var(--muted)">🏷️ ${esc(m.proveedor)}</span>`:''}${disBadge(p)}</div></div>`; };
+      <div class="lc-meta"><span style="font-size:12px">⚖️ ${Number(m.cantidad_kg||0)} kg</span><span style="font-size:12px;color:var(--muted)">Cotizado ${fmt(m.costo_cotizado)}${m.costo_real?` · Real <b>${fmt(m.costo_real)}</b>`:''}</span>${m.proveedor?`<span style="font-size:11px;color:var(--muted)">🏷️ ${esc(m.proveedor)}</span>`:''}${disBadge(p)}</div>
+      ${peSeguimiento(m)}</div>`; };
   setContent(`${banner}${kp}${fb}${rows.length?`<div class="card-list">${pg.map(card).join('')}</div>${pgMore('pe',rows)}`:empty(base.length?'Sin resultados':'No hay pedidos de material en esta vista',base.length?'🔍':'🧱')}`);
 }
 function peScope(k){ peSet('scope',k); }
+// Seguimiento de compras (solo lectura): lo que compras registra sobre cada línea — orden de compra, autorización, fechas, factura y motivo de rechazo
+function peSeguimiento(m){
+  const t=[];
+  if(m.solicitado_at) t.push(`📨 Enviado ${fmtDTs(m.solicitado_at)}${m.solicitado_por?' · '+esc(m.solicitado_por):''}`);
+  if(m.id_oc) t.push(`🧾 OC ${esc(m.id_oc)}`);
+  if(m.autorizado_at) t.push(`✔ Autorizado${m.autorizado_por?' por '+esc(m.autorizado_por):''} ${fmtDTs(m.autorizado_at)}`);
+  else if(m.estado==='SOLICITADO') t.push('⏳ Sin autorizar');
+  if(m.fecha_compra||m.comprado_at) t.push(`🛒 Comprado ${m.fecha_compra?fmtDate(m.fecha_compra):fmtDTs(m.comprado_at)}${m.dias_entrega?' · entrega en '+m.dias_entrega+' día(s)':''}`);
+  if(m.recibido_at) t.push(`📦 Recibido ${fmtDTs(m.recibido_at)}${m.recibido_por?' · '+esc(m.recibido_por):''}`);
+  if(m.factura) t.push(`📄 Factura ${esc(m.factura)}`);
+  const rech=m.estado==='RECHAZADO'&&m.motivo_rechazo?`<div style="margin-top:6px;background:#fdeaea;border:1px solid #f3b3b3;color:#c62828;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:600">❌ Rechazado: ${esc(m.motivo_rechazo)}</div>`:'';
+  const obs=m.obs_compras?`<div style="margin-top:6px;font-size:12px;color:var(--muted);font-style:italic">💬 Compras: ${esc(m.obs_compras)}</div>`:'';
+  return (t.length?`<div style="margin-top:6px;font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px">${t.map(x=>`<span>${x}</span>`).join('')}</div>`:'')+rech+obs;
+}
 
 // ── Acciones masivas en Mi bandeja ─────────────────────────────
 const _BK=new Set();
@@ -3752,6 +3776,94 @@ function produccion(){
   setContent(`${banner}${chipsRow}${fb}${ctl}${body}`);
 }
 
+// ═══ ÍTEMS COTIZADOS · mirar hacia adelante (antes de que exista la OP) ═══
+// Lee la cotización a través de la función diseno_items_cotizados (diseño no tiene acceso directo a cotizaciones ni a ítems).
+// Solo datos técnicos: materiales, servicios, procesos, tiempos y planos. No trae precios de venta ni márgenes.
+const IC_PER=[['30','1 mes'],['90','3 meses'],['180','6 meses'],['365','1 año'],['todo','Todo']];
+let _IC={per:'90',todos:false,q:'',est:'',asesor:'',dis:'',mias:false,vista:'lista',fb:false};
+function icSet(k,v){ _IC[k]=v; pgReset(); itemscot(); }
+function icPer(k){ _IC.per=k; DB.itemsCot=null; pgReset(); itemscot(); }
+function icAlcance(k){ _IC.todos=(k==='todos'); DB.itemsCot=null; pgReset(); itemscot(); }
+function icVista(k){ icSet('vista',k); }
+function icToggleFb(){ _IC.fb=!_IC.fb; const el=document.getElementById('ic-fbs'); if(el) el.classList.toggle('open',_IC.fb); }
+function icReset(){ Object.assign(_IC,{q:'',est:'',asesor:'',dis:'',mias:false}); pgReset(); itemscot(); }
+let _icT=null; function icSetQ(v){ clearTimeout(_icT); _icT=setTimeout(()=>{ _IC.q=v; pgReset(); itemscot(); },220); }
+const _icKey=()=>_IC.per+'|'+(_IC.todos?1:0);
+async function icCargar(){
+  const dias=_IC.per==='todo'?null:Number(_IC.per);
+  const r=await sb.rpc('diseno_items_cotizados',{p_dias:dias,p_todos:_IC.todos});
+  DB.itemsCot={key:_icKey(),rows:Array.isArray(r)?r:[]};
+}
+const _icNum=v=>{ const n=Number(v); return isFinite(n)&&n?n:0; };
+const _icHay=c=>{ if(!c._h) c._h=_norm(['cot-'+c.cotizacion,'cot'+c.cotizacion,c.cotizacion,c.empresa,c.asesor,c.disenador,c.proyecto,c.estado,
+  ...(c.items||[]).flatMap(i=>[i.descripcion,i.material,i.proceso,'op-'+(i.op||''),...(i.mats||[]).map(m=>m.nombre+' '+(m.desc_esp||'')),...(i.svcs||[]).map(s=>s.nombre)])].join(' ')); return c._h; };
+function icItemHtml(i){
+  const mats=(i.mats||[]).filter(m=>m&&m.nombre), svcs=(i.svcs||[]).filter(s=>s&&s.nombre), prcs=(i.prcs||[]).filter(x=>x&&x.nombre);
+  const pOp=i.op?(DB.produccion||[]).find(p=>p.id_item===i.id):null;
+  const medida=m=>m.especial?esc(m.desc_esp||'especial'):(m.geo==='Platina'?`${esc(m.dim1||'?')}×${esc(m.ancho||'?')}×L${esc(m.largo||'?')} mm`:`Ø${esc(m.dim1||'?')}×L${esc(m.largo||'?')} mm`);
+  const hTot=prcs.reduce((s,x)=>s+_icNum(x.tiempo),0);
+  return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-size:11px;font-family:var(--mono);color:var(--muted);font-weight:700">ÍTEM ${i.item??'—'} · ×${Number(i.unidades||0)}</div>
+        <div style="font-size:13px;font-weight:600;line-height:1.35">${esc(i.descripcion||'—')}</div></div>
+      <div style="flex-shrink:0;text-align:right">${i.op?(pOp?`<button class="btn btn-ghost btn-sm" onclick="detalleProd('${pOp.id}')">OP-${i.op} →</button>`:`<span class="badge azul">OP-${i.op}</span>`):'<span class="badge naranja">Sin OP</span>'}</div></div>
+    <div class="lc-meta" style="margin-top:6px">${i.no_lleva_mp?'<span class="badge gris">🚫 No lleva MP</span>':''}${hTot?`<span class="badge gris">⚙️ ${hTot.toFixed(1)} h cotizadas</span>`:''}${_icNum(i.horas_diseno)?`<span class="badge morado">🎨 ${_icNum(i.horas_diseno)} h diseño</span>`:''}
+      ${(i.planos||[]).map(a=>`<button class="btn btn-ghost btn-sm" onclick="verArchivo('${a.id}')">📄 ${esc((a.nombre||'Plano').slice(0,28))}</button>`).join('')}
+      ${!(i.planos||[]).length&&i.plano_legacy?`<span class="badge gris" title="${esc(i.plano_legacy)}">📄 Plano en el sistema anterior (sin migrar)</span>`:''}</div>
+    ${mats.length?`<div style="margin-top:6px">${mats.map(m=>`<div style="font-size:12px;padding:5px 8px;background:var(--card2);border-radius:7px;margin-bottom:4px">🪨 <b>${esc(m.nombre)}</b> <span style="color:var(--muted)">· ${medida(m)}${_icNum(m.kg)?' · '+_icNum(m.kg)+' kg':''}${_icNum(m.costo)?' · '+fmt(m.costo):''}</span></div>`).join('')}</div>`:''}
+    ${svcs.length?`<div>${svcs.map(s=>`<div style="font-size:12px;padding:5px 8px;background:var(--card2);border-radius:7px;margin-bottom:4px;border-left:3px solid #0d9488">🛠 <b>${esc(s.nombre)}</b> <span style="color:var(--muted)">${_icNum(s.dias)?'· '+_icNum(s.dias)+' día(s)':''}${s.dureza?' · '+esc(s.dureza):''}${s.desc?' · '+esc(s.desc):''}${_icNum(s.costo)?' · '+fmt(s.costo):''}</span></div>`).join('')}</div>`:''}
+    ${prcs.length?`<div style="font-size:11.5px;color:var(--muted);margin-top:4px">⚙️ ${prcs.map(x=>esc(x.nombre)+(_icNum(x.tiempo)?' ('+_icNum(x.tiempo)+' h)':'')).join(' → ')}</div>`:''}
+    ${!mats.length&&!svcs.length&&!prcs.length?mutedP('Sin materiales, servicios ni procesos en la cotización'):''}
+    ${i.nota_operarios?`<div style="font-size:12px;margin-top:6px;background:#fef9e7;border-left:3px solid var(--warn);border-radius:6px;padding:6px 8px">📝 ${esc(i.nota_operarios)}</div>`:''}</div>`;
+}
+const _icEst=e=>{ const u=String(e||'').toUpperCase(); return `<span class="badge ${u.startsWith('APROBAD')?'verde':u==='EN ESPERA'?'naranja':'gris'}">${esc(e||'—')}</span>`; };
+function icCotCard(c,abierta){
+  const its=c.items||[]; const sinOp=its.filter(i=>!i.op).length;
+  const nMat=its.reduce((s,i)=>s+(i.mats||[]).filter(m=>m&&m.nombre).length,0), nSvc=its.reduce((s,i)=>s+(i.svcs||[]).filter(x=>x&&x.nombre).length,0);
+  const d=diasDe(c.fecha_entrega_pactada);
+  const head=`<div style="flex:1;min-width:0"><div class="lc-id">COT-${c.cotizacion??'—'} · ${fmtDate(c.fecha_emision)}</div><div class="lc-title">${esc(c.empresa||'—')}</div>
+      ${c.proyecto?`<div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.proyecto)}</div>`:''}</div>
+    <div style="text-align:right;flex-shrink:0">${_icEst(c.estado)}<div style="font-size:11px;margin-top:4px">${its.length} ítem${its.length!==1?'s':''}</div></div>`;
+  const meta=`<div class="lc-meta">${c.tipo?bTipo(c.tipo):''}${c.asesor?`<span style="font-size:11px;color:var(--muted)">👤 ${esc(c.asesor)}</span>`:''}${String(c.disenador||'').trim()?disBadgeN(c.disenador):'<span class="badge gris">Sin diseñador</span>'}
+    ${c.fecha_entrega_pactada?`<span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(c.fecha_entrega_pactada)} ${diasTag(d)}</span>`:''}<span style="font-size:11px;color:var(--muted)">🪨 ${nMat} · 🛠 ${nSvc}</span>${_IC.todos&&sinOp<its.length?`<span class="badge azul">${its.length-sinOp} ya en OP</span>`:''}</div>`;
+  if(!abierta) return `<div class="list-card" onclick="_IC.vista='lista';_IC.q='${c.cotizacion??''}';pgReset();itemscot()"><div class="lc-top">${head}</div>${meta}</div>`;
+  return `<div class="list-card" style="cursor:default"><div class="lc-top">${head}</div>${meta}<div style="margin-top:10px">${its.map(icItemHtml).join('')}</div></div>`;
+}
+async function itemscot(){
+  if(!DB.itemsCot||DB.itemsCot.key!==_icKey()){
+    loading();
+    try{ await icCargar(); }catch(e){ if(MOD==='itemscot') setContent(errorView({message:errMsg(e)})); return; }
+    if(MOD!=='itemscot') return;
+  }
+  const all=DB.itemsCot.rows; const q=_norm(_IC.q);
+  const misC=c=>esMiaN(c.disenador||'');
+  const base=all.filter(c=>(!_IC.est||c.estado===_IC.est)&&(!_IC.asesor||c.asesor===_IC.asesor)
+    &&(!_IC.dis||(_IC.dis==='__none'?!String(c.disenador||'').trim():_normNom(c.disenador)===_normNom(_IC.dis)))&&(!_IC.mias||misC(c)));
+  const rows=base.filter(c=>!q||q.split(' ').every(w=>_icHay(c).includes(w)));
+  const nIt=rows.reduce((s,c)=>s+(c.items||[]).length,0);
+  const pool=fn=>[...new Set(all.map(fn).filter(v=>v!=null&&String(v).trim()!==''))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  const sel=(key,label,opts,cur)=>`<select onchange="icSet('${key}',this.value)" title="${label}"><option value="">${label}</option>${opts.map(o=>{ const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(cur)===String(v)?'selected':''}>${esc(l)}</option>`; }).join('')}</select>`;
+  const nAct=[_IC.est,_IC.asesor,_IC.dis].filter(Boolean).length+(_IC.mias?1:0);
+  const banner=moduleBanner('📋','Ítems cotizados',_IC.todos?'Ítems de cotizaciones vigentes, con y sin OP':'Ítems cotizados que todavía no tienen OP · para adelantar diseño',
+    chipsH(IC_PER,_IC.per,'icPer')+'<div style="margin-top:8px">'+chipsH([['sinop','⏳ Sin OP todavía'],['todos','Todos']],_IC.todos?'todos':'sinop','icAlcance')+'</div>');
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(rows.length,'📋 Cotizaciones','var(--purple)')}${kchip(nIt,'🔩 Ítems','var(--info)')}${kchip(all.filter(misC).length,'⭐ Asignadas a mí','var(--accent)',`icSet('mias',${!_IC.mias})`,_IC.mias)}${kchip(all.filter(c=>String(c.estado||'').toUpperCase().startsWith('APROBAD')).length,'✅ Aprobadas','#16a34a')}</div>`;
+  const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top">
+      <div class="filter-search-wrap"><input type="text" placeholder="Buscar COT, empresa, material, servicio, descripción…" value="${esc(_IC.q)}" autocomplete="off" data-fkey="icq" oninput="icSetQ(this.value)"></div>
+      <button class="filter-toggle-btn ${nAct?'active':''}" onclick="icToggleFb()">⚙️ Filtros${nAct?` <span style="background:var(--purple);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;font-weight:800">${nAct}</span>`:''}</button>
+      <span class="filter-count">${rows.length}/${all.length}</span></div>
+    <div class="filter-bar-selects ${_IC.fb?'open':''}" id="ic-fbs">
+      ${sel('est','Estado cotización',pool(c=>c.estado),_IC.est)}${sel('asesor','Asesor',pool(c=>c.asesor),_IC.asesor)}
+      ${sel('dis','Diseñador',[['__none','Sin diseñador'],...pool(c=>c.disenador)],_IC.dis)}
+      <button class="filter-reset" onclick="icReset()">✕ Limpiar</button></div></div>`;
+  const ctl=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <div class="chips">${[['lista','☰ Con detalle'],['tarjetas','▦ Resumen']].map(([k,l])=>`<button class="chip ${_IC.vista===k?'on':''}" onclick="icVista('${k}')">${l}</button>`).join('')}<button class="chip ${_IC.mias?'on':''}" onclick="icSet('mias',${!_IC.mias})">⭐ Asignadas a mí</button></div>
+    <span style="font-size:11px;color:var(--muted);font-weight:700">${rows.length} cot. · ${nIt} ítem${nIt!==1?'s':''}</span></div>`;
+  const pg=pgSlice('ic',rows);
+  const body=rows.length?`<div class="card-list">${pg.map(c=>icCotCard(c,_IC.vista==='lista')).join('')}</div>${pgMore('ic',rows)}`
+    :empty(all.length?'Sin resultados con estos filtros':(_IC.todos?'No hay cotizaciones en este periodo':'No hay ítems cotizados pendientes de OP en este periodo'),all.length?'🔍':'📋');
+  setContent(`${banner}${kp}${fb}${ctl}${body}`);
+}
+
 
 async function iniciarApp(){
   const infoEl=document.getElementById('sidebar-user-info');
@@ -3795,7 +3907,7 @@ const AYUDA={
 general:{icono:'🚀',titulo:'Primeros pasos',
   que:'Este módulo es para el equipo de diseño: aquí ves las órdenes de producción (OP) que te tocan, las preparas (imagen, plano, materiales, hoja de ruta) y las marcas como diseñadas.',
   pasos:[
-   {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','La **barra de abajo** tiene: Inicio, Mi bandeja, Planta, Producción, Pedidos y Planos. El menú lateral tiene lo mismo.','🔍 busca una OP por número, empresa o ítem. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']},
+   {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','La **barra de abajo** tiene: Inicio, Mi bandeja, Planta, Producción, Pedidos, Planos e Ítems cot. (desliza a los lados si no caben). El menú lateral tiene lo mismo.','🔍 busca una OP por número, empresa o ítem. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']},
    {t:'Una OP por dentro',items:['Toca cualquier tarjeta para abrir la OP. Arriba ves el **resumen**: cliente, ítem, fechas, etapa y las **reglas del tipo** de trabajo.','En la OP hay una cuadrícula de botones: **Diseño terminado**, **Pedido de material**, **Ver pedidos**, **Notas del diseñador**, **Hoja de ruta**, **Formato QA**, **Imagen del ítem**, **Subir plano**, **Ver plano** y **Asignar diseñador**. Mira la ayuda **Trabajar una OP**.']}],
   consejos:['Cuando llegan pedidos nuevos, la app te avisa con un mensaje y el número rojo en **Mi bandeja**.']},
 dashboard:{icono:'📊',titulo:'Inicio',
@@ -3806,8 +3918,9 @@ bandeja:{icono:'🎨',titulo:'Mi bandeja',
   que:'Tu lista de trabajo: las OP asignadas a ti con el diseño pendiente o con pedidos de material sin enviar.',
   pasos:[
    {t:'Trabajar la bandeja',items:['Arriba elige la lista: **Mi bandeja** (lo tuyo pendiente), **En curso** (lo tuyo ya diseñado o en marcha), **Sin diseñador** (sin asignar) o **Todo el equipo**.','Los indicadores muestran **Pendientes, Nuevas, Urgentes (entrega en 3 días o menos)** y **Mat. por enviar**.','Toca una OP para abrirla y trabajarla. Cuando termines el diseño, toca **Diseño terminado**.']},
-   {t:'Acciones masivas',items:['Marca varias tarjetas con el **cuadro de la izquierda**.','Aparece una barra abajo con **🎨 Diseño terminado** (marca todas), **👤 Asignar** (las pasa a otro diseñador) y **✕ Limpiar**.']}],
-  reglas:['Un ítem cancelado, pausado o terminado ya no aparece en la bandeja.'],
+   {t:'Acciones masivas',items:['Marca varias tarjetas con el **cuadro de la izquierda**.','Aparece una barra abajo con **🎨 Diseño terminado** (marca todas), **👤 Asignar** (las pasa a otro diseñador) y **✕ Limpiar**.']},
+   {t:'Progreso de ingeniería',items:['La barra **⚙️ Ingeniería** muestra, de tus ítems activos, cuántos ya tienen el diseño aprobado (✅) y cuántos faltan (⏳), con el porcentaje.','Con **Todo el equipo** o **Sin diseñador** la barra cuenta toda la planta.']}],
+  reglas:['Un ítem cancelado, pausado o terminado ya no aparece en la bandeja.','En el sistema anterior esto era la pestaña **Ingeniería**: aprobar ingeniería es lo mismo que tocar **Diseño terminado**. La fecha queda la del momento en que lo marcas (ya no se escribe a mano la «fecha de entrega a planeación»).'],
   consejos:['Si no ves una OP tuya, revisa que tu nombre esté bien escrito en la OP (F. GIRALDO y F.GIRALDO se reconocen como la misma persona).']},
 planta:{icono:'🏭',titulo:'Planta · todas las OP',
   que:'Vista de todas las OP de la empresa, con sus etapas, para saber cómo va cada una.',
@@ -3825,14 +3938,20 @@ pedidos:{icono:'🧱',titulo:'Pedidos de material',
   pasos:[
    {t:'Revisar los pedidos',items:['Usa la **búsqueda** y elige **Mis OP** o **Todo el equipo**.','Cada línea muestra su estado. Toca una para ir a esa OP, pestaña **Materiales**.']},
    {t:'Pedir un material nuevo',items:['Abre la OP y toca **🧱 Pedido de material**.','Agrega los materiales y toca **🧱 Confirmar y enviar a compras**: el pedido queda **Solicitado** y compras lo ve al instante.']}],
-  reglas:['Una vez enviado, el pedido lo maneja **compras**. Cuando lo compra y lo recibe, el estado cambia a **Comprado** y **Recibido**.','Si compras lo **rechaza**, aparece como Rechazado con el motivo.']},
+  reglas:['Una vez enviado, el pedido lo maneja **compras**. Cuando lo compra y lo recibe, el estado cambia a **Comprado** y **Recibido**.','Si compras lo **rechaza**, aparece como Rechazado con el motivo en rojo.','Cada línea muestra también lo que registra compras: **orden de compra, autorización, fecha de compra y de recibido, factura** y sus comentarios. Aquí es **solo de consulta**: autorizar, marcar comprado o recibido se hace en el módulo de Compras (en el sistema anterior se podía desde Diseño).']},
 planos:{icono:'📄',titulo:'Planos',
   que:'Lista de ítems activos para saber cuáles ya tienen plano y cuáles no, y subirlo.',
   pasos:[
    {t:'Filtrar',items:['Fila de arriba: **📄 Con plano, ⚠️ Sin plano** o Todos.','Segunda fila: **🖼️ Con imagen, Sin imagen** o Todos. Los dos filtros **se combinan**.','**Solo mis OP** deja solo lo asignado a ti.']},
    {t:'Subir un plano',items:['Toca **📎 Subir** en la tarjeta.','Elige el archivo (PDF, dibujo, imagen…) y confirma.']},
    {t:'Subir la imagen de un ítem',items:['Si el ítem no tiene imagen, su tarjeta muestra el botón **🖼️ Imagen**. Tócalo.','Pega la captura con **Ctrl + V**, arrastra el archivo, o usa **📋 Pegar** / **📁 Elegir archivo**, y toca **✓ Guardar**.','La tarjeta cambia sola: deja de salir el botón y ya cuenta como **Con imagen**.']}],
-  consejos:['Los planos antiguos vienen del sistema anterior y se abren con **Ver** dentro de la OP.']},
+  consejos:['Los planos antiguos vienen del sistema anterior y se abren con **Ver** dentro de la OP.','Si el comercial subió el plano en la cotización (antes de crear la OP), también aparece aquí y dentro de la OP.']},
+itemscot:{icono:'📋',titulo:'Ítems cotizados',
+  que:'Lo que viene: los ítems de las cotizaciones que **todavía no tienen OP**, con sus materiales, servicios externos, procesos y planos, para adelantar el diseño antes de que llegue a tu bandeja.',
+  pasos:[
+   {t:'Buscar',items:['Elige el **periodo** (por fecha de la cotización): 1 mes, 3 meses, 6 meses, 1 año o Todo.','**⏳ Sin OP todavía** muestra solo lo que aún no entra a planta; **Todos** incluye también los ítems que ya tienen OP (con un botón para abrirla).','Busca por número de cotización, empresa, material, servicio o descripción. Con **⚙️ Filtros** eliges estado de la cotización, asesor y diseñador.','**⭐ Asignadas a mí** deja las cotizaciones donde el comercial ya te puso como diseñador.']},
+   {t:'Ver',items:['**☰ Con detalle** muestra cada ítem: materiales con medidas y kg, servicios externos con días, procesos con horas y las notas para operarios.','**▦ Resumen** muestra una tarjeta por cotización; tócala para ver su detalle.','Si el ítem tiene plano, toca **📄** para abrirlo.']}],
+  reglas:['Es **solo de consulta**: aquí no se cambia nada de la cotización.','No se muestran precios de venta ni márgenes, solo el costo estimado de materiales y servicios.','Las cotizaciones canceladas no aparecen.','Algunos planos antiguos quedaron en el sistema anterior sin migrar: se marcan como «Plano en el sistema anterior».']},
 op:{icono:'🛠️',titulo:'Trabajar una OP (paso a paso)',
   que:'Lo que se hace dentro de una OP, de principio a fin.',
   pasos:[

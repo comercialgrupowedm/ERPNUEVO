@@ -2,15 +2,15 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#7c2d12">
+<meta name="theme-color" content="#1e3a5f">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>ERP Remisiones · Grupo WEDM</title>
+<title>ERP Planeación · Grupo WEDM</title>
 <style>
 :root {
   --bg:#edf0f5; --surface:#ffffff; --card:#ffffff; --card2:#f3f5f9;
-  --border:#dde2e9; --accent:#ea580c; --accent2:#c2410c;
+  --border:#dde2e9; --accent:#2563eb; --accent2:#1d4ed8;
   --gold:#b7791f; --danger:#dc2626; --warn:#d97706; --info:#0284c7;
-  --purple:#ea580c; --pink:#db2777; --teal:#0d9488;
+  --purple:#2563eb; --pink:#db2777; --teal:#0d9488;
   --text:#1e293b; --muted:#64748b;
   --mono:'JetBrains Mono','Fira Mono',monospace;
   --sans:-apple-system,'Segoe UI',sans-serif;
@@ -20,18 +20,18 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;touch-action:manipulation}
 body{display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;background:var(--bg);color:var(--text);}
-#splash{position:fixed;inset:0;background:linear-gradient(135deg,#2a0f05 0%,#7c2d12 60%,#2a0f05 100%);
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#0f2443 0%,#1e3a5f 60%,#0f2443 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s;}
 #splash.hide{opacity:0;pointer-events:none}
 .splash-logo{width:120px;margin-bottom:24px;filter:drop-shadow(0 4px 20px rgba(167,139,250,.3))}
 .splash-sub{color:rgba(255,255,255,.55);font-size:13px;margin-bottom:28px;letter-spacing:.5px}
 .splash-bar-wrap{width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
-.splash-bar{height:100%;background:linear-gradient(90deg,#ea580c,#db2777);border-radius:2px;width:0%;transition:width .3s ease}
+.splash-bar{height:100%;background:linear-gradient(90deg,#2563eb,#db2777);border-radius:2px;width:0%;transition:width .3s ease}
 .splash-step{color:rgba(255,255,255,.4);font-size:11px;margin-top:12px;text-align:center;min-height:18px;display:flex;align-items:center;justify-content:center;gap:8px}
 #topbar{height:54px;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;padding:0 12px;gap:10px;
   flex-shrink:0;z-index:200;box-shadow:0 2px 12px rgba(30,41,59,.05);}
-#menu-btn{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#7c2d12,#ea580c);
+#menu-btn{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#1e3a5f,#2563eb);
   border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;
   flex-shrink:0;user-select:none;box-shadow:0 2px 8px rgba(234,88,12,.3);-webkit-tap-highlight-color:transparent;}
 #page-title{font-size:15px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -53,7 +53,7 @@ body{display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;b
   transform:translate3d(-100%,0,0);transition:transform .18s ease-out;overflow:hidden;}
 #sidebar.open{transform:translate3d(0,0,0)}
 .sb-logo{padding:20px 16px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);
-  flex-shrink:0;background:linear-gradient(135deg,#2a0f05 0%,#7c2d12 100%);}
+  flex-shrink:0;background:linear-gradient(135deg,#0f2443 0%,#1e3a5f 100%);}
 .sb-logo-text{font-weight:800;font-size:15px;color:#fff}
 .sb-logo-sub{font-size:11px;color:rgba(255,255,255,.55)}
 .sb-close{margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.12);
@@ -143,7 +143,7 @@ td.mono{font-family:var(--mono);font-size:11px}
 .badge.naranja{background:#fef2e2;color:#b5650a;border:1px solid #f6cd97}
 .badge.azul{background:#e6f0fd;color:#1d4ed8;border:1px solid #b3d0f7}
 .badge.gris{background:#eef1f4;color:#5b6b7a;border:1px solid #d3dbe2}
-.badge.morado{background:#f3e8ff;color:#ea580c;border:1px solid #d8b4fe}
+.badge.morado{background:#f3e8ff;color:#2563eb;border:1px solid #d8b4fe}
 .badge.rosado{background:#fce7f3;color:#db2777;border:1px solid #f9a8d4}
 .badge.teal{background:#ccfbf1;color:#0f766e;border:1px solid #99f6e4}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--r);
@@ -250,7 +250,7 @@ td.mono{font-family:var(--mono);font-size:11px}
 .filter-reset{height:34px;padding:0 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;}
 .filter-reset:hover{border-color:var(--danger);color:var(--danger);}
 .filter-count{font-size:11px;color:var(--muted);padding:0 4px;align-self:center;white-space:nowrap;}
-.op-hero{background:linear-gradient(135deg,#2a0f05 0%,#7c2d12 50%,#ea580c 100%);border-radius:16px;padding:20px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(30,41,59,.18);}
+.op-hero{background:linear-gradient(135deg,#0f2443 0%,#1e3a5f 50%,#2563eb 100%);border-radius:16px;padding:20px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(30,41,59,.18);}
 .op-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;}
 .op-hero-id{font-family:var(--mono);font-size:20px;font-weight:800;margin-bottom:4px}
 .op-hero-desc{font-size:15px;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -308,13 +308,13 @@ td.mono{font-family:var(--mono);font-size:11px}
   padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;
 }
 .user-btn:active{transform:scale(.95)}
-.user-btn.selected{border-color:#ea580c;background:rgba(234,88,12,.18)}
+.user-btn.selected{border-color:#2563eb;background:rgba(234,88,12,.18)}
 .user-btn .u-avatar{font-size:28px;margin-bottom:4px}
 .user-btn .u-name{font-size:11px;font-weight:700;color:#e8d5ff;word-break:break-word}
 .user-btn .u-rol{font-size:9px;color:#7c5bbf;margin-top:2px;text-transform:uppercase}
 .pin-display{display:flex;gap:14px;justify-content:center;margin:20px 0}
 .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(167,139,250,.4);background:transparent;transition:.15s}
-.pin-dot.filled{background:#ea580c;border-color:#ea580c;box-shadow:0 0 8px rgba(234,88,12,.5)}
+.pin-dot.filled{background:#2563eb;border-color:#2563eb;box-shadow:0 0 8px rgba(234,88,12,.5)}
 .pin-dot.error{background:#ef4444;border-color:#ef4444}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .pin-key{
@@ -346,7 +346,7 @@ td.mono{font-family:var(--mono);font-size:11px}
 .spinner{margin:0 auto}
 .dash-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,41,59,.05)}
 /* Banner de módulo */
-.mod-banner{background:linear-gradient(135deg,#2a0f05 0%,#7c2d12 55%,#ea580c 100%);border-radius:18px;padding:16px 16px 18px;color:#fff;box-shadow:0 6px 24px rgba(30,41,59,.2);position:relative;overflow:hidden}
+.mod-banner{background:linear-gradient(135deg,#0f2443 0%,#1e3a5f 55%,#2563eb 100%);border-radius:18px;padding:16px 16px 18px;color:#fff;box-shadow:0 6px 24px rgba(30,41,59,.2);position:relative;overflow:hidden}
 .mb-c1{position:absolute;top:-30px;right:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
 .mb-c2{position:absolute;bottom:-20px;left:50px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none}
 .mb-ic{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
@@ -356,7 +356,7 @@ td.mono{font-family:var(--mono);font-size:11px}
 .chip b{font-family:var(--mono);margin-left:2px}
 .chip.on{background:var(--purple);border-color:var(--purple);color:#fff}
 .mod-banner .chip{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff}
-.mod-banner .chip.on{background:#fff;border-color:#fff;color:#7c2d12}
+.mod-banner .chip.on{background:#fff;border-color:#fff;color:#1e3a5f}
 .kstrip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .kstrip::-webkit-scrollbar{display:none}
 .kchip{flex:0 0 auto;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:8px 12px;min-width:96px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .12s,transform .1s}
@@ -387,7 +387,7 @@ td.mono{font-family:var(--mono);font-size:11px}
 .opg-item:active{background:var(--border)}
 .stg{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--card2);border:1px solid var(--border);color:var(--text)}
 /* Detalle: hero, KPIs, pestañas, línea de tiempo, acciones */
-.cot-hero{background:linear-gradient(140deg,#2a0f05 0%,#7c2d12 60%,#ea580c 100%);border-radius:16px;padding:20px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(30,41,59,.18)}
+.cot-hero{background:linear-gradient(140deg,#0f2443 0%,#1e3a5f 60%,#2563eb 100%);border-radius:16px;padding:20px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(30,41,59,.18)}
 .cot-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
 .cot-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .cot-hero-left{flex:1;min-width:0}
@@ -530,6 +530,35 @@ details.ay-det[open]{padding-bottom:10px}
 .ay-form.open .ay-form-body{display:block}.ay-form.open .ay-form-car{transform:rotate(180deg)}
 
 
+/* ═══ PLANEACIÓN v2: ruta, avance por proceso, reportes ═══ */
+.rp-list{display:flex;flex-direction:column;gap:8px}
+.rp-step{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.rp-step.now{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,.12)}
+.rp-num{width:26px;height:26px;border-radius:50%;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rp-t{font-size:13px;font-weight:700}
+.rp-s{font-size:11.5px;color:var(--muted);margin-top:2px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:7px 0}
+.bar-l{width:160px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bar-t{flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden;min-width:40px}
+.bar-f{height:100%;border-radius:5px}
+.bar-v{min-width:60px;text-align:right;font-size:12px;font-weight:700;font-family:var(--mono)}
+@media(max-width:480px){.bar-l{width:110px}}
+.avp-hero{background:linear-gradient(140deg,#0f2443 0%,#1e3a5f 60%,#2563eb 100%);border-radius:14px;padding:14px 16px;color:#fff;margin-bottom:12px}
+.avp-blk{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.avp-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.avp-lbl{font-size:12px;font-weight:800;letter-spacing:.3px;min-width:0;word-break:break-word}
+.avp-pct{font-family:var(--mono);font-size:20px;font-weight:800;flex-shrink:0}
+.avp-blk input[type=range]{width:100%;height:28px}
+.avp-q{display:flex;gap:6px;margin-top:6px}
+.avp-q button{flex:1;padding:7px 0;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-weight:700;font-size:12px;cursor:pointer;color:var(--text)}
+.avp-q button:active{transform:scale(.94)}
+.avq-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.avq-acts .btn{justify-content:center;padding:9px 4px;font-size:11.5px;text-align:center;line-height:1.2}
+.btn-soft{background:#e6f0fd;color:#1d4ed8;border:1px solid #b3d0f7}
+.callout{background:#e6f0fd;border:1px solid #b3d0f7;border-radius:12px;padding:10px 12px;font-size:13px;color:#1e3a5f;margin-top:12px;line-height:1.45}
+.opr-step{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px dashed var(--border);font-size:12px}
+.opr-step:first-child{border-top:none}
+
 /* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
 input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:uppercase}
 </style>
@@ -541,18 +570,18 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 
 <div id="splash">
   <img class="splash-logo" id="splash-logo-img" src="" alt="GRUPO WEDM">
-  <div class="splash-sub">ERP Remisiones · Grupo WEDM</div>
+  <div class="splash-sub">ERP Planeación · Grupo WEDM</div>
   <div class="splash-bar-wrap"><div class="splash-bar" id="splash-bar"></div></div>
   <div class="splash-step"><span id="splash-msg">Iniciando...</span><span id="splash-pct" style="font-weight:600;color:#fed7aa;margin-left:6px">0%</span></div>
 </div>
 
 <div id="topbar">
-  <div id="menu-btn" onclick="toggleSidebar()">🚚</div>
+  <div id="menu-btn" onclick="toggleSidebar()">🏭</div>
   <img src="" id="topbar-logo" alt="GRUPOWEDM" style="height:28px;width:auto;margin-right:4px;flex-shrink:0">
   <h2 id="page-title">Inicio</h2>
   <div class="tb-search" onclick="document.getElementById('globalSearch').focus()">
     <span style="color:var(--muted);font-size:14px">🔍</span>
-    <input type="text" id="globalSearch" placeholder="Buscar remisión…" oninput="onGlobalSearch(this.value)">
+    <input type="text" id="globalSearch" placeholder="Buscar OP, cliente…" oninput="onGlobalSearch(this.value)">
   </div>
   <div id="help-btn" onclick="ayudaAbrir()" title="Cómo se usa esta vista (ayuda)">❓</div>
   <div id="refresh-btn" onclick="refreshCurrent()" title="Actualizar">↻</div>
@@ -565,16 +594,21 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
       <img src="" id="sb-logo-img" alt="GRUPO WEDM" style="height:34px;width:auto;border-radius:4px">
     </div>
     <div style="margin-left:4px">
-      <div class="sb-logo-text">ERP Remisiones</div>
+      <div class="sb-logo-text">ERP Planeación</div>
       <div class="sb-logo-sub">Grupo WEDM</div>
     </div>
     <div class="sb-close" onclick="closeSidebar()">✕</div>
   </div>
   <div class="nav-scroll">
-    <div class="nav-section">Remisiones</div>
+    <div class="nav-section">Producción</div>
     <div class="nav-item active" data-m="dashboard" onclick="nav('dashboard')"><span class="nav-icon">📊</span>Inicio</div>
-    <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">🚚</span>Remisiones<span class="nav-badge" id="b-rem" style="display:none">0</span></div>
-    <div class="nav-item" data-m="porpedir" onclick="nav('porpedir')"><span class="nav-icon">📥</span>Por pedir<span class="nav-badge" id="b-pp" style="display:none">0</span></div>
+    <div class="nav-item" data-m="ops" onclick="nav('ops')"><span class="nav-icon">🗂️</span>OPs en curso</div>
+    <div class="nav-item" data-m="produccion" onclick="nav('produccion')"><span class="nav-icon">🏭</span>En producción</div>
+    <div class="nav-item" data-m="ruta" onclick="nav('ruta')"><span class="nav-icon">🧭</span>Ruta por máquina</div>
+    <div class="nav-item" data-m="kanban" onclick="nav('kanban')"><span class="nav-icon">🧩</span>Kanban por máquina</div>
+    <div class="nav-item" data-m="operarios" onclick="nav('operarios')"><span class="nav-icon">👷</span>Operarios</div>
+    <div class="nav-item" data-m="avances" onclick="nav('avances')"><span class="nav-icon">📈</span>Avances</div>
+    <div class="nav-item" data-m="reportes" onclick="nav('reportes')"><span class="nav-icon">📉</span>Reportes</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
@@ -588,8 +622,13 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 
 <div id="bottom-nav">
   <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div><div>Inicio</div></div>
-  <div class="bn-item" data-m="remisiones" onclick="nav('remisiones')"><div class="bn-icon">🚚</div><div>Remisiones</div><span class="bn-badge" id="bb-rem" style="display:none">0</span></div>
-  <div class="bn-item" data-m="porpedir" onclick="nav('porpedir')"><div class="bn-icon">📥</div><div>Por pedir</div><span class="bn-badge" id="bb-pp" style="display:none">0</span></div>
+  <div class="bn-item" data-m="ops" onclick="nav('ops')"><div class="bn-icon">🗂️</div><div>OPs</div></div>
+  <div class="bn-item" data-m="produccion" onclick="nav('produccion')"><div class="bn-icon">🏭</div><div>Producción</div></div>
+  <div class="bn-item" data-m="ruta" onclick="nav('ruta')"><div class="bn-icon">🧭</div><div>Ruta</div></div>
+  <div class="bn-item" data-m="kanban" onclick="nav('kanban')"><div class="bn-icon">🧩</div><div>Kanban</div></div>
+  <div class="bn-item" data-m="operarios" onclick="nav('operarios')"><div class="bn-icon">👷</div><div>Operarios</div></div>
+  <div class="bn-item" data-m="avances" onclick="nav('avances')"><div class="bn-icon">📈</div><div>Avances</div></div>
+  <div class="bn-item" data-m="reportes" onclick="nav('reportes')"><div class="bn-icon">📉</div><div>Reportes</div></div>
 </div>
 
 <div class="overlay" id="modal-overlay">
@@ -692,7 +731,7 @@ const SESS_KEY='_wedm_rem_s';
 let _SESSION = null;
 try{ _SESSION = JSON.parse(localStorage.getItem(SESS_KEY)||'null'); }catch(e){ _SESSION=null; }
 if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
-const ROLES_REM = ['administracion','admin','desarrollador'];
+const ROLES_PLAN = ['administracion','admin','desarrollador','planeacion'];
 const rolActual = () => _SESSION?.rol || '';
 const _esAdmin  = () => rolActual()==='admin' || rolActual()==='desarrollador';
 const puede = (...roles) => _esAdmin() || roles.includes(rolActual());
@@ -891,13 +930,13 @@ function mostrarLogin(){
   _cargarUsuariosDis(); // carga la lista real en segundo plano
   const div=document.createElement('div');
   div.id='login-overlay';
-  div.style.cssText='position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0d0015 0%,#2a0f05 50%,#0d0015 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;padding:16px;overflow-y:auto';
+  div.style.cssText='position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0d0015 0%,#0f2443 50%,#0d0015 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;padding:16px;overflow-y:auto';
   div.innerHTML=`
     <div style="text-align:center;margin-bottom:20px">
       <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:10px 16px;display:inline-block;margin-bottom:12px">
         <img src="${typeof LOGO_B64_PNG!=='undefined'?LOGO_B64_PNG:''}" style="width:min(55vw,200px);height:auto;display:block" onerror="this.style.display='none'">
       </div>
-      <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:.3px">ERP Remisiones</div>
+      <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:.3px">ERP Planeación</div>
       <div style="color:#7c5bbf;font-size:13px;margin-top:4px">Grupo WEDM</div>
     </div>
     <div class="login-card" style="background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.2);backdrop-filter:blur(16px);box-shadow:0 24px 64px rgba(0,0,0,.6)">
@@ -924,7 +963,7 @@ function mostrarLogin(){
             style="padding:13px 14px;border-radius:10px;border:1px solid rgba(167,139,250,.25);background:rgba(255,255,255,.07);color:#e8d5ff;font-size:15px;outline:none"
             onkeydown="if(event.key==='Enter') doLoginDev()">
           <div class="login-error" id="dev-err"></div>
-          <button type="button" onclick="doLoginDev()" style="width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,#c2410c,#ea580c);color:#fff;font-size:15px;font-weight:700;cursor:pointer">Ingresar</button>
+          <button type="button" onclick="doLoginDev()" style="width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;font-size:15px;font-weight:700;cursor:pointer">Ingresar</button>
         </div>
         <button type="button" class="login-back" onclick="_loginBack()">← Volver</button>
       </div>
@@ -991,7 +1030,7 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos'); document.getElementById('dev-pass').value=''; return; }
-    if(!ROLES_REM.includes(r.rol)){ err.textContent='Sin acceso al módulo de Remisiones'; return; }
+    if(!ROLES_PLAN.includes(r.rol)){ err.textContent='Sin acceso al módulo de Planeación'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
@@ -1020,7 +1059,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
-    if(!ROLES_REM.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo de Remisiones'); return; }
+    if(!ROLES_PLAN.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo de Planeación'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
@@ -1028,46 +1067,93 @@ async function doLogin(){
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  ERP REMISIONES · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño y Compras
-//  Flujo: Calidad PIDE → Comercial SELECCIONA → Administración GENERA → Calidad DESPACHA
+//  ERP PLANEACIÓN · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño, Compras y Remisiones
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir'};
+const TITLES={dashboard:'Inicio',ops:'OPs en curso',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',reportes:'Reportes'};
 const PG_BASE=60;
-const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
-const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
-const bRem=e=>{ const [l,c]=REM_EST[e]||[e||'—','gris']; return `<span class="badge ${c}">${esc(l)}</span>`; };
-const opR=m=>m.op!=null?'OP-'+m.op:'Sin OP';
-const remUnd=m=>(m.lineas||[]).reduce((s,l)=>s+Number(l.cantidad||0),0);
-// Cerradas: fin del paso a paso (DESPACHADA/CANCELADA) y, como en el sistema anterior (ESTADOS_CERRADOS_REM), FACTURADA/ANULADA del formulario libre.
-const esFinal=m=>['DESPACHADA','CANCELADA','FACTURADA','ANULADA'].includes(m.estado);
-const esDesp=m=>['DESPACHADA','FACTURADA'].includes(m.estado);
-const esCanc=m=>['CANCELADA','ANULADA'].includes(m.estado);
-const remNum=m=>m.numero?'REM-'+m.numero:'SIN NÚMERO';
-const esMosat=m=>/MOSAT/i.test(m.empresa||'');
-const fFecha=m=>m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10);
-const remDe=id=>(DB.remisiones||[]).find(x=>x.id===id)||null;
-const hoyISO=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
-function remPendiente(m){
-  if(esFinal(m)) return false; const r=rolActual();
-  if(r==='comercial') return m.estado==='PEDIDA';
-  if(r==='administracion') return m.estado==='SELECCIONADA';
-  if(r==='calidad') return m.estado==='GENERADA';
-  return _esAdmin();
+const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,disenador,asesor,despachado,tipo,es_garantia,updated_at'
+  +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
+  +',hrs_cnc_real,hrs_torno_real,hrs_fresadora_real,hrs_banco_real,hrs_rect_real,hrs_edm,hrs_hilo,hrs_soldadura,hrs_ingenieria,horas_total_real'
+  +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,terminado_por,calidad_ok,calidad_estado,calidad_fecha,calidad_por,despacho_fecha'
+  +',externo,externo_desde,externo_hasta,externo_detalle,ruta_operarios,tiene_imagen,imagen_drive_id';
+
+// ══ MÁQUINAS: el texto libre de ruta_mq1..5 se agrupa en las máquinas que tienen columnas avance_<m> / hrs_<m> ══
+// IMPORTANTE: debe coincidir con la función public._plan_bucket() de la base de datos (el servidor hace el mismo cálculo).
+// 'externo' = servicio externo u otro proceso sin columna de avance ni de horas (se muestra con su texto original).
+const MAQ={
+  cnc:{l:'Centro Mecan.',n:'Centro de mecanizado',ic:'⚙️',c:'#2563eb',hrs:'hrs_cnc_real'},
+  torno:{l:'Torno',n:'Torno',ic:'🔩',c:'#0d9488',hrs:'hrs_torno_real'},
+  fresadora:{l:'Fresadora',n:'Fresadora',ic:'🛠️',c:'#7c3aed',hrs:'hrs_fresadora_real'},
+  banco:{l:'Banco',n:'Banco y sierras',ic:'🪚',c:'#b7791f',hrs:'hrs_banco_real'},
+  edm:{l:'EDM',n:'EDM (electroerosión)',ic:'⚡',c:'#db2777',hrs:'hrs_edm'},
+  rectificadora:{l:'Rectificadora',n:'Rectificadora',ic:'💿',c:'#0284c7',hrs:'hrs_rect_real'},
+  hilo:{l:'Hilo',n:'Erosionadora de hilo',ic:'🧵',c:'#9333ea',hrs:'hrs_hilo'},
+  soldadura:{l:'Soldadura',n:'Soldadura',ic:'🔥',c:'#dc2626',hrs:'hrs_soldadura'},
+  ingenieria:{l:'Ingeniería',n:'Diseño e ingeniería',ic:'📐',c:'#1e3a5f',hrs:'hrs_ingenieria'},
+  externo:{l:'Externo / otros',n:'Servicio externo u otro',ic:'🚚',c:'#64748b',hrs:null}
+};
+const MAQ_ORDEN=['cnc','torno','fresadora','banco','edm','rectificadora','hilo','soldadura','ingenieria','externo'];
+const MAQ_EDIT=MAQ_ORDEN.filter(b=>b!=='externo');
+const MAQ_REP=['cnc','banco','fresadora','torno','rectificadora','soldadura','edm','hilo']; // orden del reporte de horas
+function normMaquina(nombre){
+  const n=String(nombre??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim().replace(/\s+/g,' ');
+  if(!n) return null;
+  if(n==='SE RECTIFICADO') return 'rectificadora';
+  if(n==='SE SOLDADURA') return 'soldadura';
+  if(n.startsWith('SE ')) return 'externo';
+  if(n.startsWith('CENTRO DE MECANIZADO')||n.startsWith('CNC')) return 'cnc';
+  if(n.startsWith('TORNO')) return 'torno';
+  if(n.startsWith('FRESA')) return 'fresadora';
+  if(n.startsWith('TRABAJO DE BANCO')||n==='BANCO') return 'banco';
+  if(n.startsWith('EDM')) return 'edm';
+  if(n.startsWith('RECTIFICAD')) return 'rectificadora';
+  if(n.startsWith('EROSIONADORA DE HILO')||n==='HILO') return 'hilo';
+  if(n.startsWith('SOLDADURA')) return 'soldadura';
+  if(['PROYECTOS','DISENO E INGENIERIA','GENERADO'].includes(n)) return 'ingenieria';
+  return 'externo';
 }
-const rolAccion=m=>({PEDIDA:'comercial',SELECCIONADA:'administración',GENERADA:'calidad'}[m.estado]||'');
+// Pasos de la ruta en orden (ruta_mq1 primero), sin los vacíos. pct = avance_<máquina> (null si es externo).
+function pasosDe(op){
+  const out=[]; const ro=(op&&op.ruta_operarios&&typeof op.ruta_operarios==='object')?op.ruta_operarios:{};
+  for(let i=1;i<=5;i++){
+    const raw=op['ruta_mq'+i]; if(!raw||!String(raw).trim()) continue;
+    const b=normMaquina(raw); const pct=b==='externo'?null:Math.max(0,Math.min(100,Math.round(Number(op['avance_'+b])||0)));
+    const a=ro[String(i)]||null;
+    out.push({i,raw:String(raw).trim(),b,pct,oper:(a&&a.operario)||'',nota:(a&&a.nota)||'',asig:a});
+  }
+  return out;
+}
+// Paso actual: el primero con máquina que no esté al 100%. Un paso externo es el actual solo si la OP está marcada "en externo".
+function pasoActual(op){
+  const ps=pasosDe(op); if(!ps.length) return null;
+  for(const s of ps){ if(s.b==='externo'){ if(op.externo) return s; continue; } if(s.pct<100) return s; }
+  return ps[ps.length-1];
+}
+const pctColor=p=>p>=100?'#16a34a':p>=50?'#2563eb':'#dc2626';
+const fmtH=n=>(Math.round((Number(n)||0)*100)/100).toLocaleString('es-CO');
+const fmtF=f=>/^\d{4}-\d{2}-\d{2}$/.test(String(f||''))?fmtDate(f):fmtDT(f);   // fechas solo-día vs. fecha y hora
+const EST_PROD=['EN PROCESO','TRABAJO EXTERNO'];
+const enProd=o=>EST_PROD.includes(o.estado);
+const enCurso=o=>!['TERMINADO','CANCELADO'].includes(o.estado)&&!o.despachado;
+const porUrgencia=(a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?99999:da)-(db==null?99999:db); };
+let OPERARIOS_USADOS=[];
+async function cargarOperariosUsados(){
+  try{ const r=await sb.rpc('planeacion_operarios_usados'); OPERARIOS_USADOS=(r||[]).map(x=>typeof x==='string'?x:(x&&Object.values(x)[0])).filter(Boolean); }catch(e){}
+}
+function operariosConocidos(){
+  const s=new Set(OPERARIOS_USADOS);
+  (DB.produccion||[]).forEach(o=>pasosDe(o).forEach(p=>{ if(p.oper) s.add(p.oper); }));
+  return [...s].sort((a,b)=>a.localeCompare(b,'es'));
+}
 
 // ── Datos ──────────────────────────────────────────────────────────
 async function cargarTodo(){
-  const [rem,prods]=await Promise.all([
-    GETALL('remisiones','select=*&order=pedida_fecha.desc.nullslast,numero.desc.nullslast,id.asc'),
-    GETALL('produccion','select='+PROD_SEL_R+'&despachado=eq.false&order=op.desc,item_num.asc').catch(()=>[]),
-  ]);
-  DB.remisiones=(rem||[]).sort((a,b)=>{ const an=a.numero==null?1e9:a.numero, bn=b.numero==null?1e9:b.numero; return bn-an||String(b.pedida_fecha||'').localeCompare(String(a.pedida_fecha||'')); });
-  DB.prods=prods||[]; _SYNC.init=true;
+  DB.produccion=await GETALL('produccion','select='+PROD_SEL_P+'&estado=neq.TERMINADO&order=fecha_pactada.asc.nullslast,op.desc').catch(()=>[]);
+  _SYNC.init=true;
 }
-async function recargar(){ await cargarTodo(); updateBadges(); }
-async function rpcR(fn,params,okMsg){
+async function recargar(){ await cargarTodo(); }
+async function rpcP(fn,params,okMsg){
   showBusy();
   try{ const r=await sb.rpc(fn,params||{}); await recargar(); if(okMsg) toast(okMsg); return r===undefined||r===null?true:r; }
   catch(e){ const m=errMsg(e); toast('❌ '+m,'error');
@@ -1075,283 +1161,672 @@ async function rpcR(fn,params,okMsg){
     return null; }
   finally{ hideBusy(); }
 }
-// ── Cantidad disponible de un ítem (unidades − despachadas − reservadas en remisiones seleccionadas/generadas) ──
-function dispProd(p,excluirId){
-  let r=Number(p.unidades||0)-Number(p.cant_despachada||0);
-  for(const m of DB.remisiones||[]){ if(!['SELECCIONADA','GENERADA'].includes(m.estado)||m.id===excluirId) continue; for(const l of m.lineas||[]) if(l.id_prod===p.id) r-=Number(l.cantidad||0); }
-  return Math.max(0,r);
-}
-const remEnTramite=op=>(DB.remisiones||[]).some(m=>m.op===op&&['PEDIDA','SELECCIONADA'].includes(m.estado));
-function opsPorPedir(){
-  const g=new Map();
-  (DB.prods||[]).forEach(p=>{ const d=dispProd(p); if(d<=0||remEnTramite(p.op)) return; if(!g.has(p.op)) g.set(p.op,{op:p.op,empresa:p.empresa,cot:p.cot_num,asesor:p.asesor,items:[]}); g.get(p.op).items.push({p,d}); });
-  return [...g.values()].sort((a,b)=>b.op-a.op);
+
+// ── Helpers de presentación ──────────────────────────────────────────
+const opDe=id=>(DB.produccion||[]).find(x=>x.id===id)||null;
+const ESTADOS_COLOR={'EN PROCESO':'azul','TERMINADO':'verde','PENDIENTE DESPACHO':'urg','CANCELADO':'rojo','PAUSADO':'gris','PENDIENTE DISEÑO':'naranja','PENDIENTE MP':'naranja','PENDIENTE MP Y DISEÑO':'naranja','TRABAJO EXTERNO':'morado'};
+function bEst(e){ return `<span class="badge ${ESTADOS_COLOR[e]||'gris'}">${esc(e||'—')}</span>`; }
+const PRIO_COLOR={'Muy alta':'rojo',Alta:'naranja',Media:'azul',Baja:'gris',Nula:'gris'};
+function bPrio(p){ return p?`<span class="badge ${PRIO_COLOR[p]||'gris'}">${esc(p)}</span>`:''; }
+function pctOp(op){ return Math.max(0,Math.min(100,Math.round(Number(op.avance)||0))); }
+function rutaDe(op){ return [op.ruta_mq1,op.ruta_mq2,op.ruta_mq3,op.ruta_mq4,op.ruta_mq5].filter(Boolean); }
+function procActual(op){ const s=pasoActual(op); return s?s.raw:'—'; }
+function opTitulo(op){ return `OP-${op.op}${op.item_num!=null?' · Ítem '+op.item_num:''}`; }
+function opCard(op){
+  const d=diasPactada(op);
+  return `<div class="list-card" onclick="detailOP('${op.id}')">
+    <div class="lc-top">
+      <div style="min-width:0;flex:1">
+        <div class="lc-id">${opTitulo(op)}</div>
+        <div class="lc-title">${esc(op.empresa||'—')}</div>
+        <div class="lc-sub">${esc(String(op.descripcion||'').slice(0,70))}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}</div>
+    </div>
+    <div class="lc-meta">${prog(pctOp(op))} <span style="font-size:11px;color:var(--muted)">${pctOp(op)}% · ${esc(procActual(op))}</span></div>
+    <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(op.fecha_pactada)} ${d!=null?diasTag(d):''}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">S${op.semana||'—'}</span></div>
+  </div>`;
 }
 
-// ── REMISIONES (lista) ─────────────────────────────────────────────
-let _RM={f:null,per:'3m',q:'',emp:'',vista:(window.innerWidth<=700?'cards':'tabla')};
-const RM_PER=[['1m','1 mes',30],['3m','3 meses',90],['6m','6 meses',180],['1a','1 año',365],['todo','Todo',null]];
-const remFiltro=()=>_RM.f||(['comercial','administracion','calidad'].includes(rolActual())?'pend':'curso');
-function rmSet(k,v){ _RM[k]=v; pgReset(); remisiones(); }
-function rmF(k){ rmSet('f',k); }
-function rmPer(k){ rmSet('per',k); }
-function rmVista(k){ rmSet('vista',k); }
-let _rmT=null; function rmSetQ(v){ clearTimeout(_rmT); _rmT=setTimeout(()=>{ _RM.q=v; pgReset(); remisiones(); },220); }
-function perOk(m){ if(_RM.per==='todo') return true; const d=(RM_PER.find(x=>x[0]===_RM.per)||[])[2]; if(!d) return true; const f=fFecha(m); if(!f) return true; const t=new Date(f+'T12:00:00'); return isNaN(t)||t>=new Date(Date.now()-d*864e5); }
-function accionPrincipal(m){
-  if(m.estado==='PEDIDA'&&puede('comercial')) return ['☑️ Seleccionar',`formSelRem('${m.id}')`,'#1565c0'];
-  if(m.estado==='SELECCIONADA'&&puede('administracion')) return ['🧾 Generar',`remGenerar('${m.id}')`,'#2e7d32'];
-  if(m.estado==='GENERADA'&&puede('calidad')) return ['🚚 Despachar',`remDespachar('${m.id}')`,'#ea580c'];
-  return null;
-}
-function remCard(m){
-  const ap=accionPrincipal(m); const ls=m.lineas||[];
-  return `<div class="list-card" onclick="detalleRem('${m.id}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">${remNum(m)}${m.manual?' <span class="badge gris" style="font-size:9px">MANUAL</span>':''}</div>
-    <div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.proyecto||'')}</div></div>
-    <div style="text-align:right;flex-shrink:0">${bRem(m.estado)}${remPendiente(m)?'<div style="margin-top:4px" title="Requiere tu acción">🔔</div>':''}${esMosat(m)?'<div style="margin-top:4px"><span class="badge gris" style="font-size:9px">🌐 EN</span></div>':''}</div></div>
-    <div class="lc-meta" style="font-size:11.5px;color:var(--muted);gap:10px"><span>${opR(m)}</span><span>COT-${m.cot_num||'—'}</span><span>📅 ${fmtDate(fFecha(m))||'—'}</span><span>📦 ${ls.length} ítem${ls.length!==1?'s':''} · ${remUnd(m)} und</span></div>
-    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?`<button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄 ${esMosat(m)?'Packing List':'PDF'}</button>`:''}${puedeLibre()&&!esFinal(m)?`<button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️ Editar</button>`:''}${m.estado==='PEDIDA'||m.estado==='SELECCIONADA'?`<span style="font-size:11px;color:var(--muted);align-self:center">Espera a ${rolAccion(m)}</span>`:''}</div></div>`;
-}
-function remTabla(rows){
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>REM #</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Ítems</th><th>Und</th><th></th></tr></thead><tbody>
-  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td><td onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td></tr>`; }).join('')}
-  </tbody></table></div></div>`;
-}
-function remisiones(){
-  const all=DB.remisiones||[]; const f=remFiltro(); const q=_norm(_RM.q);
-  const cnt={pend:all.filter(remPendiente).length,ped:all.filter(m=>m.estado==='PEDIDA').length,curso:all.filter(m=>!esFinal(m)).length,desp:all.filter(esDesp).length,canc:all.filter(esCanc).length};
-  const base=all.filter(m=>f==='pend'?remPendiente(m):f==='ped'?m.estado==='PEDIDA':f==='curso'?!esFinal(m):f==='desp'?esDesp(m):f==='canc'?esCanc(m):true);
-  const usaPer=['desp','canc','todas'].includes(f);
-  const rows=base.filter(m=>(!usaPer||perOk(m))&&(!_RM.emp||m.empresa===_RM.emp)&&(!q||_norm([m.numero,m.empresa,m.op,m.cot_num,m.proyecto,m.oc_cliente,m.asesor,m.estado].join(' ')).includes(q)));
-  const chips=chipsH([...(['comercial','administracion','calidad'].includes(rolActual())?[['pend','🔔 Para mí',cnt.pend]]:[]),['ped','⏳ Pedidas',cnt.ped],['curso','En curso',cnt.curso],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',all.length]],f,'rmF');
-  const perH=usaPer?`<div style="margin-top:8px">${chipsH(RM_PER.map(([k,l])=>[k,l]),_RM.per,'rmPer')}</div>`:'';
-  const acc=puedeLibre()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#c2410c;font-weight:800" onclick="nuevaRemModal()">➕ Nueva remisión</button></div>`:'';
-  const banner=moduleBanner('🚚','Remisiones','Pedida → seleccionada → generada → despachada',chips+perH+acc);
-  const empresas=[...new Set(all.map(m=>m.empresa).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  const fb=`<div class="filter-bar" style="margin:12px 0 8px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar REM, OP, COT, empresa, proyecto…" value="${esc(_RM.q)}" autocomplete="off" data-fkey="rmq" oninput="rmSetQ(this.value)"></div>
-    <select onchange="rmSet('emp',this.value)" style="height:40px;border-radius:11px;border:1.5px solid var(--border);background:var(--surface);padding:0 8px;font-size:12px;max-width:150px"><option value="">Empresas</option>${empresas.map(e=>`<option value="${esc(e)}" ${_RM.emp===e?'selected':''}>${esc(e)}</option>`).join('')}</select>
-    <span class="filter-count">${rows.length}/${base.length}</span></div></div>
-    <div class="chips" style="margin-bottom:10px">${[['cards','▦ Tarjetas'],['tabla','⊞ Tabla']].map(([k,l])=>`<button class="chip ${_RM.vista===k?'on':''}" onclick="rmVista('${k}')">${l}</button>`).join('')}</div>`;
-  if(!all.length){ setContent(banner+empty('Aún no hay remisiones — pídelas desde «Por pedir» cuando una OP tenga unidades pendientes','📦')); return; }
-  const pg=pgSlice('rm',rows);
-  setContent(`${banner}${fb}${rows.length?(_RM.vista==='tabla'?remTabla(pg):`<div class="card-list">${pg.map(remCard).join('')}</div>`)+pgMore('rm',rows):empty('Sin resultados con estos filtros','🔍')}`);
-}
-
-// ── Detalle de una remisión ────────────────────────────────────────
-function stepperH(m){
-  const orden=['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA']; const idx=orden.indexOf(m.estado); const canc=m.estado==='CANCELADA';
-  const info={PEDIDA:[m.pedida_fecha,m.pedida_por],SELECCIONADA:[m.seleccion_fecha,m.seleccion_por],GENERADA:[m.generada_fecha,m.generada_por],DESPACHADA:[m.despachada_fecha,m.despachada_por]};
-  const lbl={PEDIDA:'Pedida por calidad',SELECCIONADA:'Seleccionada por comercial',GENERADA:'Generada por administración',DESPACHADA:'Despachada por calidad'};
-  return `<div class="rm-steps">${orden.map((k,i)=>{ const hecho=!canc&&i<=idx||(canc&&info[k][0]); const act=!canc&&i===idx; const [f,quien]=info[k];
-    return `<div class="rm-st ${hecho?'ok':''} ${act?'act':''}"><div class="rm-dot">${hecho?'✓':i+1}</div><div class="rm-tx"><b>${lbl[k]}</b><span>${f?fmtDT(f):'pendiente'}${quien?' · '+esc(quien):''}</span></div></div>`; }).join('')}${canc?'<div class="rm-st canc"><div class="rm-dot">✖</div><div class="rm-tx"><b>Cancelada</b><span>No se despacha</span></div></div>':''}</div>`;
-}
-function detalleRem(id){
-  const m=remDe(id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  const btn=(ic,bg,lbl,fn)=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${bg}">${ic}</span><span class="cot-action-lbl">${lbl}</span></button>`; const b=[];
-  if(puede('comercial')&&['PEDIDA','SELECCIONADA'].includes(m.estado)&&m.op!=null) b.push(btn('☑️','#1565c0',m.estado==='PEDIDA'?'Seleccionar ítems y cantidades':'Cambiar selección',`formSelRem('${id}')`));
-  if(puede('administracion')&&m.estado==='SELECCIONADA') b.push(btn('🧾','#2e7d32','Generar remisión',`remGenerar('${id}')`));
-  if(puede('calidad')&&m.estado==='GENERADA') b.push(btn('🚚','#ea580c','Marcar despachada',`remDespachar('${id}')`));
-  if(['GENERADA','DESPACHADA'].includes(m.estado)||(m.libre&&m.numero&&m.estado!=='ANULADA')){
-    b.push(btn('📄','#d32f2f','Remisión (PDF)',`docRemision('${id}','remision')`));
-    if(esMosat(m)) b.push(btn('🌐','#1a3a6b','Packing List (EN)',`docRemision('${id}','packing')`));
-    b.push(btn('🖨️','#7b1fa2','Formato de despacho',`docRemision('${id}','despacho')`));
-  }
-  if(puede('administracion')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
-  if(puedeLibre()&&!esFinal(m)) b.push(btn('📝','#7c3aed','Formulario libre',`formLibreRem('${id}')`));
-  if(puede('administracion')&&!esFinal(m)&&['PEDIDA','SELECCIONADA','GENERADA'].includes(m.estado)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
-  if(puede('administracion')&&m.estado!=='DESPACHADA') b.push(btn('🗑️','#991b1b','Eliminar',`remEliminar('${id}')`));
-  const ls=m.lineas||[]; const dr=(l,v)=>`<div style="margin-bottom:8px"><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px">${l}</span><div style="font-size:13px;font-weight:500;white-space:pre-wrap">${v?esc(v):'—'}</div></div>`;
-  openDetail(remNum(m),`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${remNum(m)} · ${opR(m)}</div><div class="cot-hero-empresa">${esc(m.empresa||'—')}</div><div class="cot-hero-sub">COT-${m.cot_num||'—'}${m.manual?' · remisión manual':''}</div></div><div class="cot-hero-right"><div class="cot-hero-total-label">Unidades</div><div class="cot-hero-total-value">${remUnd(m)}</div></div></div><div class="cot-hero-badges">${bRem(m.estado)}${m.asesor?`<span class="cot-hero-asesor">👤 ${esc(m.asesor)}</span>`:''}</div></div>
-    ${remPendiente(m)?`<div style="margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:13px">🔔 <b>Esta remisión espera tu acción.</b></div>`:(!esFinal(m)?`<div style="margin:12px 0 0;font-size:12px;color:var(--muted)">⏳ Espera a <b>${rolAccion(m)}</b>.</div>`:'')}
-    ${m.libre?`<div style="margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);font-size:12px">📝 Remisión hecha con el <b>formulario libre</b>, sin pasos obligatorios.</div>`:''}
-    ${stepperH(m)}
-    ${b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:''}
-    <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:340px"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map((l,i)=>`<tr><td class="td-center" style="font-weight:700">${l.item??i+1}</td><td style="max-width:230px;white-space:normal">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:800">${l.cantidad}${l.unidades&&Number(l.unidades)!==Number(l.cantidad)?`<div style="font-size:10px;color:var(--muted);font-weight:500">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP('Sin ítems seleccionados todavía')}</div>
-    <div class="dp-section" style="margin-top:14px"><h4>🏢 Destinatario</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">${dr('Señores',m.empresa)}${dr('NIT',m.nit)}${dr('Dirección',m.direccion)}${dr('Ciudad',m.ciudad)}${dr('Encargado',m.contacto)}${dr('Teléfono',m.telefono)}${dr('Orden de compra del cliente',m.oc_cliente)}${dr('Fecha del documento',fmtDate(fFecha(m)))}</div>${dr('Proyecto',m.proyecto)}${dr('Observaciones',m.observaciones)}</div>`);
-}
-
-
-// ── Acciones del flujo ─────────────────────────────────────────────
-const fldR=(lbl,id,val='',extra='',span=false)=>`<div class="field${span?' span2':''}"><label>${lbl}</label><input id="${id}" value="${esc(val)}" ${extra} autocomplete="off"></div>`;
-function afterRem(id){ updateBadges(); refreshCurrentView(); if(id) detalleRem(id); }
-async function remPedirOp(op){
-  if(!confirm('¿Pedir la remisión de la OP-'+op+'? El comercial deberá elegir qué se despacha.')) return;
-  if(await rpcR('remision_pedir',{p_op:op},'📦 Remisión pedida — el comercial elige qué se despacha')){ _RM.f='curso'; nav('remisiones'); }
-}
-function formSelRem(id){
-  const m=remDe(id); if(!m) return;
-  const rows=(DB.prods||[]).filter(p=>p.op===m.op).map(p=>({p,disp:dispProd(p,m.id)})).filter(x=>x.disp>0).sort((a,b)=>Number(a.p.item_num)-Number(b.p.item_num));
-  if(!rows.length){ toast('No hay ítems aprobados por calidad con cantidad por despachar','error'); return; }
-  const cur={}; (m.lineas||[]).forEach(l=>{ cur[l.id_prod]=Number(l.cantidad); });
-  openModal('☑️ ¿Qué se despacha?',`${ayudaForm(`Escribe la **cantidad** de cada ítem que sale hoy; puede ser parcial. Solo aparece lo que calidad ya aprobó. Toca **Todo lo disponible** para marcar el máximo de cada uno.`)}<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.empresa||'')} · OP-${m.op}. Indica la cantidad de cada ítem (solo lo aprobado por calidad). Puedes despachar parcial o todo.</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value=i.dataset.max)">Todo lo disponible</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value='')">Limpiar</button></div>
-    ${rows.map(({p,disp})=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div class="lc-title">Ítem ${p.item_num}${p.es_garantia?' 🛡️':''}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><div class="field" style="margin:0;width:96px"><input type="number" class="rsel" data-p="${p.id}" data-max="${disp}" min="0" max="${disp}" step="1" value="${cur[p.id]??''}" placeholder="0"></div><span style="font-size:12px;color:var(--muted)">de ${disp} por despachar (total ${p.unidades})</span><button class="btn btn-ghost btn-sm" onclick="this.parentNode.querySelector('.rsel').value=${disp}">Todo</button></div></div>`).join('')}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarSelRem('${id}')">Guardar selección</button>`);
-}
-async function guardarSelRem(id){
-  const ls=[]; let bad=false;
-  document.querySelectorAll('.rsel').forEach(i=>{ const v=Number(i.value)||0; if(v>Number(i.dataset.max)) bad=true; if(v>0) ls.push({id_prod:i.dataset.p,cantidad:v}); });
-  if(bad){ toast('Una cantidad supera lo disponible','error'); return; } if(!ls.length){ toast('Selecciona al menos un ítem y su cantidad','error'); return; }
-  closeModal(); if(await rpcR('remision_seleccionar',{p_id:id,p_lineas:ls},'☑️ Selección enviada a administración')) afterRem(id);
-}
-async function remGenerar(id){
-  const m=remDe(id); if(!m||!confirm('¿Generar la remisión? Se le asigna el número consecutivo y ya no se puede cambiar lo seleccionado.')) return;
-  const r=await rpcR('remision_generar',{p_id:id}); if(r){ toast('🧾 Remisión REM-'+(r.numero||'')+' generada — pasa a calidad para despachar'); afterRem(id); }
-}
-async function remDespachar(id){
-  const m=remDe(id); if(!m||!confirm('¿Confirmas que esta mercancía ya salió? Se descuenta de producción y no se puede deshacer.')) return;
-  if(await rpcR('remision_despachar',{p_id:id},'🚚 Remisión despachada')) afterRem(id);
-}
-async function remCancelar(id){
-  const m=remDe(id); if(!m||!confirm('¿Cancelar '+remNum(m)+'? Lo reservado queda disponible otra vez.')) return;
-  if(await rpcR('remision_cancelar',{p_id:id},'Remisión cancelada')) afterRem(id);
-}
-// ── Editar los datos del documento ─────────────────────────────────
-function formEditarRem(id){
-  const m=remDe(id); if(!m) return;
-  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí solo se corrige lo que sale **impreso**: cliente, dirección, orden de compra, fecha. Los ítems y las cantidades no se cambian desde este formulario.`)}<div class="form-grid">${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
-    ${fldR('Orden de compra del cliente','er-oc',m.oc_cliente||'')}<div class="field"><label>Fecha del documento</label><input type="date" id="er-fec" value="${esc(fFecha(m))}"></div>${fldR('Proyecto','er-pro',m.proyecto||'','',true)}
-    <div class="field span2"><label>Observaciones</label><textarea id="er-obs">${esc(m.observaciones||'')}</textarea></div></div>
-    <div style="font-size:11.5px;color:var(--muted);margin-top:8px">Solo cambia lo que sale impreso en el documento. Los ítems y cantidades no se editan aquí.</div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditarRem('${id}')">💾 Guardar</button>`);
-}
-async function guardarEditarRem(id){
-  const d={empresa:gv('er-emp'),nit:gv('er-nit'),ciudad:gv('er-ciu'),direccion:gv('er-dir'),contacto:gv('er-con'),telefono:gv('er-tel'),oc_cliente:gv('er-oc'),fecha:gv('er-fec'),proyecto:gv('er-pro'),observaciones:gv('er-obs')};
-  if(!d.empresa){ toast('Escribe el cliente','error'); return; }
-  closeModal(); if(await rpcR('remision_editar',{p_id:id,p_data:d},'✅ Datos guardados')) afterRem(id);
-}
-// ── Remisión manual (sin OP) ───────────────────────────────────────
-function mnAdd(desc='',cant=1){
-  const d=document.createElement('div'); d.className='mn-row';
-  d.innerHTML=`<input type="number" inputmode="decimal" class="mn-c" placeholder="Cant." value="${cant}" min="0" step="any"><input class="mn-d" placeholder="Descripción del ítem" value="${esc(desc)}" autocomplete="off"><button class="btn btn-sm btn-ghost" onclick="this.parentNode.remove()">✕</button>`;
-  const c=document.getElementById('mn-lines'); if(c) c.appendChild(d);
-}
-function mnEmpresa(){
-  const n=_norm(gv('mn-emp')); const r=(DB.remisiones||[]).find(x=>_norm(x.empresa)===n&&(x.nit||x.direccion)); if(!r) return;
-  [['mn-nit','nit'],['mn-ciu','ciudad'],['mn-dir','direccion'],['mn-con','contacto'],['mn-tel','telefono']].forEach(([i,k])=>{ const el=document.getElementById(i); if(el&&!el.value) el.value=r[k]||''; });
-}
-function formManual(){
-  const emps=[...new Set((DB.remisiones||[]).map(m=>m.empresa).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  openModal('➕ Remisión manual (sin OP)',`<datalist id="dl-emp">${emps.map(e=>`<option value="${esc(e)}">`).join('')}</datalist>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para despachos que no pasan por producción (por ejemplo un servicio). Se genera con su número; calidad la despacha después.</div>
-    <div class="form-grid"><div class="field span2"><label>Señores (cliente) *</label><input id="mn-emp" list="dl-emp" oninput="mnEmpresa()" onchange="mnEmpresa()" autocomplete="off"></div>${fldR('NIT','mn-nit')}${fldR('Ciudad','mn-ciu')}${fldR('Dirección','mn-dir','','',true)}${fldR('Encargado','mn-con')}${fldR('Teléfono','mn-tel')}
-    ${fldR('Proyecto','mn-pro','','',true)}${fldR('Orden de compra del cliente','mn-oc')}${fldR('Cotización (nº)','mn-cot','','inputmode="numeric"')}<div class="field span2"><label>Observaciones</label><textarea id="mn-obs"></textarea></div></div>
-    <div class="cm-h" style="margin-top:14px">Ítems que se despachan</div><div id="mn-lines"></div><button class="btn btn-sm btn-ghost" style="margin-top:6px" onclick="mnAdd()">＋ Agregar ítem</button>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarManual()">🧾 Generar remisión</button>`);
-  mnAdd();
-}
-async function guardarManual(){
-  const lineas=[...document.querySelectorAll('#mn-lines .mn-row')].map(r=>({cantidad:Number(r.querySelector('.mn-c').value)||0,descripcion:r.querySelector('.mn-d').value.trim()})).filter(l=>l.descripcion&&l.cantidad>0);
-  if(!gv('mn-emp')){ toast('Escribe el cliente','error'); return; } if(!lineas.length){ toast('Agrega al menos un ítem con descripción y cantidad','error'); return; }
-  const d={empresa:gv('mn-emp'),nit:gv('mn-nit'),ciudad:gv('mn-ciu'),direccion:gv('mn-dir'),contacto:gv('mn-con'),telefono:gv('mn-tel'),proyecto:gv('mn-pro'),oc_cliente:gv('mn-oc'),cot_num:gv('mn-cot')||null,observaciones:gv('mn-obs'),lineas};
-  closeModal(); const r=await rpcR('remision_manual',{p_data:d});
-  if(r&&r.id){ toast('🧾 Remisión REM-'+r.numero+' generada'); _RM.f='curso'; nav('remisiones'); detalleRem(r.id); }
-}
-
-
-// ── Documentos imprimibles: Remisión (ES), Packing List (EN, para MOSAT) y Formato de despacho ──
-
-// ── Guardar una copia del documento en Google Drive (además de abrir el diálogo de impresión) ──
-const DRIVE_PDF_URL='https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec';
-async function _guardarPdfDrive(html,nombre,carpeta){
-  if(!carpeta||typeof html2canvas==='undefined'||typeof window.jspdf==='undefined') return;
-  let ifr;
-  try{
-    ifr=document.createElement('iframe'); ifr.style.cssText='position:fixed;left:-99999px;top:0;width:794px;height:1123px;border:none;opacity:0';
-    document.body.appendChild(ifr);
-    const doc=ifr.contentDocument||ifr.contentWindow.document; doc.open(); doc.write(html); doc.close();
-    doc.querySelectorAll('.no-print').forEach(el=>el.style.setProperty('display','none','important'));   // el botón de imprimir no debe quedar en la copia guardada
-    await new Promise(res=>{
-      const imgs=[...(doc.images||[])]; if(!imgs.length){ res(); return; }
-      let n=imgs.length; const fin=()=>{ if(--n<=0) res(); };
-      imgs.forEach(im=>im.complete?fin():(im.onload=im.onerror=fin)); setTimeout(res,4000);
-    });
-    await new Promise(res=>setTimeout(res,150));
-    const canvas=await html2canvas(doc.body,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
-    ifr.remove(); ifr=null;
-    // Una sola página, del tamaño exacto del contenido — así nunca sale una segunda hoja en blanco.
-    const {jsPDF}=window.jspdf; const imgW=612, imgH=imgW*(canvas.height/canvas.width);
-    const pdf=new jsPDF({unit:'pt',format:[imgW,imgH]});
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,imgW,imgH);
-    const base64=pdf.output('datauristring').split(',')[1];
-    const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta,nombre,base64})});
-    const j=await r.json().catch(()=>null);
-    if(j&&j.ok) toast('📤 Copia guardada en Drive');
-    else toast('⚠️ No se pudo guardar la copia en Drive','error');
-  }catch(e){ if(ifr) ifr.remove(); toast('⚠️ No se pudo guardar la copia en Drive','error'); }
-}
-function _abrirDocParaImprimir(html,filename,carpeta){
-  if(filename&&carpeta) _guardarPdfDrive(html,filename,carpeta);
-  const esperar=(doc,cb)=>{ const imgs=[...(doc.images||[])]; if(!imgs.length){ cb(); return; } let n=imgs.length,done=false; const fin=()=>{ if(done) return; if(--n<=0){ done=true; cb(); } }; imgs.forEach(i=>{ if(i.complete) fin(); else{ i.addEventListener('load',fin,{once:true}); i.addEventListener('error',fin,{once:true}); } }); setTimeout(()=>{ if(!done){ done=true; cb(); } },4000); };
-  try{
-    const old=document.getElementById('_print_iframe'); if(old) old.remove();
-    const f=document.createElement('iframe'); f.id='_print_iframe'; f.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0'; document.body.appendChild(f);
-    const doc=f.contentDocument||f.contentWindow.document; doc.open(); doc.write(html); doc.close();
-    f.onload=()=>esperar(doc,()=>setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(()=>f.remove(),2000); },150));
-    return;
-  }catch(e){}
-  const w=window.open('','_blank','width=900,height=1200'); if(!w){ toast('Permite ventanas emergentes para imprimir','error'); return; }
-  w.document.write(html); w.document.close(); w.document.title=filename.replace('.pdf',''); esperar(w.document,()=>setTimeout(()=>w.print(),150));
-}
-function docHtmlRem(m,tipo){
-  const en=tipo==='packing', des=tipo==='despacho'; const E=EMPRESA_WEDM;
-  const cl=v=>{ const s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):'—'; };
-  const d=new Date((fFecha(m)||new Date().toISOString().slice(0,10))+'T12:00:00');
-  const fecha=en?d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}):d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const L=en?{f:'DATE',s:'MESSRS.',n:'EIN',d:'ADDRESS',c:'CITY',e:'ATTENDANT',t:'PHONE',o:'P.O.',p:'PROJECT',r:'PACKING LIST',op:'PRODUCTION ORDER',q:'QUOTATION',po:'PURCHASE ORDER',i:'ITEM',qty:'QTY',ds:'DESCRIPTION',ob:'OBSERVATIONS',si:'SINCERELY',sin:'No items',nom:'Mauricio Garcia'}
-            :{f:'FECHA',s:'CLIENTE',n:'NIT',d:'DIRECCIÓN',c:'CIUDAD',e:'ENCARGADO',t:'TELÉFONO',o:'O.C.',p:'PROYECTO',r:des?'FORMATO DE DESPACHO':'REMISIÓN',op:'ORDEN DE PRODUCCIÓN',q:'COTIZACIÓN',po:'ORDEN DE COMPRA',i:'#',qty:'CANT',ds:'DESCRIPCIÓN',ob:'OBSERVACIONES',si:'ATENTAMENTE',sin:'Sin ítems',nom:'Mauricio García'};
-  const ls=m.lineas||[];
-  const rows=ls.map((l,i)=>`<tr class="${i%2?'azul-row':''}"><td class="center" style="font-weight:700">${l.item??i+1}</td><td class="center" style="font-weight:700">${l.cantidad}</td><td style="text-transform:uppercase;font-size:10px;white-space:pre-wrap">${cl(l.descripcion)}</td>${des?'<td class="center" style="width:52px">☐</td>':''}</tr>`).join('');
-  
-  const cab=en
-    ?`<div style="font-weight:900;font-size:20px;color:#1a3a6b;line-height:1">MOSAT GROUP INC<br><span style="font-size:9px;font-weight:400;color:#555">Advanced Metalwork</span></div><div style="font-size:8.5px;line-height:1.7;margin-top:8px;color:#333">6710 MAIN STREET SUITE 233 MIAMI LAKES<br>FL - 33014<br>Cel: 3008860468<br>Email: m.garcia@mosatgroup.com<br>EIN: 93-4707595<br>MIAMI - FLORIDA - USA</div>`
-    :`<img src="${LOGO_B64_PNG}" alt="GRUPO WEDM" style="height:50px;width:auto"><div style="font-size:8.5px;line-height:1.7;margin-top:6px;color:#333"><i>${esc(E.lema)}</i><br>${esc(E.dir)}<br>Tel: ${esc(E.tel)} &nbsp; Cel: ${esc(E.cel)}<br>Email: ${esc(E.email)}<br>NIT: ${esc(E.nit)}<br>${esc(E.ciudad)}</div>`;
-  const pie=en?'6710 Main Street Suite 233, Miami Lakes FL 33014 &nbsp; Cel: 300 886 0468 &nbsp; EIN: 93-4707595<br>Miami - Florida - USA':`Dirección: ${esc(E.dir)} &nbsp; Tel: ${esc(E.tel)} &nbsp; Cel: ${esc(E.cel)} &nbsp; NIT: ${esc(E.nit)}<br>${esc(E.ciudad)}`;
-  const css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:14mm 16mm}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:5px 8px;font-size:10px}.azul{background:#1a3a6b;color:#fff;font-weight:700}.azul-row{background:#dde6f0}.center{text-align:center}.footer{text-align:center;font-size:8px;color:#777;border-top:1px solid #ccc;padding-top:5px;margin-top:16px}@page{size:A4 portrait;margin:6mm}@media print{body{padding:8mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
-  const num=m.numero||'—';
-  return `<!DOCTYPE html><html lang="${en?'en':'es'}"><head><meta charset="UTF-8"><title>${en?'PACKING LIST':L.r} ${esc(String(num))}</title><style>${css}</style></head><body>
-  <table style="margin-bottom:14px;border:none"><tr><td style="border:none;width:52%;vertical-align:top;padding-right:16px">${cab}</td><td style="border:none;width:48%;vertical-align:top"><div style="line-height:1.75">
-    <div><span style="color:#1a3a6b">${L.f}:</span> ${fecha}</div><div><span style="color:#1a3a6b">${L.s}:</span> ${cl(m.empresa)}</div><div><span style="color:#1a3a6b">${L.n}:</span> ${cl(m.nit)}</div><div><span style="color:#1a3a6b">${L.d}:</span> ${cl(m.direccion)}</div>
-    <div><span style="color:#1a3a6b">${L.c}:</span> ${cl(m.ciudad)}</div><div><span style="color:#1a3a6b">${L.e}:</span> ${cl(m.contacto)}</div><div><span style="color:#1a3a6b">${L.t}:</span> ${cl(m.telefono)}</div>${m.oc_cliente?`<div><span style="color:#1a3a6b">${L.o}:</span> ${cl(m.oc_cliente)}</div>`:''}</div></td></tr></table>
-  <table style="margin-bottom:10px;border:2px solid #1a3a6b"><tbody><tr><td style="background:#f0f4fa;font-weight:700;width:120px">${L.p}:</td><td style="font-weight:700;font-size:11px;text-transform:uppercase">${cl(m.proyecto)}</td></tr><tr><td style="background:#f0f4fa;font-weight:700">${L.r}:</td><td style="font-weight:900;font-size:20px">${esc(String(num))}</td></tr></tbody></table>
-  <table style="margin-bottom:10px;border:2px solid #1a3a6b"><tbody><tr><td class="azul" style="width:200px;padding:8px 12px">${L.op}</td><td style="font-weight:900;font-size:14px;padding:8px 16px">${m.op!=null?m.op:'—'}</td></tr><tr><td class="azul" style="padding:8px 12px">${L.q}</td><td style="font-weight:900;font-size:14px;padding:8px 16px">${m.cot_num||'—'}</td></tr>${en&&m.oc_cliente?`<tr><td class="azul" style="padding:8px 12px">${L.po}</td><td style="font-weight:700;font-size:13px;padding:8px 16px">${cl(m.oc_cliente)}</td></tr>`:''}</tbody></table>
-  <table><thead><tr class="azul"><th class="center" style="width:${en?46:36}px">${L.i}</th><th class="center" style="width:55px">${L.qty}</th><th>${L.ds}</th>${des?'<th class="center" style="width:52px">✔</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${des?4:3}" style="text-align:center;padding:16px;color:#888">${L.sin}</td></tr>`}</tbody></table>
-  ${m.observaciones?`<p style="margin-top:10px;font-size:9px;color:#444;white-space:pre-wrap"><b>${L.ob}:</b> ${esc(m.observaciones)}</p>`:''}
-  ${des?`<table style="margin-top:18px;border:none"><tr><td style="border:none;width:50%;padding-right:18px"><div style="border-top:1px solid #111;padding-top:4px;font-size:9px">Despachó (calidad)</div></td><td style="border:none"><div style="border-top:1px solid #111;padding-top:4px;font-size:9px">Recibió / transportador</div></td></tr></table>`
-      :`<div style="margin-top:22px;max-width:300px"><div style="background:#1a3a6b;color:#fff;font-weight:700;font-size:10px;text-transform:uppercase;padding:6px 16px;border-radius:4px 4px 0 0;display:inline-block">${L.si}</div><div style="border:1px solid #ccc;padding:12px 16px;font-weight:700;font-size:12px">${L.nom}</div></div>${en?'':`<table style="margin-top:22px;border:none"><tr>${['ENTREGADO POR|Grupo WEDM','RECIBIDO POR|Nombre y firma','FECHA RECIBIDO|&nbsp;'].map(x=>{ const [a,b]=x.split('|'); return `<td style="border:none;width:33%;text-align:center;padding:0 10px"><div style="border-top:1.5px solid #1a3a6b;margin-bottom:4px"></div><div style="font-size:9px;font-weight:700;color:#1a3a6b">${a}</div><div style="font-size:8.5px;color:#555;margin-top:2px">${b}</div></td>`; }).join('')}</tr></table>`}`}
-  <div class="footer">${pie}</div></body></html>`;
-}
-function docRemision(id,tipo){
-  const m=remDe(id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  if(!m.numero&&tipo!=='despacho'){ toast('La remisión aún no tiene número','error'); return; }
-  _abrirDocParaImprimir(docHtmlRem(m,tipo||'remision'),`${tipo==='packing'?'PackingList':'REM'}-${m.numero||'borrador'}.pdf`,tipo==='despacho'?null:'remisiones');
-}
-
-// ── POR PEDIR (calidad pide la remisión de una OP) ─────────────────
-function porpedir(){
-  const ops=opsPorPedir(); const puedePedir=puede('calidad','comercial','administracion');
-  const banner=moduleBanner('📥','Por pedir','OP activas con unidades pendientes de remisionar');
-  if(!ops.length){ setContent(banner+empty('No hay OP esperando remisión','✅')); return; }
-  const cards=ops.map(o=>{ const und=o.items.reduce((s,x)=>s+x.d,0);
-    return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">OP-${o.op}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub">COT-${o.cot||'—'}${o.asesor?' · 👤 '+esc(o.asesor):''}</div></div><div style="text-align:right;flex-shrink:0"><span class="badge verde">${o.items.length} ítem${o.items.length!==1?'s':''}</span><div style="font-size:11px;margin-top:4px;color:var(--muted)">${und} und</div></div></div>
-      <div style="margin-top:8px;font-size:12px;color:var(--muted)">${o.items.slice(0,4).map(x=>`<div>Ítem ${x.p.item_num}: ${esc(String(x.p.descripcion||'').slice(0,70))} <b style="color:var(--text)">· ${x.d} und</b>${x.p.calidad_estado==='APROBADA'?' <span class=\"badge verde\" style=\"font-size:9px\">Calidad OK</span>':' <span class=\"badge gris\" style=\"font-size:9px\">Sin aprobar calidad</span>'}</div>`).join('')}${o.items.length>4?`<div>… y ${o.items.length-4} más</div>`:''}</div>
-      <div style="margin-top:10px">${puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">Sin permiso para pedirla</span>'}</div></div>`; }).join('');
-  setContent(`${banner}<div class="card-list" style="margin-top:12px">${cards}</div><div style="height:80px"></div>`);
-}
-
-// ── INICIO ─────────────────────────────────────────────────────────
+// ── DASHBOARD ──────────────────────────────────────────────────────
 function dashboard(){
-  const all=DB.remisiones||[]; const mes=new Date().toISOString().slice(0,7); const pend=all.filter(remPendiente);
-  const banner=moduleBanner('📊','Remisiones',`${all.filter(m=>!esFinal(m)).length} en curso · ${opsPorPedir().length} OP por pedir`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(pend.length,'🔔 Esperan mi acción','#ea580c',"_RM.f='pend';nav('remisiones')")}${kchip(opsPorPedir().length,'📥 OP por pedir','#0d9488',"nav('porpedir')")}${kchip(all.filter(m=>m.estado==='PEDIDA').length,'⏳ Pedidas (comercial)','var(--warn)',"_RM.f='ped';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='SELECCIONADA').length,'☑️ Seleccionadas (admón.)','var(--info)',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='GENERADA').length,'🧾 Generadas (por despachar)','#7b1fa2',"_RM.f='curso';nav('remisiones')")}${kchip(all.filter(m=>m.estado==='DESPACHADA'&&fFecha(m).slice(0,7)===mes).length,'✅ Despachadas este mes','#16a34a')}</div>`;
-  const parami=`<div class="dp-section" style="margin-top:14px"><h4>🔔 Lo que espera tu acción</h4>${pend.length?`<div class="card-list">${pend.slice(0,8).map(remCard).join('')}</div>`:mutedP('Nada pendiente para tu rol 🎉')}</div>`;
-  const ult=all.filter(m=>m.estado==='DESPACHADA').slice(0,5); const ultH=`<div class="dp-section" style="margin-top:14px"><h4>✅ Últimas despachadas</h4>${ult.map(m=>`<div class="cm-line" style="cursor:pointer" onclick="detalleRem('${m.id}')"><div class="cm-t">${remNum(m)} · ${esc(m.empresa||'—')}<small>${opR(m)} · ${fmtDate(fFecha(m))} · ${remUnd(m)} und</small></div></div>`).join('')||mutedP('Sin despachos todavía')}</div>`;
-  setContent(`${banner}${kp}${parami}${ultH}<div style="height:80px"></div>`);
+  const all=DB.produccion||[];
+  const enProceso=all.filter(o=>o.estado==='EN PROCESO');
+  const vencidas=all.filter(o=>{ const d=diasPactada(o); return d!=null&&d<0&&!['TERMINADO','CANCELADO'].includes(o.estado); });
+  const altas=enProceso.filter(o=>['Alta','Muy alta'].includes(o.prioridad));
+  const avgPct=enProceso.length?Math.round(enProceso.reduce((s,o)=>s+pctOp(o),0)/enProceso.length):0;
+  const maqCount={}; enProceso.forEach(o=>{ const m=procActual(o); maqCount[m]=(maqCount[m]||0)+1; });
+  const maqTop=Object.entries(maqCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const semCount={}; all.forEach(o=>{ const s=o.semana||'—'; semCount[s]=(semCount[s]||0)+1; });
+  const semTop=Object.entries(semCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const banner=moduleBanner('🏭','Planeación de Producción',`${enProceso.length} OP en proceso · ${vencidas.length} vencidas`);
+  const kpis=`<div class="kpi-grid">
+    <div class="kpi-card info" onclick="nav('ops')"><div class="kpi-label">En proceso</div><div class="kpi-value">${enProceso.length}</div><div class="kpi-sub">OPs activas</div></div>
+    <div class="kpi-card danger" onclick="nav('ops')"><div class="kpi-label">Vencidas</div><div class="kpi-value">${vencidas.length}</div><div class="kpi-sub">Días en negativo</div></div>
+    <div class="kpi-card warn" onclick="nav('ops')"><div class="kpi-label">Alta prioridad</div><div class="kpi-value">${altas.length}</div><div class="kpi-sub">En proceso</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">Avance promedio</div><div class="kpi-value">${avgPct}%</div><div class="kpi-sub">OPs en proceso</div></div>
+  </div>`;
+  const cargaMaq=`<div class="dp-section"><h4>🔧 Carga por máquina (OP en proceso)</h4>${maqTop.length?maqTop.map(([m,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:150px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(m)}">${esc(m)}</div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(n/maqTop[0][1]*100)}%;height:100%;background:var(--purple)"></div></div><div style="width:24px;text-align:right;font-size:12px;font-weight:700">${n}</div></div>`).join(''):mutedP('Sin datos')}</div>`;
+  const criticasH=vencidas.length?`<div class="dp-section" style="margin-top:14px"><h4>🔴 OPs vencidas (${vencidas.length})</h4><div class="card-list">${vencidas.slice(0,6).map(opCard).join('')}</div>${vencidas.length>6?`<div style="text-align:center;font-size:12px;color:var(--accent);cursor:pointer;padding:8px" onclick="nav('ops')">Ver todas →</div>`:''}</div>`:'';
+  const semH=`<div class="dp-section" style="margin-top:14px"><h4>📅 OPs por semana</h4>${semTop.map(([s,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:80px;font-size:12px;color:var(--muted)">Semana ${s}</div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(n/semTop[0][1]*100)}%;height:100%;background:var(--teal)"></div></div><div style="width:24px;text-align:right;font-size:12px;font-weight:700">${n}</div></div>`).join('')}</div>`;
+  setContent(`${banner}${kpis}${cargaMaq}${criticasH}${semH}<div style="height:80px"></div>`);
+}
+
+// ── OPS EN CURSO ─────────────────────────────────────────────────────
+let _opsF={estado:'',prioridad:'',maquina:'',q:'',vista:(window.innerWidth<=700?'cards':'tabla')};
+function opsSet(k,v){ _opsF[k]=v; pgReset(); ops(); }
+function ops(){
+  const all=DB.produccion||[];
+  const estados=[...new Set(all.map(o=>o.estado).filter(Boolean))].sort();
+  const prioridades=[...new Set(all.map(o=>o.prioridad).filter(Boolean))];
+  const maquinas=[...new Set(all.map(procActual).filter(x=>x&&x!=='—'))].sort();
+  let data=all.filter(o=>{
+    if(_opsF.estado&&o.estado!==_opsF.estado) return false;
+    if(_opsF.prioridad&&o.prioridad!==_opsF.prioridad) return false;
+    if(_opsF.maquina&&procActual(o)!==_opsF.maquina) return false;
+    if(_opsF.q){ const q=_norm(_opsF.q); if(!_norm([o.op,o.empresa,o.descripcion].join(' ')).includes(q)) return false; }
+    return true;
+  });
+  data=data.sort((a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?999:da)-(db==null?999:db); });
+  const banner=moduleBanner('🗂️','OPs en curso',`${data.length} de ${all.length} · ordenadas por urgencia`,
+    `<div class="chips" style="margin-top:8px">${[['cards','▦ Tarjetas'],['tabla','⊞ Tabla']].map(([k,l])=>`<button class="chip ${_opsF.vista===k?'on':''}" onclick="opsSet('vista','${k}')">${l}</button>`).join('')}</div>`);
+  const fb=`<div class="filter-bar"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="ops-q" placeholder="🔍 Buscar OP, cliente…" value="${esc(_opsF.q)}" oninput="opsSet('q',this.value)"></div><span class="filter-count">${data.length}/${all.length}</span></div>
+    <div class="filter-bar-selects open"><select onchange="opsSet('estado',this.value)"><option value="">Estado</option>${estados.map(e=>`<option ${_opsF.estado===e?'selected':''}>${esc(e)}</option>`).join('')}</select>
+    <select onchange="opsSet('prioridad',this.value)"><option value="">Prioridad</option>${prioridades.map(p=>`<option ${_opsF.prioridad===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+    <select onchange="opsSet('maquina',this.value)"><option value="">Máquina</option>${maquinas.map(m=>`<option ${_opsF.maquina===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
+    ${(_opsF.estado||_opsF.prioridad||_opsF.maquina||_opsF.q)?`<button class="btn btn-ghost btn-sm" onclick="_opsF={estado:'',prioridad:'',maquina:'',q:'',vista:_opsF.vista};ops()">✕ Limpiar</button>`:''}</div></div>`;
+  if(!data.length){ setContent(banner+fb+empty('Sin resultados con estos filtros')); return; }
+  const pg=pgSlice('ops',data);
+  setContent(`${banner}${fb}${_opsF.vista==='tabla'?opsTabla(pg):`<div class="card-list">${pg.map(opCard).join('')}</div>`}${pgMore('ops',data)}`);
+}
+function opsTabla(rows){
+  return `<div class="tbl-wrap"><table class="data-tbl"><thead><tr><th>OP</th><th>Cliente</th><th>Descripción</th><th>Estado</th><th>Prioridad</th><th>Avance</th><th>Días</th><th>Máquina</th></tr></thead><tbody>
+  ${rows.map(op=>{ const d=diasPactada(op); return `<tr onclick="detailOP('${op.id}')"><td class="td-num">${opTitulo(op)}</td><td>${esc(op.empresa||'—')}</td><td style="max-width:200px">${esc(op.descripcion||'—')}</td><td>${bEst(op.estado)}</td><td>${bPrio(op.prioridad)}</td><td>${prog(pctOp(op))} ${pctOp(op)}%</td><td class="td-num">${d!=null?diasTag(d):'—'}</td><td>${esc(procActual(op))}</td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+
+// ── KANBAN POR MÁQUINA ───────────────────────────────────────────────
+function kanban(){
+  const activas=(DB.produccion||[]).filter(o=>o.estado==='EN PROCESO');
+  const cols={}; activas.forEach(o=>{ const m=procActual(o); (cols[m]=cols[m]||[]).push(o); });
+  const keys=Object.keys(cols).sort((a,b)=>cols[b].length-cols[a].length);
+  const banner=moduleBanner('🧩','Kanban por máquina',`${activas.length} OP en proceso, agrupadas por el proceso en el que van ahora`);
+  if(!keys.length){ setContent(banner+empty('No hay OP en proceso')); return; }
+  const board=`<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px">${keys.map(k=>`
+    <div style="flex:0 0 260px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px">
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="badge gris">${cols[k].length}</span></div>
+      ${cols[k].sort((a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?999:da)-(db==null?999:db); }).map(op=>`<div class="list-card" style="padding:10px;margin-bottom:8px" onclick="detailOP('${op.id}')">
+        <div class="lc-id">${opTitulo(op)}</div><div class="lc-title" style="font-size:12.5px">${esc(op.empresa||'—')}</div>
+        <div style="margin-top:4px">${prog(pctOp(op))} <span style="font-size:10.5px;color:var(--muted)">${pctOp(op)}%</span></div>
+        <div style="margin-top:4px">${bPrio(op.prioridad)} ${(()=>{ const d=diasPactada(op); return d!=null?diasTag(d):''; })()}</div>
+      </div>`).join('')}
+    </div>`).join('')}</div>`;
+  setContent(`${banner}${board}`);
+}
+
+// ── IMAGEN DE LA OP (misma lógica que Diseño: miniatura en la base o foto de Drive, carga diferida) ──
+const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
+const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
+const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
+function imgErr(el){
+  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
+  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
+  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
+  const ph=document.createElement('div'); ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
+}
+const imgTag=(p,w,style)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
+const thumbProd=(p,sz=38)=>imgSrcOP(p,sz*3)
+  ?imgTag(p,sz*3,`width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;background:#fff`)
+  :(p.tiene_imagen?`<div class="lz-th" data-pid="${esc(p.id)}" data-sz="${sz}" style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`
+  :`<div style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
+async function lzThumbs(){
+  const els=[...document.querySelectorAll('.lz-th[data-pid]')]; if(!els.length) return;
+  const ids=[...new Set(els.map(e=>e.dataset.pid))].slice(0,80);
+  try{
+    const rows=await GET('produccion','select=id,imagen_thumb&id=in.('+ids.map(i=>'"'+i+'"').join(',')+')');
+    (rows||[]).forEach(r=>{ const p=opDe(r.id); if(p) p.imagen_thumb=r.imagen_thumb||''; });
+    document.querySelectorAll('.lz-th[data-pid]').forEach(e=>{ const p=opDe(e.dataset.pid); if(p&&p.imagen_thumb) e.outerHTML=thumbProd(p,Number(e.dataset.sz)||38); });
+  }catch(e){}
+}
+
+// ── Piezas reutilizables ────────────────────────────────────────────
+const idq=op=>jsq(op.id);
+function soloEditor(){ if(puede('planeacion','administracion')) return true; toast('Tu rol no puede modificar Planeación','error'); return false; }
+function barList(rows,fmtV,max){
+  if(!rows.length) return mutedP('Sin datos');
+  const mx=max||Math.max(...rows.map(r=>Number(r[1])||0),0)||1;
+  return rows.map(([l,v,c])=>`<div class="bar-row"><div class="bar-l" title="${esc(l)}">${esc(l)}</div><div class="bar-t"><div class="bar-f" style="width:${v>0?Math.max(2,Math.round(v/mx*100)):0}%;background:${c||'var(--accent)'}"></div></div><div class="bar-v">${fmtV(v)}</div></div>`).join('');
+}
+function rutaPasosHtml(op){
+  const ps=pasosDe(op);
+  if(!ps.length) return mutedP('Esta OP no tiene ruta de producción registrada (MQ1 a MQ5 vacías).');
+  const act=pasoActual(op);
+  return `<div class="rp-list">${ps.map(s=>{ const m=MAQ[s.b]; const now=act&&act.i===s.i;
+    return `<div class="rp-step ${now?'now':''}"><div class="rp-num" style="background:${m.c}">${s.i}</div>
+      <div style="flex:1;min-width:0"><div class="rp-t">${m.ic} ${esc(m.n)}${now?' <span class="badge azul">Paso actual</span>':''}</div>
+      <div class="rp-s">MQ${s.i} · ${esc(s.raw)}</div>
+      ${s.b==='externo'
+        ?`<div class="rp-s" style="font-style:italic">Sin % editable (servicio externo u otro proceso)${now&&op.externo?' · 🚚 fuera en este momento':''}</div>`
+        :`<div style="display:flex;align-items:center;gap:8px"><div style="flex:1">${prog(s.pct)}</div><b style="font-family:var(--mono);font-size:12px;color:${pctColor(s.pct)}">${s.pct}%</b></div>`}
+      <div class="rp-s">👷 ${s.oper?`<b style="color:var(--text)">${esc(s.oper)}</b>${s.nota?' · '+esc(s.nota):''}`:'<span style="color:var(--warn)">Sin operario</span>'}</div>
+      </div></div>`; }).join('')}</div>`;
+}
+function pasoChip(op){
+  const s=pasoActual(op); if(!s) return '<span class="stg">Sin ruta</span>';
+  return `<span class="stg" title="${esc(s.raw)}">${MAQ[s.b].ic} MQ${s.i} · ${esc(s.raw.length>28?s.raw.slice(0,27)+'…':s.raw)}</span>`;
+}
+function operBadge(op){
+  const s=pasoActual(op); if(!s) return '';
+  return s.oper?`<span class="badge teal">👷 ${esc(s.oper)}</span>`:'<span class="badge naranja">Sin operario</span>';
+}
+function extBadge(op){
+  return op.externo?`<span class="badge morado">🚚 ${esc(op.externo_detalle||'Servicio externo')}${op.externo_hasta?' · vuelve '+fmtDate(op.externo_hasta):''}</span>`:'';
+}
+function buscaOP(o,q){ if(!q) return true; const s=_norm(q); return _norm([o.op,'OP-'+o.op,o.empresa,o.descripcion,o.disenador,...rutaDe(o),...pasosDe(o).map(p=>p.oper)].join(' ')).includes(s); }
+function filtroBusqueda(key,val,fn,count){
+  return `<div class="filter-bar" style="margin-top:12px;border-radius:12px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="${key}" placeholder="🔍 Buscar OP, cliente, máquina, operario…" value="${esc(val)}" oninput="${fn}"></div>${count!=null?`<span class="filter-count">${count}</span>`:''}</div></div>`;
+}
+// Después de guardar desde un modal: cierra, redibuja la vista y el detalle abierto (si la OP sigue en la lista)
+let _DET_ID=null;
+function trasGuardar(id){
+  closeModal(); refreshCurrentView();
+  if(_detailOpen&&_DET_ID===id){ if(opDe(id)) detailOP(id); else closeDetail(); }
+}
+
+// ── ETAPAS (Diseño/Planeación → MP/Insumos → [Servicio Externo] → Entrega Prod. → Calidad → Liberación) ──
+// Entrega usa entrega_prod_fecha (la que escriben Comercial/Diseño/Producción); fecha_entrega_prod solo es respaldo de datos importados.
+// Calidad se ve hecha con calidad_ok (indicador heredado) o con calidad_estado='APROBADA' (módulo de Calidad).
+// Liberación = despachado / despacho_fecha.
+// Servicio Externo es CONDICIONAL: solo aparece en la línea de tiempo mientras la OP está actualmente afuera
+// (externo=true), igual que en el sistema anterior. La base no guarda si una OP YA pasó por externo y volvió
+// (externo/externo_desde/externo_detalle/externo_hasta se limpian al marcar el regreso), así que esta etapa
+// nunca queda "hecha": simplemente desaparece de la línea de tiempo cuando la OP vuelve de externo.
+const ETAPAS_BASE=[
+  {k:'diseno',l:'Diseño / Planeación',ic:'📐',ok:o=>!!o.diseno_ok,f:o=>o.diseno_fecha,por:o=>o.diseno_por},
+  {k:'mp',l:'MP / Insumos',ic:'📦',ok:o=>!!o.mp_ok,f:o=>o.mp_fecha,por:o=>o.mp_por},
+  {k:'servicio',l:'Servicio Externo',ic:'🚚',ok:()=>false,f:o=>o.externo_desde,por:()=>''},
+  {k:'entrega',l:'Entrega Prod.',ic:'🏭',ok:o=>!!o.terminado,f:o=>o.entrega_prod_fecha||o.fecha_entrega_prod,por:o=>o.terminado_por},
+  {k:'calidad',l:'Calidad',ic:'✅',ok:o=>!!o.calidad_ok||o.calidad_estado==='APROBADA',f:o=>o.calidad_fecha,por:o=>o.calidad_por},
+  {k:'liberacion',l:'Liberación',ic:'🚀',ok:o=>!!o.despachado,f:o=>o.despacho_fecha,por:()=>''}
+];
+function etapasDe(op){ return ETAPAS_BASE.filter(e=>e.k!=='servicio'||!!(op&&op.externo)); }
+const etapaSig=op=>etapasDe(op).find(e=>!e.ok(op))||null;
+function timelineEtapas(op){
+  const ET=etapasDe(op); const sig=etapaSig(op);
+  return `<div class="timeline-wrap"><div class="timeline">${ET.map((e,i)=>{ const ok=e.ok(op), now=!!sig&&sig.k===e.k;
+    return `<div class="tl-item ${ok?'done':now?'now':''}"><div class="tl-dot-wrap">${ok?'✓':i+1}</div><div class="tl-label">${e.l}</div><div class="tl-date">${ok?(e.f(op)?fmtDate(e.f(op)):'Hecha'):now?'Siguiente':''}</div></div>`; }).join('')}</div></div>`;
+}
+function etapaNota(k,op){
+  if(k==='entrega'&&pctOp(op)<100) return `<div style="font-size:12px;margin-top:6px">⚠️ Para marcarla, el avance global debe estar en 100% (va en ${pctOp(op)}%). Usa <b>Actualizar avance</b> primero.</div>`;
+  if(k==='servicio') return `<div style="font-size:12px;margin-top:6px">ℹ️ Marca el <b>regreso</b> de servicio externo (equivale a usar «Servicio Ext.» y desmarcar «Actualmente afuera»). No queda un registro de que esta etapa ya se cumplió: si la OP vuelve a salir a externo, esta etapa reaparecerá.</div>`;
+  if(k==='calidad') return `<div style="font-size:12px;margin-top:6px">ℹ️ Aquí solo se marca la etapa. La aprobación formal (con rechazos y reprocesos) se hace en el módulo de Calidad.</div>`;
+  if(k==='liberacion') return `<div style="font-size:12px;margin-top:6px">⚠️ Marca la OP como <b>despachada</b> y la pasa a TERMINADO. No genera remisión: la OP deja de aparecer en Remisiones como pendiente.</div>`;
+  return '';
+}
+function modalEtapas(id){
+  const op=opDe(id); if(!op) return; const ET=etapasDe(op); const sig=etapaSig(op);
+  const raro=ET.some((e,i)=>e.ok(op)&&ET.slice(0,i).some(x=>!x.ok(op)));
+  const body=`<div style="font-size:12.5px;color:var(--muted)">${opTitulo(op)} · ${esc(op.empresa||'')}</div>
+    <div class="rm-steps">${ET.map((e,i)=>{ const ok=e.ok(op), now=!!sig&&sig.k===e.k; const f=e.f(op), por=e.por(op);
+      return `<div class="rm-st ${ok?'ok':''} ${now?'act':''}"><div class="rm-dot">${ok?'✓':i+1}</div><div class="rm-tx"><b>${e.ic} ${e.l}</b><span>${ok?'Completada'+(f?' · '+fmtF(f):'')+(por?' · '+esc(por):''):now?'Pendiente — es la siguiente':'Pendiente'}</span></div></div>`; }).join('')}</div>
+    ${sig?`<div class="callout">⏭ <b>Siguiente etapa a completar:</b> ${sig.ic} ${sig.l}${etapaNota(sig.k,op)}</div>`
+         :`<div class="callout" style="background:#e6f6ea;border-color:#a8ddb5;color:#1e7d32">✅ Todas las etapas están completas.</div>`}
+    ${raro?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Nota: hay etapas marcadas sin que las anteriores lo estén (datos del sistema anterior). La «siguiente» es la primera que falta.</div>`:''}`;
+  const puedeMarcar=sig&&puede('planeacion','administracion');
+  openModal('🗓️ Etapas',body,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${puedeMarcar?`<button class="btn btn-primary" onclick="marcarEtapa('${idq(op)}','${sig.k}')">Marcar '${sig.l}'</button>`:''}`);
+}
+async function marcarEtapa(id,k){
+  if(!soloEditor()) return;
+  const e=ETAPAS_BASE.find(x=>x.k===k); if(!e) return;
+  if(k==='liberacion'&&!confirm('¿Marcar la LIBERACIÓN?\n\nLa OP quedará como despachada y en estado TERMINADO. No se genera remisión y la OP deja de aparecer como pendiente en Remisiones.')) return;
+  if(k==='servicio'){
+    const r=await rpcP('planeacion_servicio_externo',{p_id:id,p_externo:false},`✅ Regreso de servicio externo marcado`);
+    if(r) trasGuardar(id);
+    return;
+  }
+  const r=await rpcP('planeacion_avanzar_etapa',{p_id:id,p_etapa:k},`✅ Etapa «${e.l}» marcada`);
+  if(r) trasGuardar(id);
+}
+
+// ── MODAL: AVANCE POR PROCESO (un % por paso de ruta; el servidor recalcula el avance global
+//    como promedio ponderado por las horas estimadas de cada máquina) ──
+let _AVP=null;
+function modalAvancePasos(id){
+  const op=opDe(id); if(!op||!soloEditor()) return;
+  const ps=pasosDe(op); const ed=ps.filter(s=>s.b!=='externo');
+  _AVP={id,ini:Object.fromEntries(ed.map(s=>[s.i,s.pct])),val:Object.fromEntries(ed.map(s=>[s.i,s.pct]))};
+  const hero=`<div class="avp-hero"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;font-weight:700;opacity:.7">Avance global actual</div>
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:32px;font-weight:800;font-family:var(--mono)">${pctOp(op)}%</div><div id="avp-nuevo" style="font-size:12.5px;font-weight:700"></div></div>
+    <div style="font-size:12.5px;opacity:.8;margin-top:2px">${esc(op.descripcion||'')}</div>
+    <div class="progreso-bar" style="background:rgba(255,255,255,.2)"><div class="progreso-fill" style="width:${pctOp(op)}%"></div></div></div>`;
+  if(!ed.length){
+    openModal(`📈 Avance por proceso — ${opTitulo(op)}`,hero+mutedP(ps.length?'Todos los pasos de la ruta son servicios externos u otros procesos sin % editable.':'Esta OP no tiene ruta de producción registrada.')+mutedP('Puedes registrar el avance global con el formulario simple.'),
+      `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="formAvance('${idq(op)}')">✏️ Formulario simple</button>`);
+    return;
+  }
+  const blocks=ps.map(s=>{
+    if(s.b==='externo') return `<div class="avp-blk" style="opacity:.75"><div class="avp-top"><div class="avp-lbl">MQ${s.i} · ${esc(s.raw.toUpperCase())}</div><span class="badge gris">Externo</span></div><div style="font-size:11.5px;color:var(--muted)">Servicio externo u otro proceso: no tiene % editable (no existe columna de avance para él) y no cuenta en el promedio.</div></div>`;
+    const par=ps.filter(o=>o.b===s.b&&o.i!==s.i);
+    return `<div class="avp-blk"><div class="avp-top"><div class="avp-lbl">MQ${s.i} · ${esc(s.raw.toUpperCase())}</div><div class="avp-pct" id="avp-p${s.i}" style="color:${pctColor(s.pct)}">${s.pct}%</div></div>
+      <input type="range" min="0" max="100" step="1" value="${s.pct}" id="avp-r${s.i}" data-b="${s.b}" oninput="avpSet(${s.i},this.value)" style="accent-color:${pctColor(s.pct)}">
+      <div class="avp-q">${[0,25,50,75,100].map(q=>`<button type="button" onclick="avpSet(${s.i},${q})">${q}</button>`).join('')}</div>
+      ${par.length?`<div style="font-size:10.5px;color:var(--muted);margin-top:6px">Comparte el % con ${par.map(o=>'MQ'+o.i).join(', ')}: es la misma máquina (${esc(MAQ[s.b].n)}) y la base guarda un solo avance por máquina.</div>`:''}</div>`;
+  }).join('');
+  openModal(`📈 Avance por proceso — ${opTitulo(op)}`,
+    ayudaForm('Mueve la barra o toca 0/25/50/75/100 en cada paso de la ruta. Al guardar, el **avance global** queda como el **promedio ponderado por las horas estimadas de cada máquina** (por ejemplo: Torno 2h al 100% + Centro de mecanizado 1h al 0% → (100×2 + 0×1)/3 = 66,7%). Los servicios externos no cuentan. Si la OP no tiene horas estimadas cargadas para ninguna máquina de la ruta, se usa un promedio simple entre ellas.')+hero+blocks,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarAvancePasos()">💾 Guardar avance</button>`);
+  avpPreview();
+}
+function avpSet(i,v){
+  if(!_AVP) return; v=Math.max(0,Math.min(100,Math.round(Number(v)||0)));
+  const r0=document.getElementById('avp-r'+i); const b=r0?r0.dataset.b:null; if(!b) return;
+  document.querySelectorAll('#modal-body input[type=range][data-b]').forEach(r=>{
+    if(r.dataset.b!==b) return; const k=r.id.slice(5);
+    _AVP.val[k]=v; r.value=v; r.style.accentColor=pctColor(v);
+    const p=document.getElementById('avp-p'+k); if(p){ p.textContent=v+'%'; p.style.color=pctColor(v); }
+  });
+  avpPreview();
+}
+// Mismo cálculo que el servidor (planeacion_avance_pasos): promedio ponderado por las horas ESTIMADAS
+// de cada máquina de la ruta (hrs_<maquina>, no las horas reales ya trabajadas). Si ninguna máquina de
+// la ruta tiene horas estimadas cargadas, se cae a un promedio simple entre las máquinas.
+function avpPreview(){
+  if(!_AVP) return; const op=opDe(_AVP.id); if(!op) return; const seen={};
+  pasosDe(op).forEach(s=>{ if(s.b!=='externo'&&!(s.b in seen)) seen[s.b]=Number(_AVP.val[s.i])||0; });
+  const ks=Object.keys(seen);
+  let nv=pctOp(op);
+  if(ks.length){
+    const w=ks.map(k=>Number(op['hrs_'+k])||0); const totw=w.reduce((a,x)=>a+x,0);
+    nv=totw>0
+      ? Math.round(ks.reduce((a,k,idx)=>a+seen[k]*w[idx],0)/totw*10)/10
+      : Math.round(ks.reduce((a,k)=>a+seen[k],0)/ks.length*10)/10;
+  }
+  const el=document.getElementById('avp-nuevo'); if(el) el.innerHTML=Math.round(nv)!==pctOp(op)?`→ quedará en ${nv}%`:'';
+}
+async function guardarAvancePasos(){
+  if(!_AVP) return; const ch={};
+  for(const k in _AVP.val) if(_AVP.val[k]!==_AVP.ini[k]) ch[k]=_AVP.val[k];
+  if(!Object.keys(ch).length){ toast('No cambiaste ningún avance','warn'); return; }
+  const id=_AVP.id;
+  const r=await rpcP('planeacion_avance_pasos',{p_id:id,p_pasos:ch},'✅ Avance guardado');
+  if(r){ _AVP=null; trasGuardar(id); }
+}
+
+// ── MODAL: HORAS REALES (se SUMAN a lo que ya hay) ──
+function modalHoras(id){
+  const op=opDe(id); if(!op||!soloEditor()) return;
+  const deRuta=[...new Set(pasosDe(op).map(s=>s.b).filter(b=>b!=='externo'))];
+  const otros=MAQ_EDIT.filter(b=>!deRuta.includes(b));
+  const opt=b=>`<option value="${b}">${MAQ[b].ic} ${MAQ[b].n} — lleva ${fmtH(op[MAQ[b].hrs])} h</option>`;
+  openModal(`⏱️ Registrar horas — ${opTitulo(op)}`,
+    ayudaForm('Elige la máquina y escribe las horas trabajadas. Se **suman** a las que ya tiene registradas (no las reemplazan). Si te equivocaste, registra un número **negativo** para corregir.')+
+    `<div class="form-grid">
+      <div class="field span2"><label>Máquina</label><select id="hr-b" onchange="hrHint('${idq(op)}')">
+        ${deRuta.length?`<optgroup label="De la ruta de esta OP">${deRuta.map(opt).join('')}</optgroup>`:''}
+        <optgroup label="${deRuta.length?'Otras máquinas':'Máquinas'}">${otros.map(opt).join('')}</optgroup></select></div>
+      <div class="field"><label>Horas a sumar</label><input id="hr-h" type="number" step="0.25" min="-500" max="500" placeholder="Ej: 2.5" oninput="hrHint('${idq(op)}')"></div>
+      <div class="field"><label>Resultado</label><div id="hr-hint" style="font-size:13px;padding:10px 0;color:var(--muted)"></div></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarHoras('${idq(op)}')">💾 Registrar</button>`);
+  hrHint(id);
+}
+function hrHint(id){
+  const op=opDe(id), el=document.getElementById('hr-hint'); if(!op||!el) return;
+  const b=gv('hr-b'); const m=MAQ[b]; if(!m) return; const antes=Number(op[m.hrs])||0; const h=Number(gv('hr-h'))||0;
+  el.innerHTML=`${fmtH(antes)} h ${h?`→ <b style="color:${antes+h<0?'var(--danger)':'var(--text)'}">${fmtH(antes+h)} h</b>`:''}<div style="font-size:10.5px">Columna: ${m.hrs}</div>`;
+}
+async function guardarHoras(id){
+  const b=gv('hr-b'), h=Number(gv('hr-h'));
+  if(!b){ toast('Elige la máquina','warn'); return; }
+  if(!h){ toast('Escribe las horas (distintas de 0)','warn'); return; }
+  const r=await rpcP('planeacion_registrar_horas',{p_id:id,p_bucket:b,p_horas:h},`✅ ${h>0?'+':''}${fmtH(h)} h en ${MAQ[b].l}`);
+  if(r) trasGuardar(id);
+}
+
+// ── MODAL: OPERARIOS POR PASO (texto libre con sugerencias) ──
+// Decisión: no hay tabla de operarios/colaboradores; el nombre es texto libre guardado en produccion.ruta_operarios
+// y la lista de sugerencias sale de los nombres ya usados (RPC planeacion_operarios_usados).
+let _OPR=null;
+function modalOperarios(id,paso){
+  const op=opDe(id); if(!op||!soloEditor()) return;
+  const ps=pasosDe(op);
+  if(!ps.length){ openModal('👷 Operarios',mutedP('Esta OP no tiene ruta de producción: no hay pasos a los que asignar operario.'),`<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`); return; }
+  _OPR={id,ini:Object.fromEntries(ps.map(s=>[s.i,[s.oper,s.nota]]))};
+  openModal(`👷 Operarios — ${opTitulo(op)}`,
+    ayudaForm('Escribe el nombre del colaborador de cada paso (puedes elegir uno de la lista que aparece al escribir). **Deja el nombre vacío** para quitar la asignación. Solo se guardan los pasos que cambies.')+
+    `<datalist id="oper-dl">${operariosConocidos().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`+
+    ps.map(s=>`<div class="cmp-item-row" ${paso===s.i?'style="border-color:var(--accent)"':''}>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">MQ${s.i} · ${esc(s.raw)}</b><span class="badge gris">${MAQ[s.b].ic} ${MAQ[s.b].l}</span></div>
+      <div class="form-grid" style="margin-top:6px">
+        <div class="field"><label>Operario</label><input id="opr-o${s.i}" list="oper-dl" autocomplete="off" value="${esc(s.oper)}" placeholder="Nombre del colaborador"></div>
+        <div class="field"><label>Nota (opcional)</label><input id="opr-n${s.i}" value="${esc(s.nota)}" placeholder="Turno, instrucción…"></div>
+      </div>
+      ${s.asig&&s.asig.por?`<div style="font-size:10.5px;color:var(--muted);margin-top:4px">Asignado por ${esc(s.asig.por)}${s.asig.fecha?' · '+fmtDT(s.asig.fecha):''}</div>`:''}</div>`).join(''),
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarOperarios()">💾 Guardar</button>`);
+  if(paso) setTimeout(()=>document.getElementById('opr-o'+paso)?.focus(),120);
+}
+async function guardarOperarios(){
+  if(!_OPR) return; const {id,ini}=_OPR; const cambios=[];
+  for(const i in ini){ const o=gv('opr-o'+i), n=gv('opr-n'+i); if(o!==ini[i][0]||n!==ini[i][1]) cambios.push([Number(i),o,n]); }
+  if(!cambios.length){ toast('No cambiaste ninguna asignación','warn'); return; }
+  let ok=0; showBusy();
+  try{ for(const [i,o,n] of cambios){ await sb.rpc('planeacion_asignar_operario',{p_id:id,p_paso:i,p_operario:o,p_nota:n||null}); ok++; } }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
+  finally{ hideBusy(); }
+  if(ok){ await Promise.all([recargar(),cargarOperariosUsados()]); toast(`✅ ${ok} paso${ok>1?'s':''} actualizado${ok>1?'s':''}`); _OPR=null; trasGuardar(id); }
+}
+
+// ── MODAL: SERVICIO EXTERNO ──
+function modalExterno(id){
+  const op=opDe(id); if(!op||!soloEditor()) return;
+  const hasta=/^\d{4}-\d{2}-\d{2}$/.test(String(op.externo_hasta||''))?op.externo_hasta:'';
+  openModal(`🚚 Servicio externo — ${opTitulo(op)}`,
+    ayudaForm('Marca si la pieza **salió a un proveedor externo** (temple, anodizado, corte láser…). La fecha de salida se guarda sola. Si la OP estaba EN PROCESO pasa a TRABAJO EXTERNO, y al marcar el regreso vuelve a EN PROCESO.')+
+    `<div class="callout" style="margin:0 0 12px">${op.externo?`🚚 En servicio externo desde <b>${fmtDT(op.externo_desde)}</b>${op.externo_detalle?' — '+esc(op.externo_detalle):''}${op.externo_hasta?' · regresa '+fmtDate(op.externo_hasta):''}`:'🏭 Actualmente la OP <b>no</b> está en servicio externo.'}</div>
+    <div class="form-grid">
+      <div class="field"><label>¿Está en servicio externo?</label><select id="ex-on"><option value="1" ${op.externo?'selected':''}>Sí, está afuera</option><option value="0" ${op.externo?'':'selected'}>No / ya regresó</option></select></div>
+      <div class="field"><label>Regreso estimado</label><input id="ex-hasta" type="date" value="${esc(hasta)}"></div>
+      <div class="field span2"><label>Detalle (proveedor / servicio)</label><input id="ex-det" value="${esc(op.externo_detalle||'')}" placeholder="Ej: TEMPLE EN TRATAR S.A."></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarExterno('${idq(op)}')">💾 Guardar</button>`);
+}
+async function guardarExterno(id){
+  const on=gv('ex-on')==='1';
+  const r=await rpcP('planeacion_servicio_externo',{p_id:id,p_externo:on,p_detalle:gv('ex-det')||null,p_hasta:gv('ex-hasta')||null},on?'🚚 Servicio externo guardado':'✅ Regreso registrado');
+  if(r) trasGuardar(id);
+}
+
+// ── MODAL: CAMBIAR ESTADO (reutiliza planeacion_registrar_avance con solo p_estado) ──
+const ESTADOS_LISTA=['PENDIENTE MP Y DISEÑO','PENDIENTE DISEÑO','PENDIENTE MP','EN PROCESO','TRABAJO EXTERNO','PAUSADO','PENDIENTE DESPACHO','TERMINADO','CANCELADO'];
+function modalEstado(id){
+  const op=opDe(id); if(!op||!soloEditor()) return;
+  const lista=ESTADOS_LISTA.includes(op.estado)?ESTADOS_LISTA:[op.estado,...ESTADOS_LISTA];
+  openModal(`🔄 Cambiar estado — ${opTitulo(op)}`,
+    ayudaForm('Elige el nuevo estado. Queda registrado en el historial de la OP con tu nombre. Si la pasas a **TERMINADO** deja de aparecer en este módulo.')+
+    `<div style="margin-bottom:12px">Estado actual: ${bEst(op.estado)}</div>
+    <div class="form-grid col1">
+      <div class="field"><label>Nuevo estado</label><select id="es-est">${lista.map(e=>`<option value="${esc(e)}" ${op.estado===e?'selected':''}>${esc(e)}</option>`).join('')}</select></div>
+      <div class="field"><label>Motivo / observación (opcional)</label><input id="es-obs" placeholder="Ej: esperando material del cliente"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado('${idq(op)}')">💾 Cambiar</button>`);
+}
+async function guardarEstado(id){
+  const op=opDe(id); const est=gv('es-est'), obs=gv('es-obs');
+  if(!est||(op&&op.estado===est)){ toast('Elige un estado distinto al actual','warn'); return; }
+  if(est==='TERMINADO'&&!confirm('¿Pasar la OP a TERMINADO? Dejará de aparecer en Planeación.')) return;
+  const r=await rpcP('planeacion_registrar_avance',{p_id:id,p_avance:null,p_estado:est,p_prioridad:null,p_observacion:obs||null},'✅ Estado cambiado');
+  if(r) trasGuardar(id);
+}
+
+// ── MODALES DE SOLO LECTURA: Calidad, Producción, Ruta ──
+function modalCalidad(id){
+  const op=opDe(id); if(!op) return;
+  const ok=op.calidad_ok||op.calidad_estado==='APROBADA';
+  openModal(`✅ Calidad — ${opTitulo(op)}`,
+    `<div class="callout" style="margin:0 0 12px">ℹ️ Esta información es de solo lectura. La aprobación, los rechazos y los reprocesos se registran en el módulo de <b>Calidad</b>.</div>
+    ${dr('Resultado',ok?'<span class="badge verde">Aprobada / marcada</span>':'<span class="badge gris">Pendiente</span>')}
+    ${dr('Estado de calidad',esc(op.calidad_estado||'—'))}
+    ${dr('Marcada (indicador heredado)',op.calidad_ok?'Sí':'No')}
+    ${dr('Fecha',op.calidad_fecha?fmtF(op.calidad_fecha):'—')}
+    ${dr('Por',esc(op.calidad_por||'—'))}
+    ${dr('Entregado por producción',op.terminado?'Sí'+((op.entrega_prod_fecha||op.fecha_entrega_prod)?' · '+fmtF(op.entrega_prod_fecha||op.fecha_entrega_prod):''):'No')}`,
+    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+}
+function modalProduccion(id){
+  const op=opDe(id); if(!op) return; const s=pasoActual(op);
+  const hrs=MAQ_EDIT.map(b=>[MAQ[b].l,Number(op[MAQ[b].hrs])||0,MAQ[b].c]).filter(r=>r[1]>0);
+  openModal(`🏭 Producción — ${opTitulo(op)}`,
+    `${dr('Estado',bEst(op.estado))}${dr('Avance global',`<b>${pctOp(op)}%</b>`)}
+    ${dr('Proceso actual',s?`MQ${s.i} · ${esc(s.raw)}`:'—')}
+    ${dr('Operario del paso actual',s&&s.oper?esc(s.oper):'—')}
+    ${dr('Fecha pactada',pactadaTag(op))}
+    ${dr('Servicio externo',op.externo?extBadge(op):'No')}
+    <div class="dp-section" style="margin-top:14px"><h4>⏱️ Horas reales registradas</h4>${hrs.length?barList(hrs,v=>fmtH(v)+' h'):mutedP('Aún no hay horas reales registradas.')}
+    ${dr('Total horas reales',`<b>${fmtH(op.horas_total_real)} h</b>`)}</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="verEnProduccion('${idq(op)}')">🏭 Ver en Producción</button>`);
+}
+function verEnProduccion(id){
+  const op=opDe(id); if(!op) return; closeModal();
+  _prodF={chip:'todas',q:String(op.op),maq:'',prio:''}; nav('produccion');
+  if(!enProd(op)) toast('Esta OP no está EN PROCESO ni en TRABAJO EXTERNO; por eso no aparece en Producción','warn');
+}
+function modalRuta(id){
+  const op=opDe(id); if(!op) return;
+  openModal(`🧭 Ruta de producción — ${opTitulo(op)}`,rutaPasosHtml(op),
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="modalOperarios('${idq(op)}')">👷 Operarios</button><button class="btn btn-primary" onclick="modalAvancePasos('${idq(op)}')">📈 Avance</button>`);
+}
+
+// ── DETALLE DE OP ────────────────────────────────────────────────────
+function detailOP(id){
+  const op=opDe(id); if(!op){ toast('OP no encontrada','error'); return; }
+  _DET_ID=id; const j=idq(op);
+  const p=pctOp(op), s=pasoActual(op), d=diasPactada(op);
+  const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${opTitulo(op)}</div><div class="cot-hero-empresa">${esc(op.empresa||'—')}</div><div class="cot-hero-sub" style="white-space:normal">${esc(op.descripcion||'')}</div></div><div class="cot-hero-right">${thumbProd(op,64)}</div></div>
+    <div class="cot-hero-badges">${bEst(op.estado)}${bPrio(op.prioridad)}${op.externo?'<span class="badge">🚚 Externo</span>':''}${d!=null&&!op.despachado?diasTag(d):''}</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-top:12px;opacity:.9"><span>Avance global</span><b style="font-family:var(--mono);font-size:16px">${p}%</b></div>
+    <div class="progreso-bar" style="background:rgba(255,255,255,.2)"><div class="progreso-fill ${p>=100?'ok':''}" style="width:${p}%"></div></div>
+    ${s?`<div style="font-size:11.5px;opacity:.85;margin-top:8px">▶ Proceso actual: <b>MQ${s.i} · ${esc(s.raw)}</b>${s.oper?' · 👷 '+esc(s.oper):''}</div>`:''}</div>`;
+  const A=[['📈','#2563eb','AVANCE',`modalAvancePasos('${j}')`],['🏭','#0d9488','PRODUCCIÓN',`modalProduccion('${j}')`],['✅','#16a34a','CALIDAD',`modalCalidad('${j}')`],['🚚','#7b1fa2','SERVICIO EXT.',`modalExterno('${j}')`],
+           ['🧭','#1e3a5f','RUTA PROD.',`modalRuta('${j}')`],['🔄','#d97706','CAMBIAR ESTADO',`modalEstado('${j}')`],['⏱️','#0284c7','HORAS',`modalHoras('${j}')`],['👷','#db2777','OPERARIO',`modalOperarios('${j}')`]];
+  const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
+  const tl=`<div class="dp-section"><h4>🗓️ Línea de tiempo — Etapas</h4>${timelineEtapas(op)}<div style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="modalEtapas('${j}')">Ver etapas →</button></div></div>`;
+  const info=`<div class="dp-section"><h4>📌 Datos de la OP</h4>
+    ${dr('Fecha pactada',fmtDate(op.fecha_pactada)+(d!=null&&!op.despachado?' · '+diasTag(d):''))}
+    ${dr('Semana',op.semana||'—')}${dr('Diseñador',esc(op.disenador||'—'))}${dr('Asesor',esc(op.asesor||'—'))}
+    ${dr('Unidades',(op.unidades??'—')+' · Despachadas: '+(op.cant_despachada??0))}
+    ${dr('Horas reales',fmtH(op.horas_total_real)+' h')}
+    ${op.externo?dr('Servicio externo',extBadge(op)+(op.externo_desde?`<div style="font-size:11px;color:var(--muted)">desde ${fmtDT(op.externo_desde)}</div>`:'')):''}</div>`;
+  const ruta=`<div class="dp-section"><h4>🧭 Ruta de producción</h4>${rutaPasosHtml(op)}</div>`;
+  const simple=`<div style="text-align:center;margin:6px 0 30px"><button class="btn btn-ghost btn-sm" onclick="formAvance('${j}')">✏️ Formulario simple (% global, estado, prioridad)</button></div>`;
+  openDetail(opTitulo(op),hero+grid+tl+info+ruta+simple);
+  if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
+}
+// Formulario simple de respaldo: % global, estado y prioridad en un solo paso
+function formAvance(id){
+  const op=opDe(id); if(!op) return;
+  openModal(`📈 Registrar avance — ${opTitulo(op)}`,`${ayudaForm('Actualiza el % de avance global, el estado y/o la prioridad de esta OP. Deja en blanco lo que no vayas a cambiar. Para registrar el avance de cada máquina usa **Avance por proceso**.')}
+  <div class="form-grid">
+    <div class="field"><label>% Avance global</label><input id="av-pct" type="number" min="0" max="100" value="${pctOp(op)}"></div>
+    <div class="field"><label>Estado</label><select id="av-est">${Object.keys(ESTADOS_COLOR).map(e=>`<option value="${e}" ${op.estado===e?'selected':''}>${e}</option>`).join('')}</select></div>
+    <div class="field"><label>Prioridad</label><select id="av-prio"><option value="">— sin cambio —</option>${['Muy alta','Alta','Media','Baja','Nula'].map(p=>`<option value="${p}" ${op.prioridad===p?'selected':''}>${p}</option>`).join('')}</select></div>
+    <div class="field span2"><label>Observación (opcional)</label><input id="av-obs" placeholder="Nota para el historial"></div>
+  </div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarAvance('${idq(op)}')">💾 Guardar</button>`);
+}
+async function guardarAvance(id){
+  const pctv=gv('av-pct'); const est=gv('av-est'); const prio=gv('av-prio'); const obs=gv('av-obs');
+  const r=await rpcP('planeacion_registrar_avance',{p_id:id,p_avance:pctv!==''?Number(pctv):null,p_estado:est||null,p_prioridad:prio||null,p_observacion:obs||null},'✅ Avance registrado');
+  if(r) trasGuardar(id);
+}
+
+// ── PESTAÑA: EN PRODUCCIÓN (solo EN PROCESO y TRABAJO EXTERNO) ──────────
+let _prodF={chip:'todas',q:'',maq:'',prio:''};
+function prodSet(k,v){ _prodF[k]=v; pgReset(); produccion(); }
+function prodChip(k){ prodSet('chip',k); }
+function prodCard(op){
+  const d=diasPactada(op);
+  return `<div class="list-card" onclick="detailOP('${idq(op)}')">
+    <div style="display:flex;gap:10px;align-items:flex-start">${thumbProd(op,44)}
+      <div style="flex:1;min-width:0"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(op)}</div><div class="lc-title">${esc(op.empresa||'—')}</div><div class="lc-sub">${esc(String(op.descripcion||'').slice(0,80))}</div></div>
+      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}</div></div></div></div>
+    <div class="lc-meta">${pasoChip(op)} ${operBadge(op)} ${extBadge(op)}</div>
+    <div class="lc-meta"><div style="flex:1">${prog(pctOp(op))}</div><b style="font-size:12px;font-family:var(--mono)">${pctOp(op)}%</b></div>
+    <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(op.fecha_pactada)} ${d!=null?diasTag(d):''}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">S${op.semana||'—'}</span></div>
+  </div>`;
+}
+function produccion(){
+  const base=(DB.produccion||[]).filter(enProd);
+  const venc=o=>{ const d=diasPactada(o); return d!=null&&d<0; };
+  const sinOp=o=>{ const s=pasoActual(o); return !!s&&!s.oper; };
+  const cnt={todas:base.length,proceso:base.filter(o=>o.estado==='EN PROCESO').length,externo:base.filter(o=>o.estado==='TRABAJO EXTERNO').length,vencidas:base.filter(venc).length,sinop:base.filter(sinOp).length};
+  const prios=[...new Set(base.map(o=>o.prioridad).filter(Boolean))];
+  const data=base.filter(o=>{
+    if(_prodF.chip==='proceso'&&o.estado!=='EN PROCESO') return false;
+    if(_prodF.chip==='externo'&&o.estado!=='TRABAJO EXTERNO') return false;
+    if(_prodF.chip==='vencidas'&&!venc(o)) return false;
+    if(_prodF.chip==='sinop'&&!sinOp(o)) return false;
+    if(_prodF.maq){ const s=pasoActual(o); if(!s||s.b!==_prodF.maq) return false; }
+    if(_prodF.prio&&o.prioridad!==_prodF.prio) return false;
+    return buscaOP(o,_prodF.q);
+  }).sort(porUrgencia);
+  const banner=moduleBanner('🏭','En producción',`${base.length} OP EN PROCESO o en TRABAJO EXTERNO (sin pendientes de diseño/MP, pausadas ni canceladas)`,
+    chipsH([['todas','Todas',cnt.todas],['proceso','En proceso',cnt.proceso],['externo','Trabajo externo',cnt.externo],['vencidas','Vencidas',cnt.vencidas],['sinop','Sin operario',cnt.sinop]],_prodF.chip,'prodChip'));
+  const fb=`<div class="filter-bar" style="margin-top:12px;border-radius:12px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="prod-q" placeholder="🔍 Buscar OP, cliente, máquina, operario…" value="${esc(_prodF.q)}" oninput="prodSet('q',this.value)"></div><span class="filter-count">${data.length}/${base.length}</span></div>
+    <div class="filter-bar-selects open"><select onchange="prodSet('maq',this.value)"><option value="">Máquina actual</option>${MAQ_ORDEN.map(b=>`<option value="${b}" ${_prodF.maq===b?'selected':''}>${MAQ[b].ic} ${MAQ[b].l}</option>`).join('')}</select>
+    <select onchange="prodSet('prio',this.value)"><option value="">Prioridad</option>${prios.map(p=>`<option ${_prodF.prio===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+    ${(_prodF.chip!=='todas'||_prodF.q||_prodF.maq||_prodF.prio)?`<button class="btn btn-ghost btn-sm" onclick="_prodF={chip:'todas',q:'',maq:'',prio:''};pgReset();produccion()">✕ Limpiar</button>`:''}</div></div>`;
+  if(!data.length){ setContent(banner+fb+empty('No hay OP en producción con estos filtros','🏭')); return; }
+  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('prod',data).map(prodCard).join('')}</div>${pgMore('prod',data)}`);
+}
+
+// ── PESTAÑA: RUTA (por máquina = vista principal; por OP = detalle de su ruta) ──
+let _rutaF={vista:'maq',modo:'ahora',alcance:'prod',maq:'',op:'',q:''};
+function rutaSet(k,v){ _rutaF[k]=v; if(k==='vista'&&v==='maq') _rutaF.op=''; ruta(); }
+function rutaVerOP(id){ _rutaF.vista='op'; _rutaF.op=id; ruta(); const c=document.getElementById('content'); if(c) c.scrollTop=0; }
+function ruta(){
+  const tabs=`<div class="chips" style="margin-top:4px">${[['maq','🏭 Por máquina'],['op','🧭 Por OP']].map(([k,l])=>`<button class="chip ${_rutaF.vista===k?'on':''}" onclick="rutaSet('vista','${k}')">${l}</button>`).join('')}</div>`;
+  if(_rutaF.vista==='op'){ rutaPorOP(tabs); return; }
+  const base=(DB.produccion||[]).filter(_rutaF.alcance==='prod'?enProd:enCurso);
+  const cols={}; MAQ_ORDEN.forEach(b=>cols[b]=[]);
+  base.forEach(o=>{
+    if(_rutaF.modo==='ahora'){ const s=pasoActual(o); if(s) cols[s.b].push({o,s}); }
+    else pasosDe(o).forEach(s=>{ if(s.b==='externo'||s.pct<100) cols[s.b].push({o,s}); });
+  });
+  const banner=moduleBanner('🧭','Ruta por máquina',_rutaF.modo==='ahora'?'Qué OP está pasando AHORA por cada máquina (su paso actual)':'Qué OP tiene trabajo PENDIENTE en cada máquina (cualquier paso de su ruta sin terminar)',
+    tabs+`<div class="chips" style="margin-top:8px">${[['ahora','Paso actual'],['ruta','Todo lo pendiente']].map(([k,l])=>`<button class="chip ${_rutaF.modo===k?'on':''}" onclick="rutaSet('modo','${k}')">${l}</button>`).join('')}
+    ${[['prod','En producción'],['curso','Todas en curso']].map(([k,l])=>`<button class="chip ${_rutaF.alcance===k?'on':''}" onclick="rutaSet('alcance','${k}')">${l}</button>`).join('')}</div>`);
+  const strip=`<div class="kstrip" style="margin-top:12px">${kchip(base.length,'Todas','var(--text)',`rutaSet('maq','')`,!_rutaF.maq)}${MAQ_ORDEN.filter(b=>cols[b].length).map(b=>kchip(cols[b].length,MAQ[b].ic+' '+MAQ[b].l,MAQ[b].c,`rutaSet('maq','${b}')`,_rutaF.maq===b)).join('')}</div>`;
+  const keys=MAQ_ORDEN.filter(b=>cols[b].length&&(!_rutaF.maq||_rutaF.maq===b));
+  if(!keys.length){ setContent(banner+strip+empty('No hay OP en esta vista','🧭')); return; }
+  const card=({o,s},b)=>{ const d=diasPactada(o);
+    return `<div class="kb-card" style="border-left-color:${MAQ[b].c}" onclick="rutaVerOP('${idq(o)}')">
+      <div class="kb-id">${opTitulo(o)}</div><div class="kb-emp">${esc(o.empresa||'—')}</div>
+      <div class="kb-desc">MQ${s.i} · ${esc(s.raw)}</div>
+      ${s.b==='externo'?`<div class="kb-meta">${o.externo?extBadge(o):'<span class="badge gris">Externo · sin %</span>'}</div>`:`<div class="kb-meta"><div style="flex:1">${prog(s.pct)}</div><b style="font-family:var(--mono)">${s.pct}%</b></div>`}
+      <div class="kb-meta">${s.oper?`<span class="badge teal">👷 ${esc(s.oper)}</span>`:'<span class="badge naranja">Sin operario</span>'} ${d!=null?diasTag(d):''}</div></div>`; };
+  const board=`<div class="kb-board" style="margin-top:4px">${keys.map(b=>`<div class="kb-col"><div class="kb-head" style="border-top-color:${MAQ[b].c}"><span>${MAQ[b].ic} ${esc(MAQ[b].l)}</span><span class="badge gris">${cols[b].length}</span></div>
+    <div class="kb-body">${cols[b].sort((x,y)=>porUrgencia(x.o,y.o)).map(x=>card(x,b)).join('')}</div></div>`).join('')}</div>`;
+  setContent(`${banner}${strip}${board}<div style="font-size:11px;color:var(--muted);padding:4px 2px 90px">«Externo / otros» agrupa servicios externos (SE …) y procesos sin máquina propia; muestran su texto original y no tienen % editable.</div>`);
+}
+function rutaPorOP(tabs){
+  const base=(DB.produccion||[]).filter(enCurso);
+  const op=_rutaF.op?opDe(_rutaF.op):null;
+  const banner=moduleBanner('🧭','Ruta de una OP',op?`${opTitulo(op)} · ${esc(op.empresa||'')}`:'Elige una OP para ver sus pasos, avance y operarios',tabs);
+  if(op){
+    const j=idq(op);
+    setContent(`${banner}<div class="dash-card" style="margin-top:12px"><div style="display:flex;gap:10px;align-items:flex-start">${thumbProd(op,52)}<div style="flex:1;min-width:0"><div class="lc-id">${opTitulo(op)}</div><div class="lc-title">${esc(op.empresa||'—')}</div><div class="lc-sub">${esc(op.descripcion||'')}</div></div><div>${bEst(op.estado)}</div></div>
+      <div class="lc-meta"><div style="flex:1">${prog(pctOp(op))}</div><b style="font-family:var(--mono)">${pctOp(op)}%</b></div>
+      <div class="avq-acts"><button class="btn btn-soft btn-sm" onclick="modalAvancePasos('${j}')">📈 Avance</button><button class="btn btn-soft btn-sm" onclick="modalOperarios('${j}')">👷 Operarios</button><button class="btn btn-soft btn-sm" onclick="detailOP('${j}')">📋 Detalle</button></div></div>
+      ${rutaPasosHtml(op)}<div style="text-align:center;padding:14px 0 90px"><button class="btn btn-ghost" onclick="_rutaF.op='';ruta()">← Elegir otra OP</button></div>`);
+    return;
+  }
+  const data=base.filter(o=>buscaOP(o,_rutaF.q)).sort(porUrgencia);
+  const lista=pgSlice('rutaop',data).map(o=>{ const ps=pasosDe(o);
+    return `<div class="list-card" style="padding:11px 13px" onclick="rutaVerOP('${idq(o)}')"><div class="lc-top" style="margin-bottom:2px"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(o)}</div><div class="lc-title" style="font-size:13px">${esc(o.empresa||'—')}</div></div>${bEst(o.estado)}</div>
+      <div class="lc-meta" style="margin-top:4px">${ps.length?ps.map(s=>`<span class="badge ${pasoActual(o)?.i===s.i?'azul':'gris'}" title="${esc(s.raw)}">${s.i}. ${MAQ[s.b].ic} ${s.b==='externo'?esc(s.raw.slice(0,18)):MAQ[s.b].l+' '+s.pct+'%'}</span>`).join(''):'<span class="badge gris">Sin ruta</span>'}</div></div>`; }).join('');
+  setContent(`${banner}${filtroBusqueda('ruta-q',_rutaF.q,"_rutaF.q=this.value;pgReset();ruta()",data.length+'/'+base.length)}<div class="card-list" style="margin-top:10px">${lista||empty('Sin resultados')}</div>${pgMore('rutaop',data)}`);
+}
+
+// ── PESTAÑA: OPERARIOS ──────────────────────────────────────────────
+let _oprF={chip:'sin',alcance:'prod',q:'',oper:''};
+function oprSet(k,v){ _oprF[k]=v; pgReset(); operarios(); }
+function oprChip(k){ oprSet('chip',k); }
+function operarios(){
+  const base=(DB.produccion||[]).filter(_oprF.alcance==='prod'?enProd:enCurso).filter(o=>pasosDe(o).length);
+  const sin=o=>pasosDe(o).some(s=>!s.oper), con=o=>pasosDe(o).some(s=>s.oper);
+  const carga={}; base.forEach(o=>pasosDe(o).forEach(s=>{ if(s.oper) carga[s.oper]=(carga[s.oper]||0)+1; }));
+  const nombres=operariosConocidos();
+  const data=base.filter(o=>{
+    if(_oprF.chip==='sin'&&!sin(o)) return false;
+    if(_oprF.chip==='con'&&!con(o)) return false;
+    if(_oprF.oper&&!pasosDe(o).some(s=>s.oper===_oprF.oper)) return false;
+    return buscaOP(o,_oprF.q);
+  }).sort(porUrgencia);
+  const banner=moduleBanner('👷','Operarios',`Asigna un colaborador a cada paso de la ruta · ${Object.keys(carga).length} operario(s) con trabajo asignado`,
+    chipsH([['sin','Con pasos sin asignar',base.filter(sin).length],['con','Con asignaciones',base.filter(con).length],['todas','Todas',base.length]],_oprF.chip,'oprChip')
+    +`<div class="chips" style="margin-top:8px">${[['prod','En producción'],['curso','Todas en curso']].map(([k,l])=>`<button class="chip ${_oprF.alcance===k?'on':''}" onclick="oprSet('alcance','${k}')">${l}</button>`).join('')}</div>`);
+  const cargaH=Object.keys(carga).length?`<div class="dash-card" style="margin-top:12px"><div class="cm-h">Carga por operario (pasos asignados)</div>${barList(Object.entries(carga).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([n,c])=>[n,c,'var(--pink)']),v=>v)}</div>`:'';
+  const fb=`<div class="filter-bar" style="margin-top:12px;border-radius:12px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="opr-q" placeholder="🔍 Buscar OP, cliente, máquina, operario…" value="${esc(_oprF.q)}" oninput="oprSet('q',this.value)"></div><span class="filter-count">${data.length}/${base.length}</span></div>
+    <div class="filter-bar-selects open"><select onchange="oprSet('oper',this.value)"><option value="">Operario</option>${nombres.map(n=>`<option value="${esc(n)}" ${_oprF.oper===n?'selected':''}>${esc(n)}</option>`).join('')}</select>
+    ${(_oprF.q||_oprF.oper)?`<button class="btn btn-ghost btn-sm" onclick="_oprF.q='';_oprF.oper='';pgReset();operarios()">✕ Limpiar</button>`:''}</div></div>`;
+  const card=o=>{ const j=idq(o), act=pasoActual(o), d=diasPactada(o);
+    return `<div class="list-card" onclick="modalOperarios('${j}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(o)}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub">${esc(String(o.descripcion||'').slice(0,70))}</div></div><div style="text-align:right;flex-shrink:0">${bEst(o.estado)}<br>${d!=null?diasTag(d):''}</div></div>
+      ${pasosDe(o).map(s=>`<div class="opr-step"><span class="rp-num" style="width:22px;height:22px;font-size:11px;background:${MAQ[s.b].c}">${s.i}</span><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.raw)}${act&&act.i===s.i?' <span class="badge azul">actual</span>':''}</div>${s.nota?`<div style="font-size:11px;color:var(--muted)">${esc(s.nota)}</div>`:''}</div>
+        ${s.oper?`<span class="badge teal">👷 ${esc(s.oper)}</span>`:'<span class="badge naranja">Sin asignar</span>'}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();modalOperarios('${j}',${s.i})">${s.oper?'Cambiar':'Asignar'}</button></div>`).join('')}</div>`; };
+  if(!data.length){ setContent(banner+cargaH+fb+empty(_oprF.chip==='sin'?'Todas las OP de esta vista tienen sus pasos asignados 👏':'Sin resultados','👷')); return; }
+  setContent(`${banner}${cargaH}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('opr',data).map(card).join('')}</div>${pgMore('opr',data)}`);
+}
+
+// ── PESTAÑA: AVANCES (cola de trabajo: las más vencidas primero) ──────
+let _avqF={alcance:'prod',q:''};
+function avqSet(k,v){ _avqF[k]=v; pgReset(); avances(); }
+function avqCard(op){
+  const d=diasPactada(op), j=idq(op);
+  const dias=d==null?'<span class="badge gris">Sin fecha</span>':d<0?`<span class="badge rojo">Vencida ${-d} d</span>`:d===0?'<span class="badge rojo">Vence hoy</span>':`<span class="badge ${d<=3?'naranja':'gris'}">Faltan ${d} d</span>`;
+  return `<div class="list-card" onclick="detailOP('${j}')">
+    <div style="display:flex;gap:12px;align-items:flex-start">${thumbProd(op,56)}
+      <div style="flex:1;min-width:0"><div class="lc-top" style="margin-bottom:2px"><div class="lc-id">${opTitulo(op)}</div>${dias}</div>
+      <div class="lc-title">${esc(op.empresa||'—')}</div><div class="lc-sub">${esc(String(op.descripcion||'').slice(0,80))}</div></div></div>
+    <div class="lc-meta"><div style="flex:1">${prog(pctOp(op))}</div><b style="font-size:13px;font-family:var(--mono);color:${pctColor(pctOp(op))}">${pctOp(op)}%</b></div>
+    <div class="lc-meta">${pasoChip(op)} ${bEst(op.estado)} ${operBadge(op)}</div>
+    <div class="avq-acts">
+      <button class="btn btn-soft" onclick="event.stopPropagation();modalAvancePasos('${j}')">📈 Actualizar avance</button>
+      <button class="btn btn-soft" onclick="event.stopPropagation();modalEtapas('${j}')">⏭️ Avanzar etapa</button>
+      <button class="btn btn-soft" onclick="event.stopPropagation();modalHoras('${j}')">⏱️ Registrar horas</button>
+    </div></div>`;
+}
+function avances(){
+  const base=(DB.produccion||[]).filter(_avqF.alcance==='prod'?enProd:enCurso);
+  const data=base.filter(o=>buscaOP(o,_avqF.q)).sort(porUrgencia);
+  const venc=base.filter(o=>{ const d=diasPactada(o); return d!=null&&d<0; }).length;
+  const banner=moduleBanner('📈','Avances',`${base.length} OP · ${venc} vencidas · las más atrasadas primero`,
+    `<div class="chips">${[['prod','En producción'],['curso','Todas en curso']].map(([k,l])=>`<button class="chip ${_avqF.alcance===k?'on':''}" onclick="avqSet('alcance','${k}')">${l}</button>`).join('')}</div>`);
+  const fb=filtroBusqueda('avq-q',_avqF.q,"avqSet('q',this.value)",data.length+'/'+base.length);
+  if(!data.length){ setContent(banner+fb+empty('No hay OP en esta vista','📈')); return; }
+  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('avq',data).map(avqCard).join('')}</div>${pgMore('avq',data)}`);
+}
+
+// ── PESTAÑA: REPORTES ───────────────────────────────────────────────
+let _repF={alcance:'todas'}; let _REP_TERM=null;
+function repSet(k,v){ _repF[k]=v; reportes(); }
+async function sbCount(t,q){
+  const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q+'&limit=1',{headers:Object.assign({},sb.h,{'Prefer':'count=exact'})});
+  if(!r.ok) throw new Error('No se pudo contar');
+  const n=Number(String(r.headers.get('content-range')||'').split('/')[1]); return isNaN(n)?null:n;
+}
+function reportes(){
+  const all=DB.produccion||[];
+  const base=_repF.alcance==='prod'?all.filter(enProd):all;
+  const enProceso=all.filter(o=>o.estado==='EN PROCESO').length;
+  const hrs=MAQ_REP.map(b=>[MAQ[b].l,base.reduce((s,o)=>s+(Number(o[MAQ[b].hrs])||0),0),MAQ[b].c]);
+  const totHrs=hrs.reduce((s,r)=>s+r[1],0);
+  const avg=base.length?Math.round(base.reduce((s,o)=>s+(Number(o.avance)||0),0)/base.length*10)/10:0;
+  const dis={}; base.forEach(o=>{ const k=o.disenador||'(sin diseñador)'; (dis[k]=dis[k]||[]).push(Number(o.avance)||0); });
+  const disRows=Object.entries(dis).map(([k,v])=>[`${k} (${v.length})`,Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10,'var(--accent)']).sort((a,b)=>b[1]-a[1]);
+  const est={}; base.forEach(o=>{ const k=o.estado||'(sin estado)'; est[k]=(est[k]||0)+1; });
+  const estColor={azul:'#2563eb',verde:'#16a34a',urg:'#9c27b0',rojo:'#dc2626',gris:'#94a3b8',naranja:'#d97706',morado:'#7c3aed'};
+  const estRows=Object.entries(est).sort((a,b)=>b[1]-a[1]).map(([k,n])=>[k,n,estColor[ESTADOS_COLOR[k]]||'#94a3b8']);
+  const vig=base.filter(o=>!['TERMINADO','CANCELADO'].includes(o.estado));
+  const conF=vig.filter(o=>diasPactada(o)!=null); const nV=conF.filter(o=>diasPactada(o)<0).length;
+  const banner=moduleBanner('📉','Reportes',_repF.alcance==='prod'?'Alcance: OP EN PROCESO y TRABAJO EXTERNO':'Alcance: todas las OP no terminadas que carga este módulo (incluye pendientes, pausadas y canceladas)',
+    `<div class="chips">${[['todas','Todas las no terminadas'],['prod','Solo en producción']].map(([k,l])=>`<button class="chip ${_repF.alcance===k?'on':''}" onclick="repSet('alcance','${k}')">${l}</button>`).join('')}</div>`);
+  const kpis=`<div class="kpi-grid" style="margin-top:12px">
+    <div class="kpi-card info" onclick="nav('produccion')"><div class="kpi-label">En proceso</div><div class="kpi-value">${enProceso}</div><div class="kpi-sub">Estado EN PROCESO</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">Terminadas</div><div class="kpi-value" id="rep-term">${_REP_TERM==null?'…':_REP_TERM.toLocaleString('es-CO')}</div><div class="kpi-sub">Histórico total (estado TERMINADO)</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">Total hrs reales</div><div class="kpi-value">${fmtH(Math.round(totHrs))}</div><div class="kpi-sub">Suma de las 8 máquinas · alcance</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avance promedio</div><div class="kpi-value">${avg}%</div><div class="kpi-sub">${base.length} OP en el alcance</div></div>
+  </div>`;
+  const sec=(t,h)=>`<div class="dash-card"><div class="cm-h" style="font-size:11px">${t}</div>${h}</div>`;
+  setContent(`${banner}${kpis}
+    ${sec('⏱️ Horas reales por máquina (total período)',barList(hrs,v=>fmtH(Math.round(v*10)/10)+' h')+`<div style="font-size:10.5px;color:var(--muted);margin-top:6px">Soldadura, EDM e Hilo no tienen columna de horas "reales" separada: se usa su única columna de horas.</div>`)}
+    ${sec('🎨 Avance promedio por diseñador',barList(disRows,v=>v+'%',100)+`<div style="font-size:10.5px;color:var(--muted);margin-top:6px">Los nombres se muestran tal como están en la base (p. ej. «F.GIRALDO» y «F. GIRALDO» aparecen por separado).</div>`)}
+    ${sec('📋 Distribución por estado',barList(estRows,v=>v))}
+    ${sec('⏰ OPs vencidas vs en tiempo',barList([['Vencidas',nV,'#dc2626'],['En tiempo',conF.length-nV,'#16a34a']],v=>v)+`<div style="font-size:10.5px;color:var(--muted);margin-top:6px">Sin contar TERMINADO ni CANCELADO.${vig.length-conF.length?` ${vig.length-conF.length} OP sin fecha pactada no se cuentan.`:''}</div>`)}
+    <div style="height:80px"></div>`);
+  sbCount('produccion','select=id&estado=eq.TERMINADO').then(n=>{ if(n==null) return; _REP_TERM=n; const el=document.getElementById('rep-term'); if(el) el.textContent=n.toLocaleString('es-CO'); }).catch(()=>{ const el=document.getElementById('rep-term'); if(el&&_REP_TERM==null) el.textContent='—'; });
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
-function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir}; if(mods[MOD]) mods[MOD](); }
+function refreshCurrentView(){ const mods={dashboard,ops,produccion,ruta,kanban,operarios,avances,reportes}; if(mods[MOD]) mods[MOD](); }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -1361,35 +1836,26 @@ function nav(m,keep){
   if(!keep){ const gs=document.getElementById('globalSearch'); if(gs) gs.value=''; }
   refreshCurrentView();
 }
-function onGlobalSearch(v){ _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
+function onGlobalSearch(v){ _opsF.q=v; pgReset(); if(MOD!=='ops'){ if(!String(v).trim()) return; nav('ops',true); } else ops(); }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
-  try{ await recargar(); avisarNuevas(); refreshCurrentView(); toast('Datos actualizados'); }catch(e){ toast(errMsg(e),'error'); }
+  try{ await recargar(); refreshCurrentView(); toast('Datos actualizados'); }catch(e){ toast(errMsg(e),'error'); }
   finally{ if(btn) btn.classList.remove('spinning'); }
 }
-let _seenR=null;
-function avisarNuevas(){
-  const ids=new Set((DB.remisiones||[]).filter(remPendiente).map(m=>m.id+':'+m.estado));
-  if(_seenR){ const n=[...ids].filter(i=>!_seenR.has(i)); if(n.length) toast(`🔔 ${n.length} remisión${n.length!==1?'es esperan':' espera'} tu acción`,'ok'); }
-  _seenR=ids;
-}
-function updateBadges(){
-  const n=(DB.remisiones||[]).filter(remPendiente).length; ['b-rem','bb-rem'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n?'':'none'; } });
-  const p=puede('calidad')?opsPorPedir().length:0; ['b-pp','bb-pp'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=p; el.style.display=p?'':'none'; } });
-}
+function updateBadges(){}
 async function iniciarApp(){
   const infoEl=document.getElementById('sidebar-user-info');
-  if(infoEl&&_SESSION) infoEl.innerHTML=`👤 <strong style="color:rgba(255,255,255,.8)">${esc(_SESSION.nombre)}</strong><br><span style="color:#fdba74;font-size:10px">${esc(_SESSION.rol)}</span>`;
+  if(infoEl&&_SESSION) infoEl.innerHTML=`👤 <strong style="color:rgba(255,255,255,.8)">${esc(_SESSION.nombre)}</strong><br><span style="color:#93c5fd;font-size:10px">${esc(_SESSION.rol)}</span>`;
   const spl=document.getElementById('splash'); if(!spl||spl.style.display==='none'||spl.classList.contains('hide')) loading();
   setSplash(20,'Verificando sesión…');
   try{
     let ok=true; try{ ok=(await sb.rpc('sesion_valida'))!==false; }catch(e){}
     if(!ok){ endSession('Sesión vencida — ingresa de nuevo'); return; }
-    setSplash(55,'Cargando remisiones…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
+    setSplash(55,'Cargando producción…'); await Promise.all([cargarTodo(),cargarUsuarios(),cargarOperariosUsados()]); setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
-  avisarNuevas(); updateBadges(); hideSplash();
+  updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
-  nav(TITLES[h]?h:(['comercial','administracion','calidad'].includes(rolActual())&&(DB.remisiones||[]).some(remPendiente)?'remisiones':'dashboard'));
+  nav(TITLES[h]?h:'dashboard');
 }
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){ ['splash-logo-img','topbar-logo','sb-logo-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_B64_PNG; }); }
@@ -1397,154 +1863,61 @@ document.addEventListener('DOMContentLoaded',()=>{
   iniciarApp();
 });
 setInterval(async()=>{
-  if(!_SESSION||document.hidden||!DB.remisiones) return;
+  if(!_SESSION||document.hidden||!DB.produccion) return;
   try{
-    const antes=JSON.stringify((DB.remisiones||[]).map(m=>[m.id,m.estado,m.updated_at]));
-    await cargarTodo(); avisarNuevas(); updateBadges();
-    if(antes===JSON.stringify((DB.remisiones||[]).map(m=>[m.id,m.estado,m.updated_at]))) return;
+    const antes=JSON.stringify((DB.produccion||[]).map(o=>[o.id,o.estado,o.avance,o.updated_at]));
+    await cargarTodo();
+    if(antes===JSON.stringify((DB.produccion||[]).map(o=>[o.id,o.estado,o.avance,o.updated_at]))) return;
     const a=document.activeElement; const typing=a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); const modal=document.getElementById('modal-overlay')?.classList.contains('open');
     if(!_detailOpen&&!modal&&!typing) refreshCurrentView();
   }catch(e){}
 },60000);
 
-
-// ═══ FORMULARIO LIBRE (sin pasos obligatorios) — se elige entre este y el flujo por pasos ═══
-const REM_EST_LIBRE={BORRADOR:['Borrador','gris'],ENVIADA:['Enviada','naranja'],RECIBIDA:['Recibida','azul'],FACTURADA:['Facturada','verde'],ANULADA:['Anulada','rojo']};
-Object.assign(REM_EST,REM_EST_LIBRE);
-const puedeLibre=()=>puede('comercial','administracion','calidad');
-let _RL=null;   // estado del formulario libre abierto
-function nuevaRemModal(){
-  openModal('➕ Nueva remisión',`<div style="display:flex;flex-direction:column;gap:10px">
-    <button class="btn btn-primary" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto" onclick="closeModal();nav('porpedir')"><div><b>📥 Paso a paso</b><div style="font-size:11.5px;font-weight:500;opacity:.85;margin-top:2px">Calidad pide la remisión de una OP; comercial elige qué se despacha y administración la genera.</div></div></button>
-    <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto;border-color:var(--purple)" onclick="closeModal();formLibreRem(null)"><div><b>✏️ Formulario libre</b><div style="font-size:11.5px;font-weight:500;color:var(--muted);margin-top:2px">Buscas la OP o cotización, completas todo tú mismo y decides el estado. Sin pasos obligatorios.</div></div></button></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`);
-}
-function rlItemsHtml(){
-  const its=(_RL.items||[]);
-  if(!its.length){
-    return `<div class="field span2" style="color:var(--muted);font-size:12.5px;padding:14px;border:1.5px dashed var(--border);border-radius:10px;text-align:center">Busca una OP o cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
-  }
-  const marcados=new Set((_RL.lineas||[]).map(l=>l.id_prod).filter(Boolean));
-  return `<div class="field span2"><label>Ítems con saldo pendiente — marca los que van en esta remisión</label>
-    <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th style="width:34px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>
-    ${its.map(x=>`<tr><td class="td-center"><input type="checkbox" ${marcados.has(x.id_prod)?'checked':''} onchange="rlToggleItem('${x.id_prod}',this.checked)"></td><td class="td-center">OP-${x.op}</td><td class="td-center">${x.item}</td><td style="font-size:12px">${esc(x.descripcion)}</td><td class="td-center">${x.unidades}</td></tr>`).join('')}
-    </tbody></table></div><div style="font-size:11px;color:var(--muted);margin-top:4px">El saldo ya descuenta lo despachado y lo reservado en otras remisiones. Ajusta la cantidad de cada uno marcado en la tabla de abajo.</div></div>`;
-}
-function rlTablaHtml(){
-  const ls=_RL.lineas||[];
-  return `<table class="data-tbl" style="min-width:0"><thead><tr><th style="width:30px">#</th><th style="width:60px">Cant.</th><th>Descripción</th><th style="width:36px"></th></tr></thead><tbody>
-    ${ls.map((l,i)=>`<tr><td class="td-center">${i+1}</td><td class="td-center"><input type="number" value="${l.cantidad}" style="width:50px;text-align:center;border:1px solid var(--border);border-radius:6px" onchange="_RL.lineas[${i}].cantidad=Number(this.value)||0"></td><td><textarea style="width:100%;min-height:30px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12.5px" oninput="_RL.lineas[${i}].descripcion=this.value">${esc(l.descripcion)}</textarea></td><td><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="rlQuitarLinea(${i})">✕</button></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">Sin ítems todavía</td></tr>`}
-    </tbody></table><button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="rlAgregarManual()">＋ Agregar ítem manual</button>`;
-}
-function rlRefrescarTabla(){ const el=document.getElementById('rl-tabla'); if(el) el.innerHTML=rlTablaHtml(); }
-function rlRefrescarTodo(){ const ib=document.getElementById('rl-items-box'); if(ib) ib.innerHTML=rlItemsHtml(); rlRefrescarTabla(); }
-function rlToggleItem(id,checked){
-  const item=_RL.items.find(x=>x.id_prod===id); if(!item) return;
-  if(checked){ if(!_RL.lineas.some(l=>l.id_prod===id)) _RL.lineas.push({id_prod:id,descripcion:item.descripcion,cantidad:Number(item.unidades)||1}); }
-  else{ _RL.lineas=_RL.lineas.filter(l=>l.id_prod!==id); }
-  rlRefrescarTabla();
-}
-function rlQuitarLinea(i){ _RL.lineas.splice(i,1); rlRefrescarTodo(); }
-function rlAgregarManual(){ _RL.lineas.push({id_prod:null,descripcion:'',cantidad:1}); rlRefrescarTabla(); }
-let _rlBuscarT=null;
-function rlBuscar(){
-  clearTimeout(_rlBuscarT);
-  _rlBuscarT=setTimeout(async()=>{
-    const op=gv('rl-op')?parseInt(gv('rl-op')):null; const cot=gv('rl-cot')?parseInt(gv('rl-cot')):null;
-    if(!op&&!cot) return;
-    try{
-      const r=await sb.rpc('remision_buscar_libre',{p_op:op||null,p_cot:cot||null,p_excluir_id:_RL.id||null});
-      _RL.items=(r&&r.items)||[];
-      if(r&&r.cliente){
-        const c=r.cliente; const set=(id,v)=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=v||''; };
-        set('rl-emp',c.empresa); set('rl-nit',c.nit); set('rl-dir',c.direccion); set('rl-ciu',c.ciudad); set('rl-con',c.contacto); set('rl-tel',c.telefono); set('rl-oc',c.oc_cliente); set('rl-pro',c.proyecto);
-        if(!gv('rl-cot')&&c) document.getElementById('rl-cot').value=cot||document.getElementById('rl-cot').value;
-      }
-      const box=document.getElementById('rl-items-box'); if(box) box.innerHTML=rlItemsHtml();
-      toast(`${_RL.items.length} ítem(s) encontrados`);
-    }catch(e){ toast('❌ '+errMsg(e),'error'); }
-  },350);
-}
-function formLibreRem(id){
-  if(!puedeLibre()){ toast('Tu rol no puede usar el formulario libre','error'); return; }
-  const m=id?remDe(id):null;
-  _RL={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
-  const est=m?m.estado:'BORRADOR'; const estValido=REM_EST_LIBRE[est]?est:'BORRADOR';
-  const avisoPaso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)?`<div style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:12.5px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado actual: ${REM_EST[m.estado][0]}). Si la guardas aquí, pasa al formulario libre y deja de seguir esas aprobaciones.</div>`:'';
-  openModal(m?`✏️ Editando ${remNum(m)}`:'➕ Nueva remisión (formulario libre)',`${ayudaForm(`Escribe la **OP** o la **cotización** para traer los datos del cliente y **todos sus ítems**: marca los que van en esta remisión y ajusta la cantidad de cada uno. Usa **＋ Agregar ítem manual** para uno que no esté en la lista. Elige el **Estado** y toca **💾 Guardar**; aquí no hay pasos obligatorios.`)}${avisoPaso}<div class="form-grid">
-    <div class="field"><label>Fecha</label><input type="date" id="rl-fec" value="${esc(m?fFecha(m):hoyISO())}"></div>
-    <div class="field"><label>Estado</label><select id="rl-est">${Object.entries(REM_EST_LIBRE).map(([k,[l]])=>`<option value="${k}" ${estValido===k?'selected':''}>${l}</option>`).join('')}</select></div></div>
-    <div class="cm-h" style="margin-top:12px">Buscar por OP o cotización</div><div class="form-grid">
-    <div class="field"><label>Orden de producción (OP)</label><input id="rl-op" type="number" inputmode="numeric" value="${m&&m.op!=null?m.op:''}" oninput="rlBuscar()"></div>
-    <div class="field"><label>Cotización</label><input id="rl-cot" type="number" inputmode="numeric" value="${m&&m.cot_num!=null?m.cot_num:''}" oninput="rlBuscar()"></div></div>
-    <div class="cm-h" style="margin-top:12px">Destinatario</div><div class="form-grid">
-    ${fldR('Cliente / Señores','rl-emp',m?.empresa||'','',true)}${fldR('NIT','rl-nit',m?.nit||'')}${fldR('Dirección','rl-dir',m?.direccion||'','',true)}${fldR('Ciudad','rl-ciu',m?.ciudad||'')}
-    ${fldR('Encargado','rl-con',m?.contacto||'')}${fldR('Teléfono','rl-tel',m?.telefono||'')}${fldR('Orden de compra del cliente','rl-oc',m?.oc_cliente||'')}${fldR('Proyecto','rl-pro',m?.proyecto||'','',true)}</div>
-    <div class="cm-h" style="margin-top:14px">Ítems de la remisión</div>
-    <div id="rl-items-box" class="form-grid">${rlItemsHtml()}</div>
-    <div id="rl-tabla" style="margin-top:10px">${rlTablaHtml()}</div>
-    <div class="field span2" style="margin-top:10px"><label>Observaciones</label><textarea id="rl-obs">${esc(m?.observaciones||'')}</textarea></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ghost" onclick="rlImprimir()">🖨️ Imprimir / PDF</button><button class="btn btn-primary" onclick="rlGuardar()">💾 Guardar</button>`);
-  if(gv('rl-op')||gv('rl-cot')) rlBuscar();
-}
-function rlDatosForm(){
-  return {op:gv('rl-op')||null,cot_num:gv('rl-cot')||null,empresa:gv('rl-emp'),nit:gv('rl-nit'),direccion:gv('rl-dir'),ciudad:gv('rl-ciu'),contacto:gv('rl-con'),telefono:gv('rl-tel'),
-    oc_cliente:gv('rl-oc'),proyecto:gv('rl-pro'),observaciones:gv('rl-obs'),fecha:gv('rl-fec'),estado:gv('rl-est'),lineas:_RL.lineas.filter(l=>l.descripcion&&l.cantidad>0)};
-}
-async function rlGuardar(){
-  const d=rlDatosForm();
-  if(!d.empresa){ toast('Escribe el cliente','error'); return; }
-  const r=await rpcR('remision_guardar_libre',{p_id:_RL.id,p_data:d},'✅ Remisión guardada');
-  if(r){ closeModal(); _RM.f='todas'; nav('remisiones'); detalleRem(r.id||_RL.id); }
-}
-function rlImprimir(){
-  const d=rlDatosForm(); if(!d.empresa){ toast('Escribe el cliente para poder imprimir','error'); return; }
-  const m=_RL.id?remDe(_RL.id):{}; const prev={...m,...d,numero:m?.numero,manual:false};
-  docRemision.__preview=prev; _abrirDocParaImprimir(docHtmlRem(prev,'remision'),`REM-${prev.numero||'borrador'}.pdf`,'remisiones');
-}
-async function remEliminar(id){
-  const m=remDe(id); if(!m) return;
-  if(!confirm('¿Eliminar '+remNum(m)+' definitivamente? Esta acción no se puede deshacer.')) return;
-  if(await rpcR('remision_eliminar',{p_id:id},'🗑️ Remisión eliminada')){ closeDetail(); refreshCurrentView(); }
-}
-
-
 const AYUDA={
 general:{icono:'🚀',titulo:'Primeros pasos',
-  que:'Este módulo lleva las remisiones: el documento con el que se despacha la producción. Cada remisión pasa por cuatro pasos y cada paso lo hace un área distinta.',
-  pasos:[
-   {t:'El recorrido de una remisión',items:['**1 · Pedida.** Cuando una OP tiene unidades pendientes de despachar, comercial, administración o calidad piden su remisión desde «Por pedir».','**2 · Seleccionada — Comercial.** El comercial dueño de la cotización elige qué ítems y cuántas unidades se despachan (puede ser parcial).','**3 · Generada — Administración.** Administración revisa y **genera** la remisión: el sistema le asigna el número consecutivo (REM-…).','**4 · Despachada — Calidad.** Cuando la mercancía sale, calidad marca **Despachada** y se descuenta de producción.']},
-   {t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','Abajo tienes **Inicio, Remisiones y Por pedir**. Un **número rojo** en Remisiones te dice cuántas esperan tu acción.','🔍 busca por número, empresa, OP o cotización. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']}],
-  reglas:['Solo ves los botones de tu paso. Si una remisión no espera nada de ti, la app te dice a quién le toca.','Cuando una remisión pasa a tu área, te llega un aviso 🔔 en pantalla.'],
-  consejos:['Empieza siempre por **🔔 Para mí** en la lista de Remisiones: es lo que te toca hoy.']},
+  que:'Este módulo muestra y registra el estado de la producción: qué OP están en proceso, en qué máquina va cada una, quién la está haciendo, cuánto avance lleva y cuántas horas se le han trabajado.',
+  pasos:[{t:'Entrar y moverte',items:['Abre el enlace, **toca tu nombre** y escribe tu **clave de 4 dígitos**.','Abajo tienes 8 pestañas: **Inicio, OPs, Producción, Ruta, Kanban, Operarios, Avances y Reportes** (desliza la barra si no las ves todas).','🔍 busca por OP, cliente o descripción. ↻ actualiza. ❓ abre la ayuda de la vista donde estás.']},
+    {t:'Cómo se organiza la ruta',items:['Cada OP tiene hasta 5 pasos de ruta (**MQ1 a MQ5**) escritos a mano durante años, por eso hay nombres distintos para la misma máquina.','El sistema los agrupa en 9 máquinas: **Centro de mecanizado, Torno, Fresadora, Banco, EDM, Rectificadora, Hilo, Soldadura e Ingeniería**. Lo demás (servicios externos «SE …», matricería, tratamientos, embalaje…) se agrupa como **Externo / otros**.','Cada máquina guarda **un solo %** de avance y sus **horas**. Los pasos «Externo / otros» no tienen % ni horas: solo se muestran con su nombre original.']}],
+  consejos:['Los días en rojo significan que la OP ya pasó su fecha pactada.','Todo lo que registras queda en el historial de la OP con tu nombre.']},
 dashboard:{icono:'📊',titulo:'Inicio',
-  que:'Resumen de cómo van los despachos y de lo que te toca hacer.',
-  pasos:[{t:'Cómo usarlo',items:['Las tarjetas muestran: **esperan mi acción, OP por pedir, pedidas, seleccionadas, generadas** y **despachadas este mes**. Toca una para ir a la lista.','Abajo ves **lo que espera tu acción** (con su botón para hacerlo ahí mismo) y las **últimas despachadas**.']}]},
-remisiones:{icono:'🚚',titulo:'Remisiones',
-  que:'Todas las remisiones, las nuevas y las históricas. No hay un único camino obligatorio: al crear una remisión eliges entre el **paso a paso** (con aprobaciones de cada área) o el **formulario libre** (lo completas todo tú mismo, sin pasos). Los dos conviven y se pueden imprimir igual.',
-  quien:'Comercial, administración y calidad pueden pedirla desde «Por pedir»; comercial selecciona; administración genera, edita y cancela; calidad despacha. El formulario libre lo puede usar comercial, administración y calidad.',
-  pasos:[
-   {t:'Elegir cómo crearla',items:['Toca **➕ Nueva remisión** y elige: **📥 Paso a paso** (se pide desde «Por pedir», comercial elige qué se despacha, administración la genera) o **✏️ Formulario libre** (buscas la OP o la cotización, completas todo y decides el estado).','En cualquier remisión que no esté despachada o cancelada, el botón **📝 Formulario libre** la abre para editarla completa, sin importar cómo se creó.']},
-   {t:'Buscar y filtrar',items:['Arriba elige la lista: **🔔 Para mí, ⏳ Pedidas, En curso, Despachadas, Canceladas** o **Todas**. Cada botón muestra cuántas hay.','En Despachadas, Canceladas y Todas aparece el **periodo** (1 mes, 3 meses, 6 meses, 1 año o Todo).','Busca por número, empresa, OP, cotización o proyecto, y filtra por **empresa**. Cambia entre **Tarjetas** y **Tabla**.']},
-   {t:'Seleccionar qué se despacha (comercial)',items:['En una remisión **Pedida** toca **☑️ Seleccionar** (o **Cambiar selección** si ya la hiciste y administración aún no la genera).','Escribe la **cantidad** de cada ítem; puedes despachar parcial o todo con **Todo lo disponible**.','Toca **Guardar selección**: pasa a administración.']},
-   {t:'Generar (administración)',items:['En una remisión **Seleccionada** toca **🧾 Generar** y confirma. Se le asigna el **número consecutivo** y ya no cambia lo seleccionado.','Antes o después puedes **✏️ Editar datos**: cliente, NIT, dirección, ciudad, encargado, teléfono, orden de compra del cliente, proyecto, fecha y observaciones.']},
-   {t:'Despachar (calidad)',items:['En una remisión **Generada** imprime el **🖨️ Formato de despacho** para verificar lo que sale y toca **🚚 Despachar**.','Se descuentan las unidades de producción. Si el ítem se despachó completo, la OP queda como despachada.']},
-   {t:'Cancelar o corregir',items:['Administración puede **✖️ Cancelar** una remisión que aún no se despachó: lo que estaba reservado queda disponible otra vez.','Para corregir datos impresos usa **✏️ Editar datos**; los ítems y cantidades no se cambian ahí (cancela y vuelve a pedir si hay que rehacerlos).']},
-   {t:'Formulario libre (sin pasos)',items:['Escribe la **OP** o la **cotización** para traer los datos del cliente y todos sus ítems; puedes cambiar los datos si hace falta.','Marca la casilla de cada ítem que va en la remisión — aparecen todos los de esa cotización de una vez, no hay que buscarlos uno por uno. Toca **＋ Agregar ítem manual** para uno que no está en la lista. Cambia la cantidad o la descripción directo en la tabla de abajo.','Elige el **Estado** (Borrador, Enviada, Recibida, Facturada o Anulada) y toca **💾 Guardar**. También puedes **🖨️ Imprimir / PDF** antes de guardar.','Aquí no hay aprobaciones: cualquiera de los tres roles puede crear, cambiar el estado o corregir los ítems en cualquier momento.']}],
-  reglas:['No se puede pedir una remisión si la OP ya tiene una **pedida o seleccionada** en trámite.','Una remisión **despachada**, **cancelada**, **facturada** o **anulada** está cerrada: ya no cambia de estado ni se edita (como en el sistema anterior). Las facturadas aparecen en **Despachadas** y las anuladas en **Canceladas**.','La cantidad disponible descuenta lo ya despachado y lo reservado en otras remisiones generadas — eso solo aplica al paso a paso; el formulario libre no lo valida.','Editar con el formulario libre una remisión que va por pasos la saca de ese flujo: ya no sigue las aprobaciones.'],
-  consejos:['El icono 🔔 marca lo que espera tu acción; la palabra "Espera a…" te dice quién sigue.']},
-porpedir:{icono:'📥',titulo:'Por pedir',
-  que:'Todas las OP activas con unidades pendientes de despachar y sin remisión en trámite, estén o no ya aprobadas por calidad.',
-  quien:'Comercial, administración y calidad pueden pedirla.',
-  pasos:[{t:'Pedir una remisión',items:['Cada tarjeta muestra la OP, la empresa, los ítems y cuántas unidades hay por despachar, con una etiqueta que indica si calidad ya aprobó ese ítem.','Toca **📦 Pedir remisión** y confirma. La remisión pasa al comercial para que elija qué se despacha.']}],
-  reglas:['Se puede pedir en cualquier momento, aunque calidad todavía no haya aprobado los ítems.'],
-  consejos:['Si una OP no aparece, revisa que tenga unidades pendientes y que no tenga ya una remisión pedida o seleccionada en trámite.']},
-docs:{icono:'🖨️',titulo:'Documentos para imprimir',
-  que:'Cada remisión generada o despachada tiene sus documentos, listos para imprimir o guardar en PDF.',
-  pasos:[{t:'Imprimir',items:['Abre la remisión y toca **📄 Remisión (PDF)**: el documento para el cliente, con su número, cliente, proyecto, orden de compra, ítems y observaciones.','Si el cliente es **MOSAT**, también aparece **🌐 Packing List (EN)**: el mismo documento en inglés, con fecha MM/DD/AAAA y los datos de MOSAT.','La remisión trae al final las líneas de firma **Entregado por / Recibido por / Fecha recibido** para que el cliente firme el recibo.','Las remisiones del **formulario libre** tienen sus documentos desde que se guardan (salvo las anuladas).','**🖨️ Formato de despacho**: para verificar lo que sale; trae casillas para marcar cada ítem y líneas de firma (despachó / recibió).','En el celular elige **Guardar como PDF** en la ventana de impresión.']}],
-  reglas:['El número de la remisión aparece solo cuando administración la generó.','El documento sale con los datos actuales de la remisión: si corriges algo con **Editar datos**, vuelve a imprimirlo.']}
+  que:'Resumen general: cuántas OP están en proceso, cuántas vencidas, la carga por máquina y las OP por semana.',
+  pasos:[{t:'Cómo usarlo',items:['Toca cualquier tarjeta de KPI para ir al listado filtrado.','La lista de OP vencidas muestra las más urgentes; toca una para ver el detalle completo.']}],
+  reglas:['Solo se tienen en cuenta las OP que no están en estado TERMINADO.','La «carga por máquina» usa el **paso actual** de cada OP (ver Ruta).']},
+ops:{icono:'🗂️',titulo:'OPs en curso',
+  que:'Todas las órdenes de producción que no están terminadas, ordenadas por urgencia (las que vencen antes, primero).',
+  pasos:[{t:'Filtrar y buscar',items:['Filtra por **estado**, **prioridad** o **máquina**, o busca por OP, cliente o descripción.','Cambia entre **Tarjetas** y **Tabla** con los botones de arriba.','Toca una OP para abrir su detalle con todas las acciones.']}],
+  reglas:['Solo se listan las OP que aún no están en estado TERMINADO (incluye pendientes, pausadas y canceladas).']},
+produccion:{icono:'🏭',titulo:'En producción',
+  que:'Solo las OP que realmente están en planta: estado **EN PROCESO** o **TRABAJO EXTERNO**. No aparecen las pendientes de diseño o materia prima, ni las pausadas, canceladas o terminadas.',
+  pasos:[{t:'Cómo usarlo',items:['Usa los botones de arriba: **Todas, En proceso, Trabajo externo, Vencidas** o **Sin operario** (el paso actual no tiene a nadie asignado).','Filtra por la **máquina en la que va ahora** o por prioridad, o busca por OP, cliente, máquina u operario.','Cada tarjeta muestra el **paso actual**, su operario y, si está afuera, el servicio externo con la fecha de regreso.']}],
+  reglas:['El «paso actual» es el primer paso de la ruta cuya máquina no está al 100%. Un paso externo solo cuenta como actual si la OP está marcada «en servicio externo».']},
+ruta:{icono:'🧭',titulo:'Ruta por máquina',
+  que:'Muestra el trabajo agrupado por máquina real. Sirve para responder «¿qué OP están pasando por Torno ahora mismo?».',
+  pasos:[{t:'Por máquina (vista principal)',items:['**Paso actual**: cada OP aparece en una sola columna, la de la máquina en la que va.','**Todo lo pendiente**: una OP aparece en cada máquina de su ruta que aún no esté al 100% (sirve para ver la carga que viene).','**En producción** / **Todas en curso** cambia qué OP se tienen en cuenta.','Toca un número de la franja de arriba para ver solo esa máquina. Toca una tarjeta para ver la ruta completa de esa OP.']},
+    {t:'Por OP',items:['Busca y elige una OP para ver sus pasos en orden (MQ1 primero): máquina, nombre original, % de avance y operario.','Desde ahí puedes actualizar el avance, asignar operarios o abrir el detalle.']}],
+  reglas:['Los nombres de la ruta se escribieron a mano: el sistema los agrupa por máquina (por ejemplo TORNO CNC y TORNO CONVENCIONAL cuentan como **Torno**).','Si una OP tiene dos pasos en la misma máquina, ambos comparten el mismo %: la base guarda un solo avance por máquina.','«Externo / otros» no tiene % editable; se muestra con su texto original.']},
+kanban:{icono:'🧩',titulo:'Kanban por máquina',
+  que:'Las OP EN PROCESO, en columnas según el nombre exacto del proceso en el que van ahora.',
+  pasos:[{t:'Cómo leerlo',items:['Cada columna es un proceso tal como está escrito en la ruta; dentro se listan sus OP ordenadas por urgencia.','Toca una tarjeta para ver el detalle completo de esa OP.']}],
+  reglas:['A diferencia de **Ruta**, aquí no se agrupan los nombres parecidos: «TORNO CNC» y «TORNO CONVENCIONAL» salen en columnas separadas.']},
+operarios:{icono:'👷',titulo:'Operarios',
+  que:'Asigna un colaborador (operario) a cada paso de la ruta de las OP, con una nota opcional.',
+  pasos:[{t:'Asignar',items:['Por defecto ves las OP **con pasos sin asignar**. Cambia a **Con asignaciones** o **Todas** si lo necesitas.','Toca **Asignar** o **Cambiar** en un paso (o la tarjeta completa) y escribe el nombre. Al escribir aparecen los nombres ya usados para elegir.','Deja el nombre **vacío** y guarda para quitar una asignación.','Filtra por **operario** para ver todo lo que tiene asignado una persona. Arriba verás la carga (cantidad de pasos) de cada operario.']}],
+  reglas:['No hay una lista oficial de colaboradores: el nombre es texto libre. Escríbelo siempre igual para que la carga por operario salga bien.','La asignación queda guardada en el paso (MQ1 a MQ5); si alguien cambia la ruta de la OP, revisa las asignaciones.']},
+avances:{icono:'📈',titulo:'Avances',
+  que:'La cola de trabajo del día: una tarjeta por OP/ítem, las **más vencidas primero**, con sus tres acciones a la mano.',
+  pasos:[{t:'Las tres acciones',items:['**Actualizar avance**: un % por cada paso de la ruta (barra o botones 0/25/50/75/100). Al guardar, el avance global se recalcula solo.','**Avanzar etapa**: muestra las etapas (Diseño/Planeación, MP/Insumos, Entrega Prod., Calidad, Liberación — más «Servicio Externo» si la OP está afuera en ese momento) y marca la siguiente.','**Registrar horas**: suma horas trabajadas a una máquina.','Toca el resto de la tarjeta para abrir el detalle de la OP.']}],
+  reglas:['El **avance global** se calcula ponderando el % de cada máquina de la ruta por sus **horas estimadas** (ej: Torno 2h al 100% + Centro de mecanizado 1h al 0% → (100×2+0×1)/3 = 66,7%). Los pasos externos no cuentan. Si ninguna máquina de la ruta tiene horas estimadas cargadas, se usa un promedio simple entre ellas (una máquina sin % cuenta como 0%).','Si la ruta no tiene ninguna máquina con %, usa el **Formulario simple** del detalle para poner el avance global a mano.']},
+reportes:{icono:'📉',titulo:'Reportes',
+  que:'Indicadores de la producción: OP en proceso, terminadas, horas reales, avance promedio y distribuciones.',
+  pasos:[{t:'Cómo leerlo',items:['Arriba elige el alcance: **Todas las no terminadas** (lo que carga este módulo) o **Solo en producción**.','**Horas reales por máquina** suma las horas registradas de todas las OP del alcance, en este orden: Centro Mecan., Banco, Fresadora, Torno, Rectificadora, Soldadura, EDM, Hilo.','**Avance promedio por diseñador**, **Distribución por estado** y **Vencidas vs en tiempo** usan el mismo alcance.']}],
+  reglas:['**Terminadas** es el total histórico de la base (no depende del alcance), porque este módulo no carga las OP terminadas.','Soldadura, EDM e Hilo no tienen columna de horas «reales» separada: se usa su única columna de horas.','Los diseñadores se muestran **tal como están escritos** en la base: «F.GIRALDO» y «F. GIRALDO» salen por separado (vienen así del sistema anterior; no se unen automáticamente).','«Vencidas vs en tiempo» no cuenta las OP TERMINADAS ni CANCELADAS, ni las que no tienen fecha pactada.']},
+op:{icono:'📋',titulo:'Detalle de la OP',
+  que:'Todo sobre una OP/ítem: avance global, acciones, etapas, datos y ruta de producción.',
+  pasos:[{t:'Las 8 acciones',items:['**Avance**: % por paso de la ruta. **Producción**: resumen del proceso actual y horas reales por máquina. **Calidad**: consulta (solo lectura).','**Servicio ext.**: marca si la pieza salió a un proveedor, con detalle y fecha de regreso. **Ruta prod.**: los pasos en orden con su avance y operario.','**Cambiar estado**: cualquier estado conocido, con motivo. **Horas**: suma horas a una máquina. **Operario**: asigna colaboradores a los pasos.']},
+    {t:'Etapas',items:['La línea de tiempo muestra **Diseño/Planeación, MP/Insumos, Entrega Prod., Calidad y Liberación**, con fecha cuando están hechas.','Si la OP está **actualmente en servicio externo**, aparece además una etapa **Servicio Externo** entre MP y Entrega — desaparece sola cuando la pieza vuelve, y no queda registro de que ya se cumplió (si vuelve a salir a externo, reaparece).','**Ver etapas** abre la lista y permite **marcar la siguiente**.']}],
+  reglas:['**Entrega Prod.** exige avance global en 100% (igual que en Producción).','**Calidad** aquí solo marca la etapa (indicador heredado); la aprobación formal con rechazos y reprocesos sigue siendo del módulo de Calidad.','**Liberación** marca la OP como despachada y la pasa a TERMINADO sin generar remisión: deja de aparecer como pendiente en Remisiones. Úsala solo si la entrega ya se hizo por fuera del sistema.','Algunas OP antiguas tienen etapas marcadas «fuera de orden» (datos del sistema anterior). La siguiente etapa es siempre la primera que falta.','Al marcar o quitar el servicio externo, el estado cambia solo entre EN PROCESO y TRABAJO EXTERNO; otros estados (pausada, pendiente…) no se tocan.']}
 };
-
 
 // ═══ MANUAL DE USO (ayuda dentro de cada vista) ═══
 const _ay=s=>esc(String(s==null?'':s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');

@@ -1163,7 +1163,7 @@ function lineaCard(m){
     <div style="flex-shrink:0;text-align:right"><span class="badge ${cls}">${lbl}</span>${m.autorizado_por?`<div style="font-size:9.5px;color:#0f766e;font-weight:800;margin-top:4px" title="Autorizó ${esc(m.autorizado_por)}">✔ Autorizado</div>`:''}</div></div>
     <div class="lc-meta">${tipoChip(m)}${cantTxt(m)?`<span style="font-size:12px;font-weight:700">${esc(cantTxt(m))}</span>`:''}${costoDe(m)?`<span style="font-size:12px;font-weight:800;color:var(--gold)">${fmt(costoDe(m))}${m.costo_real==null?' <small style="font-weight:600;color:var(--muted)">cotizado</small>':''}</span>`:''}
       ${m.proveedor?`<span style="font-size:11px;color:var(--muted)">🏭 ${esc(m.proveedor)}</span>`:''}${oc?`<span class="badge morado">${ocNum(oc)}</span>`:''}${m.dias_entrega?`<span style="font-size:11px;color:var(--muted)">⏱ ${m.dias_entrega} d</span>`:''}${m.factura?`<span style="font-size:11px;color:var(--muted)">📄 ${esc(m.factura)}</span>`:''}</div>
-    <div class="lc-meta" style="margin-top:4px;font-size:11px;color:var(--muted)">${m.estado==='SOLICITADO'?`<span style="${venc?'color:var(--danger);font-weight:800':''}">📅 Entrega OP ${p.fecha_pactada?pactadaTag(p):'—'}</span>${espera!=null?`<span>⏳ ${espera} d esperando</span>`:''}${m.manual?'<span>✍️ Solicitud de compras</span>':''}`:''}
+    <div class="lc-meta" style="margin-top:4px;font-size:11px;color:var(--muted)">${m.solicitado_at?`<span title="Fecha de pedido y quién lo pidió">📝 ${fmtDate(m.solicitado_at)}${m.solicitado_por?' · '+esc(m.solicitado_por):''}</span>`:''}${p.asesor?`<span>👤 ${esc(p.asesor)}</span>`:''}${m.estado==='SOLICITADO'?`<span style="${venc?'color:var(--danger);font-weight:800':''}">📅 Entrega OP ${p.fecha_pactada?pactadaTag(p):'—'}</span>${espera!=null?`<span>⏳ ${espera} d esperando</span>`:''}${m.manual?'<span>✍️ Solicitud de compras</span>':''}`:''}
       ${m.estado==='COMPRADO'?`<span>🛒 ${fmtDate(m.fecha_compra)}${m.comprado_por?' · '+esc(m.comprado_por):''}</span>`:''}${m.estado==='RECIBIDO'?`<span>✅ ${fmtDate(m.recibido_at)}${m.recibido_por?' · '+esc(m.recibido_por):''}</span>`:''}
       ${m.estado==='RECHAZADO'&&m.motivo_rechazo?`<span style="color:var(--danger)">❌ ${esc(m.motivo_rechazo)}</span>`:''}${m.obs_compras&&m.estado!=='RECHAZADO'?`<span>💬 ${esc(String(m.obs_compras).slice(0,60))}</span>`:''}</div>
     ${btns.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${btns.join('')}</div>`:''}</div></div>`;
@@ -1246,7 +1246,8 @@ function abrirEditar(id){
           :`<div class="field"><label>Cantidad</label><input type="number" inputmode="decimal" id="me-cant" value="${m.cantidad??''}" step="0.001"></div>`}
     ${enKg?'':fld('Unidad','me-und',m.unidad||'','placeholder="und"')}
     <div class="field span2"><label>Proveedor</label><input id="me-prov" list="dl-provs" value="${esc(m.proveedor||'')}" autocomplete="off"></div>
-    <div class="field"><label>${comprado?'Costo real (sin IVA)':'Costo cotizado'}</label>${money('me-costo',(comprado?m.costo_real:m.costo_cotizado)||'')}</div>
+    <div class="field"><label>Precio cotizado</label>${money('me-cot',m.costo_cotizado||'')}</div>
+    ${comprado?`<div class="field"><label>Costo real (sin IVA)</label>${money('me-costo',m.costo_real||'')}</div>`:''}
     <div class="field"><label>Días para entrega</label><input type="number" inputmode="numeric" id="me-dias" value="${m.dias_entrega??''}"></div>
     ${comprado?`<div class="field"><label>Fecha de compra</label><input type="date" id="me-fc" value="${String(m.fecha_compra||'').slice(0,10)}"></div>${fld('# Factura','me-fact',m.factura||'')}`:''}
     <div class="field span2"><label>Observaciones</label><textarea id="me-obs">${esc(m.obs_compras||'')}</textarea></div></div>
@@ -1257,7 +1258,8 @@ async function guardarEditar(id){
   const m=linDe(id); if(!m) return; const comprado=m.estado==='COMPRADO'||m.estado==='RECIBIDO'; const enKg=m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0;
   const d={material:gv('me-mat'),detalle:gv('me-det'),tipo:gv('me-tipo'),proveedor:gv('me-prov'),dias_entrega:gv('me-dias'),obs_compras:gv('me-obs')};
   if(enKg) d.cantidad_kg=gv('me-kg'); else { d.cantidad=gv('me-cant'); d.unidad=gv('me-und'); }
-  if(comprado){ d.costo_real=gv('me-costo'); d.fecha_compra=gv('me-fc'); d.factura=gv('me-fact'); } else d.costo_cotizado=gv('me-costo');
+  d.costo_cotizado=gv('me-cot');
+  if(comprado){ if(!(gn('me-costo')>0)){ toast('El costo real debe ser mayor que cero','error'); return; } d.costo_real=gv('me-costo'); d.fecha_compra=gv('me-fc'); d.factura=gv('me-fact'); }
   if(!d.material){ toast('Escribe el producto','error'); return; }
   if(await rpcC('compras_editar',{p_id:id,p_data:d},'✅ Cambios guardados')){ closeModal(); afterC(); }
 }
@@ -1266,7 +1268,7 @@ async function guardarEditar(id){
 let _NS={prod:null,t:null};
 function abrirNueva(){
   _NS={prod:null,t:null};
-  openModal('➕ Nueva solicitud de compra',`${dlProvs()}${ayudaForm(`Busca la **OP** por número o empresa y elígela. Si ya sabes el proveedor y el costo, marca **«comprado de una vez»** para no repetir el paso.`)}<div class="field"><label>Buscar OP * <small style="text-transform:none;font-weight:600">(número, empresa o descripción)</small></label><input id="ns-q" placeholder="Ej. 12500 o AMCOR" oninput="nsBuscar(this.value)" autocomplete="off"></div>
+  openModal('➕ Nueva solicitud de compra',`${dlProvs()}${ayudaForm(`Busca la **OP** por número o empresa y elígela. Si ya sabes el proveedor y el costo, marca **«comprado de una vez»** para no repetir el paso, o usa **📄 Crear + OC** para hacer la orden de compra enseguida.`)}<div class="field"><label>Buscar OP * <small style="text-transform:none;font-weight:600">(número, empresa o descripción)</small></label><input id="ns-q" placeholder="Ej. 12500 o AMCOR" oninput="nsBuscar(this.value)" autocomplete="off"></div>
     <div id="ns-res" style="margin:8px 0"></div><div id="ns-form" style="display:none"><div class="form-grid">
     <div class="field"><label>Tipo *</label><select id="ns-tipo"><option value="MATERIAL">Material</option><option value="SERVICIO EXTERNO">Servicio externo</option></select></div>
     <div class="field"><label>Días para entrega</label><input type="number" inputmode="numeric" id="ns-dias"></div>
@@ -1276,7 +1278,7 @@ function abrirNueva(){
     <div class="field span2"><label>Costo sin IVA</label>${money('ns-costo','')}</div>
     <div class="field span2"><label>Observaciones</label><textarea id="ns-obs"></textarea></div></div>
     <label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:13px"><input type="checkbox" id="ns-comp" style="width:20px;height:20px"> Marcar como comprado de una vez (requiere proveedor y costo)</label></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarNueva()">💾 Crear solicitud</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ghost" onclick="guardarNueva(true)" title="Crea la solicitud y abre de una vez el formulario de orden de compra">📄 Crear + OC</button><button class="btn btn-primary" onclick="guardarNueva()">💾 Crear solicitud</button>`);
 }
 function nsBuscar(v){
   clearTimeout(_NS.t); const box=document.getElementById('ns-res'); const q=String(v||'').trim();
@@ -1294,12 +1296,14 @@ function nsElegir(id){
   _NS.prod=id; const p=prodDe(id); document.getElementById('ns-form').style.display='';
   document.getElementById('ns-res').innerHTML=`<div class="ns-op on"><b>OP-${p.op} · ÍTEM ${p.item_num??'—'}</b><span>${esc(p.empresa||'')}</span><small>${esc(String(p.descripcion||'').slice(0,80))}</small><a onclick="_NS.prod=null;document.getElementById('ns-form').style.display='none';document.getElementById('ns-res').innerHTML='';document.getElementById('ns-q').focus()" style="color:var(--danger);font-size:11px;cursor:pointer">cambiar</a></div>`;
 }
-async function guardarNueva(){
+async function guardarNueva(conOC){
   if(!_NS.prod){ toast('Busca y elige la OP','error'); return; }
-  const comp=document.getElementById('ns-comp').checked;
+  const comp=!conOC&&document.getElementById('ns-comp').checked;   // «Crear + OC» ignora «comprado de una vez»: la orden es la que la marca comprada
   if(comp&&(!gv('ns-prov')||!(gn('ns-costo')>0))){ toast('Para marcarlo comprado escribe proveedor y costo','error'); return; }
   const ok=await rpcC('compras_nueva',{p_id_prod:_NS.prod,p_tipo:gv('ns-tipo'),p_descripcion:gv('ns-desc'),p_cantidad:gv('ns-cant')?Number(gv('ns-cant')):null,p_unidad:gv('ns-und')||null,p_proveedor:gv('ns-prov')||null,p_costo:gn('ns-costo')||null,p_dias:gv('ns-dias')?parseInt(gv('ns-dias')):null,p_obs:gv('ns-obs')||null,p_comprado:comp},'✅ Solicitud creada');
-  if(ok){ closeModal(); _PD.est=comp?'COMPRADO':'SOLICITADO'; nav('pedidos'); }
+  if(!ok) return;
+  closeModal(); _PD.est=comp?'COMPRADO':'SOLICITADO'; nav('pedidos');
+  if(conOC&&ok.id&&linDe(ok.id)) abrirOC([ok.id]);
 }
 
 // — Orden de compra —
@@ -1327,6 +1331,11 @@ function ocProvChange(){
   if(!p) return;
   [['oc-nit','nit'],['oc-tel','telefono'],['oc-email','email'],['oc-ciudad','ciudad'],['oc-dir','direccion'],['oc-enc','contacto']].forEach(([id,k])=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=p[k]||''; });
 }
+// Cálculo de la orden: subtotal = suma del costo total (sin IVA) de cada línea; IVA = subtotal × IVA%; total = subtotal + IVA.
+// Es la misma cuenta que hacía el sistema anterior (createOrdenCompra sumaba «costoTotal» por ítem). El sistema anterior tenía
+// además columnas de desglose por ítem (costo material, servicio externo, horas de diseño, flete) en ELEMENTOS_OC, pero su
+// pantalla nunca las llenaba y el total nunca las usaba. oc_lineas / prod_materiales solo guardan el valor total de la línea,
+// así que aquí se pide un único costo por línea: simplificación deliberada por el esquema, sin cambio en el resultado.
 function ocCalc(){
   const ms=(_OCM?_OCM.ids:[]).map(linDe).filter(Boolean); const sub=ms.reduce((s,m)=>s+gn('oc-c-'+m.id),0); const iva=Math.round(sub*gn('oc-iva')/100);
   const el=document.getElementById('oc-tot'); if(el) el.innerHTML=`<div><span>Subtotal</span><b>${fmt(sub)}</b></div><div><span>IVA ${gn('oc-iva')}%</span><b>${fmt(iva)}</b></div><div class="t"><span>TOTAL</span><b>${fmt(sub+iva)}</b></div>`;
@@ -1372,7 +1381,7 @@ function ocDocHtml(d){
   .tot td{border:none;padding:3px 6px}.tot .t td{border-top:2px solid #0f766e;font-size:13px;font-weight:900;color:#0f766e}
   .firma{border-top:1px solid #111;padding-top:4px;margin-top:38px;font-size:9px;text-align:center}</style></head><body>${marca}
   <table class="nb"><tr><td style="width:130px"><img src="${LOGO_B64_PNG}" style="width:120px"></td>
-    <td><div style="font-size:9px;line-height:1.6;color:#444"><b style="font-size:12px;color:#111">${esc(E.nombre)}</b><br><em>${esc(E.lema)}</em><br>${esc(E.dir)} · ${esc(E.ciudad||'')}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)}</div></td>
+    <td><div style="font-size:9px;line-height:1.6;color:#444"><b style="font-size:12px;color:#111">${esc(E.nombre)}</b><br><em>${esc(E.lema)}</em><br>NIT: ${esc(E.nit||'')}<br>${esc(E.dir)} · ${esc(E.ciudad||'')}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)}</div></td>
     <td style="width:170px"><div class="box"><div class="tit">ORDEN DE COMPRA</div><div style="font-size:15px;font-weight:900;margin-top:2px">${esc(d.numero)}</div><div style="margin-top:4px"><span class="lbl">Fecha</span><br><b>${fmtDate(d.fecha)}</b></div></div></td></tr></table>
   <table style="margin-top:10px"><tr><td style="white-space:nowrap"><span class="lbl">Proveedor</span></td><td colspan="3"><b style="font-size:12px">${esc(P.nombre||'—')}</b></td>${P.logo?`<td rowspan="3" style="width:90px;text-align:center"><img src="${esc(P.logo)}" style="max-width:80px;max-height:60px"></td>`:''}</tr>
     <tr><td><span class="lbl">NIT</span></td><td>${esc(P.nit||'—')}</td><td style="white-space:nowrap"><span class="lbl">Ciudad</span></td><td>${esc(P.ciudad||'—')}</td></tr>
@@ -1383,6 +1392,7 @@ function ocDocHtml(d){
   <table class="nb" style="margin-top:8px"><tr><td style="vertical-align:top">
       ${d.forma_pago?`<div><span class="lbl">Forma de pago</span><br><b>${esc(d.forma_pago)}</b></div>`:''}${d.validez?`<div style="margin-top:6px"><span class="lbl">Validez</span><br><b>${esc(d.validez)} días</b></div>`:''}</td>
     <td style="width:230px"><table class="tot"><tr><td>Subtotal</td><td class="r">${$(d.subtotal)}</td></tr><tr><td>I.V.A ${Number(d.iva_pct)||0}%</td><td class="r">${$(d.iva)}</td></tr><tr class="t"><td>TOTAL</td><td class="r">${$(d.total)}</td></tr></table></td></tr></table>
+  <div style="margin-top:8px;font-size:8.5px;color:#555;line-height:1.4">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</div>
   ${d.obs?`<div style="margin-top:10px;border:1px solid #999;padding:6px 8px"><span class="lbl">Observaciones</span><div style="white-space:pre-wrap;margin-top:2px">${esc(d.obs)}</div></div>`:''}
   <table class="nb" style="margin-top:8px"><tr><td style="width:50%"><div class="firma">Solicitó<br><b>${esc(d.solicito||'')}</b></div></td><td style="width:50%"><div class="firma">Autorizó<br><b>${esc(d.autorizo||'')}</b></div></td></tr></table>
   <div style="text-align:center;margin-top:14px;font-size:8px;color:#777">Atentamente, ${esc(E.nombre)} · ${esc(E.email)}</div></body></html>`;
@@ -1446,6 +1456,13 @@ function ocSet(k,v){ _OC[k]=v; pgReset(); ordenes(); }
 function ocEst(k){ ocSet('est',k); }
 let _ocT=null; function ocSetQ(v){ clearTimeout(_ocT); _ocT=setTimeout(()=>{ _OC.q=v; pgReset(); ordenes(); },220); }
 function ocToggle(id){ if(_OCX.has(id)) _OCX.delete(id); else _OCX.add(id); ordenes(); }
+// Datos del proveedor y condiciones de la orden (se ven al abrir «Ver líneas»)
+function ocInfoH(o){
+  const f=[['NIT',o.prov_nit],['Teléfono',o.prov_telefono],['Email',o.prov_email],['Ciudad',o.prov_ciudad],['Dirección',o.prov_direccion],['Encargado',o.prov_contacto],
+    ['Forma de pago',o.forma_pago],['Validez',o.validez_dias!=null&&o.validez_dias!==''?o.validez_dias+' días':''],['Solicitó',o.solicito],['Autorizó',o.autorizo],['Creada por',o.created_by]].filter(([,v])=>v!=null&&String(v).trim()!=='');
+  if(!f.length&&!o.observaciones) return '';
+  return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">${f.map(([l,v])=>`<div style="min-width:0"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700">${l}</div><div style="font-size:12px;word-break:break-word">${esc(v)}</div></div>`).join('')}${o.observaciones?`<div style="grid-column:1/-1"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700">Observaciones</div><div style="font-size:12px;white-space:pre-wrap">${esc(o.observaciones)}</div></div>`:''}</div>`;
+}
 function ocCard(o){
   const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=ls.length?[]:(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const nLin=ls.length||hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor); const open=_OCX.has(o.id);
@@ -1454,7 +1471,7 @@ function ocCard(o){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-sm btn-ghost" onclick="imprimirOC('${o.id}')">🖨️ Imprimir</button>
       ${o.historico?'<span class="badge gris" title="Viene del sistema anterior">Histórica</span>':''}${puedeCompras()&&o.estado==='EMITIDA'?`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="ocRecibirAbrir('${o.id}')">✅ Recibida</button><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="ocAnular('${o.id}')">✖ Anular</button>`:''}
       <button class="btn btn-sm btn-ghost" style="margin-left:auto" onclick="ocToggle('${o.id}')">${open?'Ocultar ▴':'Ver líneas ▾'}</button></div>
-    ${open?`<div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px">${hl.map(x=>`<div class="cm-line"><div class="cm-t">${esc(x.descripcion||'—')}<small>${x.cantidad!=null?esc(String(Number(x.cantidad)))+' und':''}${x.op?' · OP-'+esc(x.op):''}</small></div><b style="font-size:12px">${fmt(x.valor_total)}</b></div>`).join('')}${ls.map(m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-line">${linDesc(m)}<span style="font-size:11px">${m.dias_entrega?'⏱ '+m.dias_entrega+' d · ':''}<b>${fmt(m.costo_real)}</b> <span class="badge ${(EST[m.estado]||[0,'gris'])[1]}">${(EST[m.estado]||[m.estado])[0]}</span></span></div>`; }).join('')||(hl.length?'':mutedP('Sin líneas'))}
+    ${open?`<div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px">${ocInfoH(o)}${hl.map(x=>`<div class="cm-line"><div class="cm-t">${esc(x.descripcion||'—')}<small>${x.cantidad!=null?esc(String(Number(x.cantidad)))+' und':''}${x.op?' · OP-'+esc(x.op):''}</small></div><b style="font-size:12px">${fmt(x.valor_total)}</b></div>`).join('')}${ls.map(m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-line">${linDesc(m)}<span style="font-size:11px">${m.dias_entrega?'⏱ '+m.dias_entrega+' d · ':''}<b>${fmt(m.costo_real)}</b> <span class="badge ${(EST[m.estado]||[0,'gris'])[1]}">${(EST[m.estado]||[m.estado])[0]}</span></span></div>`; }).join('')||(hl.length?'':mutedP('Sin líneas'))}
       <div style="text-align:right;font-size:11px;color:var(--muted)">Subtotal ${fmt(o.subtotal)} · IVA ${Number(o.iva_pct)||0}% ${fmt(o.iva)}</div></div>`:''}</div>`;
 }
 function ordenes(){
@@ -1526,20 +1543,31 @@ async function guardarProv(){
 async function pvActivo(id,act){ if(await rpcC('compras_prov_activo',{p_id:id,p_activo:act},act?'▶ Proveedor activado':'⏸ Proveedor desactivado')) afterC(); }
 
 // ── DASHBOARD ──────────────────────────────────────────────────────
+let _DASH={top:'mes'};
 function dashboard(){
   const L=DB.lineas||[]; const porC=L.filter(m=>m.estado==='SOLICITADO'), comp=L.filter(m=>m.estado==='COMPRADO'), rec=L.filter(m=>m.estado==='RECIBIDO');
   const mes=hoyISO().slice(0,7); const delMes=L.filter(m=>['COMPRADO','RECIBIDO'].includes(m.estado)&&String(m.fecha_compra||m.comprado_at||'').slice(0,7)===mes);
   const gasto=delMes.reduce((s,m)=>s+Number(m.costo_real||0),0);
   const emit=(DB.ocs||[]).filter(o=>o.estado==='EMITIDA');
   const banner=moduleBanner('📊','Compras',`${porC.length} por comprar · ${comp.length} por recibir · ${emit.length} OC abiertas`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(porC.length,'🛒 Por comprar','#0f766e',"_PD.est='SOLICITADO';nav('pedidos')")}${kchip(comp.length,'📦 Por recibir','var(--info)',"_PD.est='COMPRADO';nav('pedidos')")}${kchip(porC.filter(m=>!m.autorizado_por).length,'⏳ Sin autorizar','#7c3aed',"_PD.est='SOLICITADO';nav('pedidos')")}${kchip(fmt(gasto),'💲 Comprado este mes','var(--gold)')}${kchip(rec.filter(m=>String(m.recibido_at||'').slice(0,7)===mes).length,'✅ Recibidos este mes','#16a34a')}</div>`;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(porC.length,'🛒 Por comprar','#0f766e',"_PD.est='SOLICITADO';nav('pedidos')")}${kchip(comp.length,'📦 Por recibir','var(--info)',"_PD.est='COMPRADO';nav('pedidos')")}${kchip(porC.filter(m=>!m.autorizado_por).length,'⏳ Sin autorizar','#7c3aed',"_PD.est='SOLICITADO';nav('pedidos')")}${kchip(fmt(gasto),'💲 Comprado este mes','var(--gold)')}${kchip(rec.filter(m=>String(m.recibido_at||'').slice(0,7)===mes).length,'✅ Recibidos este mes','#16a34a')}${kchip(fmt(L.filter(m=>['COMPRADO','RECIBIDO'].includes(m.estado)).reduce((s,m)=>s+Number(m.costo_real||0),0)),'💰 Total comprado','var(--gold)',"_DASH.top='todo';dashboard()")}${kchip(L.filter(m=>m.estado==='RECHAZADO').length,'❌ Rechazados','var(--danger)',"_PD.est='RECHAZADO';nav('pedidos')")}</div>`;
   const urg=porC.map(m=>({m,p:prodDe(m.id_prod)||{}})).sort((a,b)=>{ const da=diasPactada(a.p),db=diasPactada(b.p); return (da==null?9999:da)-(db==null?9999:db); }).slice(0,8);
   const urgH=`<div class="dp-section" style="margin-top:14px"><h4>⏰ Lo más urgente por comprar</h4>${urg.length?urg.map(({m,p})=>`<div class="cm-line" style="cursor:pointer" onclick="_PD.q='';_PD.est='SOLICITADO';nav('pedidos')">${linDesc(m)}<span style="font-size:11px;text-align:right">${p.fecha_pactada?pactadaTag(p):'—'}</span></div>`).join(''):mutedP('Nada pendiente 🎉')}</div>`;
-  const por={}; delMes.forEach(m=>{ const k=m.proveedor||'(sin proveedor)'; por[k]=(por[k]||0)+Number(m.costo_real||0); });
+  // Top proveedores: del mes o de todo el historial (como el «Top Proveedores» del sistema anterior), por costo real comprado sin IVA
+  const compradas=L.filter(m=>['COMPRADO','RECIBIDO'].includes(m.estado));
+  const baseTop=_DASH.top==='todo'?compradas:delMes;
+  const por={}; baseTop.forEach(m=>{ const k=m.proveedor||'(sin proveedor)'; por[k]=(por[k]||0)+Number(m.costo_real||0); });
   const top=Object.entries(por).sort((a,b)=>b[1]-a[1]).slice(0,6); const mx=Math.max(1,...top.map(x=>x[1]));
-  const topH=`<div class="dp-section" style="margin-top:14px"><h4>🏭 Proveedores del mes</h4>${top.length?top.map(([n,v])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px"><b>${esc(n)}</b><span>${fmt(v)}</span></div>${prog(Math.round(v/mx*100))}</div>`).join(''):mutedP('Sin compras este mes')}</div>`;
+  const topChips=`<span style="margin-left:auto;display:flex;gap:4px">${[['mes','Este mes'],['todo','Histórico']].map(([k,l])=>`<span class="chip${_DASH.top===k?' on':''}" style="padding:3px 9px;font-size:10.5px;text-transform:none;letter-spacing:0" onclick="_DASH.top='${k}';dashboard()">${l}</span>`).join('')}</span>`;
+  const topH=`<div class="dp-section" style="margin-top:14px"><h4 style="flex-wrap:wrap">🏭 Top proveedores${topChips}</h4>${top.length?top.map(([n,v])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px"><b>${esc(n)}</b><span>${fmt(v)}</span></div>${prog(Math.round(v/mx*100))}</div>`).join(''):mutedP(_DASH.top==='todo'?'Sin compras registradas':'Sin compras este mes')}</div>`;
+  // Distribución por estado y por tipo (como la «Distribución» del sistema anterior)
+  const tot=Math.max(1,L.length); const rech=L.filter(m=>m.estado==='RECHAZADO').length; const svc=L.filter(m=>m.tipo==='SERVICIO EXTERNO').length;
+  const barra=(ic,lbl,n,col,onc)=>`<div style="margin:8px 0;${onc?'cursor:pointer':''}" ${onc?`onclick="${onc}"`:''}><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${ic} ${lbl}</span><b>${n} <small style="color:var(--muted);font-weight:600">${Math.round(n/tot*100)}%</small></b></div><div class="prog"><div class="prog-fill" style="width:${Math.round(n/tot*100)}%;background:${col}"></div></div></div>`;
+  const distH=`<div class="dp-section" style="margin-top:14px"><h4>📊 Distribución (${L.length} pedidos)</h4>
+    ${barra('🛒','Por comprar',porC.length,'var(--warn)',"_PD.est='SOLICITADO';nav('pedidos')")}${barra('📦','Comprados',comp.length,'var(--info)',"_PD.est='COMPRADO';nav('pedidos')")}${barra('✅','Recibidos',rec.length,'#16a34a',"_PD.est='RECIBIDO';nav('pedidos')")}${barra('❌','Rechazados',rech,'var(--danger)',"_PD.est='RECHAZADO';nav('pedidos')")}
+    <div style="height:1px;background:var(--border);margin:10px 0"></div>${barra('🪨','Materiales',L.length-svc,'var(--teal)')}${barra('🛠','Servicios externos',svc,'var(--pink)')}</div>`;
   const oc=emit.slice(0,5); const ocH=`<div class="dp-section" style="margin-top:14px"><h4>📄 Órdenes por recibir</h4>${oc.length?oc.map(o=>`<div class="cm-line" style="cursor:pointer" onclick="_OC.est='EMITIDA';nav('ordenes')"><div class="cm-t">${ocNum(o)} · ${esc(o.prov_nombre)}<small>${fmtDate(o.fecha)}</small></div><b style="font-size:12px">${fmt(o.total)}</b></div>`).join(''):mutedP('No hay órdenes abiertas')}</div>`;
-  setContent(`${banner}${kp}${urgH}${ocH}${topH}<div style="height:80px"></div>`);
+  setContent(`${banner}${kp}${urgH}${ocH}${topH}${distH}<div style="height:80px"></div>`);
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
@@ -1736,36 +1764,36 @@ general:{icono:'🚀',titulo:'Primeros pasos',
   consejos:['Cada vez que llega un pedido nuevo verás un aviso "🆕 pedido nuevo por comprar".']},
 dashboard:{icono:'📊',titulo:'Inicio',
   que:'Resumen de lo que hay que hacer: pedidos por comprar, por recibir, sin autorizar y cuánto se compró en el mes.',
-  pasos:[{t:'Cómo usarlo',items:['Mira las tarjetas: **Por comprar, Por recibir, Sin autorizar, Comprado este mes** y **Recibidos este mes**.','**Toca una tarjeta** para ir a la lista de pedidos filtrada.','Abajo ves **lo más urgente por comprar** (ordenado por la fecha de entrega de la OP), las **órdenes por recibir** y los **proveedores del mes**.']}],
+  pasos:[{t:'Cómo usarlo',items:['Mira las tarjetas: **Por comprar, Por recibir, Sin autorizar, Comprado este mes, Recibidos este mes, Total comprado** (todo el historial) y **Rechazados**.','**Toca una tarjeta** para ir a la lista de pedidos filtrada.','Abajo ves **lo más urgente por comprar** (ordenado por la fecha de entrega de la OP) y las **órdenes por recibir**.','**Top proveedores**: a quién se le compra más. Cambia entre **Este mes** e **Histórico**. Se cuenta el costo real sin IVA de lo comprado o recibido.','**Distribución**: cuántos pedidos hay en cada estado (por comprar, comprados, recibidos, rechazados) y cuántos son materiales o servicios externos. Toca un estado para ver esos pedidos.']}],
   consejos:['Empieza siempre por lo urgente: las OP con la entrega vencida aparecen primero.']},
 pedidos:{icono:'🛒',titulo:'Pedidos de compra',
   que:'Cada material o servicio que piden las OP, con su estado. Desde aquí se compra, se recibe o se rechaza.',
   quien:'Compras y admin actúan; administración autoriza; los demás consultan.',
   pasos:[
-   {t:'Ver los pedidos',items:['Arriba elige **Por comprar, Comprados, Recibidos, Rechazados** o **Todos**. Cada botón muestra cuántos hay.','Filtra por **Materiales / Servicios** y busca por OP, empresa, proveedor u orden.','En cada tarjeta ves la OP, el material, la cantidad, el costo cotizado, los días de espera y la **fecha de entrega de la OP** (en rojo si ya venció).']},
+   {t:'Ver los pedidos',items:['Arriba elige **Por comprar, Comprados, Recibidos, Rechazados** o **Todos**. Cada botón muestra cuántos hay.','Filtra por **Materiales / Servicios** y busca por OP, empresa, proveedor u orden.','En cada tarjeta ves la OP, el material, la cantidad, el costo cotizado, la **fecha del pedido y quién lo pidió**, el asesor de la OP, los días de espera y la **fecha de entrega de la OP** (en rojo si ya venció).']},
    {t:'Comprar sin orden de compra',items:['En un pedido **Por comprar** toca **🛒 Comprar**.','Escribe el **proveedor** (elige de la lista o escribe uno nuevo), la **fecha**, los **días de entrega** y el **costo sin IVA** de cada línea.','Toca **💾 Guardar**: pasa a **Comprado**.']},
    {t:'Comprar con una orden de compra (varios materiales al mismo proveedor)',items:['**Marca varias tarjetas** con el cuadro de la izquierda (o **☑ Seleccionar todo**).','En la barra de abajo toca **📄 Generar OC**.','Escribe el **proveedor**: si ya está en el directorio se llenan sus datos. Ajusta **IVA %**, validez, forma de pago, quién solicita y quién autoriza.','Escribe el **costo total** de cada línea (y los días de entrega). Abajo ves subtotal, IVA y total.','Toca **🖨️ Vista previa** para revisar el PDF, o **💾 Guardar y generar**: se crea la orden con su número, los pedidos pasan a **Comprado** y se abre el PDF para imprimir.']},
    {t:'Recibir',items:['En un pedido **Comprado** toca **✅ Recibido** (o marca varios y **✅ Marcar recibido**).','Escribe la **fecha** y el **número de factura**. Pasa a **Recibido**.']},
-   {t:'Rechazar, devolver, corregir',items:['**✖** en un pedido por comprar: escribe el **motivo** y queda **Rechazado**. **↩ Reabrir** lo devuelve a por comprar.','**↩** en un pedido comprado sin orden lo devuelve a por comprar.','**✏️ Editar** cambia descripción, cantidad, proveedor, costos, fechas y observaciones.']},
-   {t:'Crear una solicitud tú mismo',items:['Toca **➕ Nueva solicitud**.','**Busca la OP** (por número o empresa) y elígela.','Elige **Material** o **Servicio externo**, describe qué se necesita, cantidad, proveedor y costo si ya los sabes.','Marca **"comprado de una vez"** solo si ya tienes proveedor y costo. Toca **💾 Crear solicitud**.']},
+   {t:'Rechazar, devolver, corregir',items:['**✖** en un pedido por comprar: escribe el **motivo** (obligatorio) y queda **Rechazado**. **↩ Reabrir** lo devuelve a por comprar.','**↩** en un pedido comprado sin orden lo devuelve a por comprar.','**✏️ Editar** cambia descripción, cantidad, proveedor, **precio cotizado**, **costo real** (si ya se compró), fechas, factura y observaciones.','El estado (comprado, recibido, rechazado) **no se cambia desde Editar**, como sí se podía en el sistema anterior: se cambia con los botones de cada paso, para que quede registrado quién y cuándo.']},
+   {t:'Crear una solicitud tú mismo',items:['Toca **➕ Nueva solicitud**.','**Busca la OP** (por número o empresa) y elígela. Toda solicitud va ligada a una OP, igual que en el sistema anterior.','Elige **Material** o **Servicio externo**, describe qué se necesita, cantidad, proveedor y costo si ya los sabes.','Marca **"comprado de una vez"** solo si ya tienes proveedor y costo. Toca **💾 Crear solicitud**.','O toca **📄 Crear + OC**: crea la solicitud y abre enseguida el formulario de orden de compra con esa línea.']},
    {t:'Autorizar (administración)',items:['Selecciona los pedidos y toca **✔ Autorizar**. Quedan marcados como autorizados; en la orden de compra sale quién autorizó.']}],
-  reglas:['Las líneas de una orden de compra deben tener **costo** para poder guardarse.','Un pedido que pertenece a una orden emitida no se puede devolver: **anula la orden** primero.','Para pasar una OP a producción, todos sus materiales deben estar **comprados o recibidos** (los rechazados no cuentan).'],
+  reglas:['Las líneas de una orden de compra deben tener **costo** para poder guardarse.','En la orden se escribe **un solo costo total sin IVA por línea**. El sistema anterior tenía columnas para separar material, servicio externo, horas de diseño y flete, pero nunca se llenaban y el total era igual la suma de los costos de cada línea: aquí se hace la misma cuenta (subtotal + IVA = total).','Un pedido que pertenece a una orden emitida no se puede devolver: **anula la orden** primero.','Para pasar una OP a producción, todos sus materiales deben estar **comprados o recibidos** (los rechazados no cuentan).'],
   consejos:['Junta en una sola orden lo que se le compra al mismo proveedor: es un PDF, un número y un pago.']},
 ordenes:{icono:'📄',titulo:'Órdenes de compra',
   que:'Las órdenes emitidas a los proveedores, con su número, sus líneas y su PDF. Las de antes del sistema nuevo aparecen marcadas como **Histórica**.',
   quien:'Compras y admin actúan; los demás consultan.',
   pasos:[
-   {t:'Consultar una orden',items:['Elige **Emitidas** (por recibir), **Recibidas**, **Anuladas** o **Todas** y usa la búsqueda.','Toca **Ver líneas ▾** para ver qué incluye y cuánto cuesta cada línea.','**🖨️ Imprimir** abre el PDF de la orden (con logo, proveedor, líneas, IVA, total y firmas).']},
+   {t:'Consultar una orden',items:['Elige **Emitidas** (por recibir), **Recibidas**, **Anuladas** o **Todas** y usa la búsqueda.','Toca **Ver líneas ▾** para ver los datos del proveedor (NIT, teléfono, correo, dirección, encargado), las condiciones (forma de pago, validez, quién solicitó y autorizó, observaciones) y qué incluye y cuánto cuesta cada línea.','**🖨️ Imprimir** abre el PDF de la orden (con logo, NIT de la empresa, proveedor, líneas, IVA, total, nota de condiciones y firmas).']},
    {t:'Recibir una orden',items:['En una orden **Emitida** toca **✅ Recibida**.','Escribe la **fecha** y la **factura**. Todas sus líneas pasan a **Recibido**.']},
    {t:'Anular una orden',items:['Toca **✖ Anular** y confirma. La orden queda **Anulada** y sus pedidos vuelven a **Por comprar**.']}],
-  reglas:['Una orden **ya recibida** no se puede anular.','Las órdenes nuevas se numeran automáticamente: siguen la numeración del sistema anterior.'],
+  reglas:['Una orden **ya recibida** no se puede anular.','Al **anular**, sus pedidos vuelven a **Por comprar** (en el sistema anterior quedaban marcados como comprados).','Las órdenes nuevas se numeran automáticamente: siguen la numeración del sistema anterior.','En las órdenes **Históricas** el PDF que se imprime se arma de nuevo con los datos guardados; el PDF original del sistema anterior quedó en AppSheet y no se puede abrir desde aquí.'],
   consejos:['Antes de enviar el PDF al proveedor, usa **Vista previa** al crearla: se corrige antes de que exista el número.']},
 proveedores:{icono:'🏭',titulo:'Proveedores',
   que:'Directorio de proveedores. Sus datos se copian solos a cada orden de compra.',
   quien:'Compras y admin crean y editan.',
   pasos:[
    {t:'Crear o editar',items:['Toca **➕ Nuevo proveedor**.','Escribe el **nombre / razón social** (obligatorio) y, si los tienes, NIT, teléfono, celular, correo, ciudad, dirección, encargado, tipo, plazo de pago y actividad.','Puedes subir el **logo**: aparece en la orden de compra.','Toca **💾 Guardar**. Para cambiar algo después, toca **✏️ Editar**.']},
-   {t:'Activar o desactivar',items:['**⏸ Desactivar** saca al proveedor de las listas sin borrar su historial. **▶ Activar** lo devuelve.']},
+   {t:'Activar o desactivar',items:['**⏸ Desactivar** saca al proveedor de las listas sin borrar su historial. **▶ Activar** lo devuelve.','Aquí **no se borran** proveedores (el sistema anterior sí los eliminaba): así sus órdenes de compra viejas siguen mostrando sus datos. Si uno ya no se usa, desactívalo.']},
    {t:'Consultar',items:['Filtra **Activos / Inactivos / Todos** y busca por nombre, NIT, ciudad, tipo o actividad.','Cada tarjeta muestra cuántas órdenes tiene y cuánto se ha comprado; toca el teléfono o el correo para llamar o escribir.']}],
   consejos:['Si al hacer una orden escribes un proveedor nuevo, marca **"Guardar este proveedor en el directorio"**.']},
 subir:{icono:'⬆️',titulo:'Subir datos anteriores',
