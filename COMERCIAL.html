@@ -2349,7 +2349,7 @@ function dashControlesHTML(){
     extra=`<div style="display:flex;gap:6px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="dashMesNav(-1)">◀</button><input type="month" value="${ym}" max="${_ymNow()}" onchange="dashSetMes(this.value)" style="flex:1;min-width:0;text-align:center"><button class="btn btn-ghost btn-sm" onclick="dashMesNav(1)" ${ym>=_ymNow()?'disabled':''}>▶</button></div>`; }
   else if(_dashP.tipo==='rango'){
     extra=`<div style="display:flex;gap:6px;align-items:center"><input type="date" value="${_dashP.desde}" onchange="dashSetRango('desde',this.value)" style="flex:1;min-width:0"><span style="font-size:12px;color:var(--muted)">a</span><input type="date" value="${_dashP.hasta}" onchange="dashSetRango('hasta',this.value)" style="flex:1;min-width:0"></div>`; }
-  return `<div style="display:flex;flex-direction:column;gap:8px">${verTodoBar()}<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>${extra}<div style="font-size:10px;color:var(--muted)">El periodo mueve todo el inicio: valor activo, vendido, pipeline, top clientes, pendientes y recientes (por fecha de emisión).</div></div>`;
+  return `<div style="display:flex;flex-direction:column;gap:8px">${verTodoBar()}<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>${extra}<div style="font-size:10px;color:var(--muted)">El periodo mueve el inicio: vendido, pipeline, top clientes, pendientes y recientes (por fecha de emisión).</div></div>`;
 }
 function dashboard(){
   const cotsAll=misCots(); const now=new Date(); const rg=dashRango();
@@ -2367,8 +2367,8 @@ function dashboard(){
   const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0}); if(!p.despachado) x.pend++; });
   const hace60=now.getTime()-60*864e5;
   const esActiva=c=>{ const x=prodPorCot[c.cotizacion]; return x?x.pend>0:_dFecha(c.fecha_emision||c.created_at).getTime()>=hace60; };
-  const activas=aprob.filter(esActiva);   // aprobadas del periodo que siguen en curso
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
+  const activas=activasTodas;   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
   const sum=l=>l.reduce((s,c)=>s+Number(c.precio_total||0),0);
   const sinProc=mes.filter(c=>_normEstado(c.estado)!=='APROBADA');   // v13: cotizado en el periodo que NO se aprobó (en espera, canceladas…)
   _dash.aprob=aprob; _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion);
@@ -2391,9 +2391,9 @@ function dashboard(){
   <div style="padding:14px 2px;display:flex;flex-direction:column;gap:14px">
     ${dashControlesHTML()}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div onclick="dashPanel('activas','🔥 Valor activo ${esc(rg.corto)}','No hay cotizaciones activas en este periodo')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer">
-        <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">🔥 Valor activo${_dashP.tipo==='todo'?'':' · '+esc(rg.corto)}</div>
-        <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div>${_dashP.tipo!=='todo'?`<div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:3px">Todo el tiempo: ${fmt(Math.round(sum(activasTodas)))}</div>`:''}</div>
+      <div onclick="dashPanel('activas','🔥 Valor activo (todo el tiempo)','No hay cotizaciones activas')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer">
+        <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">🔥 Valor activo · todo el tiempo</div>
+        <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div></div>
       <div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">💰 Vendido ${rg.label}</div>
         <div style="font-size:${dashSz(sum(aprob))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(aprob)))}</div>
