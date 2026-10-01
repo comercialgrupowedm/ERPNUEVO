@@ -83,34 +83,34 @@ body{display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;
 
 /* ═══ QUICK ACCESS BAR (barra superior de navegación) ══════ */
 #qa-bar{
-  display:flex;align-items:flex-start;gap:14px;flex-shrink:0;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  padding:12px 14px 10px;overflow-x:auto;scrollbar-width:none;
+  display:flex;align-items:center;gap:4px;flex-shrink:0;
+  background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -3px 14px rgba(15,23,42,.07);
+  padding:5px 6px calc(5px + env(safe-area-inset-bottom,0px));overflow-x:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;z-index:190;
 }
 #qa-bar::-webkit-scrollbar{display:none}
 .qbar-item{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  flex-shrink:0;width:64px;cursor:pointer;user-select:none;position:relative;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  flex-shrink:0;width:54px;cursor:pointer;user-select:none;position:relative;
   -webkit-tap-highlight-color:transparent;
 }
 .qbar-icon{
-  width:42px;height:42px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font-size:19px;
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
   box-shadow:0 2px 6px rgba(15,23,42,.15);
   transition:transform .12s ease,filter .12s ease;flex-shrink:0;
 }
 .qbar-item:hover .qbar-icon{transform:translateY(-2px)}
 .qbar-item:active .qbar-icon{transform:translateY(0);filter:brightness(.95)}
 .qbar-label{
-  font-size:10.5px;font-weight:700;text-align:center;color:var(--muted);
-  line-height:1.15;white-space:normal;max-width:64px;
+  font-size:9px;font-weight:700;text-align:center;color:var(--muted);
+  line-height:1.1;white-space:nowrap;max-width:54px;overflow:hidden;text-overflow:ellipsis;
 }
 .qbar-item.active .qbar-label{color:var(--accent)}
 .qbar-item.active .qbar-icon{box-shadow:0 0 0 2.5px var(--accent),0 2px 6px rgba(15,23,42,.15)}
 .qbar-badge{
-  position:absolute;top:-2px;right:6px;background:var(--danger);color:#fff;
-  font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:99px;
+  position:absolute;top:-3px;right:4px;background:var(--danger);color:#fff;
+  font-size:8.5px;font-weight:800;padding:0 4px;border-radius:99px;
   min-width:16px;text-align:center;border:2px solid var(--surface);
 }
 
@@ -1451,46 +1451,6 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div id="refresh-btn" onclick="refreshCurrent()" title="Actualizar">↻</div>
 </div>
 
-<!-- BARRA DE ACCESO RÁPIDO -->
-<div id="qa-bar">
-  <div class="qbar-item active" data-qa="dashboard" onclick="qaGo('dashboard')">
-    <div class="qbar-icon" style="background:#2563eb">📊</div><div class="qbar-label">Inicio</div>
-  </div>
-  <div class="qbar-item" data-qa="mis-cot" onclick="qaGo('cotizaciones')">
-    <div class="qbar-icon" style="background:#0d9c94">📋</div><div class="qbar-label">Mis Cotizaciones</div>
-    <span class="qbar-badge" id="qa-b-cot" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="cot-espera" onclick="qaGo('cotizaciones',{estado:'EN ESPERA'})">
-    <div class="qbar-icon" style="background:#d97706">⏳</div><div class="qbar-label">En Espera</div>
-  </div>
-  <div class="qbar-item" data-qa="items" onclick="qaGo('items')">
-    <div class="qbar-icon" style="background:#0284c7">🔩</div><div class="qbar-label">Todos Ítems</div>
-  </div>
-  <div class="qbar-item" data-qa="clientes" onclick="qaGo('clientes')">
-    <div class="qbar-icon" style="background:#7c3aed">🏢</div><div class="qbar-label">Clientes</div>
-  </div>
-  <div class="qbar-item" data-qa="produccion" onclick="qaGo('produccion')">
-    <div class="qbar-icon" style="background:#7c3aed">🏭</div><div class="qbar-label">Producción</div>
-    <span class="qbar-badge" id="qa-b-prod" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="remisiones" onclick="qaGo('remisiones')">
-    <div class="qbar-icon" style="background:#0284c7">🚚</div><div class="qbar-label">Remisiones</div>
-    <span class="qbar-badge" id="qa-b-rem" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="materiales" onclick="qaGo('materiales')">
-    <div class="qbar-icon" style="background:#059669">🧱</div><div class="qbar-label">Materiales</div>
-  </div>
-  <div class="qbar-item" data-qa="servicios" onclick="qaGo('servicios')">
-    <div class="qbar-icon" style="background:#475569">🛠️</div><div class="qbar-label">Servicios</div>
-  </div>
-  <div class="qbar-item" data-qa="procesos" onclick="qaGo('procesos')">
-    <div class="qbar-icon" style="background:#64748b">⚙️</div><div class="qbar-label">Procesos</div>
-  </div>
-  <div class="qbar-item" data-qa="importar" id="qbar-importar" onclick="qaGo('importar')" style="display:none">
-    <div class="qbar-icon" style="background:linear-gradient(135deg,#7c2d12,#dc2626)">📥</div><div class="qbar-label">Importar</div>
-  </div>
-</div>
-
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 <nav id="sidebar">
   <div class="sb-logo">
@@ -1542,6 +1502,46 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 </nav>
 
 <div id="content"></div>
+
+<!-- BARRA DE ACCESO RÁPIDO -->
+<div id="qa-bar">
+  <div class="qbar-item active" data-qa="dashboard" onclick="qaGo('dashboard')">
+    <div class="qbar-icon" style="background:#2563eb">📊</div><div class="qbar-label">Inicio</div>
+  </div>
+  <div class="qbar-item" data-qa="mis-cot" onclick="qaGo('cotizaciones')">
+    <div class="qbar-icon" style="background:#0d9c94">📋</div><div class="qbar-label">Cotizac.</div>
+    <span class="qbar-badge" id="qa-b-cot" style="display:none">0</span>
+  </div>
+  <div class="qbar-item" data-qa="cot-espera" onclick="qaGo('cotizaciones',{estado:'EN ESPERA'})">
+    <div class="qbar-icon" style="background:#d97706">⏳</div><div class="qbar-label">En Espera</div>
+  </div>
+  <div class="qbar-item" data-qa="items" onclick="qaGo('items')">
+    <div class="qbar-icon" style="background:#0284c7">🔩</div><div class="qbar-label">Todos Ítems</div>
+  </div>
+  <div class="qbar-item" data-qa="clientes" onclick="qaGo('clientes')">
+    <div class="qbar-icon" style="background:#7c3aed">🏢</div><div class="qbar-label">Clientes</div>
+  </div>
+  <div class="qbar-item" data-qa="produccion" onclick="qaGo('produccion')">
+    <div class="qbar-icon" style="background:#7c3aed">🏭</div><div class="qbar-label">Producción</div>
+    <span class="qbar-badge" id="qa-b-prod" style="display:none">0</span>
+  </div>
+  <div class="qbar-item" data-qa="remisiones" onclick="qaGo('remisiones')">
+    <div class="qbar-icon" style="background:#0284c7">🚚</div><div class="qbar-label">Remisiones</div>
+    <span class="qbar-badge" id="qa-b-rem" style="display:none">0</span>
+  </div>
+  <div class="qbar-item" data-qa="materiales" onclick="qaGo('materiales')">
+    <div class="qbar-icon" style="background:#059669">🧱</div><div class="qbar-label">Materiales</div>
+  </div>
+  <div class="qbar-item" data-qa="servicios" onclick="qaGo('servicios')">
+    <div class="qbar-icon" style="background:#475569">🛠️</div><div class="qbar-label">Servicios</div>
+  </div>
+  <div class="qbar-item" data-qa="procesos" onclick="qaGo('procesos')">
+    <div class="qbar-icon" style="background:#64748b">⚙️</div><div class="qbar-label">Procesos</div>
+  </div>
+  <div class="qbar-item" data-qa="importar" id="qbar-importar" onclick="qaGo('importar')" style="display:none">
+    <div class="qbar-icon" style="background:linear-gradient(135deg,#7c2d12,#dc2626)">📥</div><div class="qbar-label">Importar</div>
+  </div>
+</div>
 
 <div id="bottom-nav">
   <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div>Dashboard</div>
@@ -6059,8 +6059,7 @@ importar=function(){
 </script>
 <!-- MENÚ (tarjetas de módulos) -->
 <style>
-#bottom-nav{display:flex !important;justify-content:center}
-#bottom-nav .bn-item:not(#bn-menu){display:none !important}
+#qa-bar #bn-menu .qbar-icon{background:#0f2443;color:#fff;font-size:14px}
 #mn-ov{position:fixed;z-index:150;background:var(--bg,#f1f5f9);overflow:auto;display:none;-webkit-overflow-scrolling:touch}
 #mn-ov.open{display:block}
 .mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
@@ -6074,10 +6073,10 @@ importar=function(){
 </style>
 <script>
 (function(){
-  var nav=document.getElementById('bottom-nav'); if(!nav) return;
+  var nav=document.getElementById('qa-bar')||document.getElementById('bottom-nav'); if(!nav) return;
   var old=nav.querySelectorAll('.bn-item'); // se conservan ocultos: el código de cada módulo los sigue actualizando
   var b=document.createElement('div'); b.className='bn-item'; b.id='bn-menu';
-  b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
+  if(nav.id==='qa-bar'){ b.className='qbar-item'; b.innerHTML='<div class="qbar-icon">▦</div><div class="qbar-label">MENÚ</div>'; } else b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
   nav.insertBefore(b,nav.firstChild);
   var ov=document.createElement('div'); ov.id='mn-ov'; document.body.appendChild(ov);
   function pos(){ var c=document.getElementById('content')||document.body, r=c.getBoundingClientRect();
