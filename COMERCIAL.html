@@ -1679,7 +1679,7 @@ const FAB_ACTIONS = {
   items:()=>toast('Abre una cotización y usa “Agregar Item”','err'),
 };
 let _navFromPopstate = false, _navFromNav = false, _detailOpen = false;
-const _F = {}, _VIEW = {}, _SORT = {};
+const _F = {}, _VIEW = {}, _SORT = {cotizaciones:{col:'cotizacion',dir:'desc'},remisiones:{col:'numero',dir:'desc'},produccion:{col:'op',dir:'desc'}};   // orden inicial: número de mayor a menor
 let _searchRaf = null, _searchTimer = null;
 
 // ══ SESIÓN ══════════════════════════════════════════════════════
@@ -1687,6 +1687,7 @@ let _SESSION = null;
 try{ _SESSION = JSON.parse(localStorage.getItem('_wedm_s')||'null'); }catch(e){ _SESSION=null; }
 if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
 const _esAdmin    = () => _SESSION?.rol === 'admin' || _SESSION?.rol === 'desarrollador';
+const _misRoles = () => (_SESSION&&_SESSION.roles&&_SESSION.roles.length)?_SESSION.roles:[_SESSION?.rol].filter(Boolean);   // rol principal + roles adicionales
 const _esDev      = () => _SESSION?.rol === 'desarrollador';
 const _esComercial= () => _SESSION?.rol === 'comercial';
 const _esLectura  = () => _SESSION?.rol === 'lectura';
@@ -2084,8 +2085,9 @@ function sortData(mod,data){
   return [...data].sort((a,b)=>{
     const va=_getColVal(a,s.col), vb=_getColVal(b,s.col);
     const na=Number(String(va).replace(/[^0-9.-]/g,'')), nb=Number(String(vb).replace(/[^0-9.-]/g,''));
-    if(!isNaN(na)&&!isNaN(nb)&&String(va).trim()!==''&&String(vb).trim()!=='') return s.dir==='asc'?na-nb:nb-na;
+    if(!isNaN(na)&&!isNaN(nb)&&String(va).trim()!==''&&String(vb).trim()!==''){ if(na===nb&&a.item_num!=null&&b.item_num!=null) return Number(a.item_num)-Number(b.item_num); return s.dir==='asc'?na-nb:nb-na; }
     const sa=String(va).toLowerCase(), sb2=String(vb).toLowerCase();
+    if(sa===sb2&&a.item_num!=null&&b.item_num!=null) return Number(a.item_num)-Number(b.item_num);
     return s.dir==='asc'?sa.localeCompare(sb2,'es'):sb2.localeCompare(sa,'es');
   });
 }
@@ -2101,11 +2103,22 @@ function thSort(mod,col,label){
 }
 function getView(mod){ return _VIEW[mod]||(window.matchMedia('(max-width:700px)').matches?'cards':'table'); }
 function setView(mod,v){ _VIEW[mod]=v; refreshCurrentView(); }
+const SORT_OPTS={
+  cotizaciones:[['cotizacion','COT #'],['empresa','Cliente'],['fecha_emision','Fecha emisión'],['precio_total','Total'],['asesor','Asesor'],['estado','Estado'],['_opNum','OP']],
+  remisiones:[['numero','REM #'],['op','OP'],['cot_num','COT'],['empresa','Empresa'],['pedida_fecha','Fecha pedida'],['estado','Estado']],
+  produccion:[['op','OP'],['cot_num','COT'],['empresa','Cliente'],['avance','% Avance'],['fecha_pactada','Fecha pactada'],['estado','Estado']]
+};
+function setSortCol(mod,col){ const d=(_SORT[mod]||{}).dir||'desc'; _SORT[mod]={col,dir:d}; refreshCurrentView(); }
+function toggleSortDir(mod){ const s=_SORT[mod]||{col:(SORT_OPTS[mod]||[[null]])[0][0],dir:'desc'}; _SORT[mod]={col:s.col,dir:s.dir==='asc'?'desc':'asc'}; refreshCurrentView(); }
+function sortCtl(mod){
+  const o=SORT_OPTS[mod]; if(!o) return ''; const s=_SORT[mod]||{col:o[0][0],dir:'desc'};
+  return `<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--muted);font-weight:700">Ordenar</span><select onchange="setSortCol('${mod}',this.value)" style="padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:inherit;font-size:12px">${o.map(([k,l])=>`<option value="${k}" ${s.col===k?'selected':''}>${l}</option>`).join('')}</select><button class="vt-btn" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px" title="${s.dir==='asc'?'Ascendente (menor a mayor)':'Descendente (mayor a menor)'}" onclick="toggleSortDir('${mod}')">${s.dir==='asc'?'▲ Menor→Mayor':'▼ Mayor→Menor'}</button></div>`;
+}
 function viewToggleBtns(mod){
   const v=getView(mod);
   return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:0 14px 10px"><div class="view-toggle">
     <button class="vt-btn ${v==='table'?'active':''}" title="Vista tabla" onclick="setView('${mod}','table')">☰</button>
-    <button class="vt-btn ${v==='cards'?'active':''}" title="Vista tarjetas" onclick="setView('${mod}','cards')">▦</button></div></div>`;
+    <button class="vt-btn ${v==='cards'?'active':''}" title="Vista tarjetas" onclick="setView('${mod}','cards')">▦</button></div>${sortCtl(mod)}</div>`;
 }
 
 // ══ LOGIN (PIN validado en el servidor) ═════════════════════════
@@ -2159,7 +2172,7 @@ function mostrarLogin(){
         <div style="font-size:13px;color:#9fb0d1;text-align:center;margin-bottom:4px">Ingresa tu clave de 4 dígitos</div>
         <div class="pin-display" id="pin-display">${[0,1,2,3].map(i=>`<div class="pin-dot" id="pin-dot-${i}"></div>`).join('')}</div>
         <div class="login-error" id="login-err"></div>
-        <input id="login-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px" oninput="_loginPinInputHandler(this)" onkeydown="if(event.key==='Enter') doLogin()">
+        <input id="login-pin-input" type="tel" inputmode="none" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px" oninput="_loginPinInputHandler(this)" onkeydown="if(event.key==='Enter') doLogin()">
         <div class="pin-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" class="pin-key" onclick="_loginPinPress('${n}')">${n}</button>`).join('')}<div></div>
           <button type="button" class="pin-key" onclick="_loginPinPress('0')">0</button><button type="button" class="pin-key del" onclick="_loginPinDel()">⌫</button></div>
         <button type="button" class="login-back" style="color:#6b7db3" onclick="_loginBack()">← Cambiar usuario</button>
@@ -2173,7 +2186,7 @@ function _loginSelectUser(nombre){
   document.getElementById('login-step-user')?.classList.remove('active'); document.getElementById('login-step-pin')?.classList.add('active');
   document.getElementById('login-pin-name').textContent=u?.nombre||nombre; document.getElementById('login-pin-rol').textContent=u?.rol||'';
   const inp=document.getElementById('login-pin-input'); if(inp) inp.value=''; _loginPinRender();
-  document.getElementById('login-err').textContent=''; setTimeout(()=>inp?.focus(),150);
+  document.getElementById('login-err').textContent=''; setTimeout(()=>{ if(!_TACTIL) inp?.focus(); },150);
 }
 function _loginBack(){
   _LOGIN_USER=null; const inp=document.getElementById('login-pin-input'); if(inp) inp.value=''; _loginPinRender();
@@ -2186,7 +2199,7 @@ function _loginDevOpen(){
   setTimeout(()=>document.getElementById('dev-user')?.focus(),150);
 }
 function _sesionIniciada(r){
-  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,token:r.token,ts:Date.now()};
+  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token; try{ localStorage.setItem('_wedm_s',JSON.stringify(_SESSION)); }catch(e){}
   document.getElementById('login-overlay')?.remove(); iniciarApp();
 }
@@ -2197,17 +2210,26 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos').replace('PIN','clave'); document.getElementById('dev-pass').value=''; return; }
-    if(!ROLES_COMERCIAL.includes(r.rol)){ err.textContent='Sin acceso al módulo Comercial'; return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ err.textContent='Sin acceso al módulo Comercial'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
 }
+// ── PIN: en tablet/celular se digita con el teclado de la pantalla (no se abre el teclado del equipo); en PC sirve el teclado físico y la pantalla ──
+const _TACTIL=(()=>{ try{ return window.matchMedia('(pointer:coarse)').matches; }catch(e){ return false; } })();
+document.addEventListener('keydown',function(e){
+  const st=document.getElementById('login-step-pin'); if(!st||!st.classList.contains('active')) return;
+  if(e.target&&e.target.id==='login-pin-input') return;   // en PC el campo ya lo atiende
+  if(/^[0-9]$/.test(e.key)){ _loginPinPress(e.key); e.preventDefault(); }
+  else if(e.key==='Backspace'){ _loginPinDel(); e.preventDefault(); }
+  else if(e.key==='Enter'){ if(typeof doLogin==='function') doLogin(); }
+});
 function _loginPinPress(d){ const inp=document.getElementById('login-pin-input'); if(!inp||inp.value.length>=4||_loginBusy) return; inp.value+=d; _loginPinInputHandler(inp); }
 function _loginPinDel(){ const inp=document.getElementById('login-pin-input'); if(!inp||_loginBusy) return; inp.value=inp.value.slice(0,-1); _loginPinInputHandler(inp); }
 function _loginPinInputHandler(el){
   const digits=(el.value||'').replace(/\D/g,'').slice(0,4); el.value=digits; _loginPinRender();
   const err=document.getElementById('login-err'); if(err) err.textContent='';
-  if(digits.length===4) setTimeout(doLogin,120); else el.focus();
+  if(digits.length===4) setTimeout(doLogin,120); else if(!_TACTIL) el.focus();
 }
 function _loginPinRender(){
   const len=document.getElementById('login-pin-input')?.value?.length||0;
@@ -2217,7 +2239,7 @@ function _loginPinShakeError(msg){
   const err=document.getElementById('login-err'); if(err) err.textContent=msg;
   for(let i=0;i<4;i++){ const d=document.getElementById('pin-dot-'+i); if(d){ d.classList.remove('filled'); d.classList.add('error'); } }
   const inp=document.getElementById('login-pin-input'); if(inp) inp.value='';
-  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); inp?.focus(); },500);
+  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); if(!_TACTIL) inp?.focus(); },500);
 }
 async function doLogin(){
   if(!_LOGIN_USER||_loginBusy) return;
@@ -2226,7 +2248,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
-    if(!ROLES_COMERCIAL.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo Comercial'); return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ _loginPinShakeError('Sin acceso al módulo Comercial'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
@@ -3530,7 +3552,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 // ══════════════════════════════════════════════════════════════════
 // ══ CONTROL PRODUCCIÓN · REMISIONES · USUARIOS · ACCESO POR ROL ═══
 // ══════════════════════════════════════════════════════════════════
-const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración'};
+const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
 const MODS_ROL={
   desarrollador:['dashboard','cotizaciones','items','clientes','produccion','remisiones','materiales','servicios','procesos','usuarios','importar'],
   admin:['dashboard','cotizaciones','items','clientes','produccion','remisiones'],
@@ -3541,11 +3563,11 @@ const MODS_ROL={
 };
 const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
 const rolActual=()=>_SESSION?.rol||'';
-const puede=(...roles)=>_esAdmin()||roles.includes(rolActual());
+const puede = (...roles) => _esAdmin() || _misRoles().some(x=>roles.includes(x));
 const modPermitido=m=>(MODS_ROL[rolActual()]||[]).includes(m);
 const modInicial=()=>(MODS_ROL[rolActual()]||['dashboard'])[0];
-const veComercial=()=>['admin','desarrollador','comercial','lectura'].includes(rolActual());
-const verPrecios=()=>['admin','desarrollador','comercial','lectura','administracion'].includes(rolActual());
+const veComercial=()=>_misRoles().some(x=>['admin','desarrollador','comercial','lectura'].includes(x));
+const verPrecios=()=>_misRoles().some(x=>['admin','desarrollador','comercial','lectura','administracion'].includes(x));
 
 function errMsg(e){
   let m=String((e&&e.message)||e||'Error');
@@ -3687,7 +3709,7 @@ function remPendiente(m){
 }
 function badgesProd(){
   const setB=(ids,n)=>ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n?'':'none'; } });
-  const nP=ROLES_BANDEJA.includes(rolActual())?(DB.produccion||[]).filter(enBandeja).length:0;
+  const nP=_misRoles().some(x=>ROLES_BANDEJA.includes(x))?(DB.produccion||[]).filter(enBandeja).length:0;
   const nR=(DB.remisiones||[]).filter(remPendiente).length;
   setB(['b-prod','bb-prod','qa-b-prod'],nP); setB(['b-rem','bb-rem','qa-b-rem'],nR);
 }
@@ -3810,7 +3832,7 @@ function itemSubirPlano(itemId){
 
 // ── CONTROL PRODUCCIÓN · lista ──────────────────────────────────
 let _pvFiltro=null;
-const pvFiltro=()=>_pvFiltro||(ROLES_BANDEJA.includes(rolActual())?'bandeja':'activas');
+const pvFiltro=()=>_pvFiltro||(_misRoles().some(x=>ROLES_BANDEJA.includes(x))?'bandeja':'activas');
 function setPvFiltro(v){ _pvFiltro=v; _pvKpi=null; refreshCurrentView(); }
 // v4: tarjetas de resumen (Por diseñar, Por comprar…) ahora filtran la lista; tocar la misma otra vez quita el filtro
 let _pvKpi=null;
@@ -4195,14 +4217,14 @@ const bRem=e=>`<span class="badge ${REM_EST[e]||'gris'}">${esc(e||'—')}</span>
 const opR=m=>m.op!=null?'OP-'+m.op:'Sin OP';   // v5: remisiones históricas sin OP
 const remUnd=m=>(m.lineas||[]).reduce((s,l)=>s+Number(l.cantidad||0),0);
 let _remFiltro=null;
-const remFiltro=()=>_remFiltro||(['comercial','administracion','calidad'].includes(rolActual())?'pend':'todas');
+const remFiltro=()=>_remFiltro||(_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))?'pend':'todas');
 function setRemFiltro(v){ _remFiltro=v; refreshCurrentView(); }
 function remisiones(){
   const all=DB.remisiones||[]; const modo=remFiltro();
   const base=all.filter(m=>modo==='pend'?remPendiente(m):modo==='curso'?!['DESPACHADA','CANCELADA'].includes(m.estado):true);
   const data=sortData('remisiones',filtrarExacto('remisiones',base,r=>'op-'+r.op+' cot-'+r.cot_num+' rem-'+(r.numero||'')));
   const chip=(k,l,n)=>`<button class="btn btn-sm ${modo===k?'btn-primary':'btn-ghost'}" style="${modo===k?'':'background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)'}" onclick="setRemFiltro('${k}')">${l} (${n})</button>`;
-  const banner=moduleBanner('📦','Remisiones','Pedido → selección → generación → despacho',`<div style="display:flex;gap:6px;flex-wrap:wrap">${['comercial','administracion','calidad'].includes(rolActual())?chip('pend','Pendientes para mí',all.filter(remPendiente).length):''}${chip('curso','En curso',all.filter(m=>!['DESPACHADA','CANCELADA'].includes(m.estado)).length)}${chip('todas','Todas',all.length)}</div>`,'linear-gradient(135deg,#0f2443,#0d9c94)');
+  const banner=moduleBanner('📦','Remisiones','Pedido → selección → generación → despacho',`<div style="display:flex;gap:6px;flex-wrap:wrap">${_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))?chip('pend','Pendientes para mí',all.filter(remPendiente).length):''}${chip('curso','En curso',all.filter(m=>!['DESPACHADA','CANCELADA'].includes(m.estado)).length)}${chip('todas','Todas',all.length)}</div>`,'linear-gradient(135deg,#0f2443,#0d9c94)');
   const fb=filterBar('remisiones',[{key:'__search__',label:'Buscar OP, cotización, empresa...',type:'text'},{key:'estado',label:'Estado',type:'select',opts:Object.keys(REM_EST)},{key:'empresa',label:'Empresa',type:'select',opts:[...new Set(all.map(m=>m.empresa).filter(Boolean))].sort()}]);
   if(!all.length){ setContent(banner+empty('Aún no hay remisiones — calidad las pide cuando un ítem queda aprobado')); return; }
   if(getView('remisiones')==='table'){
@@ -4293,14 +4315,15 @@ async function usuarios(){
   loading();
   try{ const r=await sb.rpc('dev_listar_usuarios'); _USR=Array.isArray(r)?r:[]; }catch(e){ setContent(errorView(errMsg(e))); return; }
   const banner=moduleBanner('👥','Usuarios y roles','Quién entra al ERP y qué ve cada uno',`<button class="btn btn-sm" style="background:#fff;color:#0f2443;font-weight:800" onclick="formUsuario()">＋ Nuevo usuario</button>`,'linear-gradient(135deg,#0f2443,#475569)');
-  setContent(banner+`<div class="tbl-wrap" style="margin-top:12px"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Rol</th><th>Asesor</th><th>Activo</th><th>Visible</th><th></th></tr></thead><tbody>${_USR.map(u=>`<tr><td style="font-weight:700">${esc(u.nombre)}</td><td>${esc(ROL_LABEL[u.rol]||u.rol)}</td><td>${esc(u.asesor||'—')}</td><td>${u.activo?'✅':'⛔'}</td><td>${u.visible?'👁️':'🙈'}</td><td>${u.rol==='desarrollador'?'':`<button class="btn btn-ghost btn-sm" data-n="${esc(u.nombre)}" onclick="formUsuario(this.dataset.n)">✏️ Editar</button>`}</td></tr>`).join('')}</tbody></table></div>`);
+  setContent(banner+`<div class="tbl-wrap" style="margin-top:12px"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Rol</th><th>Adicionales</th><th>Asesor</th><th>Activo</th><th>Visible</th><th></th></tr></thead><tbody>${_USR.map(u=>`<tr><td style="font-weight:700">${esc(u.nombre)}</td><td>${esc(ROL_LABEL[u.rol]||u.rol)}</td><td>${esc((u.roles_extra||[]).map(r=>ROL_LABEL[r]||r).join(', ')||'—')}</td><td>${esc(u.asesor||'—')}</td><td>${u.activo?'✅':'⛔'}</td><td>${u.visible?'👁️':'🙈'}</td><td>${u.rol==='desarrollador'?'':`<button class="btn btn-ghost btn-sm" data-n="${esc(u.nombre)}" onclick="formUsuario(this.dataset.n)">✏️ Editar</button>`}</td></tr>`).join('')}</tbody></table></div>`);
 }
 function formUsuario(nombre){
-  const u=nombre?_USR.find(x=>x.nombre===nombre):null; const roles=['admin','comercial','diseno','compras','produccion','calidad','administracion','lectura'];
+  const u=nombre?_USR.find(x=>x.nombre===nombre):null; const roles=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion','lectura']; const extras=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion'];
   openModal(u?'Editar usuario':'Nuevo usuario',`<div class="form-grid"><div class="field span2"><label>Nombre</label><input id="us1" value="${esc(u?.nombre||'')}" ${u?'readonly':''} placeholder="Nombre completo"></div>
     <div class="field"><label>Rol</label><select id="us2">${roles.map(r=>`<option value="${r}" ${u?.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('')}</select></div>
     <div class="field"><label>Asesor (solo comerciales)</label><input id="us3" value="${esc(u?.asesor||'')}" placeholder="Nombre como aparece en cotizaciones"></div>
     <div class="field"><label>PIN (4 dígitos)${u?' — vacío = no cambiar':''}</label><input id="us4" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••"></div>
+    <div class="field span2"><label>Accesos adicionales (además del rol)</label><div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${extras.map(r=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="us6" value="${r}" ${(u?.roles_extra||[]).includes(r)?'checked':''}> ${ROL_LABEL[r]}</label>`).join('')}</div></div>
     <div class="field"><label>Estado</label><select id="us5"><option value="1" ${u&&!u.activo?'':'selected'}>Activo</option><option value="0" ${u&&!u.activo?'selected':''}>Inactivo</option></select></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>`);
 }
@@ -4308,7 +4331,7 @@ async function guardarUsuario(){
   const nombre=gv('us1'); if(!nombre){ toast('Escribe el nombre','error'); return; }
   try{
     showBusy();
-    await sb.rpc('dev_guardar_usuario',{p_nombre:nombre,p_rol:gv('us2'),p_asesor:gv('us3'),p_clave:gv('us4'),p_activo:gv('us5')==='1'});
+    await sb.rpc('dev_guardar_usuario',{p_nombre:nombre,p_rol:gv('us2'),p_asesor:gv('us3'),p_clave:gv('us4'),p_activo:gv('us5')==='1',p_roles_extra:[...document.querySelectorAll('.us6:checked')].map(x=>x.value).filter(r=>r!==gv('us2'))});
     closeModal(); toast('✅ Usuario guardado'); await cargarUsuarios(); hideBusy(); usuarios();
   }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
@@ -5936,6 +5959,47 @@ importar=function(){
     <div id="imgdiag-out" style="margin-top:10px;font-size:13px"></div></div>`);
 };
 
+</script>
+<!-- MENÚ (tarjetas de módulos) -->
+<style>
+#bottom-nav{display:flex !important;justify-content:center}
+#bottom-nav .bn-item:not(#bn-menu){display:none !important}
+#mn-ov{position:fixed;z-index:150;background:var(--bg,#f1f5f9);overflow:auto;display:none;-webkit-overflow-scrolling:touch}
+#mn-ov.open{display:block}
+.mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
+@media(min-width:700px){.mn-grid{grid-template-columns:repeat(4,1fr)}}
+.mn-card{position:relative;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);-webkit-tap-highlight-color:transparent}
+.mn-card:active{transform:scale(.97)}
+.mn-img{background:#000;aspect-ratio:1/.85;display:flex;align-items:center;justify-content:center}
+.mn-circle{width:78%;aspect-ratio:1;border-radius:50%;background:#4f83f1;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,16vw,84px)}
+.mn-t{padding:14px 12px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.2px;color:var(--text,#0f172a)}
+.mn-b{position:absolute;top:8px;right:8px;background:#dc2626;color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:99px}
+</style>
+<script>
+(function(){
+  var nav=document.getElementById('bottom-nav'); if(!nav) return;
+  var old=nav.querySelectorAll('.bn-item'); // se conservan ocultos: el código de cada módulo los sigue actualizando
+  var b=document.createElement('div'); b.className='bn-item'; b.id='bn-menu';
+  b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
+  nav.insertBefore(b,nav.firstChild);
+  var ov=document.createElement('div'); ov.id='mn-ov'; document.body.appendChild(ov);
+  function pos(){ var c=document.getElementById('content')||document.body, r=c.getBoundingClientRect();
+    ov.style.left=r.left+'px'; ov.style.top=r.top+'px'; ov.style.width=r.width+'px'; ov.style.height=(nav.getBoundingClientRect().top-r.top)+'px'; }
+  function items(){ var out=[]; document.querySelectorAll('#sidebar .nav-item[data-m]').forEach(function(el){
+      if(el.offsetParent===null && getComputedStyle(el).position!=='fixed') return;
+      var c=el.cloneNode(true); var ic=c.querySelector('.nav-icon'); var icon=ic?ic.textContent:'📁';
+      c.querySelectorAll('.nav-icon,.nav-badge').forEach(function(x){x.remove();});
+      var bd=el.querySelector('.nav-badge'); var n=bd&&bd.style.display!=='none'?bd.textContent.trim():'';
+      out.push({el:el,icon:icon,t:c.textContent.trim(),n:n}); }); return out; }
+  window.mnCerrar=function(){ ov.classList.remove('open'); b.classList.remove('active'); };
+  window.mnToggle=function(){ if(ov.classList.contains('open')) return mnCerrar();
+    var its=items(); pos();
+    ov.innerHTML='<div class="mn-grid">'+its.map(function(x,i){ return '<div class="mn-card" data-i="'+i+'"><div class="mn-img"><div class="mn-circle">'+x.icon+'</div></div><div class="mn-t">'+x.t.replace(/</g,'&lt;')+'</div>'+(x.n&&x.n!=='0'?'<span class="mn-b">'+x.n+'</span>':'')+'</div>'; }).join('')+'</div>';
+    ov.querySelectorAll('.mn-card').forEach(function(cd){ cd.onclick=function(){ var it=its[+cd.dataset.i]; mnCerrar(); it.el.click(); }; });
+    ov.classList.add('open'); b.classList.add('active'); };
+  window.addEventListener('resize',function(){ if(ov.classList.contains('open')) pos(); });
+  document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('#sidebar .nav-item')) mnCerrar(); },true);
+})();
 </script>
 </body>
 </html>

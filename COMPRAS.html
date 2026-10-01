@@ -702,7 +702,8 @@ if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
 const ROLES_COM = ['compras','admin','desarrollador'];
 const rolActual = () => _SESSION?.rol || '';
 const _esAdmin  = () => rolActual()==='admin' || rolActual()==='desarrollador';
-const puede = (...roles) => _esAdmin() || roles.includes(rolActual());
+const _misRoles = () => (_SESSION&&_SESSION.roles&&_SESSION.roles.length)?_SESSION.roles:[_SESSION?.rol].filter(Boolean);   // rol principal + roles adicionales
+const puede = (...roles) => _esAdmin() || _misRoles().some(x=>roles.includes(x));
 const _normNom = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');   // nombres: sin tildes, puntos ni espacios
 const _norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
 // El comercial guarda en la OP el NOMBRE del usuario con rol Diseño; el asesor se acepta como alias.
@@ -728,7 +729,7 @@ function _renderUserGrid(){
 
 let _LOGIN_USER=null, _loginBusy=false;
 function _sesionIniciada(r){
-  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,token:r.token,ts:Date.now()};
+  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token;
   try{ localStorage.setItem(SESS_KEY,JSON.stringify(_SESSION)); }catch(e){}
   document.getElementById('login-overlay')?.remove();
@@ -946,7 +947,7 @@ function mostrarLogin(){
         <div style="font-size:13px;color:#5fc7bd;text-align:center;margin-bottom:4px">Ingresa tu clave de 4 dígitos</div>
         <div class="pin-display" id="pin-display">${[0,1,2,3].map(i=>`<div class="pin-dot" id="pin-dot-${i}"></div>`).join('')}</div>
         <div class="login-error" id="login-err"></div>
-        <input id="login-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
+        <input id="login-pin-input" type="tel" inputmode="none" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
           style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px"
           oninput="_loginPinInputHandler(this)" onkeydown="if(event.key==='Enter') doLogin()">
         <div class="pin-pad">
@@ -972,7 +973,7 @@ function _loginSelectUser(nombre){
   const inp=document.getElementById('login-pin-input');
   if(inp) inp.value=''; _loginPinRender();
   document.getElementById('login-err').textContent='';
-  setTimeout(()=>inp?.focus(),150);
+  setTimeout(()=>{ if(!_TACTIL) inp?.focus(); },150);
 }
 function _loginBack(){
   _LOGIN_USER=null;
@@ -998,17 +999,26 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos'); document.getElementById('dev-pass').value=''; return; }
-    if(!ROLES_COM.includes(r.rol)){ err.textContent='Sin acceso al módulo de Compras'; return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COM.includes(x))){ err.textContent='Sin acceso al módulo de Compras'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
 }
+// ── PIN: en tablet/celular se digita con el teclado de la pantalla (no se abre el teclado del equipo); en PC sirve el teclado físico y la pantalla ──
+const _TACTIL=(()=>{ try{ return window.matchMedia('(pointer:coarse)').matches; }catch(e){ return false; } })();
+document.addEventListener('keydown',function(e){
+  const st=document.getElementById('login-step-pin'); if(!st||!st.classList.contains('active')) return;
+  if(e.target&&e.target.id==='login-pin-input') return;   // en PC el campo ya lo atiende
+  if(/^[0-9]$/.test(e.key)){ _loginPinPress(e.key); e.preventDefault(); }
+  else if(e.key==='Backspace'){ _loginPinDel(); e.preventDefault(); }
+  else if(e.key==='Enter'){ if(typeof doLogin==='function') doLogin(); }
+});
 function _loginPinPress(d){ const inp=document.getElementById('login-pin-input'); if(!inp||inp.value.length>=4||_loginBusy) return; inp.value+=d; _loginPinInputHandler(inp); }
 function _loginPinDel(){ const inp=document.getElementById('login-pin-input'); if(!inp||_loginBusy) return; inp.value=inp.value.slice(0,-1); _loginPinInputHandler(inp); }
 function _loginPinInputHandler(el){
   const digits=(el.value||'').replace(/\D/g,'').slice(0,4); el.value=digits; _loginPinRender();
   const err=document.getElementById('login-err'); if(err) err.textContent='';
-  if(digits.length===4) setTimeout(doLogin,120); else el.focus();
+  if(digits.length===4) setTimeout(doLogin,120); else if(!_TACTIL) el.focus();
 }
 function _loginPinRender(){
   const len=document.getElementById('login-pin-input')?.value?.length||0;
@@ -1018,7 +1028,7 @@ function _loginPinShakeError(msg){
   const err=document.getElementById('login-err'); if(err) err.textContent=msg;
   for(let i=0;i<4;i++){ const d=document.getElementById('pin-dot-'+i); if(d){ d.classList.remove('filled'); d.classList.add('error'); } }
   const inp=document.getElementById('login-pin-input'); if(inp) inp.value='';
-  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); inp?.focus(); },500);
+  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); if(!_TACTIL) inp?.focus(); },500);
 }
 async function doLogin(){
   if(!_LOGIN_USER||_loginBusy) return;
@@ -1027,7 +1037,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
-    if(!ROLES_COM.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo de Compras'); return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COM.includes(x))){ _loginPinShakeError('Sin acceso al módulo de Compras'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
@@ -1834,6 +1844,47 @@ function ayudaForm(texto){
   return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
 
+</script>
+<!-- MENÚ (tarjetas de módulos) -->
+<style>
+#bottom-nav{display:flex !important;justify-content:center}
+#bottom-nav .bn-item:not(#bn-menu){display:none !important}
+#mn-ov{position:fixed;z-index:150;background:var(--bg,#f1f5f9);overflow:auto;display:none;-webkit-overflow-scrolling:touch}
+#mn-ov.open{display:block}
+.mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
+@media(min-width:700px){.mn-grid{grid-template-columns:repeat(4,1fr)}}
+.mn-card{position:relative;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);-webkit-tap-highlight-color:transparent}
+.mn-card:active{transform:scale(.97)}
+.mn-img{background:#000;aspect-ratio:1/.85;display:flex;align-items:center;justify-content:center}
+.mn-circle{width:78%;aspect-ratio:1;border-radius:50%;background:#4f83f1;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,16vw,84px)}
+.mn-t{padding:14px 12px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.2px;color:var(--text,#0f172a)}
+.mn-b{position:absolute;top:8px;right:8px;background:#dc2626;color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:99px}
+</style>
+<script>
+(function(){
+  var nav=document.getElementById('bottom-nav'); if(!nav) return;
+  var old=nav.querySelectorAll('.bn-item'); // se conservan ocultos: el código de cada módulo los sigue actualizando
+  var b=document.createElement('div'); b.className='bn-item'; b.id='bn-menu';
+  b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
+  nav.insertBefore(b,nav.firstChild);
+  var ov=document.createElement('div'); ov.id='mn-ov'; document.body.appendChild(ov);
+  function pos(){ var c=document.getElementById('content')||document.body, r=c.getBoundingClientRect();
+    ov.style.left=r.left+'px'; ov.style.top=r.top+'px'; ov.style.width=r.width+'px'; ov.style.height=(nav.getBoundingClientRect().top-r.top)+'px'; }
+  function items(){ var out=[]; document.querySelectorAll('#sidebar .nav-item[data-m]').forEach(function(el){
+      if(el.offsetParent===null && getComputedStyle(el).position!=='fixed') return;
+      var c=el.cloneNode(true); var ic=c.querySelector('.nav-icon'); var icon=ic?ic.textContent:'📁';
+      c.querySelectorAll('.nav-icon,.nav-badge').forEach(function(x){x.remove();});
+      var bd=el.querySelector('.nav-badge'); var n=bd&&bd.style.display!=='none'?bd.textContent.trim():'';
+      out.push({el:el,icon:icon,t:c.textContent.trim(),n:n}); }); return out; }
+  window.mnCerrar=function(){ ov.classList.remove('open'); b.classList.remove('active'); };
+  window.mnToggle=function(){ if(ov.classList.contains('open')) return mnCerrar();
+    var its=items(); pos();
+    ov.innerHTML='<div class="mn-grid">'+its.map(function(x,i){ return '<div class="mn-card" data-i="'+i+'"><div class="mn-img"><div class="mn-circle">'+x.icon+'</div></div><div class="mn-t">'+x.t.replace(/</g,'&lt;')+'</div>'+(x.n&&x.n!=='0'?'<span class="mn-b">'+x.n+'</span>':'')+'</div>'; }).join('')+'</div>';
+    ov.querySelectorAll('.mn-card').forEach(function(cd){ cd.onclick=function(){ var it=its[+cd.dataset.i]; mnCerrar(); it.el.click(); }; });
+    ov.classList.add('open'); b.classList.add('active'); };
+  window.addEventListener('resize',function(){ if(ov.classList.contains('open')) pos(); });
+  document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('#sidebar .nav-item')) mnCerrar(); },true);
+})();
 </script>
 </body>
 </html>

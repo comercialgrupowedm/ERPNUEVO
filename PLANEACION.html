@@ -74,7 +74,7 @@ body{display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;b
   -webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(0,0,0,.07);
   display:flex;align-items:center;flex-shrink:0;z-index:200;padding:8px 8px 10px;
   box-shadow:0 -4px 24px rgba(30,41,59,.08);overflow-x:auto;-webkit-overflow-scrolling:touch;
-  scrollbar-width:none;gap:5px;}
+  scrollbar-width:none;gap:5px;justify-content:center;}
 #bottom-nav::-webkit-scrollbar{display:none}
 .bn-item{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:2px;cursor:pointer;padding:5px 10px;color:var(--muted);font-size:9.5px;font-weight:600;
@@ -561,6 +561,14 @@ details.ay-det[open]{padding-bottom:10px}
 
 /* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
 input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:uppercase}
+
+.mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
+@media(min-width:700px){.mn-grid{grid-template-columns:repeat(4,1fr)}}
+.mn-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);-webkit-tap-highlight-color:transparent}
+.mn-card:active{transform:scale(.97)}
+.mn-img{background:#000;aspect-ratio:1/.85;display:flex;align-items:center;justify-content:center}
+.mn-circle{width:78%;aspect-ratio:1;border-radius:50%;background:#4f83f1;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,16vw,84px)}
+.mn-t{padding:14px 12px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.2px}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -602,7 +610,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div class="nav-scroll">
     <div class="nav-section">Producción</div>
     <div class="nav-item active" data-m="dashboard" onclick="nav('dashboard')"><span class="nav-icon">📊</span>Inicio</div>
-    <div class="nav-item" data-m="ops" onclick="nav('ops')"><span class="nav-icon">🗂️</span>OPs en curso</div>
+    <div class="nav-item" data-m="ops" onclick="nav('ops')"><span class="nav-icon">🗂️</span>Control Producción</div>
     <div class="nav-item" data-m="produccion" onclick="nav('produccion')"><span class="nav-icon">🏭</span>En producción</div>
     <div class="nav-item" data-m="ruta" onclick="nav('ruta')"><span class="nav-icon">🧭</span>Ruta por máquina</div>
     <div class="nav-item" data-m="kanban" onclick="nav('kanban')"><span class="nav-icon">🧩</span>Kanban por máquina</div>
@@ -621,14 +629,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <div id="content"></div>
 
 <div id="bottom-nav">
-  <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div><div>Inicio</div></div>
-  <div class="bn-item" data-m="ops" onclick="nav('ops')"><div class="bn-icon">🗂️</div><div>OPs</div></div>
-  <div class="bn-item" data-m="produccion" onclick="nav('produccion')"><div class="bn-icon">🏭</div><div>Producción</div></div>
-  <div class="bn-item" data-m="ruta" onclick="nav('ruta')"><div class="bn-icon">🧭</div><div>Ruta</div></div>
-  <div class="bn-item" data-m="kanban" onclick="nav('kanban')"><div class="bn-icon">🧩</div><div>Kanban</div></div>
-  <div class="bn-item" data-m="operarios" onclick="nav('operarios')"><div class="bn-icon">👷</div><div>Operarios</div></div>
-  <div class="bn-item" data-m="avances" onclick="nav('avances')"><div class="bn-icon">📈</div><div>Avances</div></div>
-  <div class="bn-item" data-m="reportes" onclick="nav('reportes')"><div class="bn-icon">📉</div><div>Reportes</div></div>
+  <div class="bn-item" id="bn-menu" data-m="menu" onclick="nav('menu')"><div class="bn-icon">▾</div><div>MENÚ</div></div>
 </div>
 
 <div class="overlay" id="modal-overlay">
@@ -734,7 +735,8 @@ if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
 const ROLES_PLAN = ['administracion','admin','desarrollador','planeacion'];
 const rolActual = () => _SESSION?.rol || '';
 const _esAdmin  = () => rolActual()==='admin' || rolActual()==='desarrollador';
-const puede = (...roles) => _esAdmin() || roles.includes(rolActual());
+const _misRoles = () => (_SESSION&&_SESSION.roles&&_SESSION.roles.length)?_SESSION.roles:[_SESSION?.rol].filter(Boolean);   // rol principal + roles adicionales
+const puede = (...roles) => _esAdmin() || _misRoles().some(x=>roles.includes(x));
 const _normNom = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');   // nombres: sin tildes, puntos ni espacios
 const _norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
 // El comercial guarda en la OP el NOMBRE del usuario con rol Diseño; el asesor se acepta como alias.
@@ -760,7 +762,7 @@ function _renderUserGrid(){
 
 let _LOGIN_USER=null, _loginBusy=false;
 function _sesionIniciada(r){
-  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,token:r.token,ts:Date.now()};
+  _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token;
   try{ localStorage.setItem(SESS_KEY,JSON.stringify(_SESSION)); }catch(e){}
   document.getElementById('login-overlay')?.remove();
@@ -799,6 +801,7 @@ const mutedP=t=>`<p style="font-size:12px;color:var(--muted);padding:6px 0">${t}
 function hoy0(){ const h=new Date(); h.setHours(0,0,0,0); return h; }
 function diasDe(f){ if(!f) return null; const t=new Date(String(f).slice(0,10)+'T00:00:00'); if(isNaN(t)) return null; return Math.round((t-hoy0())/86400000); }
 const diasPactada = p => diasDe(p.fecha_pactada);
+const diasEntrega = p => diasDe(p.fecha_entrega_prod||p.fecha_pactada);   // la que usa el score (igual que AppSheet)
 function diasTag(d){
   if(d==null) return '';
   if(d<0) return `<span class="badge rojo">Vencido ${-d}d</span>`;
@@ -807,6 +810,43 @@ function diasTag(d){
   return `<span class="badge gris">${d}d</span>`;
 }
 const pactadaTag = p => { const d=diasPactada(p); return (p.despachado||d==null)?fmtDate(p.fecha_pactada):`${fmtDate(p.fecha_pactada)} ${diasTag(d)}`; };
+
+// ── SCORE de los trabajos (Control Producción) ───────────────────────────────────────────
+// Método de ponderación lineal de la empresa: promedio ponderado de calificaciones (1,3,5,7,9) → escala 0–10.
+// Avance 20% · Días disponibles 60% · Urgencia/Garantía/Reproceso (tipo) 20%. Cierre de facturación y pago: 0% (no cuentan).
+// Clientes especiales: +10%. Más alto = atender primero.
+const SCORE_CFG={
+  pesos:{avance:.20,dias:.60,tipo:.20},
+  tipo:{GR:9,UR:7,AS:7,MT:5,DE:5,PE:3,SE:3,EM:3,PP:1,SU:1}, tipoVacio:3, sinFecha:3,
+  incremento:0,   // la hoja lista clientes especiales pero AppSheet no les suma nada; poner .10 para activarlo
+  especiales:['AMCOR','AVIOS','CARVAJAL','CENTELSA','NEXANS','COLOMBINA','GENFAR','SANOFI','HADA','JGB','BAXTER','MACTEK','SUMICOLOR']
+};
+const _scoreCache=new WeakMap();
+const _calAvance=a=>a<=20?1:a<=40?3:a<=60?5:a<=80?7:9;
+const _calDias=d=>d==null?SCORE_CFG.sinFecha:d>15?1:d>10?3:d>5?5:d>0?7:9;
+const _esEspecial=e=>{ const n=_norm(e||''); return SCORE_CFG.especiales.some(k=>n.includes(k)); };
+function scoreOP(o){
+  if(o&&typeof o==='object'){ const c=_scoreCache.get(o); if(c&&c.dia===hoy0().getTime()) return c.v; }
+  const C=SCORE_CFG, d=diasEntrega(o);
+  let v;
+  if(o.despachado||['TERMINADO','CANCELADO'].includes(o.estado)) v={total:0,a:0,d:0,t:0,esp:false,dias:d};
+  else{
+    const a=_calAvance(Number(o.avance)||0), dd=_calDias(d), t=o.es_garantia?9:(C.tipo[String(o.tipo||'').toUpperCase()]??C.tipoVacio);
+    const esp=_esEspecial(o.empresa);
+    let tot=a*C.pesos.avance+dd*C.pesos.dias+t*C.pesos.tipo; if(esp) tot*=1+C.incremento;
+    v={total:Math.round(Math.min(10,tot)*10)/10,a,d:dd,t,esp,dias:d};
+  }
+  if(o&&typeof o==='object') _scoreCache.set(o,{dia:hoy0().getTime(),v});
+  return v;
+}
+const SCORE_NIVELES={critico:7.5,alto:6,medio:4};   // desde qué score (0–10) es Crítico / Alto / Medio
+const scoreColor=t=>t>=SCORE_NIVELES.critico?'rojo':t>=SCORE_NIVELES.alto?'naranja':t>=SCORE_NIVELES.medio?'azul':'gris';
+const scoreNivel=t=>t>=SCORE_NIVELES.critico?'Crítico':t>=SCORE_NIVELES.alto?'Alto':t>=SCORE_NIVELES.medio?'Medio':'Bajo';
+const scoreTxt=t=>t.toFixed(1);
+function scoreBadge(o){ const s=scoreOP(o); if(!s.total) return ''; return `<span class="badge ${scoreColor(s.total)}" title="Score ${scoreTxt(s.total)}/10 · avance ${s.a} · días ${s.d} · tipo ${s.t}${s.esp?' · cliente especial +10%':''}">⭐ ${scoreTxt(s.total)}</span>`; }
+function scoreDetalle(o){ const s=scoreOP(o), P=SCORE_CFG.pesos; const bar=(l,v,w)=>`<div style="display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px"><div style="width:130px;color:var(--muted)">${l} <span style="opacity:.7">(${Math.round(w*100)}%)</span></div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(v/9*100)}%;height:100%;background:var(--accent)"></div></div><b style="width:42px;text-align:right;font-family:var(--mono)">${v}/9</b></div>`;
+  return `<div class="dp-section"><h4>⭐ Score ${scoreTxt(s.total)}/10 · ${scoreNivel(s.total)}</h4>${bar('% Avance',s.a,P.avance)}${bar('Días disponibles',s.d,P.dias)}${bar('Urgencia/Garantía',s.t,P.tipo)}<div style="font-size:11px;color:var(--muted);margin-top:6px">Promedio ponderado (método de ponderación lineal)${s.esp?' + 10% por cliente especial':''}. Mientras más alto, antes se atiende.</div></div>`; }
+
 function dr(label,val){ return `<div class="dp-row"><span class="dp-label">${label}</span><span class="dp-val">${val??'—'}</span></div>`; }
 function gv(id){ const el=document.getElementById(id); return el?String(el.value).trim():''; }
 // ── Mayúsculas en todo el ERP: lo que se escriba en cualquier campo de texto queda en mayúsculas, también al imprimir ──
@@ -978,7 +1018,7 @@ function mostrarLogin(){
         <div style="font-size:13px;color:#fb923c;text-align:center;margin-bottom:4px">Ingresa tu clave de 4 dígitos</div>
         <div class="pin-display" id="pin-display">${[0,1,2,3].map(i=>`<div class="pin-dot" id="pin-dot-${i}"></div>`).join('')}</div>
         <div class="login-error" id="login-err"></div>
-        <input id="login-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
+        <input id="login-pin-input" type="tel" inputmode="none" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
           style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px"
           oninput="_loginPinInputHandler(this)" onkeydown="if(event.key==='Enter') doLogin()">
         <div class="pin-pad">
@@ -1004,7 +1044,7 @@ function _loginSelectUser(nombre){
   const inp=document.getElementById('login-pin-input');
   if(inp) inp.value=''; _loginPinRender();
   document.getElementById('login-err').textContent='';
-  setTimeout(()=>inp?.focus(),150);
+  setTimeout(()=>{ if(!_TACTIL) inp?.focus(); },150);
 }
 function _loginBack(){
   _LOGIN_USER=null;
@@ -1030,17 +1070,26 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos'); document.getElementById('dev-pass').value=''; return; }
-    if(!ROLES_PLAN.includes(r.rol)){ err.textContent='Sin acceso al módulo de Planeación'; return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_PLAN.includes(x))){ err.textContent='Sin acceso al módulo de Planeación'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
 }
+// ── PIN: en tablet/celular se digita con el teclado de la pantalla (no se abre el teclado del equipo); en PC sirve el teclado físico y la pantalla ──
+const _TACTIL=(()=>{ try{ return window.matchMedia('(pointer:coarse)').matches; }catch(e){ return false; } })();
+document.addEventListener('keydown',function(e){
+  const st=document.getElementById('login-step-pin'); if(!st||!st.classList.contains('active')) return;
+  if(e.target&&e.target.id==='login-pin-input') return;   // en PC el campo ya lo atiende
+  if(/^[0-9]$/.test(e.key)){ _loginPinPress(e.key); e.preventDefault(); }
+  else if(e.key==='Backspace'){ _loginPinDel(); e.preventDefault(); }
+  else if(e.key==='Enter'){ if(typeof doLogin==='function') doLogin(); }
+});
 function _loginPinPress(d){ const inp=document.getElementById('login-pin-input'); if(!inp||inp.value.length>=4||_loginBusy) return; inp.value+=d; _loginPinInputHandler(inp); }
 function _loginPinDel(){ const inp=document.getElementById('login-pin-input'); if(!inp||_loginBusy) return; inp.value=inp.value.slice(0,-1); _loginPinInputHandler(inp); }
 function _loginPinInputHandler(el){
   const digits=(el.value||'').replace(/\D/g,'').slice(0,4); el.value=digits; _loginPinRender();
   const err=document.getElementById('login-err'); if(err) err.textContent='';
-  if(digits.length===4) setTimeout(doLogin,120); else el.focus();
+  if(digits.length===4) setTimeout(doLogin,120); else if(!_TACTIL) el.focus();
 }
 function _loginPinRender(){
   const len=document.getElementById('login-pin-input')?.value?.length||0;
@@ -1050,7 +1099,7 @@ function _loginPinShakeError(msg){
   const err=document.getElementById('login-err'); if(err) err.textContent=msg;
   for(let i=0;i<4;i++){ const d=document.getElementById('pin-dot-'+i); if(d){ d.classList.remove('filled'); d.classList.add('error'); } }
   const inp=document.getElementById('login-pin-input'); if(inp) inp.value='';
-  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); inp?.focus(); },500);
+  setTimeout(()=>{ for(let i=0;i<4;i++) document.getElementById('pin-dot-'+i)?.classList.remove('error'); if(!_TACTIL) inp?.focus(); },500);
 }
 async function doLogin(){
   if(!_LOGIN_USER||_loginBusy) return;
@@ -1059,7 +1108,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
-    if(!ROLES_PLAN.includes(r.rol)){ _loginPinShakeError('Sin acceso al módulo de Planeación'); return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_PLAN.includes(x))){ _loginPinShakeError('Sin acceso al módulo de Planeación'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
@@ -1070,7 +1119,7 @@ async function doLogin(){
 //  ERP PLANEACIÓN · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño, Compras y Remisiones
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',ops:'OPs en curso',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',reportes:'Reportes'};
+const TITLES={menu:'Menú',dashboard:'Inicio',ops:'Control Producción',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',reportes:'Reportes'};
 const PG_BASE=60;
 const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
@@ -1136,7 +1185,7 @@ const fmtF=f=>/^\d{4}-\d{2}-\d{2}$/.test(String(f||''))?fmtDate(f):fmtDT(f);   /
 const EST_PROD=['EN PROCESO','TRABAJO EXTERNO'];
 const enProd=o=>EST_PROD.includes(o.estado);
 const enCurso=o=>!['TERMINADO','CANCELADO'].includes(o.estado)&&!o.despachado;
-const porUrgencia=(a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?99999:da)-(db==null?99999:db); };
+const porUrgencia=(a,b)=>{ const sb=scoreOP(b).total-scoreOP(a).total; if(sb) return sb; const da=diasPactada(a),db=diasPactada(b); return (da==null?99999:da)-(db==null?99999:db); };
 let OPERARIOS_USADOS=[];
 async function cargarOperariosUsados(){
   try{ const r=await sb.rpc('planeacion_operarios_usados'); OPERARIOS_USADOS=(r||[]).map(x=>typeof x==='string'?x:(x&&Object.values(x)[0])).filter(Boolean); }catch(e){}
@@ -1181,7 +1230,7 @@ function opCard(op){
         <div class="lc-title">${esc(op.empresa||'—')}</div>
         <div class="lc-sub">${esc(String(op.descripcion||'').slice(0,70))}</div>
       </div>
-      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}</div>
+      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}<br>${scoreBadge(op)}</div>
     </div>
     <div class="lc-meta">${prog(pctOp(op))} <span style="font-size:11px;color:var(--muted)">${pctOp(op)}% · ${esc(procActual(op))}</span></div>
     <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(op.fecha_pactada)} ${d!=null?diasTag(d):''}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">S${op.semana||'—'}</span></div>
@@ -1194,6 +1243,7 @@ function dashboard(){
   const enProceso=all.filter(o=>o.estado==='EN PROCESO');
   const vencidas=all.filter(o=>{ const d=diasPactada(o); return d!=null&&d<0&&!['TERMINADO','CANCELADO'].includes(o.estado); });
   const altas=enProceso.filter(o=>['Alta','Muy alta'].includes(o.prioridad));
+  const porScore=[...all].filter(o=>scoreOP(o).total>0).sort(porUrgencia); const criticos=porScore.filter(o=>scoreOP(o).total>=SCORE_NIVELES.critico);
   const avgPct=enProceso.length?Math.round(enProceso.reduce((s,o)=>s+pctOp(o),0)/enProceso.length):0;
   const maqCount={}; enProceso.forEach(o=>{ const m=procActual(o); maqCount[m]=(maqCount[m]||0)+1; });
   const maqTop=Object.entries(maqCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
@@ -1204,44 +1254,69 @@ function dashboard(){
     <div class="kpi-card info" onclick="nav('ops')"><div class="kpi-label">En proceso</div><div class="kpi-value">${enProceso.length}</div><div class="kpi-sub">OPs activas</div></div>
     <div class="kpi-card danger" onclick="nav('ops')"><div class="kpi-label">Vencidas</div><div class="kpi-value">${vencidas.length}</div><div class="kpi-sub">Días en negativo</div></div>
     <div class="kpi-card warn" onclick="nav('ops')"><div class="kpi-label">Alta prioridad</div><div class="kpi-value">${altas.length}</div><div class="kpi-sub">En proceso</div></div>
+    <div class="kpi-card danger" onclick="nav('ops')"><div class="kpi-label">Score crítico</div><div class="kpi-value">${criticos.length}</div><div class="kpi-sub">Score ≥ ${SCORE_NIVELES.critico}/10</div></div>
     <div class="kpi-card teal"><div class="kpi-label">Avance promedio</div><div class="kpi-value">${avgPct}%</div><div class="kpi-sub">OPs en proceso</div></div>
   </div>`;
   const cargaMaq=`<div class="dp-section"><h4>🔧 Carga por máquina (OP en proceso)</h4>${maqTop.length?maqTop.map(([m,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:150px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(m)}">${esc(m)}</div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(n/maqTop[0][1]*100)}%;height:100%;background:var(--purple)"></div></div><div style="width:24px;text-align:right;font-size:12px;font-weight:700">${n}</div></div>`).join(''):mutedP('Sin datos')}</div>`;
+  const topH=porScore.length?`<div class="dp-section" style="margin-top:14px"><h4>⭐ Atender primero (por score)</h4><div class="card-list">${porScore.slice(0,8).map(opCard).join('')}</div>${porScore.length>8?`<div style="text-align:center;font-size:12px;color:var(--accent);cursor:pointer;padding:8px" onclick="nav('ops')">Ver las ${porScore.length} OP ordenadas por score →</div>`:''}</div>`:'';
   const criticasH=vencidas.length?`<div class="dp-section" style="margin-top:14px"><h4>🔴 OPs vencidas (${vencidas.length})</h4><div class="card-list">${vencidas.slice(0,6).map(opCard).join('')}</div>${vencidas.length>6?`<div style="text-align:center;font-size:12px;color:var(--accent);cursor:pointer;padding:8px" onclick="nav('ops')">Ver todas →</div>`:''}</div>`:'';
   const semH=`<div class="dp-section" style="margin-top:14px"><h4>📅 OPs por semana</h4>${semTop.map(([s,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:80px;font-size:12px;color:var(--muted)">Semana ${s}</div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(n/semTop[0][1]*100)}%;height:100%;background:var(--teal)"></div></div><div style="width:24px;text-align:right;font-size:12px;font-weight:700">${n}</div></div>`).join('')}</div>`;
-  setContent(`${banner}${kpis}${cargaMaq}${criticasH}${semH}<div style="height:80px"></div>`);
+  setContent(`${banner}${kpis}${topH}${cargaMaq}${criticasH}${semH}<div style="height:80px"></div>`);
 }
 
 // ── OPS EN CURSO ─────────────────────────────────────────────────────
-let _opsF={estado:'',prioridad:'',maquina:'',q:'',vista:(window.innerWidth<=700?'cards':'tabla')};
-function opsSet(k,v){ _opsF[k]=v; pgReset(); ops(); }
+let _opsF={estado:'',prioridad:'',maquina:'',q:'',tab:'dash',open:{},orden:null,dir:null};
+function opsSet(k,v){ if(k==='tab'){ _opsF.orden=null; _opsF.dir=null; } _opsF[k]=v; pgReset(); ops(); }
+// Orden: Dashboard por score (mayor a menor); Proyectos / En proceso por número de OP (mayor a menor). Se puede cambiar.
+const OPS_ORD={score:['Score',o=>scoreOP(o).total],op:['OP',o=>Number(o.op)||0],cliente:['Cliente',o=>_norm(o.empresa||'')],dias:['Días disponibles',o=>{const d=diasEntrega(o);return d==null?1e9:d;}],avance:['% Avance',o=>Number(o.avance)||0],entrega:['Entrega producción',o=>String(o.fecha_entrega_prod||o.fecha_pactada||'9999')]};
+const opsOrdOf=()=>_opsF.orden||(_opsF.tab==='dash'?'score':'op');
+const opsDirOf=()=>_opsF.dir||'desc';
+function opsCmp(key,agg){ const f=OPS_ORD[key][1], sg=opsDirOf()==='asc'?1:-1; return (a,b)=>{ const x=f(a),y=f(b); return (x<y?-1:x>y?1:0)*sg||(Number(b.op)-Number(a.op))||((a.item_num||0)-(b.item_num||0)); }; }
+const opsOrdCtl=()=>{ const ks=_opsF.tab==='dash'?['score','op','cliente','dias','avance','entrega']:['op','cliente','score','dias']; return `<span style="font-size:11px;color:var(--muted);font-weight:700">Ordenar</span><select onchange="opsSet('orden',this.value)">${ks.map(k=>`<option value="${k}" ${opsOrdOf()===k?'selected':''}>${OPS_ORD[k][0]}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="opsSet('dir',opsDirOf()==='asc'?'desc':'asc')">${opsDirOf()==='asc'?'▲ Menor→Mayor':'▼ Mayor→Menor'}</button>`; };
+function opsTog(op){ _opsF.open[op]=!_opsF.open[op]; ops(); }
+const _flag={GR:['#dc2626','🚩'],UR:['#d97706','🚩'],PP:['#db2777','🚩'],AS:['#2563eb','🚩'],DE:['#7c3aed','🚩'],MT:['#64748b','🚩']};
+const tipoTag=o=>{ const t=String(o.tipo||'').toUpperCase()||'—'; const f=_flag[t]; return f?`<b style="color:${f[0]}">${f[1]} ${t}</b>`:`<b style="color:#16a34a">${t}</b>`; };
+const avCol=p=>p>=80?'#16a34a':p>=60?'#0d9488':p>=30?'#ca8a04':'#dc2626';
+const avTag=o=>{ const p=Number(o.avance)||0, c=avCol(p), n=p>=80?4:p>=60?3:p>=30?2:1; return `<span style="color:${c};font-weight:700;white-space:nowrap"><span style="display:inline-flex;gap:2px;align-items:flex-end;margin-right:6px">${[1,2,3,4].map(i=>`<i style="display:inline-block;width:3px;height:${3+i*3}px;background:${i<=n?c:'#d1d5db'};border-radius:1px"></i>`).join('')}</span>${p.toFixed(2)}%</span>`; };
+const diasEntTag=o=>{ const d=diasEntrega(o); return d==null?'—':d<0?`<span style="color:#b91c1c;font-weight:700">⏳ ${d}</span>`:`<b>${d}</b>`; };
+const rutaLetras=o=>rutaDe(o).map(r=>String(r)[0]).join(' ');
+const scoreCell=o=>{ const t=scoreOP(o).total; return `<b style="font-family:var(--mono);color:${t>=SCORE_NIVELES.critico?'#dc2626':t>=SCORE_NIVELES.alto?'#d97706':'inherit'}">${scoreTxt(t)}</b>`; };
 function ops(){
-  const all=DB.produccion||[];
+  const base=DB.produccion||[], tab=_opsF.tab;
+  const proy=base.filter(enCurso), proc=proy.filter(o=>o.estado==='EN PROCESO');
+  const all=tab==='proy'?proy:proc;
   const estados=[...new Set(all.map(o=>o.estado).filter(Boolean))].sort();
-  const prioridades=[...new Set(all.map(o=>o.prioridad).filter(Boolean))];
   const maquinas=[...new Set(all.map(procActual).filter(x=>x&&x!=='—'))].sort();
   let data=all.filter(o=>{
     if(_opsF.estado&&o.estado!==_opsF.estado) return false;
-    if(_opsF.prioridad&&o.prioridad!==_opsF.prioridad) return false;
     if(_opsF.maquina&&procActual(o)!==_opsF.maquina) return false;
     if(_opsF.q){ const q=_norm(_opsF.q); if(!_norm([o.op,o.empresa,o.descripcion].join(' ')).includes(q)) return false; }
     return true;
   });
-  data=data.sort((a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?999:da)-(db==null?999:db); });
-  const banner=moduleBanner('🗂️','OPs en curso',`${data.length} de ${all.length} · ordenadas por urgencia`,
-    `<div class="chips" style="margin-top:8px">${[['cards','▦ Tarjetas'],['tabla','⊞ Tabla']].map(([k,l])=>`<button class="chip ${_opsF.vista===k?'on':''}" onclick="opsSet('vista','${k}')">${l}</button>`).join('')}</div>`);
-  const fb=`<div class="filter-bar"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="ops-q" placeholder="🔍 Buscar OP, cliente…" value="${esc(_opsF.q)}" oninput="opsSet('q',this.value)"></div><span class="filter-count">${data.length}/${all.length}</span></div>
-    <div class="filter-bar-selects open"><select onchange="opsSet('estado',this.value)"><option value="">Estado</option>${estados.map(e=>`<option ${_opsF.estado===e?'selected':''}>${esc(e)}</option>`).join('')}</select>
-    <select onchange="opsSet('prioridad',this.value)"><option value="">Prioridad</option>${prioridades.map(p=>`<option ${_opsF.prioridad===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+  const tabs=`<div class="chips" style="margin:0 0 10px">${[['proy','PROYECTOS',proy.length],['proc','EN PROCESO',proc.length],['dash','DASHBOARD',proc.length]].map(([k,l,n])=>`<button class="chip ${tab===k?'on':''}" onclick="opsSet('tab','${k}')">${l} <b>(${n})</b></button>`).join('')}</div>`;
+  const banner=moduleBanner('🗂️','Control Producción',`${data.length} ítems · ordenados por score (0–10)`,'');
+  const fb=`<div class="filter-bar"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="ops-q" placeholder="🔍 Buscar OP, cliente, descripción…" value="${esc(_opsF.q)}" oninput="opsSet('q',this.value)"></div><span class="filter-count">${data.length}/${all.length}</span></div>
+    <div class="filter-bar-selects open">${tab==='proy'?`<select onchange="opsSet('estado',this.value)"><option value="">Estado</option>${estados.map(e=>`<option ${_opsF.estado===e?'selected':''}>${esc(e)}</option>`).join('')}</select>`:''}
     <select onchange="opsSet('maquina',this.value)"><option value="">Máquina</option>${maquinas.map(m=>`<option ${_opsF.maquina===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
-    ${(_opsF.estado||_opsF.prioridad||_opsF.maquina||_opsF.q)?`<button class="btn btn-ghost btn-sm" onclick="_opsF={estado:'',prioridad:'',maquina:'',q:'',vista:_opsF.vista};ops()">✕ Limpiar</button>`:''}</div></div>`;
-  if(!data.length){ setContent(banner+fb+empty('Sin resultados con estos filtros')); return; }
-  const pg=pgSlice('ops',data);
-  setContent(`${banner}${fb}${_opsF.vista==='tabla'?opsTabla(pg):`<div class="card-list">${pg.map(opCard).join('')}</div>`}${pgMore('ops',data)}`);
+    ${opsOrdCtl()}${(_opsF.estado||_opsF.maquina||_opsF.q)?`<button class="btn btn-ghost btn-sm" onclick="_opsF.estado='';_opsF.maquina='';_opsF.q='';ops()">✕ Limpiar</button>`:''}</div></div>`;
+  if(!data.length){ setContent(banner+tabs+fb+empty('Sin resultados con estos filtros')); return; }
+  let body;
+  if(tab==='dash'){ data=data.sort(opsCmp(opsOrdOf())); body=opsDash(pgSlice('ops',data))+pgMore('ops',data); }
+  else{ body=opsGrupos(data); }
+  setContent(banner+tabs+fb+body);
 }
-function opsTabla(rows){
-  return `<div class="tbl-wrap"><table class="data-tbl"><thead><tr><th>OP</th><th>Cliente</th><th>Descripción</th><th>Estado</th><th>Prioridad</th><th>Avance</th><th>Días</th><th>Máquina</th></tr></thead><tbody>
-  ${rows.map(op=>{ const d=diasPactada(op); return `<tr onclick="detailOP('${op.id}')"><td class="td-num">${opTitulo(op)}</td><td>${esc(op.empresa||'—')}</td><td style="max-width:200px">${esc(op.descripcion||'—')}</td><td>${bEst(op.estado)}</td><td>${bPrio(op.prioridad)}</td><td>${prog(pctOp(op))} ${pctOp(op)}%</td><td class="td-num">${d!=null?diasTag(d):'—'}</td><td>${esc(procActual(op))}</td></tr>`; }).join('')}
+function opsGrupos(data){
+  const g=new Map(); data.forEach(o=>{ if(!g.has(o.op)) g.set(o.op,[]); g.get(o.op).push(o); });
+  const gk=opsOrdOf(), sg=opsDirOf()==='asc'?1:-1;
+  const gval=its=>gk==='op'?Number(its[0].op)||0:gk==='cliente'?_norm(its[0].empresa||''):gk==='score'?Math.max(...its.map(o=>scoreOP(o).total)):Math.min(...its.map(o=>{const d=diasEntrega(o);return d==null?1e9:d;}));
+  const grupos=[...g.entries()].map(([op,its])=>({op,its:its.sort((a,b)=>(a.item_num||0)-(b.item_num||0)),emp:its[0].empresa||'—',v:gval(its)})).sort((a,b)=>(a.v<b.v?-1:a.v>b.v?1:0)*sg||(Number(b.op)-Number(a.op)));
+  const row=(k,txt,n,on)=>`<div onclick="${k}" style="display:flex;align-items:center;gap:10px;padding:14px 12px;border-bottom:1px solid var(--border);cursor:pointer"><div style="flex:1;font-size:14px;font-weight:600">${txt}</div><span class="badge gris">${n}</span><span style="color:var(--muted)">${on?'⌄':'›'}</span></div>`;
+  return `<div class="tbl-wrap">${grupos.map(x=>{ const on=_opsF.open[x.op];
+    return row(`opsTog('${x.op}')`,`${x.op} - ${esc(x.emp)}`,x.its.length,on)+(on?x.its.map(o=>`<div onclick="detailOP('${o.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px 10px 22px;border-bottom:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:13px"><div style="width:40px">${scoreCell(o)}</div><div style="flex:1;min-width:0"><b>ÍTEM ${o.item_num??'—'}</b> · ${esc(o.descripcion||'—')}<div style="font-size:11px;color:var(--muted)">${bEst(o.estado)} · ${diasEntTag(o)}</div></div><div>${avTag(o)}</div></div>`).join(''):''); }).join('')}</div>`;
+}
+function opsDash(rows){
+  return `<div class="tbl-wrap"><table class="data-tbl" style="min-width:1250px"><thead><tr><th>Score ↓</th><th>Tipo</th><th>OP-Item</th><th>Cant</th><th>Cliente</th><th>Descripción</th><th>Imagen</th><th>Entrega producción</th><th>Días disp.</th><th>% Avance</th><th>Máquina actual</th><th>Ruta MQ</th><th></th></tr></thead><tbody>
+  ${rows.map(o=>`<tr onclick="detailOP('${o.id}')"><td>${scoreCell(o)}</td><td>${tipoTag(o)}</td><td class="td-num">${o.op} ITEM ${o.item_num??'—'}</td><td>${o.unidades??'—'}</td><td>${esc(o.empresa||'—')}</td><td style="max-width:260px">${esc(o.descripcion||'—')}</td><td style="width:60px;height:44px">${imgTag(o,80,'max-width:56px;max-height:40px;object-fit:contain')}</td><td>${fmtDate(o.fecha_entrega_prod||o.fecha_pactada)}</td><td>${diasEntTag(o)}</td><td>${avTag(o)}</td><td>${esc(procActual(o))}</td><td style="letter-spacing:2px">${esc(rutaLetras(o))}</td><td style="color:var(--muted)">›</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 
@@ -1255,7 +1330,7 @@ function kanban(){
   const board=`<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px">${keys.map(k=>`
     <div style="flex:0 0 260px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px">
       <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="badge gris">${cols[k].length}</span></div>
-      ${cols[k].sort((a,b)=>{ const da=diasPactada(a),db=diasPactada(b); return (da==null?999:da)-(db==null?999:db); }).map(op=>`<div class="list-card" style="padding:10px;margin-bottom:8px" onclick="detailOP('${op.id}')">
+      ${cols[k].sort(porUrgencia).map(op=>`<div class="list-card" style="padding:10px;margin-bottom:8px" onclick="detailOP('${op.id}')">
         <div class="lc-id">${opTitulo(op)}</div><div class="lc-title" style="font-size:12.5px">${esc(op.empresa||'—')}</div>
         <div style="margin-top:4px">${prog(pctOp(op))} <span style="font-size:10.5px;color:var(--muted)">${pctOp(op)}%</span></div>
         <div style="margin-top:4px">${bPrio(op.prioridad)} ${(()=>{ const d=diasPactada(op); return d!=null?diasTag(d):''; })()}</div>
@@ -1602,7 +1677,7 @@ function detailOP(id){
   _DET_ID=id; const j=idq(op);
   const p=pctOp(op), s=pasoActual(op), d=diasPactada(op);
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${opTitulo(op)}</div><div class="cot-hero-empresa">${esc(op.empresa||'—')}</div><div class="cot-hero-sub" style="white-space:normal">${esc(op.descripcion||'')}</div></div><div class="cot-hero-right">${thumbProd(op,64)}</div></div>
-    <div class="cot-hero-badges">${bEst(op.estado)}${bPrio(op.prioridad)}${op.externo?'<span class="badge">🚚 Externo</span>':''}${d!=null&&!op.despachado?diasTag(d):''}</div>
+    <div class="cot-hero-badges">${bEst(op.estado)}${bPrio(op.prioridad)}${scoreBadge(op)}${op.externo?'<span class="badge">🚚 Externo</span>':''}${d!=null&&!op.despachado?diasTag(d):''}</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-top:12px;opacity:.9"><span>Avance global</span><b style="font-family:var(--mono);font-size:16px">${p}%</b></div>
     <div class="progreso-bar" style="background:rgba(255,255,255,.2)"><div class="progreso-fill ${p>=100?'ok':''}" style="width:${p}%"></div></div>
     ${s?`<div style="font-size:11.5px;opacity:.85;margin-top:8px">▶ Proceso actual: <b>MQ${s.i} · ${esc(s.raw)}</b>${s.oper?' · 👷 '+esc(s.oper):''}</div>`:''}</div>`;
@@ -1610,6 +1685,7 @@ function detailOP(id){
            ['🧭','#1e3a5f','RUTA PROD.',`modalRuta('${j}')`],['🔄','#d97706','CAMBIAR ESTADO',`modalEstado('${j}')`],['⏱️','#0284c7','HORAS',`modalHoras('${j}')`],['👷','#db2777','OPERARIO',`modalOperarios('${j}')`]];
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
   const tl=`<div class="dp-section"><h4>🗓️ Línea de tiempo — Etapas</h4>${timelineEtapas(op)}<div style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="modalEtapas('${j}')">Ver etapas →</button></div></div>`;
+  const scoreH=scoreDetalle(op);
   const info=`<div class="dp-section"><h4>📌 Datos de la OP</h4>
     ${dr('Fecha pactada',fmtDate(op.fecha_pactada)+(d!=null&&!op.despachado?' · '+diasTag(d):''))}
     ${dr('Semana',op.semana||'—')}${dr('Diseñador',esc(op.disenador||'—'))}${dr('Asesor',esc(op.asesor||'—'))}
@@ -1618,7 +1694,7 @@ function detailOP(id){
     ${op.externo?dr('Servicio externo',extBadge(op)+(op.externo_desde?`<div style="font-size:11px;color:var(--muted)">desde ${fmtDT(op.externo_desde)}</div>`:'')):''}</div>`;
   const ruta=`<div class="dp-section"><h4>🧭 Ruta de producción</h4>${rutaPasosHtml(op)}</div>`;
   const simple=`<div style="text-align:center;margin:6px 0 30px"><button class="btn btn-ghost btn-sm" onclick="formAvance('${j}')">✏️ Formulario simple (% global, estado, prioridad)</button></div>`;
-  openDetail(opTitulo(op),hero+grid+tl+info+ruta+simple);
+  openDetail(opTitulo(op),hero+grid+scoreH+tl+info+ruta+simple);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
 }
 // Formulario simple de respaldo: % global, estado y prioridad en un solo paso
@@ -1647,7 +1723,7 @@ function prodCard(op){
   return `<div class="list-card" onclick="detailOP('${idq(op)}')">
     <div style="display:flex;gap:10px;align-items:flex-start">${thumbProd(op,44)}
       <div style="flex:1;min-width:0"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(op)}</div><div class="lc-title">${esc(op.empresa||'—')}</div><div class="lc-sub">${esc(String(op.descripcion||'').slice(0,80))}</div></div>
-      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}</div></div></div></div>
+      <div style="text-align:right;flex-shrink:0">${bEst(op.estado)}<br>${bPrio(op.prioridad)}<br>${scoreBadge(op)}</div></div></div></div>
     <div class="lc-meta">${pasoChip(op)} ${operBadge(op)} ${extBadge(op)}</div>
     <div class="lc-meta"><div style="flex:1">${prog(pctOp(op))}</div><b style="font-size:12px;font-family:var(--mono)">${pctOp(op)}%</b></div>
     <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(op.fecha_pactada)} ${d!=null?diasTag(d):''}</span><span style="font-size:11px;color:var(--muted);margin-left:auto">S${op.semana||'—'}</span></div>
@@ -1826,7 +1902,11 @@ function reportes(){
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
-function refreshCurrentView(){ const mods={dashboard,ops,produccion,ruta,kanban,operarios,avances,reportes}; if(mods[MOD]) mods[MOD](); }
+
+// ── MENÚ: tarjetas de módulos ───────────────────────────────────────────
+const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['avances','📈','Avances'],['reportes','📉','Reportes'],['dashboard','📊','Inicio']];
+function menu(){ setContent(`<div class="mn-grid">${MENU_MODS.map(([m,i,t])=>`<div class="mn-card" onclick="nav('${m}')"><div class="mn-img"><div class="mn-circle">${i}</div></div><div class="mn-t">${t}</div></div>`).join('')}</div>`); }
+function refreshCurrentView(){ const mods={menu,dashboard,ops,produccion,ruta,kanban,operarios,avances,reportes}; if(mods[MOD]) mods[MOD](); }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -1855,7 +1935,7 @@ async function iniciarApp(){
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
-  nav(TITLES[h]?h:'dashboard');
+  nav(TITLES[h]?h:'menu');
 }
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){ ['splash-logo-img','topbar-logo','sb-logo-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_B64_PNG; }); }
@@ -1884,7 +1964,7 @@ dashboard:{icono:'📊',titulo:'Inicio',
   pasos:[{t:'Cómo usarlo',items:['Toca cualquier tarjeta de KPI para ir al listado filtrado.','La lista de OP vencidas muestra las más urgentes; toca una para ver el detalle completo.']}],
   reglas:['Solo se tienen en cuenta las OP que no están en estado TERMINADO.','La «carga por máquina» usa el **paso actual** de cada OP (ver Ruta).']},
 ops:{icono:'🗂️',titulo:'OPs en curso',
-  que:'Todas las órdenes de producción que no están terminadas, ordenadas por urgencia (las que vencen antes, primero).',
+  que:'Todas las órdenes de producción que no están terminadas, ordenadas por **score** (0–10, ej. 7.8): promedio ponderado del % de avance (20%), los días disponibles (60%) y el tipo urgencia/garantía/reproceso (20%); los clientes especiales suman 10%. Mientras más alto, antes se atiende.',
   pasos:[{t:'Filtrar y buscar',items:['Filtra por **estado**, **prioridad** o **máquina**, o busca por OP, cliente o descripción.','Cambia entre **Tarjetas** y **Tabla** con los botones de arriba.','Toca una OP para abrir su detalle con todas las acciones.']}],
   reglas:['Solo se listan las OP que aún no están en estado TERMINADO (incluye pendientes, pausadas y canceladas).']},
 produccion:{icono:'🏭',titulo:'En producción',
