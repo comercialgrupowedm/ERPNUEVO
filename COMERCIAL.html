@@ -1508,6 +1508,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item active" data-m="dashboard" onclick="qaGo('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
     <div class="nav-item" data-m="cotizaciones" onclick="qaGo('cotizaciones')"><span class="nav-icon">📋</span>Cotizaciones<span class="nav-badge" id="b-cot" style="display:none">0</span></div>
     <div class="nav-item" data-m="items" onclick="qaGo('items')"><span class="nav-icon">🔩</span>Items / Elementos</div>
+    <div class="nav-item" data-m="usados" onclick="qaGo('usados')"><span class="nav-icon">🔁</span>Ítems más usados</div>
     <div class="nav-section">Clientes</div>
     <div class="nav-item" data-m="clientes" onclick="qaGo('clientes')"><span class="nav-icon">🏢</span>Clientes</div>
 
@@ -1669,7 +1670,7 @@ const DB = {};
 let MOD = 'dashboard';
 const TITLES = {
   dashboard:'Dashboard Comercial', cotizaciones:'Cotizaciones', clientes:'Clientes',
-  items:'Items / Elementos', procesos:'Procesos', materiales:'Materiales', servicios:'Servicios Externos',
+  items:'Items / Elementos', usados:'Ítems más usados', procesos:'Procesos', materiales:'Materiales', servicios:'Servicios Externos',
   produccion:'Control Producción', remisiones:'Remisiones', usuarios:'Usuarios y roles',
   importar:'🛠 Importar hojas de datos',
 };
@@ -1976,7 +1977,7 @@ function cotEnRango(c){ return _normEstado(c.estado)==='EN ESPERA' || _dentroDeR
 
 // ══ NAVEGACIÓN ══════════════════════════════════════════════════
 function refreshCurrentView(){
-  const mods={dashboard,cotizaciones,clientes,items,procesos,materiales,servicios,produccion,remisiones,usuarios,importar};
+  const mods={dashboard,cotizaciones,clientes,items,usados,procesos,materiales,servicios,produccion,remisiones,usuarios,importar};
   if(mods[MOD]) mods[MOD]();
 }
 function navigate(m){ const el=document.querySelector(`.nav-item[data-m="${m}"]`); if(el) el.click(); }
@@ -2452,6 +2453,92 @@ function dashboard(){
 }
 function dashTopCliente(i){
   const n=window._dashTop[i]; _dash.top=(_dash.mes||[]).filter(c=>(c.empresa||'Sin empresa')===n); dashPanel('top','🏢 '+n,'Sin cotizaciones para este cliente');
+}
+
+// ══ ÍTEMS MÁS USADOS (histórico por descripción de ítem, sobre todas las cotizaciones) ═══════════
+let _US={q:'',per:'todo',min:2,orden:'veces',dir:'desc',envios:false};
+function usSet(k,v){ _US[k]=(k==='min')?Number(v):v; usados(); }
+const _usKey=d=>String(d||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+const _usEnvio=k=>/^(ENVIO|SHIPPING|FLETE|TRANSPORTE|DOMICILIO)\b/.test(k);
+const _usGanada=e=>['APROBADA','EN PROCESO','TERMINADO','FACTURADA'].includes(_normEstado(e));
+const _usYM=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+const _usMes=ym=>{ const [y,m]=ym.split('-'); return ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][+m-1]+' '+String(y).slice(2); };
+function usGrupos(){
+  const cots=new Map(misCots().map(c=>[c.id,c])); const now=new Date();
+  const lim=_US.per==='todo'?null:new Date(now.getFullYear(),now.getMonth()-Number(_US.per),now.getDate());
+  const g=new Map();
+  (DB.items||[]).forEach(it=>{ const c=cots.get(it.id_cotizacion); if(!c) return; const k=_usKey(it.descripcion); if(!k) return; if(!_US.envios&&_usEnvio(k)) return;
+    const f=_dFecha(c.fecha_emision||c.created_at); if(isNaN(f)||(lim&&f<lim)) return;
+    let x=g.get(k); if(!x){ x={k,nombre:String(it.descripcion).trim(),usos:[]}; g.set(k,x); } x.usos.push({it,c,f}); });
+  const hace6=new Date(now.getFullYear(),now.getMonth()-6,now.getDate()), hace12=new Date(now.getFullYear(),now.getMonth()-12,now.getDate());
+  return [...g.values()].map(x=>{
+    const u=x.usos.sort((a,b)=>b.f-a.f); const pr=u.map(z=>Number(z.it.precio_unit)||0).filter(v=>v>0);
+    const cs=new Set(u.map(z=>z.c.id)), cl=new Set(u.map(z=>z.c.empresa||'—'));
+    const gan=new Set(u.filter(z=>_usGanada(z.c.estado)).map(z=>z.c.id)).size;
+    const r6=u.filter(z=>z.f>=hace6).length, p6=u.filter(z=>z.f<hace6&&z.f>=hace12).length;
+    const mes={}; u.forEach(z=>{ const m=_usYM(z.f); mes[m]=(mes[m]||0)+1; });
+    return {...x,usos:u,veces:u.length,cots:cs.size,clientes:cl.size,und:u.reduce((s,z)=>s+(Number(z.it.unidades)||0),0),valor:u.reduce((s,z)=>s+(Number(z.it.precio_total)||0),0),
+      pmin:pr.length?Math.min(...pr):0,pmax:pr.length?Math.max(...pr):0,pprom:pr.length?pr.reduce((a,b)=>a+b,0)/pr.length:0,pult:pr.length?(u.find(z=>Number(z.it.precio_unit)>0).it.precio_unit):0,
+      ultima:u[0].f,primera:u[u.length-1].f,tasa:cs.size?gan/cs.size:0,gan,r6,p6,mes};
+  });
+}
+function usBarras12(x,h=22){ const now=new Date(); const ms=[]; for(let i=11;i>=0;i--) ms.push(_usYM(new Date(now.getFullYear(),now.getMonth()-i,1))); const mx=Math.max(1,...ms.map(m=>x.mes[m]||0));
+  return `<div style="display:flex;align-items:flex-end;gap:2px;height:${h}px">${ms.map(m=>`<i title="${_usMes(m)}: ${x.mes[m]||0}" style="flex:1;min-width:3px;height:${Math.max(2,Math.round((x.mes[m]||0)/mx*h))}px;background:${x.mes[m]?'var(--accent)':'var(--border)'};border-radius:1px"></i>`).join('')}</div>`; }
+const usTend=x=>{ if(!x.p6&&!x.r6) return ''; if(!x.p6) return '<span style="color:#16a34a">▲ nuevo</span>'; const d=x.r6-x.p6; return d>0?`<span style="color:#16a34a">▲ +${d}</span>`:d<0?`<span style="color:#dc2626">▼ ${d}</span>`:'<span style="color:var(--muted)">= estable</span>'; };
+function usados(){
+  const todos=usGrupos(); const q=_usKey(_US.q);
+  const K={veces:x=>x.veces,cots:x=>x.cots,clientes:x=>x.clientes,und:x=>x.und,valor:x=>x.valor,ultima:x=>x.ultima.getTime(),tasa:x=>x.tasa,pprom:x=>x.pprom};
+  const sg=_US.dir==='asc'?1:-1;
+  const data=todos.filter(x=>x.veces>=_US.min&&(!q||x.k.includes(q))).sort((a,b)=>(K[_US.orden](a)-K[_US.orden](b))*sg||b.veces-a.veces);
+  window._usData=data;
+  const rep=todos.filter(x=>x.veces>1), usosTot=rep.reduce((s,x)=>s+x.veces,0);
+  const kp=(l,v)=>`<div style="flex:1;min-width:92px;background:var(--card2);border-radius:12px;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${l}</div><div style="font-size:18px;font-weight:800;font-family:var(--mono)">${v}</div></div>`;
+  const sel=(k,opts)=>`<select onchange="usSet('${k}',this.value)" style="padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:inherit;font-size:12px">${opts.map(([v,l])=>`<option value="${v}" ${String(_US[k])===String(v)?'selected':''}>${l}</option>`).join('')}</select>`;
+  const banner=moduleBanner('🔁','Ítems más usados','Histórico de ítems repetidos en las cotizaciones','', 'linear-gradient(135deg,#0f2443,#7c3aed)');
+  const fb=`<div style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${kp('Ítems distintos',todos.length)}${kp('Repetidos (2+)',rep.length)}${kp('Usos de repetidos',usosTot)}</div>
+    <input type="text" placeholder="🔍 Buscar ítem…" value="${esc(_US.q)}" oninput="_US.q=this.value;clearTimeout(window._usT);window._usT=setTimeout(usados,250)" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:inherit">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      ${sel('per',[['todo','Todo el tiempo'],['24','Últimos 24 meses'],['12','Últimos 12 meses'],['6','Últimos 6 meses']])}
+      ${sel('min',[[1,'Desde 1 uso'],[2,'2+ usos'],[3,'3+ usos'],[5,'5+ usos'],[10,'10+ usos']])}
+      ${sel('orden',[['veces','Más usados'],['cots','Cotizaciones'],['clientes','Clientes'],['und','Unidades'],['valor','Valor cotizado'],['ultima','Último uso'],['tasa','% aprobación'],['pprom','Precio promedio']])}
+      <button class="btn btn-ghost btn-sm" onclick="usSet('dir',_US.dir==='asc'?'desc':'asc')">${_US.dir==='asc'?'▲ Menor→Mayor':'▼ Mayor→Menor'}</button>
+      <label style="font-size:12px;display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" ${_US.envios?'checked':''} onchange="usSet('envios',this.checked)">Incluir envíos/fletes</label>
+      <span style="font-size:11px;color:var(--muted);margin-left:auto">${data.length} ítems</span></div></div>`;
+  if(!data.length){ setContent(banner+fb+empty('Sin ítems con estos filtros')); return; }
+  setContent(banner+fb+`<div class="card-list" style="padding:6px 14px 80px">${pgSlice('us',data).map((x,i)=>`
+    <div class="list-card" onclick="usDetalle(${i})"><div class="lc-top"><div style="flex:1;min-width:0">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="lc-id">#${i+1}</span><b style="font-family:var(--mono);color:var(--accent)">${x.veces} usos</b><span style="font-size:11px">${usTend(x)}</span></div>
+      <div class="lc-title" style="white-space:normal;line-height:1.25">${esc(x.nombre)}</div>
+      <div class="lc-sub">${x.cots} cotizaciones · ${x.clientes} clientes · ${fmtNum(x.und)} und · último: ${fmtDate(x.ultima.toISOString().slice(0,10))}</div></div>
+      <div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(Math.round(x.valor))}</div><div style="font-size:10px;color:var(--muted)">${Math.round(x.tasa*100)}% aprobadas</div></div></div>
+      <div style="margin-top:8px">${usBarras12(x)}<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px"><span>últimos 12 meses</span><span>${x.pprom?'prom. '+fmt(Math.round(x.pprom)):''}</span></div></div></div>`).join('')}</div>`);
+}
+const fmtNum=n=>Number(n||0).toLocaleString('es-CO',{maximumFractionDigits:1});
+function usDetalle(i){
+  const x=(window._usData||[])[i]; if(!x) return;
+  const ord=[...x.usos].reverse(); // cronológico
+  const ms=Object.keys(x.mes).sort(); const all=[]; if(ms.length){ let [y,m]=ms[0].split('-').map(Number); const [y2,m2]=ms[ms.length-1].split('-').map(Number); while(y<y2||(y===y2&&m<=m2)){ all.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} } }
+  const sh=all.slice(-24), mx=Math.max(1,...sh.map(m=>x.mes[m]||0));
+  const chart=`<div style="display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:6px">${sh.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%" title="${_usMes(m)}: ${x.mes[m]||0}"><div style="font-size:9px;color:var(--muted)">${x.mes[m]||''}</div><div style="width:100%;height:${Math.max(2,Math.round((x.mes[m]||0)/mx*66))}px;background:${x.mes[m]?'var(--accent)':'var(--border)'};border-radius:3px 3px 0 0"></div></div>`).join('')}</div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px"><span>${sh.length?_usMes(sh[0]):''}</span><span>${sh.length?_usMes(sh[sh.length-1]):''}</span></div>`;
+  const pts=ord.map(z=>({v:Number(z.it.precio_unit)||0,f:z.f,c:z.c})).filter(p=>p.v>0); let line='<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin precios registrados</div>';
+  if(pts.length>1){ const lo=Math.min(...pts.map(p=>p.v)), hi=Math.max(...pts.map(p=>p.v)), W=300,H=70,rg=(hi-lo)||1;
+    const xy=pts.map((p,k)=>[8+k*(W-16)/(pts.length-1),H-8-(p.v-lo)/rg*(H-16)]);
+    line=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:80px"><polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${xy.map(a=>a.join(',')).join(' ')}"/>${xy.map((a,k)=>`<circle cx="${a[0]}" cy="${a[1]}" r="2.5" fill="var(--accent)"><title>${fmtDate(pts[k].f.toISOString().slice(0,10))}: ${fmt(pts[k].v)}</title></circle>`).join('')}</svg>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>mín ${fmt(Math.round(lo))}</span><span>actual ${fmt(Math.round(pts[pts.length-1].v))}</span><span>máx ${fmt(Math.round(hi))}</span></div>`; }
+  else if(pts.length===1) line=`<div style="font-size:12px;padding:8px 0">Único precio: <b>${fmt(Math.round(pts[0].v))}</b></div>`;
+  const cl={}; x.usos.forEach(z=>{ const e=z.c.empresa||'—'; const o=cl[e]||(cl[e]={n:0,und:0,v:0}); o.n++; o.und+=Number(z.it.unidades)||0; o.v+=Number(z.it.precio_total)||0; });
+  const topCl=Object.entries(cl).sort((a,b)=>b[1].n-a[1].n||b[1].v-a[1].v).slice(0,8);
+  const st=(l,v)=>`<div style="background:var(--card2);border-radius:10px;padding:8px 10px"><div style="font-size:10px;color:var(--muted)">${l}</div><div style="font-size:14px;font-weight:800;font-family:var(--mono)">${v}</div></div>`;
+  openDetail('Ítem más usado',`<div class="dp-section"><h4 style="white-space:normal">🔁 ${esc(x.nombre)}</h4>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">${st('Usos',x.veces)}${st('Cotizaciones',x.cots)}${st('Clientes',x.clientes)}${st('Unidades',fmtNum(x.und))}${st('Valor cotizado',fmt(Math.round(x.valor)))}${st('% aprobación',Math.round(x.tasa*100)+'%')}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">Primera vez: <b>${fmtDate(x.primera.toISOString().slice(0,10))}</b> · Última: <b>${fmtDate(x.ultima.toISOString().slice(0,10))}</b> · Últimos 6 meses: <b>${x.r6}</b> vs 6 anteriores: <b>${x.p6}</b> ${usTend(x)}</div></div>
+    <div class="dp-section"><h4>📈 Uso por mes</h4>${chart}</div>
+    <div class="dp-section"><h4>💲 Evolución del precio unitario</h4>${line}${x.pprom?`<div style="font-size:11px;color:var(--muted)">Promedio ${fmt(Math.round(x.pprom))}</div>`:''}</div>
+    <div class="dp-section"><h4>🏢 Clientes que más lo piden</h4>${topCl.map(([e,o])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e)}</span><span style="font-family:var(--mono);white-space:nowrap">${o.n}× · ${fmtNum(o.und)} und</span></div>`).join('')}</div>
+    <div class="dp-section"><h4>🕘 Historial (${x.veces})</h4><div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:420px"><thead><tr><th>COT</th><th>Fecha</th><th>Cliente</th><th>Und</th><th>P. unit</th><th>Estado</th></tr></thead><tbody>
+      ${x.usos.map(z=>`<tr onclick="detailCot('${z.c.id}')"><td><b style="color:var(--accent)">COT-${z.c.cotizacion}</b></td><td>${fmtDate(z.f.toISOString().slice(0,10))}</td><td style="max-width:140px">${esc(z.c.empresa||'—')}</td><td>${fmtNum(z.it.unidades)}</td><td>${Number(z.it.precio_unit)?fmt(Math.round(z.it.precio_unit)):'—'}</td><td>${bEst(z.c.estado)}</td></tr>`).join('')}</tbody></table></div></div>`);
 }
 
 // ══ COTIZACIONES ════════════════════════════════════════════════
@@ -3564,10 +3651,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
 // ══════════════════════════════════════════════════════════════════
 const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
 const MODS_ROL={
-  desarrollador:['dashboard','cotizaciones','items','clientes','produccion','remisiones','materiales','servicios','procesos','usuarios','importar'],
-  admin:['dashboard','cotizaciones','items','clientes','produccion','remisiones'],
-  comercial:['dashboard','cotizaciones','items','clientes','produccion','remisiones'],
-  lectura:['dashboard','cotizaciones','items','clientes','produccion','remisiones'],
+  desarrollador:['dashboard','cotizaciones','items','usados','clientes','produccion','remisiones','materiales','servicios','procesos','usuarios','importar'],
+  admin:['dashboard','cotizaciones','items','usados','clientes','produccion','remisiones'],
+  comercial:['dashboard','cotizaciones','items','usados','clientes','produccion','remisiones'],
+  lectura:['dashboard','cotizaciones','items','usados','clientes','produccion','remisiones'],
   diseno:['produccion'], compras:['produccion'], produccion:['produccion'],
   calidad:['produccion','remisiones'], administracion:['remisiones','produccion'],
 };
