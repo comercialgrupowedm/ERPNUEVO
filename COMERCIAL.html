@@ -2321,7 +2321,8 @@ function dashPanel(key,titulo,emptyMsg='Sin resultados'){
 const fmtCorto=n=>{ n=Number(n)||0; return n>=1e6?'$'+(n/1e6).toLocaleString('es-CO',{maximumFractionDigits:n>=1e8?0:1})+' M':fmt(n); };
 const _dFecha=v=>{ const t=String(v||''); return /^\d{4}-\d{2}-\d{2}/.test(t)?new Date(t.slice(0,10)+'T12:00:00'):new Date(t||0); };
 // v10: filtro de periodo del inicio (Mes por defecto · 3 meses · Año · Todo · Rango). Afecta "Cotizado" y "Top clientes".
-const _dashP={tipo:'mes',mes:null,desde:'',hasta:''};
+const _dashP={tipo:'mes',mes:null,desde:'',hasta:'',lista:false};   // lista: aplicar el filtro de mes también a Pendientes y Recientes (por defecto NO)
+function dashToggleLista(){ _dashP.lista=!_dashP.lista; refreshCurrentView(); }
 const _MESES_ES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const _ymNow=()=>{ const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); };
 function dashRango(){
@@ -2349,7 +2350,7 @@ function dashControlesHTML(){
     extra=`<div style="display:flex;gap:6px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="dashMesNav(-1)">◀</button><input type="month" value="${ym}" max="${_ymNow()}" onchange="dashSetMes(this.value)" style="flex:1;min-width:0;text-align:center"><button class="btn btn-ghost btn-sm" onclick="dashMesNav(1)" ${ym>=_ymNow()?'disabled':''}>▶</button></div>`; }
   else if(_dashP.tipo==='rango'){
     extra=`<div style="display:flex;gap:6px;align-items:center"><input type="date" value="${_dashP.desde}" onchange="dashSetRango('desde',this.value)" style="flex:1;min-width:0"><span style="font-size:12px;color:var(--muted)">a</span><input type="date" value="${_dashP.hasta}" onchange="dashSetRango('hasta',this.value)" style="flex:1;min-width:0"></div>`; }
-  return `<div style="display:flex;flex-direction:column;gap:8px">${verTodoBar()}<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>${extra}<div style="font-size:10px;color:var(--muted)">El periodo mueve el inicio: vendido, pipeline, top clientes, pendientes y recientes (por fecha de emisión).</div></div>`;
+  return `<div style="display:flex;flex-direction:column;gap:8px">${verTodoBar()}<div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>${extra}<button class="btn btn-sm ${_dashP.lista?'btn-primary':'btn-ghost'}" style="align-self:flex-start" onclick="dashToggleLista()">${_dashP.lista?'✔ Filtro de mes aplicado a Pendientes y Recientes':'📅 Aplicar filtro de mes a Pendientes y Recientes'}</button><div style="font-size:10px;color:var(--muted)">El periodo mueve el inicio: vendido, pipeline, top clientes, pendientes y recientes (por fecha de emisión).</div></div>`;
 }
 function dashboard(){
   const cotsAll=misCots(); const now=new Date(); const rg=dashRango();
@@ -2370,8 +2371,17 @@ function dashboard(){
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
   const activas=activasTodas;   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
   const sum=l=>l.reduce((s,c)=>s+Number(c.precio_total||0),0);
+  const _MS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], mesLbl=ym=>{ const [y,m]=ym.split('-'); return _MS[+m-1]+' '+y; };
+  const porMes=list=>{ const g={}; list.forEach(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); if(isNaN(d)) return; const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); (g[ym]=g[ym]||[]).push(c); }); return Object.keys(g).sort().reverse().map(ym=>({ym,l:g[ym],t:sum(g[ym])})); };
+  const mesesH=(grp,pref,tit,vacio)=>{ if(!grp.length) return ''; const mx=Math.max(1,...grp.map(x=>x.t)); grp.forEach(x=>{ _dash[pref+x.ym]=[...x.l].sort((a,b)=>b.cotizacion-a.cotizacion); });
+    return `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.18)"><div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por mes</div><div style="max-height:172px;overflow-y:auto;padding-right:2px">${grp.map(x=>`<div onclick="event.stopPropagation();dashPanel('${pref}${x.ym}','${tit} · ${mesLbl(x.ym)}','${vacio}')" style="padding:5px 0;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:6px;font-size:11px;color:#fff"><span style="opacity:.9;white-space:nowrap">${mesLbl(x.ym)} <span style="opacity:.55">· ${x.l.length}</span></span><b style="font-family:var(--mono);white-space:nowrap">${fmt(Math.round(x.t))}</b></div><div style="height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:3px"><div style="height:100%;width:${Math.round(x.t/mx*100)}%;background:rgba(255,255,255,.75);border-radius:2px"></div></div></div>`).join('')}</div></div>`; };
+  const mesesAct=mesesH(porMes(activas),'ma_','🔥 Valor activo','Sin cotizaciones');
+  const mesesVend=mesesH(porMes(cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA')).slice(0,12),'mv_','💰 Vendido','Sin ventas');
+  const baseL=_dashP.lista?cots:cotsAll;   // Pendientes y Recientes: todo, salvo que se active el filtro de mes
+  const esperaL=baseL.filter(c=>_normEstado(c.estado)==='EN ESPERA').sort((a,b)=>b.cotizacion-a.cotizacion);
+  const tagL=_dashP.lista?esc(rg.corto):'todos los meses';
   const sinProc=mes.filter(c=>_normEstado(c.estado)!=='APROBADA');   // v13: cotizado en el periodo que NO se aprobó (en espera, canceladas…)
-  _dash.aprob=aprob; _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion);
+  _dash.aprob=aprob; _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.esperaL=esperaL; _dash.recL=[...baseL].sort((a,b)=>b.cotizacion-a.cotizacion);
   const cm={}; mes.forEach(c=>{ const e=c.empresa||'Sin empresa'; if(!cm[e]) cm[e]={nombre:e,total:0,cots:0,aprobadas:0}; cm[e].total+=Number(c.precio_total||0); cm[e].cots++; if(_normEstado(c.estado)==='APROBADA') cm[e].aprobadas++; });
   const top=Object.values(cm).filter(x=>x.total>0).sort((a,b)=>b.total-a.total).slice(0,5); const maxC=top[0]?.total||1;
   window._dashTop=top.map(t=>t.nombre);
@@ -2380,7 +2390,7 @@ function dashboard(){
     {label:'En Proceso',icon:'🔵',n:enProc.length,color:'#3b82f6',k:'enProc'},{label:'Terminadas',icon:'✅',n:term.length,color:'#8b5cf6',k:'term'},
     {label:'Facturadas',icon:'💜',n:fact.length,color:'#6366f1',k:'fact'},{label:'Urgentes',icon:'🔴',n:urg.length,color:'#ef4444',k:'urg'},
   ].filter(p=>p.n>0);
-  const recientes=_dash.todas.slice(0,5);
+  const recientes=_dash.recL.slice(0,5);
   const fechaActual=now.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
   const hora=now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
   setContent(`
@@ -2393,14 +2403,14 @@ function dashboard(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div onclick="dashPanel('activas','🔥 Valor activo (todo el tiempo)','No hay cotizaciones activas')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">🔥 Valor activo · todo el tiempo</div>
-        <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div></div>
+        <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div>${mesesAct}</div>
       <div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">💰 Vendido ${rg.label}</div>
         <div style="font-size:${dashSz(sum(aprob))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(aprob)))}</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${aprob.length} aprobadas de ${mes.length} cotizadas</div>
         <div onclick="event.stopPropagation();dashPanel('sinProc','📝 Cotizado sin procesar ${rg.label}','Todo lo cotizado en este periodo se procesó')" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.18)">
           <div style="font-size:10px;color:rgba(255,255,255,.55)">Cotizado y no procesado ›</div>
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85);font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(sinProc)))} · ${sinProc.length}</div></div></div>
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85);font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(sinProc)))} · ${sinProc.length}</div></div>${mesesVend}</div>
     </div>
     ${pipeline.length?`<div style="background:var(--card2);border-radius:14px;padding:14px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px">📊 Pipeline · ${esc(rg.corto)}</div>
@@ -2423,21 +2433,21 @@ function dashboard(){
         <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cl.nombre)}</div>
           <div style="margin-top:4px;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.round(cl.total/maxC*100)}%;background:${['#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'][i]};border-radius:2px"></div></div></div>
         <div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:var(--gold);font-family:var(--mono)">${fmt(Math.round(cl.total))}</div><div style="font-size:10px;color:var(--muted)">${cl.cots} cots · ${cl.aprobadas} aprobadas</div></div></div>`).join('')}</div>`:`<div style="background:var(--card2);border-radius:14px;padding:14px;font-size:12px;color:var(--muted)">🏆 Top clientes · ${esc(rg.corto)}: sin cotizaciones en este periodo</div>`}
-    ${espera.length?`<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🟡 Pendientes de respuesta · ${esc(rg.corto)}</div>
-      <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('espera','🟡 En Espera','No hay cotizaciones pendientes')">Ver todas →</div></div>
-      <div class="card-list">${espera.slice(0,4).map(c=>`<div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
+    ${esperaL.length?`<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🟡 Pendientes de respuesta · ${tagL} <span style="font-family:var(--mono)">(${esperaL.length})</span></div>
+      <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('esperaL','🟡 En Espera','No hay cotizaciones pendientes')">Ver todas →</div></div>
+      <div class="card-list">${esperaL.slice(0,4).map(c=>`<div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
         <div class="lc-id">COT-${c.cotizacion}</div><div class="lc-title">${esc(c.empresa||'Sin empresa')}</div>
         <div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.descripcion_proyecto||'—')}</div></div>
         <div style="text-align:right;flex-shrink:0;margin-left:10px">${bTipo(c.tipo)}<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);margin-top:4px">${fmt(c.precio_total)}</div></div></div></div>`).join('')}
-        ${espera.length>4?`<div onclick="nav('cotizaciones')" style="text-align:center;padding:10px;color:var(--accent);font-size:13px;cursor:pointer;font-weight:600">+ ${espera.length-4} más →</div>`:''}</div></div>`
+        ${esperaL.length>4?`<div onclick="dashPanel('esperaL','🟡 En Espera','No hay cotizaciones pendientes')" style="text-align:center;padding:10px;color:var(--accent);font-size:13px;cursor:pointer;font-weight:600">+ ${esperaL.length-4} más →</div>`:''}</div></div>`
     :`<div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.03));border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:16px;text-align:center">
       <div style="font-size:24px;margin-bottom:6px">✅</div><div style="font-size:13px;font-weight:700;color:#10b981">¡Todo al día!</div><div style="font-size:11px;color:var(--muted);margin-top:4px">No hay cotizaciones pendientes de respuesta</div></div>`}
-    <div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🕐 Recientes · ${esc(rg.corto)}</div>
-      <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('todas','🕐 Cotizaciones ${esc(rg.corto)}')">Ver todas →</div></div>
+    <div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🕐 Recientes · ${tagL}</div>
+      <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('recL','🕐 Cotizaciones · ${tagL}')">Ver todas →</div></div>
       <div class="card-list">${recientes.length?recientes.map(c=>`<div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px"><div class="lc-id">COT-${c.cotizacion}</div>${bEst(c.estado)}</div><div class="lc-title">${esc(c.empresa||'Sin empresa')}</div></div>
-        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0;margin-left:10px">${fmt(c.precio_total)}</div></div></div>`).join(''):empty('Sin cotizaciones en este periodo')}</div></div>
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0;margin-left:10px">${fmt(c.precio_total)}</div></div></div>`).join(''):empty('Sin cotizaciones')}</div></div>
   </div>`);
 }
 function dashTopCliente(i){
