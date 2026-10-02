@@ -1116,7 +1116,7 @@ async function doLogin(){
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
 const TITLES={menu:'Menú',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',reportes:'Reportes',planta:'Vista planta'};
-const PG_BASE=60;
+const PG_BASE=(window.innerWidth<700?30:60);
 const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
   +',hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_rectificadora,hrs_cnc_real,hrs_torno_real,hrs_fresadora_real,hrs_banco_real,hrs_rect_real,hrs_edm,hrs_hilo,hrs_soldadura,hrs_ingenieria,horas_total_real'
@@ -2297,7 +2297,7 @@ setInterval(async()=>{
     await cargarTodo(); if(_pl.open) plRender(true);
     if(antes===JSON.stringify((DB.produccion||[]).map(o=>[o.id,o.estado,o.avance,o.updated_at]))) return;
     const a=document.activeElement; const typing=a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); const modal=document.getElementById('modal-overlay')?.classList.contains('open');
-    if(!_detailOpen&&!modal&&!typing) refreshCurrentView();
+    if(!_detailOpen&&!modal&&!typing&&Date.now()-(window._lastTouch||0)>10000) refreshCurrentView();
   }catch(e){}
 },60000);
 
@@ -3194,6 +3194,37 @@ function aj(){var ov=document.getElementById('chat-ov'); if(!ov||!ov.classList.c
 vv.addEventListener('resize',aj); vv.addEventListener('scroll',aj); setInterval(aj,400);}catch(e){}})();
 </script>
 <!-- /WEDM-CHAT -->
+
+<!-- WEDM-RENDIMIENTO (scroll fluido en celular y tablas grandes) -->
+<style>
+#content{scroll-behavior:auto!important}
+tbody tr{transition:none!important}
+.detail-panel,#sidebar{will-change:auto!important}
+#content{overscroll-behavior-y:contain}
+@media(max-width:900px){
+ #content .tbl-wrap{max-height:none!important;overflow-y:visible!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+ #content .tbl-scroll{overflow-y:visible!important}
+ .modal-body,#chat-msgs{-webkit-overflow-scrolling:touch}
+}
+@media(hover:none){tbody tr:hover{background:transparent!important}.list-card:hover{box-shadow:none!important}}
+</style>
+<script>
+(function(){
+ window._lastTouch=0; var t=function(){window._lastTouch=Date.now();};
+ ['touchstart','touchmove','wheel','keydown'].forEach(function(e){document.addEventListener(e,t,{passive:true,capture:true});});
+ var sc=function(){var c=document.getElementById('content'); if(c&&!c._wsc){c._wsc=1;c.addEventListener('scroll',t,{passive:true});}};
+ setInterval(sc,2000); sc();
+ // conserva la posición del scroll cuando se vuelve a dibujar la vista
+ var o=window.refreshCurrentView;
+ if(typeof o==='function'&&!o._w){
+  var w=function(){ var c=document.getElementById('content'); var y=c?c.scrollTop:0; var r=o.apply(this,arguments);
+    if(c&&y>0){ var f=function(){ if(Math.abs(c.scrollTop-y)>2) c.scrollTop=y; }; requestAnimationFrame(f); setTimeout(f,120); setTimeout(f,450); }
+    return r; };
+  w._w=1; window.refreshCurrentView=w;
+ }
+})();
+</script>
+<!-- /WEDM-RENDIMIENTO -->
 
 </body>
 </html>

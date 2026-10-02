@@ -1125,7 +1125,7 @@ async function doLogin(){
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
 const TITLES={dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',buscar:'Búsqueda'};
-const PG_BASE=60;
+const PG_BASE=(window.innerWidth<700?30:60);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
 // Columnas de producción que usa el módulo. formato_qa completo se carga aparte (pesa); aquí solo el resultado y quién inspeccionó.
@@ -2417,7 +2417,7 @@ setInterval(async()=>{
     const firma=()=>JSON.stringify([(DB.produccion||[]).map(o=>[o.id,o.estado,o.calidad_estado,o.updated_at]),(DB.reprocesos||[]).map(r=>[r.id,r.estado]),(DB.certificados||[]).map(c=>[c.id,c.updated_at]),(DB.solicitudes||[]).map(s=>[s.id,s.estado]),(DB.remisiones||[]).map(m=>[m.id,m.estado])]);
     const antes=firma(); await cargarTodo(); updateBadges(); if(antes===firma()) return;
     const a=document.activeElement; const typing=a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); const modal=document.getElementById('modal-overlay')?.classList.contains('open');
-    if(!_detailOpen&&!modal&&!typing) refreshCurrentView();
+    if(!_detailOpen&&!modal&&!typing&&Date.now()-(window._lastTouch||0)>10000) refreshCurrentView();
   }catch(e){}
 },60000);
 
@@ -3496,6 +3496,37 @@ function aj(){var ov=document.getElementById('chat-ov'); if(!ov||!ov.classList.c
 vv.addEventListener('resize',aj); vv.addEventListener('scroll',aj); setInterval(aj,400);}catch(e){}})();
 </script>
 <!-- /WEDM-CHAT -->
+
+<!-- WEDM-RENDIMIENTO (scroll fluido en celular y tablas grandes) -->
+<style>
+#content{scroll-behavior:auto!important}
+tbody tr{transition:none!important}
+.detail-panel,#sidebar{will-change:auto!important}
+#content{overscroll-behavior-y:contain}
+@media(max-width:900px){
+ #content .tbl-wrap{max-height:none!important;overflow-y:visible!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+ #content .tbl-scroll{overflow-y:visible!important}
+ .modal-body,#chat-msgs{-webkit-overflow-scrolling:touch}
+}
+@media(hover:none){tbody tr:hover{background:transparent!important}.list-card:hover{box-shadow:none!important}}
+</style>
+<script>
+(function(){
+ window._lastTouch=0; var t=function(){window._lastTouch=Date.now();};
+ ['touchstart','touchmove','wheel','keydown'].forEach(function(e){document.addEventListener(e,t,{passive:true,capture:true});});
+ var sc=function(){var c=document.getElementById('content'); if(c&&!c._wsc){c._wsc=1;c.addEventListener('scroll',t,{passive:true});}};
+ setInterval(sc,2000); sc();
+ // conserva la posición del scroll cuando se vuelve a dibujar la vista
+ var o=window.refreshCurrentView;
+ if(typeof o==='function'&&!o._w){
+  var w=function(){ var c=document.getElementById('content'); var y=c?c.scrollTop:0; var r=o.apply(this,arguments);
+    if(c&&y>0){ var f=function(){ if(Math.abs(c.scrollTop-y)>2) c.scrollTop=y; }; requestAnimationFrame(f); setTimeout(f,120); setTimeout(f,450); }
+    return r; };
+  w._w=1; window.refreshCurrentView=w;
+ }
+})();
+</script>
+<!-- /WEDM-RENDIMIENTO -->
 
 </body>
 </html>
