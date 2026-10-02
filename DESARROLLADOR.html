@@ -5,7 +5,9 @@
 <meta name="theme-color" content="#0f2443">
 <link rel="preconnect" href="https://rarjcuoapvrfqrzuhsbi.supabase.co">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>ERP Comercial · Grupo WEDM</title>
+<title>ERP Desarrollador · Grupo WEDM</title>
+<!-- SheetJS para leer Excel (.xlsx/.xls) en el módulo de importación dev -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 
 :root {
@@ -1427,7 +1429,7 @@ body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=s
 
 <div id="splash" class="hide hidden">
   <img class="splash-logo" id="splash-logo-img" src="" alt="GRUPO WEDM">
-  <div class="splash-sub">ERP Comercial · Grupo WEDM</div>
+  <div class="splash-sub">ERP Desarrollador · Grupo WEDM</div>
   <div class="splash-bar-wrap">
     <div class="splash-bar" id="splash-bar"></div>
   </div>
@@ -1453,33 +1455,27 @@ body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=s
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 <nav id="sidebar">
   <div class="sb-logo">
-    <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="qaGo('dashboard');closeSidebar()">
+    <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="qaGo('funciones');closeSidebar()">
       <img src="" id="sb-logo-img" alt="GRUPO WEDM" style="height:34px;width:auto;border-radius:4px">
     </div>
     <div style="margin-left:4px">
-      <div class="sb-logo-text">ERP Comercial</div>
+      <div class="sb-logo-text">ERP Desarrollador</div>
       <div class="sb-logo-sub">Grupo WEDM</div>
     </div>
     <div class="sb-close" onclick="closeSidebar()">✕</div>
   </div>
   <div class="nav-scroll">
-    <div class="nav-section">Principal</div>
-    <div class="nav-item active" data-m="dashboard" onclick="qaGo('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
-    <div class="nav-item" data-m="cotizaciones" onclick="qaGo('cotizaciones')"><span class="nav-icon">📋</span>Cotizaciones<span class="nav-badge" id="b-cot" style="display:none">0</span></div>
-    <div class="nav-item" data-m="items" onclick="qaGo('items')"><span class="nav-icon">🔩</span>Items / Elementos</div>
-    <div class="nav-item" data-m="usados" onclick="qaGo('usados')"><span class="nav-icon">🔁</span>Ítems más usados</div>
-    <div class="nav-item" data-m="analisis" onclick="qaGo('analisis')"><span class="nav-icon">💡</span>Análisis</div>
-    <div class="nav-section">Clientes</div>
-    <div class="nav-item" data-m="clientes" onclick="qaGo('clientes')"><span class="nav-icon">🏢</span>Clientes</div>
-
-    <div class="nav-section">Producción</div>
-    <div class="nav-item" data-m="produccion" onclick="qaGo('produccion')"><span class="nav-icon">🏭</span>Control Producción<span class="nav-badge" id="b-prod" style="display:none">0</span></div>
-    <div class="nav-item" data-m="remisiones" onclick="qaGo('remisiones')"><span class="nav-icon">🚚</span>Remisiones<span class="nav-badge" id="b-rem" style="display:none">0</span></div>
-
-    <div class="nav-section">Catálogo</div>
-    <div class="nav-item" data-m="materiales" onclick="qaGo('materiales')"><span class="nav-icon">🧱</span>Materiales</div>
-    <div class="nav-item" data-m="servicios" onclick="qaGo('servicios')"><span class="nav-icon">🛠️</span>Servicios</div>
-    <div class="nav-item" data-m="procesos" onclick="qaGo('procesos')"><span class="nav-icon">⚙️</span>Procesos</div>
+    <div class="nav-section">Sistema</div>
+    <div class="nav-item active" data-m="funciones" onclick="qaGo('funciones')"><span class="nav-icon">⚙️</span>Funciones</div>
+    <div class="nav-item" data-m="auditoria" onclick="qaGo('auditoria')"><span class="nav-icon">🕵️</span>Auditoría</div>
+    <div class="nav-item" data-m="respaldos" onclick="qaGo('respaldos')"><span class="nav-icon">💾</span>Respaldos</div>
+    <div class="nav-item" data-m="seguridad" onclick="qaGo('seguridad')"><span class="nav-icon">🔒</span>Seguridad</div>
+    <div class="nav-section">Datos</div>
+    <div class="nav-item" data-m="usuarios" onclick="qaGo('usuarios')"><span class="nav-icon">👥</span>Usuarios y roles</div>
+    <div class="nav-item" data-m="importar" id="nav-importar" onclick="qaGo('importar')"><span class="nav-icon">📥</span>Importar hojas</div>
+    <div class="nav-section">Módulos</div>
+    <div class="nav-item" onclick="location.href='COMERCIAL.html'"><span class="nav-icon">📋</span>Comercial</div>
+    <div class="nav-item" onclick="location.href='index.html'"><span class="nav-icon">🏠</span>Inicio</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
   </div>
@@ -1503,53 +1499,21 @@ body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=s
 
 <!-- BARRA DE ACCESO RÁPIDO -->
 <div id="qa-bar">
-  <div class="qbar-item active" data-qa="dashboard" onclick="qaGo('dashboard')">
-    <div class="qbar-icon" style="background:#2563eb">📊</div><div class="qbar-label">Inicio</div>
-  </div>
-  <div class="qbar-item" data-qa="mis-cot" onclick="qaGo('cotizaciones')">
-    <div class="qbar-icon" style="background:#0d9c94">📋</div><div class="qbar-label">Cotizac.</div>
-    <span class="qbar-badge" id="qa-b-cot" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="cot-espera" onclick="qaGo('cotizaciones',{estado:'EN ESPERA'})">
-    <div class="qbar-icon" style="background:#d97706">⏳</div><div class="qbar-label">En Espera</div>
-  </div>
-  <div class="qbar-item" data-qa="items" onclick="qaGo('items')">
-    <div class="qbar-icon" style="background:#0284c7">🔩</div><div class="qbar-label">Todos Ítems</div>
-  </div>
-  <div class="qbar-item" data-qa="clientes" onclick="qaGo('clientes')">
-    <div class="qbar-icon" style="background:#7c3aed">🏢</div><div class="qbar-label">Clientes</div>
-  </div>
-  <div class="qbar-item" data-qa="produccion" onclick="qaGo('produccion')">
-    <div class="qbar-icon" style="background:#7c3aed">🏭</div><div class="qbar-label">Producción</div>
-    <span class="qbar-badge" id="qa-b-prod" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="remisiones" onclick="qaGo('remisiones')">
-    <div class="qbar-icon" style="background:#0284c7">🚚</div><div class="qbar-label">Remisiones</div>
-    <span class="qbar-badge" id="qa-b-rem" style="display:none">0</span>
-  </div>
-  <div class="qbar-item" data-qa="materiales" onclick="qaGo('materiales')">
-    <div class="qbar-icon" style="background:#059669">🧱</div><div class="qbar-label">Materiales</div>
-  </div>
-  <div class="qbar-item" data-qa="servicios" onclick="qaGo('servicios')">
-    <div class="qbar-icon" style="background:#475569">🛠️</div><div class="qbar-label">Servicios</div>
-  </div>
-  <div class="qbar-item" data-qa="procesos" onclick="qaGo('procesos')">
-    <div class="qbar-icon" style="background:#64748b">⚙️</div><div class="qbar-label">Procesos</div>
-  </div>
+  <div class="qbar-item active" data-qa="funciones" onclick="qaGo('funciones')"><div class="qbar-icon" style="background:#475569">⚙️</div><div class="qbar-label">Funciones</div></div>
+  <div class="qbar-item" data-qa="auditoria" onclick="qaGo('auditoria')"><div class="qbar-icon" style="background:#7c3aed">🕵️</div><div class="qbar-label">Auditoría</div></div>
+  <div class="qbar-item" data-qa="respaldos" onclick="qaGo('respaldos')"><div class="qbar-icon" style="background:#0d9c94">💾</div><div class="qbar-label">Respaldos</div></div>
+  <div class="qbar-item" data-qa="seguridad" onclick="qaGo('seguridad')"><div class="qbar-icon" style="background:#dc2626">🔒</div><div class="qbar-label">Seguridad</div></div>
+  <div class="qbar-item" data-qa="usuarios" onclick="qaGo('usuarios')"><div class="qbar-icon" style="background:#2563eb">👥</div><div class="qbar-label">Usuarios</div></div>
+  <div class="qbar-item" data-qa="importar" onclick="qaGo('importar')"><div class="qbar-icon" style="background:linear-gradient(135deg,#7c2d12,#dc2626)">📥</div><div class="qbar-label">Importar</div></div>
 </div>
 
 <div id="bottom-nav">
-  <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div>Dashboard</div>
-  <div class="bn-item" data-m="cotizaciones" onclick="nav('cotizaciones')"><div class="bn-icon">📋</div>Cotizac.<span class="bn-badge" id="bb-cot" style="display:none">0</span></div>
-  <div class="bn-item" data-m="items" onclick="nav('items')"><div class="bn-icon">🔩</div>Ítems</div>
-  <div class="bn-item" data-m="clientes" onclick="nav('clientes')"><div class="bn-icon">🏢</div>Clientes</div>
-  <div class="bn-item" data-m="produccion" onclick="nav('produccion')"><div class="bn-icon">🏭</div>Producción<span class="bn-badge" id="bb-prod" style="display:none">0</span></div>
-  <div class="bn-item" data-m="remisiones" onclick="nav('remisiones')"><div class="bn-icon">🚚</div>Remisiones<span class="bn-badge" id="bb-rem" style="display:none">0</span></div>
-
-
-  <div class="bn-item" data-m="materiales" onclick="nav('materiales')"><div class="bn-icon">🧱</div>Materiales</div>
-  <div class="bn-item" data-m="servicios" onclick="nav('servicios')"><div class="bn-icon">🛠️</div>Servicios</div>
-  <div class="bn-item" data-m="procesos" onclick="nav('procesos')"><div class="bn-icon">⚙️</div>Procesos</div>
+  <div class="bn-item active" data-m="funciones" onclick="nav('funciones')"><div class="bn-icon">⚙️</div>Funciones</div>
+  <div class="bn-item" data-m="auditoria" onclick="nav('auditoria')"><div class="bn-icon">🕵️</div>Auditoría</div>
+  <div class="bn-item" data-m="respaldos" onclick="nav('respaldos')"><div class="bn-icon">💾</div>Respaldos</div>
+  <div class="bn-item" data-m="seguridad" onclick="nav('seguridad')"><div class="bn-icon">🔒</div>Seguridad</div>
+  <div class="bn-item" data-m="usuarios" onclick="nav('usuarios')"><div class="bn-icon">👥</div>Usuarios</div>
+  <div class="bn-item" data-m="importar" onclick="nav('importar')"><div class="bn-icon">📥</div>Importar</div>
 </div>
 
 <button class="btn-fab" id="fab" onclick="fabAction()" style="display:none">＋</button>
@@ -1661,11 +1625,12 @@ async function DELETE(t,id){ showBusy(); try{ return await sb.del(t,'id='+eq(id)
 
 // ══ ESTADO GLOBAL ═══════════════════════════════════════════════
 const DB = {};
-let MOD = 'dashboard';
+let MOD = 'funciones';
 const TITLES = {
   dashboard:'Dashboard Comercial', cotizaciones:'Cotizaciones', clientes:'Clientes',
   items:'Items / Elementos', usados:'Ítems más usados', analisis:'Análisis', procesos:'Procesos', materiales:'Materiales', servicios:'Servicios Externos',
-  produccion:'Control Producción', remisiones:'Remisiones',
+  produccion:'Control Producción', remisiones:'Remisiones', usuarios:'Usuarios y roles',
+  importar:'🛠 Importar hojas de datos', funciones:'Funciones del sistema', auditoria:'Auditoría', respaldos:'Respaldos', seguridad:'Seguridad',
 };
 const FAB_ACTIONS = {
   cotizaciones:()=>formCot({}),
@@ -1964,7 +1929,7 @@ function cotEnRango(c){ return _normEstado(c.estado)==='EN ESPERA' || _dentroDeR
 
 // ══ NAVEGACIÓN ══════════════════════════════════════════════════
 function refreshCurrentView(){
-  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones};
+  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones,usuarios,importar,funciones,auditoria,respaldos,seguridad};
   if(mods[MOD]) mods[MOD]();
 }
 function navigate(m){ const el=document.querySelector(`.nav-item[data-m="${m}"]`); if(el) el.click(); }
@@ -2000,7 +1965,7 @@ function nav(m){
 window.addEventListener('popstate',function(e){
   _navFromPopstate=true;
   if(_detailOpen){ _detailOpen=false; document.getElementById('dp').classList.remove('open'); document.getElementById('content').style.overflow=''; _navFromPopstate=false; return; }
-  const target=(e.state&&e.state.mod)?e.state.mod:'dashboard';
+  const target=(e.state&&e.state.mod)?e.state.mod:'funciones';
   if(_SESSION) nav(target);
   _navFromPopstate=false;
 });
@@ -2123,7 +2088,7 @@ async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
 }
 function asesoresLista(){ return [...new Set(USUARIOS.filter(u=>u.asesor).map(u=>u.asesor))]; }
-const ROLES_COMERCIAL=['comercial','produccion','calidad','administracion','admin','desarrollador'];
+const ROLES_COMERCIAL=['desarrollador','admin'];
 const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
 const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
 const NOMBRES_VISIBLES_COM=['Mauricio García','Eduardo Cabal','Gerson Ramos','Juan Diego García','F. GIRALDO','admin'];
@@ -2135,7 +2100,7 @@ function mostrarLogin(){
   div.innerHTML=`
     <div style="text-align:center;margin-bottom:20px">
       <div style="background:#fff;border-radius:14px;padding:10px 16px;display:inline-block;margin-bottom:12px"><img src="${LOGO_B64_PNG}" style="width:min(52vw,190px);height:auto;display:block" onerror="this.style.display='none'"></div>
-      <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:.3px">ERP Comercial</div>
+      <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:.3px">ERP Desarrollador</div>
       <div style="color:#6b7db3;font-size:13px;margin-top:4px">Grupo WEDM</div>
     </div>
     <div class="login-card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);color:#e8f0fe">
@@ -2201,7 +2166,7 @@ async function doLoginDev(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
     if(!r||!r.ok){ err.textContent=String((r&&r.msg)||'Usuario o clave incorrectos').replace('PIN','clave'); document.getElementById('dev-pass').value=''; return; }
-    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ err.textContent='Sin acceso al módulo Comercial'; return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ err.textContent='Sin acceso al módulo Desarrollador'; return; }
     _sesionIniciada(r);
   }catch(e){ err.textContent='Sin conexión — intenta de nuevo'; }
   finally{ _loginBusy=false; }
@@ -2239,7 +2204,7 @@ async function doLogin(){
   try{
     const r=await sb.rpc('login_usuario',{p_nombre:_LOGIN_USER,p_pin:pin});
     if(!r||!r.ok){ _loginPinShakeError((r&&r.msg)||'Clave incorrecta'); return; }
-    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ _loginPinShakeError('Sin acceso al módulo Comercial'); return; }
+    if(!(r.roles||[r.rol]).some(x=>ROLES_COMERCIAL.includes(x))){ _loginPinShakeError('Sin acceso al módulo Desarrollador'); return; }
     _sesionIniciada(r);
   }catch(e){ _loginPinShakeError('Sin conexión — intenta de nuevo'); }
   finally{ _loginBusy=false; }
@@ -2252,7 +2217,7 @@ function endSession(msg){
   _SESSION=null; sb.tok=null; try{ localStorage.removeItem('_wedm_s'); }catch(e){}
   Object.keys(DB).forEach(k=>delete DB[k]);
   closeSidebar(); closeModal(); _navFromNav=true; closeDetail(); _navFromNav=false;
-  document.getElementById('content').innerHTML=''; try{ history.replaceState({mod:'dashboard'},'','#dashboard'); }catch(e){}
+  document.getElementById('content').innerHTML=''; try{ history.replaceState({mod:'funciones'},'','#funciones'); }catch(e){}
   mostrarLogin(); if(msg) toast(msg,'error');
 }
 function forceLogout(msg){ endSession(msg); }
@@ -2287,6 +2252,7 @@ async function iniciarApp(){
     splashProgress(100,'✅ ¡Listo!');
   }catch(e){ toast('⚠️ '+e.message,'error'); }
   updateBadges(); splashDone();
+  if(typeof importar_showDevItems==='function') importar_showDevItems();
   const h=(location.hash||'').replace('#','').replace('-detail','');
   const inicio=(typeof modInicial==='function')?modInicial():'dashboard';
   nav(TITLES[h]&&(typeof modPermitido!=='function'||modPermitido(h))?h:inicio);
@@ -3493,1203 +3459,4 @@ async function saveItem(){
     else{ const r=await POST('items',row); DB.items.push(r[0]||row); toast('✅ Ítem agregado'); }
     await recalcularTotalesCot(_IT.cotId).catch(()=>{});
     const cotId=_IT.cotId; closeModal(); refreshCurrentView(); detailCot(cotId);
-  }catch(e){ toast('❌ '+e.message,'error'); if(btn){ btn.disabled=false; btn.textContent=_IT.isNew?'✓ Guardar Item':'✓ Actualizar'; } }
-}
-async function deleteItem(id){
-  const it=DB.items.find(x=>x.id===id); if(!it||!confirm('¿Eliminar este ítem?')) return;
-  try{ await DELETE('items',id); DB.items=DB.items.filter(x=>x.id!==id); await recalcularTotalesCot(it.id_cotizacion).catch(()=>{});
-    toast('Ítem eliminado'); refreshCurrentView(); detailCot(it.id_cotizacion); }
-  catch(e){ toast('❌ '+e.message,'error'); }
-}
-// v17: duplicar con edición rápida (descripción, cantidad y precio). Si cambia la cantidad, los costos de materiales y
-// procesos se reescalan proporcionalmente; servicios externos, diseño y flete se mantienen (son valores totales).
-function itemEscalar(it,cant){
-  const u0=Number(it.unidades)||1; const f=cant>0?cant/u0:1; const R=v=>Math.round(v);
-  const mats=(it.mats||[]).map(m=>({...m,kg:m.kg!=null&&m.kg!==''?Number(m.kg)*f:m.kg,costo:R(nOr(m.costo)*f),costo_esp:m.costo_esp!=null&&m.costo_esp!==''?R(nOr(m.costo_esp)*f):m.costo_esp}));
-  const prcs=(it.prcs||[]).map(p=>({...p,costo:(nOr(p.tarifa)>0||p.modo!=='total')?R(nOr(p.costo)*f):p.costo}));
-  const svcs=(it.svcs||[]).map(x=>({...x}));
-  const sum=(l,k)=>l.reduce((t,m)=>t+(m.nombre?nOr(m[k]):0),0);
-  let total=sum(mats,'costo')+sum(svcs,'costo')*1.3+sum(prcs,'costo')+nOr(it.costo_diseno)+nOr(it.costo_flete)*1.3;
-  let presup=cant>0?total/cant:total;
-  if(!(total>0)){ total=nOr(it.costo_total)*f; presup=cant>0?total/cant:total; }   // ítems sin desglose: se escala el costo guardado
-  return {mats,svcs,prcs,total,presup};
-}
-function duplicarItem(id){
-  const it=DB.items.find(x=>x.id===id); if(!it) return;
-  const c=cotDe(it); const next=Math.max(0,...itemsDe(it.id_cotizacion).map(x=>Number(x.item)||0))+1;
-  window._dup={id,manual:false,presup0:itemEscalar(it,Number(it.unidades)||1).presup};
-  openModal('⧉ Duplicar ítem',`<div style="font-size:12.5px;line-height:1.5;margin-bottom:12px">Se creará una <b>copia del ítem ${it.item??''}</b> en <b>COT-${c?.cotizacion||''}</b> como el <b>ítem #${next}</b>, con los mismos materiales, servicios y procesos. Ajusta lo puntual antes de crearla:</div>
-    <div class="field"><label>Descripción</label><textarea id="dup-desc" rows="3">${esc(it.descripcion||'')}</textarea></div>
-    <div class="form-grid"><div class="field"><label>Cantidad</label><input type="number" id="dup-cant" min="0" step="any" value="${Number(it.unidades)||1}" oninput="dupRecalc()"></div>
-      <div class="field"><label>Precio unitario ($)</label><div class="money-row"><span class="money-sign">$</span><input type="number" id="dup-precio" value="${Math.round(Number(it.precio_unit)||0)}" oninput="dupPrecio()"></div></div></div>
-    <div id="dup-resumen" style="background:var(--card2);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:4px"></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">Si cambias la cantidad, los costos de materiales y procesos se ajustan proporcionalmente. Servicios externos, diseño y flete se mantienen: revísalos con “Editar ítem” si hace falta.</div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="dup-ok" onclick="dupConfirmar('${id}')">Sí, duplicar</button>`);
-  dupResumen();
-}
-function dupRecalc(){   // cambió la cantidad → si el precio no se ha tocado a mano, se recalcula con la nueva estructura de costos
-  const d=window._dup; const it=DB.items.find(x=>x.id===d.id); const cant=gn('dup-cant');
-  if(!d.manual&&cant>0){ const e=itemEscalar(it,cant); const ratio=d.presup0>0?e.presup/d.presup0:1; const el=document.getElementById('dup-precio'); if(el) el.value=Math.round((Number(it.precio_unit)||0)*ratio); }
-  dupResumen();
-}
-function dupPrecio(){ window._dup.manual=true; dupResumen(); }
-function dupResumen(){
-  const d=window._dup; const it=DB.items.find(x=>x.id===d.id); const el=document.getElementById('dup-resumen'); if(!el||!it) return;
-  const cant=gn('dup-cant')||0; const precio=gn('dup-precio'); const e=itemEscalar(it,cant>0?cant:1);
-  const margen=e.presup>0?((precio/e.presup-1)*100):null;
-  el.innerHTML=`Precio × ítem: <b style="font-family:var(--mono);color:var(--gold)">${fmt(Math.round(precio*cant))}</b>${margen!=null?` · Sobremargen <b>${margen.toFixed(2)}%</b>`:''}`;
-}
-async function dupConfirmar(id){
-  const it=DB.items.find(x=>x.id===id); if(!it) return;
-  const cant=gn('dup-cant'); if(!(cant>0)){ toast('La cantidad debe ser mayor que 0','error'); return; }
-  const precio=Math.round(gn('dup-precio')); const desc=gv('dup-desc');
-  const btn=document.getElementById('dup-ok'); if(btn){ btn.disabled=true; btn.textContent='⏳ Duplicando…'; }
-  try{
-    const { id:_i, created_at:_c, updated_at:_u, ...base }=it; const next=Math.max(0,...itemsDe(it.id_cotizacion).map(x=>Number(x.item)||0))+1;
-    const e=itemEscalar(it,cant);
-    const row={...base,item:next,descripcion:desc||null,unidades:cant,mats:e.mats,svcs:e.svcs,prcs:e.prcs,
-      costo_total:Math.round(e.total),presup_unit:Math.round(e.presup),margen_pct:e.presup>0?Number(((precio/e.presup-1)*100).toFixed(2)):base.margen_pct,
-      precio_unit:precio,precio_total:Math.round(precio*cant)};
-    const r=await POST('items',row); DB.items.push(r[0]); await recalcularTotalesCot(it.id_cotizacion).catch(()=>{});
-    closeModal(); toast(`✅ Ítem duplicado como #${next}`); refreshCurrentView(); detailCot(it.id_cotizacion);
-  }catch(err){ if(btn){ btn.disabled=false; btn.textContent='Sí, duplicar'; } toast('❌ '+err.message,'error'); }
-}
-function modalCopiarItem(id){
-  const it=DB.items.find(x=>x.id===id); if(!it) return; const actual=it.id_cotizacion;
-  // v8: lista buscable (escribe el número de cotización o parte del nombre de la empresa), igual que el buscador de clientes
-  const opts=misCots().filter(c=>c.id!==actual).sort((a,b)=>b.cotizacion-a.cotizacion);
-  window._copyCots=opts.map(c=>({id:c.id,num:String(c.cotizacion),label:`COT-${c.cotizacion} · ${c.empresa||''}`}));
-  openModal('📤 Copiar Ítem '+(it.item??''),`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${esc(it.descripcion||'Sin descripción')}</div>
-    <div class="field"><label>Cotización destino</label><input id="copy-cot" list="copy-cot-list" placeholder="Buscar por número o empresa…" autocomplete="off" oninput="copyCotHint()" style="width:100%">
-      <datalist id="copy-cot-list">${window._copyCots.map(c=>`<option value="${esc(c.label)}">`).join('')}</datalist>
-      <div id="copy-cot-hint" style="font-size:11px;margin-top:4px;color:var(--muted)">${window._copyCots.length} cotizaciones disponibles</div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="confirmarCopiarItem('${id}')">📤 Copiar</button>`);
-}
-// Convierte lo escrito en una cotización: texto exacto de la lista, solo el número (18227 / COT-18227) o una coincidencia única
-function copyCotResolver(txt){
-  const t=String(txt||'').trim().toLowerCase(); const L=window._copyCots||[]; if(!t) return null;
-  let m=L.find(c=>c.label.toLowerCase()===t); if(m) return m;
-  const num=t.replace(/^cot-?/,'').trim(); if(/^\d+$/.test(num)){ m=L.find(c=>c.num===num); if(m) return m; }
-  const par=L.filter(c=>c.label.toLowerCase().includes(t)); return par.length===1?par[0]:null;
-}
-function copyCotHint(){
-  const el=document.getElementById('copy-cot-hint'); const inp=document.getElementById('copy-cot'); if(!el||!inp) return;
-  const v=inp.value.trim(); if(!v){ el.style.color='var(--muted)'; el.textContent=(window._copyCots||[]).length+' cotizaciones disponibles'; return; }
-  const m=copyCotResolver(v);
-  if(m){ el.style.color='var(--accent)'; el.textContent='✓ '+m.label; }
-  else{ const n=(window._copyCots||[]).filter(c=>c.label.toLowerCase().includes(v.toLowerCase())).length; el.style.color=n?'var(--muted)':'var(--danger)'; el.textContent=n?n+' coincidencias — sigue escribiendo o elige de la lista':'Sin coincidencias'; }
-}
-async function confirmarCopiarItem(id){
-  const it=DB.items.find(x=>x.id===id); const sel=copyCotResolver(gv('copy-cot')); const dest=sel&&sel.id; if(!it||!dest){ toast('Elige una cotización de la lista','error'); return; }
-  try{
-    const { id:_i, created_at:_c, updated_at:_u, ...base }=it; const next=Math.max(0,...itemsDe(dest).map(x=>Number(x.item)||0))+1;
-    const r=await POST('items',{...base,id_cotizacion:dest,item:next}); DB.items.push(r[0]); await recalcularTotalesCot(dest).catch(()=>{});
-    const c=DB.cotizaciones.find(x=>x.id===dest); toast(`✅ Copiado a COT-${c?.cotizacion}`); closeModal(); refreshCurrentView();
-  }catch(e){ toast('❌ '+e.message,'error'); }
-}
-
-// ══ CLIENTES ════════════════════════════════════════════════════
-function _cotsDeCliente(c){ return DB.cotizaciones.filter(x=>x.id_cliente===c.id||String(x.empresa||'').toUpperCase()===String(c.empresa||'').toUpperCase()); }
-function clientes(){
-  const all=[...DB.clientes].sort((a,b)=>(a.empresa||'').localeCompare(b.empresa||'')); const data=filterData('clientes',all);
-  const uniq=k=>[...new Set(all.map(c=>c[k]).filter(Boolean))].sort();
-  const stats={}; DB.cotizaciones.forEach(x=>{ const k=String(x.empresa||'').toUpperCase(); if(!stats[k]) stats[k]={n:0,t:0}; stats[k].n++; stats[k].t+=Number(x.precio_total||0); });
-  const st=c=>stats[String(c.empresa||'').toUpperCase()]||{n:0,t:0};
-  const fb=filterBar('clientes',[{key:'__search__',label:'Buscar empresa, NIT, ciudad...',type:'text'},{key:'ciudad',label:'Ciudad',type:'select',opts:uniq('ciudad')},{key:'encargado',label:'Asesor',type:'select',opts:uniq('encargado')},{key:'condicion_pago',label:'Pago',type:'select',opts:uniq('condicion_pago')}]);
-  const banner=moduleBanner('🏢','Clientes','Directorio de empresas y contactos','','linear-gradient(135deg,#0891b2,#22d3ee)');
-  if(!all.length){ setContent(banner+empty('Sin clientes')); return; }
-  const sorted=sortData('clientes',data);
-  if(getView('clientes')==='table'){
-    setContent(banner+fb+viewToggleBtns('clientes')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('clientes','empresa','Empresa')}${thSort('clientes','nit','NIT')}${thSort('clientes','ciudad','Ciudad')}${thSort('clientes','contacto','Contacto')}
-      ${thSort('clientes','telefono','Teléfono')}${thSort('clientes','correo','Correo')}${thSort('clientes','condicion_pago','Cond. Pago')}${thSort('clientes','encargado','Asesor')}<th>Cotizaciones</th><th>Valor Total</th></tr></thead><tbody>
-      ${sorted.length?pgSlice('cli',sorted).map(c=>{ const s=st(c); return `<tr onclick="detailCliente('${c.id}')"><td style="font-weight:600;max-width:200px">${esc(c.empresa||'—')}</td><td style="font-family:var(--mono);font-size:11px">${esc(c.nit||'—')}</td>
-        <td>${esc(c.ciudad||'—')}</td><td>${esc(c.contacto||'—')}</td><td>${esc(c.telefono||'—')}</td><td style="max-width:160px">${esc(c.correo||'—')}</td><td class="td-center">${esc(c.condicion_pago||'—')}</td>
-        <td>${esc(c.encargado||'—')}</td><td class="td-center">${s.n||0}</td><td class="td-num">${s.t>0?fmt(s.t):'—'}</td></tr>`; }).join(''):'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
-  }else{
-    setContent(banner+fb+viewToggleBtns('clientes')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('cli',sorted).map(c=>{ const s=st(c); return `<div class="list-card" onclick="detailCliente('${c.id}')"><div class="lc-top"><div>
-      <div class="lc-id">${esc(c.nit||'Sin NIT')} · ${esc(c.ciudad||'—')}</div><div class="lc-title">${esc(c.empresa||'—')}</div><div class="lc-sub">${esc(c.contacto||'')} ${c.correo?'· '+esc(c.correo):''}</div></div>
-      <div style="text-align:right;flex-shrink:0"><div style="font-family:var(--mono);font-size:12px;color:var(--gold)">${s.t>0?fmt(s.t):''}</div>${s.n?`<div style="font-size:11px;color:var(--muted)">${s.n} cot.</div>`:''}</div></div>
-      <div class="lc-meta"><span class="badge gris">${esc(c.condicion_pago||'—')}</span></div></div>`; }).join(''):empty('Sin resultados para los filtros')}</div>`);
-  }
-  updateFilterCount('clientes',data.length,all.length);
-}
-function detailCliente(id){
-  const c=DB.clientes.find(x=>x.id===id); if(!c) return; const cots=_cotsDeCliente(c);
-  try{chatCtx('','CLI-'+c.id,'Cliente · '+(c.empresa||''));}catch(e){}
-  openDetail(c.empresa||'Cliente',`
-    <div class="dp-section"><h4>Datos del Cliente</h4>${dr('Empresa',`<strong>${esc(c.empresa)}</strong>`)}${dr('NIT',esc(c.nit||'—'))}${dr('Ciudad',esc(c.ciudad||'—'))}${dr('Dirección',esc(c.direccion||'—'))}${dr('Correo',esc(c.correo||'—'))}${dr('Teléfono',esc(c.telefono||'—'))}
-      ${dr('Contacto',esc(c.contacto||'—'))}${dr('Asesor encargado',esc(c.encargado||'—'))}${dr('Condición pago',esc(c.condicion_pago||'—'))}${c.notas?dr('Notas',esc(c.notas)):''}</div>
-    <div class="dp-section"><h4>Cotizaciones (${cots.length})</h4>${cots.length?`<div class="sub-tbl"><table><thead><tr><th>COT</th><th>Estado</th><th>Total</th></tr></thead><tbody>${cots.slice(0,15).map(ct=>`<tr onclick="detailCot('${ct.id}')" style="cursor:pointer"><td style="color:var(--accent)">COT-${ct.cotizacion}</td><td>${bEst(ct.estado)}</td><td style="font-family:var(--mono)">${fmt(ct.precio_total)}</td></tr>`).join('')}</tbody></table></div>`:'<p style="font-size:12px;color:var(--muted)">Sin cotizaciones</p>'}</div>`,
-    `${canEdit()?`<button class="btn btn-ghost btn-sm" onclick="formCliente(DB.clientes.find(x=>x.id==='${id}'))">✏️</button>`:''}${_esAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCliente('${id}')">🗑</button>`:''}`);
-}
-function formCliente(c,volverCot){
-  c=c||{}; const isNew=!c.id; const lock=!isNew&&!_esAdmin();
-  window._cliVolverCot=!!volverCot;
-  openModal(isNew?'Nuevo Cliente':'Editar '+c.empresa,`${ayudaForm(`Solo la **Empresa** es obligatoria. Completa NIT, dirección y contacto ahora para no tener que repetirlos en cada cotización o remisión de este cliente.`)}<div class="form-grid">
-    <div class="field span2"><label>Empresa ★ ${lock?'<span style="font-size:9px;color:var(--muted)">(solo admin)</span>':''}</label><input id="c0" value="${esc(c.empresa||'')}" ${lock?'readonly style="opacity:.6"':''}></div>
-    <div class="field"><label>NIT ${lock?'<span style="font-size:9px;color:var(--muted)">(solo admin)</span>':''}</label><input id="c1" value="${esc(c.nit||'')}" ${lock?'readonly style="opacity:.6"':''}></div>
-    <div class="field"><label>Ciudad</label><input id="c2" value="${esc(c.ciudad||'')}"></div>
-    <div class="field span2"><label>Dirección</label><input id="c3" value="${esc(c.direccion||'')}"></div>
-    <div class="field"><label>Correo</label><input type="email" id="c4" value="${esc(c.correo||'')}"></div>
-    <div class="field"><label>Teléfono</label><input id="c5" value="${esc(c.telefono||'')}"></div>
-    <div class="field span2"><label>Contacto</label><input id="c6" value="${esc(c.contacto||'')}"></div>
-    <div class="field"><label>Condición de Pago</label><input id="c7" list="c7-list" value="${esc(c.condicion_pago||'')}" placeholder="CONTADO, 30…"><datalist id="c7-list"><option>CONTADO</option><option>15</option><option>30</option><option>45</option><option>60</option><option>90</option></datalist></div>
-    <div class="field"><label>Asesor encargado</label><input id="c8" list="c8-list" value="${esc(c.encargado||(isNew?_asesorActual():''))}"><datalist id="c8-list">${asesoresLista().map(a=>`<option value="${esc(a)}">`).join('')}</datalist></div>
-    <div class="field span2"><label>Notas</label><textarea id="c9">${esc(c.notas||'')}</textarea></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveCliente('${c.id||''}')">${isNew?'Crear Cliente':'Guardar'}</button>`);
-}
-async function saveCliente(id){
-  const empresa=gv('c0'); if(!empresa){ toast('El nombre de la empresa es obligatorio','error'); return; }
-  const row={empresa,nit:gv('c1')||null,ciudad:gv('c2')||null,direccion:gv('c3')||null,correo:gv('c4')||null,telefono:gv('c5')||null,contacto:gv('c6')||null,condicion_pago:gv('c7')||null,encargado:gv('c8')||null,notas:gv('c9')||null};
-  try{
-    if(id){ const r=await PATCH('clientes',id,row); const i=DB.clientes.findIndex(x=>x.id===id); if(i>=0) DB.clientes[i]={...DB.clientes[i],...(r[0]||row)}; toast('✅ Cliente actualizado'); closeModal(); closeDetail(); clientes(); }
-    else{
-      const r=await POST('clientes',row); const nc=r[0]||row; DB.clientes.push(nc); DB.clientes.sort((a,b)=>(a.empresa||'').localeCompare(b.empresa||'')); toast('✅ Cliente registrado'); closeModal();
-      if(window._cliVolverCot){ setTimeout(()=>{ formCot({}); setTimeout(()=>{ const i=document.getElementById('f2'); if(i){ i.value=nc.empresa; onBuscarCliente(nc.empresa); } wizTab('wiz-cot',1); },120); },150); }
-      else refreshCurrentView();
-    }
-  }catch(e){ toast('❌ '+e.message,'error'); }
-}
-async function deleteCliente(id){
-  if(!confirm('¿Eliminar cliente?')) return;
-  try{ await DELETE('clientes',id); DB.clientes=DB.clientes.filter(x=>x.id!==id); toast('Cliente eliminado'); closeDetail(); clientes(); }
-  catch(e){ toast('❌ '+e.message,'error'); }
-}
-
-// ══ CATÁLOGO: MATERIALES · SERVICIOS · PROCESOS ═════════════════
-function _catActions(id,fn,del){ return _esDev()?`<td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="${fn}(DB.${fn==='formMaterial'?'materiales':fn==='formServicio'?'servicios':'procesos'}.find(x=>x.id==='${id}'))">✏️</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="${del}('${id}')">🗑</button></td>`:''; }
-function _catBanner(icon,title,sub,fn){ return moduleBanner(icon,title,sub,_esDev()?`<button class="btn btn-primary btn-sm" onclick="${fn}({})">＋ Nuevo</button>`:'','linear-gradient(135deg,#374151,#6b7280)'); }
-function materiales(){
-  const fb=filterBar('materiales',[{key:'__search__',label:'Buscar material...',type:'text'}]); const all=DB.materiales; const data=sortData('materiales',filterData('materiales',all));
-  setContent(_catBanner('🧱','Materiales','Catálogo de materiales y precio por kg','formMaterial')+fb+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('materiales','material','Material')}${thSort('materiales','descripcion','Descripción')}${thSort('materiales','densidad','Densidad g/mm³')}${thSort('materiales','precio','Precio/kg')}${_esDev()?'<th></th>':''}</tr></thead><tbody>
-    ${data.length?data.map(m=>`<tr><td style="font-weight:700;color:var(--accent)">${esc(m.material)}</td><td>${esc(m.descripcion||'—')}</td><td class="td-num">${m.densidad??'—'}</td><td class="td-num">${m.precio?fmt(m.precio):'—'}</td>${_catActions(m.id,'formMaterial','deleteMaterial')}</tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Sin materiales</td></tr>'}</tbody></table></div>`);
-  updateFilterCount('materiales',data.length,all.length);
-}
-function formMaterial(m){
-  m=m||{}; const isNew=!m.id;
-  openModal(isNew?'Nuevo Material':'Editar Material',`<div class="form-grid"><div class="field span2"><label>Material ★</label><input id="mat-nm" value="${esc(m.material||'')}" placeholder="ej. SAE 4140, Aluminio 6061…"></div>
-    <div class="field span2"><label>Descripción</label><input id="mat-desc" value="${esc(m.descripcion||'')}"></div>
-    <div class="field"><label>Densidad (g/mm³)</label><input type="number" id="mat-dens" value="${m.densidad??''}" step="0.00001" placeholder="0.00785"></div>
-    <div class="field"><label>Precio / kg ($)</label><input type="number" id="mat-pkg" value="${m.precio??''}" placeholder="0"></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMaterial('${m.id||''}')">${isNew?'✓ Crear':'✓ Guardar'}</button>`);
-}
-async function saveMaterial(id){
-  const nm=gv('mat-nm'); if(!nm){ toast('El nombre del material es requerido','error'); return; }
-  const row={material:nm,descripcion:gv('mat-desc')||null,densidad:gv('mat-dens')===''?null:gn('mat-dens'),precio:gv('mat-pkg')===''?null:gn('mat-pkg'),unidad:'kg'};
-  await _saveCat('materiales',id,row,materiales,'Material');
-}
-async function deleteMaterial(id){ await _delCat('materiales',id,materiales,'este material'); }
-function servicios(){
-  const fb=filterBar('servicios',[{key:'__search__',label:'Buscar servicio...',type:'text'}]); const all=DB.servicios; const data=sortData('servicios',filterData('servicios',all));
-  setContent(_catBanner('🛠️','Servicios Externos','Catálogo de servicios, plazos y costos','formServicio')+fb+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('servicios','servicio','Servicio')}${thSort('servicios','descripcion','Descripción')}${thSort('servicios','dias','Días')}${thSort('servicios','precio','Costo/kg')}${thSort('servicios','costo_2kg','≤2 kg')}${thSort('servicios','costo_10kg','≤10 kg')}${_esDev()?'<th></th>':''}</tr></thead><tbody>
-    ${data.length?data.map(s=>`<tr><td style="font-weight:700;color:var(--accent)">${esc(s.servicio)}</td><td>${esc(s.descripcion||'—')}</td><td class="td-num">${s.dias??'—'}</td><td class="td-num">${s.precio?fmt(s.precio):'—'}</td><td class="td-num">${s.costo_2kg?fmt(s.costo_2kg):'—'}</td><td class="td-num">${s.costo_10kg?fmt(s.costo_10kg):'—'}</td>${_catActions(s.id,'formServicio','deleteServicio')}</tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Sin servicios</td></tr>'}</tbody></table></div>`);
-  updateFilterCount('servicios',data.length,all.length);
-}
-function formServicio(s){
-  s=s||{}; const isNew=!s.id;
-  openModal(isNew?'Nuevo Servicio Externo':'Editar Servicio',`<div class="form-grid"><div class="field span2"><label>Servicio ★</label><input id="svc-nm" value="${esc(s.servicio||'')}" placeholder="ej. Tratamiento Térmico, Galvanizado…"></div>
-    <div class="field span2"><label>Descripción</label><input id="svc-desc" value="${esc(s.descripcion||'')}"></div>
-    <div class="field"><label>Días entrega</label><input type="number" id="svc-dias" value="${s.dias??''}" placeholder="0"></div><div class="field"><label>Costo / kg ($)</label><input type="number" id="svc-ckg" value="${s.precio??''}" placeholder="0"></div>
-    <div class="field"><label>Costo ≤ 2 kg ($)</label><input type="number" id="svc-c2" value="${s.costo_2kg??''}" placeholder="0"></div><div class="field"><label>Costo ≤ 10 kg ($)</label><input type="number" id="svc-c10" value="${s.costo_10kg??''}" placeholder="0"></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveServicio('${s.id||''}')">${isNew?'✓ Crear':'✓ Guardar'}</button>`);
-}
-async function saveServicio(id){
-  const nm=gv('svc-nm'); if(!nm){ toast('El nombre del servicio es requerido','error'); return; }
-  const n=k=>gv(k)===''?null:gn(k);
-  await _saveCat('servicios',id,{servicio:nm,descripcion:gv('svc-desc')||null,dias:n('svc-dias'),precio:n('svc-ckg'),costo_2kg:n('svc-c2'),costo_10kg:n('svc-c10'),unidad:'kg'},servicios,'Servicio');
-}
-async function deleteServicio(id){ await _delCat('servicios',id,servicios,'este servicio'); }
-function procesos(){
-  const fb=filterBar('procesos',[{key:'__search__',label:'Buscar proceso...',type:'text'}]); const all=DB.procesos; const data=sortData('procesos',filterData('procesos',all));
-  setContent(_catBanner('⚙️','Procesos / Máquinas','Catálogo de procesos y tarifas por hora','formProceso')+fb+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('procesos','proceso','Proceso / Máquina')}${thSort('procesos','descripcion','Descripción')}${thSort('procesos','maquina','Cuadrante')}${thSort('procesos','precio','Tarifa/hr')}${_esDev()?'<th></th>':''}</tr></thead><tbody>
-    ${data.length?data.map(p=>`<tr><td style="font-weight:700;color:var(--accent)">${esc(p.proceso)}</td><td>${esc(p.descripcion||'—')}</td><td><span style="background:var(--card2);border-radius:6px;padding:2px 8px;font-size:11px">${esc(p.maquina||'—')}</span></td><td class="td-num">${p.precio?fmt(p.precio):'—'}</td>${_catActions(p.id,'formProceso','deleteProceso')}</tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Sin procesos</td></tr>'}</tbody></table></div>`);
-  updateFilterCount('procesos',data.length,all.length);
-}
-function formProceso(p){
-  p=p||{}; const isNew=!p.id; const cuad=[...new Set(DB.procesos.map(x=>x.maquina).filter(Boolean))].sort();
-  openModal(isNew?'Nuevo Proceso / Máquina':'Editar Proceso',`<div class="form-grid"><div class="field span2"><label>Proceso / Máquina ★</label><input id="prc-nm" value="${esc(p.proceso||'')}" placeholder="ej. TORNO CNC, CENTRO DE MECANIZADO…"></div>
-    <div class="field span2"><label>Descripción</label><input id="prc-desc" value="${esc(p.descripcion||'')}"></div>
-    <div class="field"><label>Cuadrante</label><input id="prc-cuad" list="prc-cuad-l" value="${esc(p.maquina||'')}"><datalist id="prc-cuad-l">${cuad.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
-    <div class="field"><label>Tarifa / hora ($)</label><input type="number" id="prc-tarifa" value="${p.precio??''}" placeholder="0"></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveProceso('${p.id||''}')">${isNew?'✓ Crear':'✓ Guardar'}</button>`);
-}
-async function saveProceso(id){
-  const nm=gv('prc-nm'); if(!nm){ toast('El nombre del proceso es requerido','error'); return; }
-  await _saveCat('procesos',id,{proceso:nm,descripcion:gv('prc-desc')||null,maquina:gv('prc-cuad')||'GENERAL',precio:gv('prc-tarifa')===''?null:gn('prc-tarifa'),unidad:'hr'},procesos,'Proceso');
-}
-async function deleteProceso(id){ await _delCat('procesos',id,procesos,'este proceso'); }
-async function _saveCat(tabla,id,row,render,lbl){
-  try{
-    if(id){ const r=await PATCH(tabla,id,row); const i=DB[tabla].findIndex(x=>x.id===id); if(i>=0) DB[tabla][i]={...DB[tabla][i],...(r[0]||row)}; toast(`✅ ${lbl} actualizado`); }
-    else{ const r=await POST(tabla,row); DB[tabla].push(r[0]||row); toast(`✅ ${lbl} creado`); }
-    closeModal(); render();
-  }catch(e){ toast('❌ '+e.message,'error'); }
-}
-async function _delCat(tabla,id,render,txt){
-  if(!confirm(`¿Eliminar ${txt}?`)) return;
-  try{ await DELETE(tabla,id); DB[tabla]=DB[tabla].filter(x=>x.id!==id); toast('🗑 Eliminado'); render(); }catch(e){ toast('❌ '+e.message,'error'); }
-}
-
-// ══ ARRANQUE ════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',async()=>{
-  ['splash-logo-img','topbar-logo','sb-logo-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_B64_PNG; });
-  splashProgress(8,'Iniciando...');
-  await cargarUsuarios();
-  const vigente=_SESSION&&_SESSION.token&&(Date.now()-(_SESSION.ts||0))<43200000;
-  if(vigente) iniciarApp(); else{ _SESSION=null; sb.tok=null; try{ localStorage.removeItem('_wedm_s'); }catch(e){} mostrarLogin(); }
-});
-
-
-// ════════════ MÓDULO: CONTROL PRODUCCIÓN / REMISIONES / USUARIOS ════════════
-// ══════════════════════════════════════════════════════════════════
-// ══ CONTROL PRODUCCIÓN · REMISIONES · USUARIOS · ACCESO POR ROL ═══
-// ══════════════════════════════════════════════════════════════════
-const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
-const MODS_ROL={
-  desarrollador:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones','materiales','servicios','procesos'],
-  admin:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
-  comercial:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
-  lectura:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
-  diseno:['produccion'], compras:['produccion'], produccion:['produccion'],
-  calidad:['produccion','remisiones'], administracion:['remisiones','produccion'],
-};
-const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
-const rolActual=()=>_SESSION?.rol||'';
-const puede = (...roles) => _esAdmin() || _misRoles().some(x=>roles.includes(x));
-const modPermitido=m=>(MODS_ROL[rolActual()]||[]).includes(m);
-const modInicial=()=>(MODS_ROL[rolActual()]||['dashboard'])[0];
-const veComercial=()=>_misRoles().some(x=>['admin','desarrollador','comercial','lectura'].includes(x));
-const verPrecios=()=>_misRoles().some(x=>['admin','desarrollador','comercial','lectura','administracion'].includes(x));
-
-function errMsg(e){
-  let m=String((e&&e.message)||e||'Error');
-  try{ const j=JSON.parse(m); m=j.message||j.hint||m; }catch(_){}
-  if(/row-level security/i.test(m)) m='Sin permiso para esta acción';
-  return m;
-}
-const fmtDT=d=>{ if(!d) return '—'; const t=new Date(d); return isNaN(t)?'—':t.toLocaleDateString('es-CO')+' '+t.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}); };
-const fmtDTs=d=>{ if(!d) return ''; const t=new Date(d); if(isNaN(t)) return ''; const z=n=>String(n).padStart(2,'0'); return z(t.getDate())+'/'+z(t.getMonth()+1)+' '+z(t.getHours())+':'+z(t.getMinutes()); };
-const mutedP=t=>`<p style="font-size:12px;color:var(--muted);padding:6px 0">${t}</p>`;
-
-// ── Carga / refresco de datos de producción ─────────────────────
-const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,precio_unit,precio_total,descuento_pct,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at';
-const _fd=(a,b)=>String(b||'').localeCompare(String(a||''));
-const PSYNC=[
-  {t:'produccion',k:'produccion',sel:PROD_COLS,ord:'op.desc,item_num.asc,id.asc',cmp:(a,b)=>(b.op-a.op)||(Number(a.item_num)-Number(b.item_num))||String(a.id).localeCompare(String(b.id))},
-  {t:'remisiones',k:'remisiones',sel:'*',ord:'pedida_fecha.desc,id.asc',cmp:(a,b)=>_fd(a.pedida_fecha,b.pedida_fecha)||String(a.id).localeCompare(String(b.id))},
-  {t:'prod_materiales',k:'prodMats',sel:'*',ord:'created_at.asc,id.asc',cmp:(a,b)=>String(a.created_at).localeCompare(String(b.created_at))||String(a.id).localeCompare(String(b.id))},
-  {t:'prod_reprocesos',k:'reprocesos',sel:'*',ord:'created_at.desc,id.asc',cmp:(a,b)=>_fd(a.created_at,b.created_at)||String(a.id).localeCompare(String(b.id))},
-];
-const _SYNC={init:false};
-const _maxUpd=arr=>arr.reduce((m,x)=>x.updated_at&&x.updated_at>m?x.updated_at:m,'');
-async function prodTablaCompleta(c){ const rows=await GETALL(c.t,'select='+c.sel+'&order='+c.ord); DB[c.k]=rows||[]; _SYNC[c.t]=_maxUpd(DB[c.k]); }
-// Carga completa (inicio de sesión / botón actualizar). No trae imágenes ni observaciones: se piden al abrir el ítem.
-async function prodLoadFull(){ await Promise.all(PSYNC.map(prodTablaCompleta)); _SYNC.init=true; return true; }
-// Sincronización incremental: pregunta un resumen mínimo y baja SOLO lo que cambió. Devuelve true si hubo cambios.
-async function prodRefreshAll(){
-  if(!_SYNC.init) return prodLoadFull();
-  const info=await sb.rpc('prod_sync_info'); let changed=false; const jobs=[];
-  for(const c of PSYNC){
-    const i=(info&&info[c.t])||{n:0,max:null}; const arr=DB[c.k]||[];
-    const nuevo=i.max&&_SYNC[c.t]?(new Date(i.max)>new Date(_SYNC[c.t])):!!i.max&&!_SYNC[c.t];
-    if(i.n===arr.length&&!nuevo) continue;
-    changed=true;
-    jobs.push((async()=>{
-      if(!_SYNC[c.t]){ await prodTablaCompleta(c); return; }
-      const since=new Date(new Date(_SYNC[c.t]).getTime()-5000).toISOString();
-      const rows=await GETALL(c.t,'select='+c.sel+'&updated_at=gt.'+encodeURIComponent(since)+'&order=updated_at.asc,id.asc');
-      const mapa=new Map(arr.map(x=>[x.id,x]));
-      for(const r of rows){ const old=mapa.get(r.id); if(old){ Object.assign(old,r); if(c.t==='produccion'){ delete old.imagen_thumb; old._full=false; } } else mapa.set(r.id,r); }
-      const nuevoArr=[...mapa.values()].sort(c.cmp); DB[c.k]=nuevoArr;
-      const mx=_maxUpd(rows); if(mx&&mx>(_SYNC[c.t]||'')) _SYNC[c.t]=mx;
-      if(nuevoArr.length!==i.n) await prodTablaCompleta(c);   // hubo eliminaciones: recarga esa tabla
-    })());
-  }
-  await Promise.all(jobs); return changed;
-}
-// Imagen y observaciones de un ítem (solo al abrirlo)
-async function prodHidratar(p){
-  if(!p||p._full||p._hyd) return; p._hyd=true;
-  try{ const r=await GET('produccion','select=imagen_thumb,observaciones&id='+eq(p.id)); if(r&&r[0]){ p.imagen_thumb=r[0].imagen_thumb; p.observaciones=r[0].observaciones; } p._full=true; }
-  catch(e){ p._full=true; }
-  p._hyd=false;
-  if(_detailOpen&&_PD.id===p.id) detalleProd(p.id,_PD.tab);
-}
-// Miniaturas de la lista: se piden solo para lo que está en pantalla
-async function lzThumbs(){
-  const els=[...document.querySelectorAll('.lz-th[data-pid]')]; if(!els.length) return;
-  const ids=[...new Set(els.map(e=>e.dataset.pid))].slice(0,80);
-  try{
-    const rows=await GET('produccion','select=id,imagen_thumb&id=in.('+ids.map(i=>'"'+i+'"').join(',')+')');
-    (rows||[]).forEach(r=>{ const p=prodDe(r.id); if(p) p.imagen_thumb=r.imagen_thumb; });
-    document.querySelectorAll('.lz-th[data-pid]').forEach(e=>{ const p=prodDe(e.dataset.pid); if(p&&p.imagen_thumb) e.outerHTML=thumbProd(p); });
-  }catch(e){}
-}
-async function rpcAct(fn,params,okMsg){
-  showBusy();
-  try{
-    const r=await sb.rpc(fn,params||{});
-    await prodRefreshAll();
-    if(okMsg) toast(okMsg);
-    return r===undefined||r===null?true:r;
-  }catch(e){
-    const m=errMsg(e); toast('❌ '+m,'error');
-    if(/permiso/i.test(m)){ try{ if((await sb.rpc('sesion_valida'))===false) forceLogout('Sesión vencida — ingresa de nuevo'); }catch(_){} }
-    return null;
-  }finally{ hideBusy(); }
-}
-function afterAct(id){ updateBadges(); refreshCurrentView(); if(id) detalleProd(id); }
-
-// ── Utilidades de datos ─────────────────────────────────────────
-const prodDe=id=>(idxBy(DB.produccion,'id','prod_id').get(id)||[])[0];
-const matsDe=id=>idxBy(DB.prodMats,'id_prod','mats_prod').get(id)||[];
-// Las líneas de servicio externo (las crea Diseño con el prefijo "SERVICIO: ") no se miden en kg
-const cantMat=m=>String(m.material||'').startsWith('SERVICIO')?'servicio externo':Number(m.cantidad_kg||0)+' kg';
-const repsDe=id=>idxBy(DB.reprocesos,'id_prod','reps_prod').get(id)||[];
-const remsDeOp=op=>idxBy(DB.remisiones,'op','rem_op').get(op)||[];
-function diasPactada(p){ if(!p.fecha_pactada) return null; const h=new Date(); h.setHours(0,0,0,0); return Math.round((new Date(p.fecha_pactada+'T00:00:00')-h)/86400000); }
-function dispProd(p,excluirRem){
-  const res=(DB.remisiones||[]).filter(m=>['SELECCIONADA','GENERADA'].includes(m.estado)&&m.id!==excluirRem)
-    .reduce((s,m)=>s+(m.lineas||[]).filter(l=>l.id_prod===p.id).reduce((a,l)=>a+Number(l.cantidad||0),0),0);
-  return Math.max(0,Number(p.unidades||0)-Number(p.cant_despachada||0)-res);
-}
-const remEnTramite=op=>(DB.remisiones||[]).some(m=>m.op===op&&['PEDIDA','SELECCIONADA'].includes(m.estado));
-const opDeCot=cotId=>{ const r=(idxBy(DB.produccion,'id_cotizacion','prod_cot').get(cotId)||[])[0]; return r?r.op:null; };
-
-const PROD_EST={'PENDIENTE MP Y DISEÑO':'naranja','PENDIENTE DISEÑO':'naranja','PENDIENTE MP':'naranja','EN PROCESO':'azul','TRABAJO EXTERNO':'urg','PENDIENTE DESPACHO':'azul','TERMINADO':'verde','CALIDAD APROBADA':'verde','REMISIÓN SOLICITADA':'urg','REMISIÓN GENERADA':'urg','REPROCESO':'rojo','DESPACHADO':'gris'};
-const bProd=e=>`<span class="badge ${PROD_EST[e]||'gris'}">${esc(e||'—')}</span>`;
-const gar=p=>p&&p.es_garantia?'<span class="badge naranja" style="margin-left:4px">🛡️ GARANTÍA</span>':'';
-const PRIOR_COL={Baja:'gris',Media:'azul',Alta:'naranja',Urgente:'rojo'};
-const bPrior=p=>`<span class="badge ${PRIOR_COL[p]||'azul'}">${esc(p||'Media')}</span>`;
-
-function etapasProd(p){
-  const enviado=p.despachado||Number(p.cant_despachada)>0;
-  return [
-    {label:'Diseño',ok:p.diseno_ok,f:p.diseno_fecha},
-    {label:'Compras',ok:p.mp_ok,f:p.mp_fecha},
-    {label:'Producción',ok:p.terminado,f:p.entrega_prod_fecha},
-    {label:'Calidad',ok:p.calidad_estado==='APROBADA'||enviado,f:p.calidad_fecha},
-    {label:'Remisión',ok:enviado||p.estado==='REMISIÓN GENERADA',f:null},
-    {label:'Despacho',ok:!!p.despachado,f:p.despacho_fecha},
-  ];
-}
-function stepperProd(p){
-  const st=etapasProd(p); const iCur=st.findIndex(s=>!s.ok);
-  return `<div class="timeline-wrap"><div class="timeline">${st.map((s,i)=>`<div class="tl-item ${s.ok?'done':i===iCur?'now':''}"><div class="tl-dot-wrap">${s.ok?'✓':i+1}</div><div class="tl-label">${s.label}</div>${s.f?`<div class="tl-date">${fmtDTs(s.f)}</div>`:''}</div>`).join('')}</div></div>`;
-}
-// «Pendiente diseño» = misma regla de AppSheet: diseño sin terminar y la OP no está cancelada, pausada ni terminada
-const ESTADOS_SIN_DISENO=['CANCELADO','PAUSADO','TERMINADO'];
-const estSinDiseno=p=>ESTADOS_SIN_DISENO.includes(String(p.estado||'').trim().toUpperCase());
-const pendDis=p=>!p.diseno_ok&&!estSinDiseno(p);
-function enBandeja(p){
-  if(p.despachado) return false;
-  const r=rolActual(); const mats=matsDe(p.id);
-  if(r==='diseno') return !estSinDiseno(p)&&(!p.diseno_ok||mats.some(m=>m.estado==='PENDIENTE'));
-  if(r==='compras') return !p.mp_ok&&(mats.length===0||mats.some(m=>m.estado!=='PENDIENTE'));
-  if(r==='produccion') return (p.diseno_ok&&p.mp_ok&&!p.terminado)||repsDe(p.id).some(x=>x.estado==='ABIERTO');
-  if(r==='calidad') return (p.terminado&&p.calidad_estado!=='APROBADA')||(p.calidad_estado==='APROBADA'&&dispProd(p)>0);
-  if(r==='administracion') return p.estado==='REMISIÓN SOLICITADA';
-  return true;
-}
-function remPendiente(m){
-  if(['DESPACHADA','CANCELADA'].includes(m.estado)) return false;
-  const r=rolActual();
-  if(r==='comercial') return m.estado==='PEDIDA';
-  if(r==='administracion') return m.estado==='SELECCIONADA';
-  if(r==='calidad') return m.estado==='GENERADA';
-  return _esAdmin();
-}
-function badgesProd(){
-  const setB=(ids,n)=>ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n?'':'none'; } });
-  const nP=_misRoles().some(x=>ROLES_BANDEJA.includes(x))?_misFiltro(DB.produccion).filter(enBandeja).length:0;
-  const nR=_misFiltro(DB.remisiones).filter(remPendiente).length;
-  setB(['b-prod','bb-prod','qa-b-prod'],nP); setB(['b-rem','bb-rem','qa-b-rem'],nR);
-}
-function aplicarNavPorRol(){
-  document.querySelectorAll('.nav-item[data-m], .bn-item[data-m]').forEach(n=>{ n.style.display=modPermitido(n.dataset.m)?'':'none'; });
-  const qaMap={'mis-cot':'cotizaciones','cot-espera':'cotizaciones'};
-  document.querySelectorAll('.qbar-item[data-qa]').forEach(n=>{ n.style.display=modPermitido(qaMap[n.dataset.qa]||n.dataset.qa)?'':'none'; });
-  document.querySelectorAll('#sidebar .nav-section').forEach(s=>{
-    let el=s.nextElementSibling, vis=false;
-    while(el&&!el.classList.contains('nav-section')){ if(el.classList.contains('nav-item')&&el.style.display!=='none') vis=true; el=el.nextElementSibling; }
-    s.style.display=vis?'':'none';
-  });
-}
-
-// ── Archivos (planos / imágenes / evidencias) ───────────────────
-function pickFile(accept,cb){
-  const i=document.createElement('input'); i.type='file'; i.accept=accept; i.style.display='none';
-  i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(f) await cb(f); };
-  document.body.appendChild(i); i.click();
-}
-function imgFromFile(file,maxSide,q){
-  return new Promise((res,rej)=>{
-    const fr=new FileReader(); fr.onerror=()=>rej(new Error('No se pudo leer el archivo'));
-    fr.onload=()=>{ const im=new Image(); im.onerror=()=>rej(new Error('Imagen no válida'));
-      im.onload=()=>{ const s=Math.min(1,maxSide/Math.max(im.width,im.height)); const c=document.createElement('canvas');
-        c.width=Math.max(1,Math.round(im.width*s)); c.height=Math.max(1,Math.round(im.height*s));
-        c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); };
-      im.src=fr.result; };
-    fr.readAsDataURL(file);
-  });
-}
-async function fileToData(file){
-  if(/^image\//.test(file.type)){ const d=await imgFromFile(file,1600,0.8); return {data:d,mime:'image/jpeg',size:Math.round(d.length*0.75)}; }
-  if(file.type==='application/pdf'){
-    if(file.size>3.5*1024*1024) throw new Error('El PDF pesa más de 3.5 MB');
-    const d=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error('No se pudo leer el PDF')); fr.readAsDataURL(file); });
-    return {data:d,mime:'application/pdf',size:file.size};
-  }
-  throw new Error('Solo se aceptan imágenes o PDF');
-}
-async function insertarArchivo(row){
-  const h={...sb.h,'Prefer':'return=representation'};
-  const r=await fetch(SB_URL+'/rest/v1/prod_archivos?select=id',{method:'POST',headers:h,body:JSON.stringify(row)});
-  if(!r.ok) await sb._fail(r,'subir archivos'); const j=await r.json(); return j[0]&&j[0].id;
-}
-async function subirArchivo(ctx,tipo,file,after){
-  showBusy();
-  try{
-    const f=await fileToData(file);
-    const row={tipo,nombre:file.name||('archivo.'+(f.mime==='application/pdf'?'pdf':'jpg')),mime:f.mime,size:f.size,data:f.data,created_by:_SESSION.nombre};
-    if(ctx.id_prod) row.id_prod=ctx.id_prod; else if(ctx.id_cot) row.id_cot=ctx.id_cot; else row.id_item=ctx.id_item;
-    const id=await insertarArchivo(row); toast('✅ Archivo subido'); if(after) after(id); return id;
-  }catch(e){ toast('❌ '+errMsg(e),'error'); return null; }
-  finally{ hideBusy(); }
-}
-function dataUrlToBlobUrl(d){
-  const [h,b]=String(d).split(','); const mime=(h.match(/:(.*?);/)||[])[1]||'application/octet-stream';
-  const bin=atob(b||''); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
-  return URL.createObjectURL(new Blob([u],{type:mime}));
-}
-async function verArchivo(id){
-  showBusy();
-  try{
-    const r=await GET('prod_archivos','select=nombre,mime,data&id='+eq(id)); const a=r&&r[0]; if(!a||!a.data){ toast('Archivo no disponible','error'); return; }
-    if(/^https?:\/\//i.test(a.data)){   // v6: enlace de Google Drive
-      const did=(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1];
-      if(/^image\//.test(a.mime||'')) openModal(a.nombre||'Imagen',`<img src="${did?'https://drive.google.com/thumbnail?id='+did+'&sz=w1600':esc(a.data)}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto"><p style="margin-top:8px;font-size:12px"><a href="${esc(a.data)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">Abrir en Drive ↗</a></p>`,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
-      else openModal(a.nombre||'Documento',`<iframe src="${did?'https://drive.google.com/file/d/'+did+'/preview':esc(a.data)}" style="width:100%;height:62vh;border:0;border-radius:8px"></iframe><p style="margin-top:8px;font-size:12px"><a href="${esc(a.data)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">Abrir en Drive ↗</a></p>`,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
-      return;
-    }
-    if(/^image\//.test(a.mime||'')) openModal(a.nombre||'Imagen',`<img src="${a.data}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto">`,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
-    else{ const u=dataUrlToBlobUrl(a.data); openModal(a.nombre||'Documento',`<iframe src="${u}" style="width:100%;height:62vh;border:0;border-radius:8px"></iframe><p style="margin-top:8px;font-size:12px"><a href="${u}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">Abrir en otra pestaña ↗</a></p>`,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`); }
-  }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
-}
-function archivosHtml(rows,ctxJs,canUp){
-  const up=canUp?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="${ctxJs.replace(/"/g,'&quot;')}">📎 Subir plano / documento</button></div>`:'';
-  if(!rows||!rows.length) return up+mutedP('Sin archivos todavía');
-  return up+rows.map(a=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div class="lc-top"><div style="min-width:0"><div class="lc-title">${/pdf/.test(a.mime||'')?'📄':'🖼️'} ${esc(a.nombre||'archivo')}</div>
-    <div class="lc-sub">${esc(a.tipo||'')} · ${esc(a.created_by||'—')} · ${fmtDTs(a.created_at)}${a.size?' · '+Math.max(1,Math.round(a.size/1024))+' KB':''}</div></div>
-    <div style="display:flex;gap:6px;flex-shrink:0"><button class="btn btn-ghost btn-sm" onclick="verArchivo('${a.id}')">👁 Ver</button>
-    ${(a.created_by===_SESSION.nombre||_esAdmin())?`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delArchivo('${a.id}')">🗑</button>`:''}</div></div></div>`).join('');
-}
-const ARCH_COLS='select=id,id_prod,id_item,tipo,nombre,mime,size,created_by,created_at';
-async function delArchivo(id){
-  if(!confirm('¿Eliminar este archivo?')) return;
-  try{ await DELETE('prod_archivos',id); toast('🗑 Archivo eliminado'); if(_PD.id) cargarArchivosProd(_PD.id); cargarPlanosItem(_ITPL); if(window._OCLAST) cargarOcArchivos(window._OCLAST.id,window._OCLAST.el); }catch(e){ toast('❌ '+errMsg(e),'error'); }
-}
-async function cargarArchivosProd(id){
-  const el=document.getElementById('pd-arch'); if(!el) return;
-  try{
-    const p=prodDe(id); const rows=await GET('prod_archivos',ARCH_COLS+`&or=(id_prod.eq.${id}${p&&p.id_item?`,id_item.eq.${p.id_item}`:''})&order=created_at.desc`);
-    if(_PD.id!==id||!document.getElementById('pd-arch')) return;
-    el.innerHTML=archivosHtml(rows,`prodSubirPlano('${id}')`,puede('diseno','comercial','produccion','calidad'));
-  }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
-}
-function prodSubirPlano(id){ pickFile('image/*,application/pdf',f=>subirArchivo({id_prod:id},'plano',f,()=>cargarArchivosProd(id))); }
-async function cargarHistorialProd(id){
-  const el=document.getElementById('pd-hist'); if(!el) return;
-  try{
-    const rows=await GET('prod_eventos','select=*&id_prod='+eq(id)+'&order=fecha.desc&limit=200');
-    if(_PD.id!==id||!document.getElementById('pd-hist')) return;
-    el.innerHTML=rows.length?rows.map(e=>`<div style="padding:9px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12.5px">${esc(e.evento)}</b><span style="font-size:10px;color:var(--muted);white-space:nowrap">${fmtDT(e.fecha)}</span></div>${e.detalle?`<div style="font-size:12px;color:var(--muted)">${esc(e.detalle)}</div>`:''}<div style="font-size:10px;color:var(--muted)">👤 ${esc(e.usuario||'—')}</div></div>`).join(''):mutedP('Sin movimientos');
-  }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
-}
-// planos a nivel de ítem de cotización (el comercial los sube antes/después de la OP)
-let _ITPL=null;
-const prodDeItem=itemId=>{ const l=idxBy(DB.produccion,'id_item','prod_item').get(itemId)||[]; return l.find(p=>!p.es_garantia)||l[0]; };
-async function cargarPlanosItem(itemId){
-  _ITPL=itemId; const el=document.getElementById('it-planos'); if(!el||!itemId) return;
-  try{
-    const pr=prodDeItem(itemId);
-    const rows=await GET('prod_archivos',ARCH_COLS+`&or=(id_item.eq.${itemId}${pr?`,id_prod.eq.${pr.id}`:''})&order=created_at.desc`);
-    el.innerHTML=archivosHtml(rows,`itemSubirPlano('${itemId}')`,puede('comercial'));
-  }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
-}
-function itemSubirPlano(itemId){
-  // v6: siempre ligado al ítem → la OP lo muestra al instante (cargarArchivosProd busca por id_prod O id_item)
-  pickFile('image/*,application/pdf',f=>subirArchivo({id_item:itemId},'plano',f,()=>cargarPlanosItem(itemId)));
-}
-
-// ── CONTROL PRODUCCIÓN · lista ──────────────────────────────────
-let _pvFiltro=null;
-const pvFiltro=()=>_pvFiltro||(_misRoles().some(x=>ROLES_BANDEJA.includes(x))?'bandeja':'activas');
-function setPvFiltro(v){ _pvFiltro=v; _pvKpi=null; refreshCurrentView(); }
-// v4: tarjetas de resumen (Por diseñar, Por comprar…) ahora filtran la lista; tocar la misma otra vez quita el filtro
-let _pvKpi=null;
-const PV_KPI={
-  diseno:   p=>pendDis(p),
-  compra:   p=>!p.mp_ok,
-  prod:     p=>p.diseno_ok&&p.mp_ok&&!p.terminado,
-  calidad:  p=>p.terminado&&p.calidad_estado!=='APROBADA',
-  despachar:p=>p.calidad_estado==='APROBADA',
-  repro:    p=>repsDe(p.id).some(x=>x.estado==='ABIERTO')
-};
-function setPvKpi(k){ _pvKpi=(_pvKpi===k)?null:k; if(_pvKpi) _pvFiltro='activas'; refreshCurrentView(); }
-function filtrarExacto(mod,rows,extra){
-  const saved=_F[mod]||{}; const est=saved.estado; const tmp={...saved}; delete tmp.estado; _F[mod]=tmp; let out;
-  try{ out=filterData(mod,rows,extra); } finally{ _F[mod]=saved; }
-  return est?out.filter(r=>r.estado===est):out;
-}
-// Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
-const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
-const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
-// Miniaturas de Drive: carga diferida y, si una dirección falla, prueba otras antes de mostrar el ícono
-const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
-function imgErr(el){
-  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
-  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
-  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
-  if(el.dataset.hide){ el.style.display='none'; return; }
-  const ph=document.createElement('div'); ph.className=el.dataset.ph||''; ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
-}
-const imgTag=(p,w,style,cls)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d}${cls?` class="${cls}" data-ph="${cls} ph"`:''} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
-const thumbProd=p=>imgSrcOP(p,120)?imgTag(p,120,'width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0'):(p.tiene_imagen?`<div class="lz-th" data-pid="${p.id}" style="width:38px;height:38px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`:`<div style="width:38px;height:38px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
-const pactadaTag=p=>{ const d=diasPactada(p); return (p.despachado||d==null)?fmtDate(p.fecha_pactada):`${fmtDate(p.fecha_pactada)} <span style="font-size:10px">${diasTag(d)}</span>`; };
-function produccion(){
-  const all=_misFiltro(DB.produccion); const modo=pvFiltro(); const rol=rolActual();
-  const activas=all.filter(p=>!p.despachado);
-  const base=_pvKpi?(_pvKpi==='repro'?all:activas).filter(PV_KPI[_pvKpi]):all.filter(p=>modo==='todas'?true:modo==='despachadas'?p.despachado:modo==='bandeja'?enBandeja(p):!p.despachado);
-  const data=sortData('produccion',filtrarExacto('produccion',base,r=>'op-'+r.op+' cot-'+r.cot_num));
-  const chip=(k,l,n)=>`<button class="btn btn-sm ${modo===k?'btn-primary':'btn-ghost'}" style="${modo===k?'':'background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)'}" onclick="setPvFiltro('${k}')">${l} (${n})</button>`;
-  const chips=`<div style="display:flex;gap:6px;flex-wrap:wrap">${ROLES_BANDEJA.includes(rol)?chip('bandeja','Mi bandeja',all.filter(enBandeja).length):''}${chip('activas','Activas',activas.length)}${chip('despachadas','Despachadas',all.length-activas.length)}${chip('todas','Todas',all.length)}</div>`;
-  const banner=moduleBanner('🏭','Control Producción','Órdenes de producción por ítem',chips,'linear-gradient(135deg,#0f2443,#7c3aed)');
-  const uniq=k=>[...new Set(all.map(p=>p[k]).filter(Boolean))].sort();
-  const cnt=f=>activas.filter(f).length;
-  const kp=(ic,l,n,k)=>{ const on=_pvKpi===k; return `<div onclick="setPvKpi('${k}')" style="flex:0 0 auto;cursor:pointer;-webkit-tap-highlight-color:transparent;background:${on?'var(--accent)':'var(--card)'};color:${on?'#fff':'inherit'};border:1px solid ${on?'var(--accent)':'var(--border)'};border-radius:12px;padding:8px 12px;min-width:96px"><div style="font-size:16px;font-weight:800">${ic} ${n}</div><div style="font-size:10px;color:${on?'rgba(255,255,255,.85)':'var(--muted)'};font-weight:700;text-transform:uppercase">${l}</div></div>`; };
-  const kpis=`<div style="display:flex;gap:8px;overflow-x:auto;padding:12px 14px 4px">${kp('🎨','Por diseñar',cnt(PV_KPI.diseno),'diseno')}${kp('🛒','Por comprar',cnt(PV_KPI.compra),'compra')}${kp('⚙️','En producción',cnt(PV_KPI.prod),'prod')}${kp('🔍','En calidad',cnt(PV_KPI.calidad),'calidad')}${kp('📦','Por despachar',cnt(PV_KPI.despachar),'despachar')}${kp('⚠️','Reprocesos',(DB.reprocesos||[]).filter(r=>r.estado==='ABIERTO').length,'repro')}</div>`;
-  const fields=[{key:'__search__',label:'Buscar OP, cotización, empresa, ítem...',type:'text'},{key:'estado',label:'Estado',type:'select',opts:Object.keys(PROD_EST)},{key:'empresa',label:'Empresa',type:'select',opts:uniq('empresa')},{key:'prioridad',label:'Prioridad',type:'select',opts:['Baja','Media','Alta','Urgente']},{key:'disenador',label:'Diseñador',type:'select',opts:uniq('disenador')}];
-  if(rol!=='comercial') fields.push({key:'asesor',label:'Asesor',type:'select',opts:uniq('asesor')});
-  const fb=filterBar('produccion',fields);
-  if(!all.length){ setContent(banner+empty(rol==='comercial'||_esAdmin()?'Aún no hay órdenes de producción — crea una desde una cotización APROBADA (botón “Crear OP”)':'Aún no hay órdenes de producción')); return; }
-  if(getView('produccion')==='table'){
-    setContent(banner+kpis+fb+viewToggleBtns('produccion')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr><th></th>${thSort('produccion','op','OP')}${thSort('produccion','cot_num','COT')}${thSort('produccion','item_num','Ítem')}${thSort('produccion','descripcion','Descripción')}${thSort('produccion','empresa','Empresa')}${thSort('produccion','unidades','Cant')}${thSort('produccion','avance','Avance')}${thSort('produccion','estado','Estado')}${thSort('produccion','fecha_pactada','Pactada')}${thSort('produccion','prioridad','Prior.')}${thSort('produccion','disenador','Diseñador')}</tr></thead><tbody>
-      ${data.length?pgSlice('prod',data).map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p)}</td><td><span style="color:var(--accent);font-weight:800">OP-${p.op}</span></td><td>COT-${p.cot_num||'—'}</td><td class="td-center" style="font-weight:700">${p.item_num??'—'}</td>
-        <td style="max-width:240px">${esc(p.descripcion||'—')}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td class="td-center">${p.unidades}${Number(p.cant_despachada)?`<div style="font-size:10px;color:var(--muted)">desp. ${p.cant_despachada}</div>`:''}</td>
-        <td style="min-width:96px"><div style="font-size:11px;font-weight:700">${Number(p.avance).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(p.estado)}${gar(p)}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join(''):'<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
-  }else{
-    setContent(banner+kpis+fb+viewToggleBtns('produccion')+`<div class="card-list" style="padding:0 14px 80px">${data.length?pgSlice('prod',data).map(p=>`<div class="list-card" onclick="detalleProd('${p.id}')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">×${p.unidades}</div></div></div>${prog(p.avance)}<div class="lc-meta">${bProd(p.estado)}${gar(p)}<span style="font-size:11px;font-weight:700">${Number(p.avance).toFixed(0)}%</span><span style="font-size:11px;color:var(--muted)">📅 ${pactadaTag(p)}</span></div></div>`).join(''):empty('Nada en esta vista')}</div>`);
-  }
-  updateFilterCount('produccion',data.length,base.length);
-}
-
-// ── CONTROL PRODUCCIÓN · detalle ────────────────────────────────
-let _PD={id:null,tab:'resumen'};
-function pdTab(el,k){ _PD.tab=k; switchDpTab(el,k); }
-function detalleProd(id,tab){
-  const p=prodDe(id); if(!p){ toast('Ítem de OP no encontrado','error'); return; }
-  try{chatCtx(p.id,p.op,'OP-'+p.id);}catch(e){}
-  const same=_PD.id===id; tab=tab||(same?_PD.tab:'resumen'); _PD={id,tab};
-  if(!p._full) prodHidratar(p);
-  const sc=same?(document.getElementById('dp-body')?.scrollTop||0):0;
-  const d=diasPactada(p); const mats=matsDe(id); const pr=verPrecios();
-  const colD=d==null?'var(--muted)':d<0?'var(--danger)':d<5?'var(--warn)':'var(--accent)';
-  const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">OP-${p.op} · ÍTEM ${p.item_num??'—'}</div>
-    <div class="cot-hero-empresa">${esc(p.descripcion||'Sin descripción')}</div><div class="cot-hero-sub">COT-${p.cot_num||'—'} · ${esc(p.empresa||'—')}</div></div>
-    <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" loading="lazy" referrerpolicy="no-referrer" ${p.imagen_thumb?'':`data-did="${esc(p.imagen_drive_id||'')}" data-w="300" data-hide="1"`} onerror="imgErr(this)" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:(pr?`<div class="cot-hero-total-label">Valor ítem</div><div class="cot-hero-total-value">${fmt(p.precio_total)}</div>`:'')}</div></div>
-    <div class="cot-hero-badges">${bProd(p.estado)}${gar(p)} ${bPrior(p.prioridad)}${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
-  const kpis=`<div class="cot-kpis"><div class="kpi-mini"><span class="ki">⚙️</span><div class="kv">${Number(p.avance).toFixed(0)}%</div><div class="kl">Avance general</div></div>
-    <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${Number(p.cant_despachada||0)}/${p.unidades}</div><div class="kl">Despachado</div></div>
-    <div class="kpi-mini ${d!=null&&d<0?'danger-kpi':d!=null&&d<5?'warn-kpi':''}"><span class="ki">📅</span><div class="kv" style="color:${colD}">${d==null?'—':Math.abs(d)+'d'}</div><div class="kl">${d==null?'Sin fecha':d<0?'Vencido hace':'Para entrega'}</div></div></div>${prog(p.avance)}`;
-  const T=(k,l)=>`<div class="dp-tab ${tab===k?'active':''}" onclick="pdTab(this,'${k}')">${l}</div>`;
-  const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
-  openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+accionesProd(p)+
-    `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
-    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
-  if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
-  cargarArchivosProd(id); cargarHistorialProd(id);
-}
-function accionesProd(p){
-  const id=p.id; const b=[]; const mats=matsDe(id); const rol=rolActual();
-  const btn=(ic,bg,lbl,fn)=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${bg}">${ic}</span><span class="cot-action-lbl">${lbl}</span></button>`;
-  if(puede('diseno')){
-    if(!p.diseno_ok) b.push(btn('🎨','#7b1fa2','Diseño terminado',`prodDiseno('${id}',true)`));
-    else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver diseño',`prodDiseno('${id}',false)`));
-    b.push(btn('🖼️','#0284c7','Imagen del ítem',`prodPickImagen('${id}')`));
-    if(mats.some(m=>m.estado==='PENDIENTE')) b.push(btn('📨','#d97706','Enviar materiales a compras',`prodMatSolicitar('${id}')`));
-  }
-  if(puede('compras')){
-    if(!p.mp_ok&&mats.every(m=>m.estado==='COMPRADO')) b.push(btn('🛒','#059669','Compras completas',`prodCompras('${id}',true)`));
-    else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver compras',`prodCompras('${id}',false)`));
-  }
-  if(puede('produccion')){
-    if(p.diseno_ok&&p.mp_ok&&!p.terminado){
-      b.push(p.externo?btn('🏠','#0d9c94','Regresó de trabajo externo',`prodExterno('${id}',false)`):btn('🚚','#9c27b0','Enviar a trabajo externo',`prodExterno('${id}',true)`));
-      if(Number(p.avance)>=100) b.push(btn('✅','#2e7d32','Producción terminada',`prodTerminar('${id}',true)`));
-    }
-    if(p.terminado&&!p.calidad_estado&&!p.despachado) b.push(btn('↩️','#64748b','Devolver a producción',`prodTerminar('${id}',false)`));
-  }
-  if(puede('calidad')){
-    if(p.terminado&&p.calidad_estado!=='APROBADA'&&!p.despachado){ b.push(btn('✅','#2e7d32','Aprobar calidad',`prodCalidadOk('${id}')`)); b.push(btn('❌','#dc2626','Rechazar (reproceso)',`formCalidadRechazo('${id}')`)); }
-    if(p.estado==='CALIDAD APROBADA') b.push(btn('↩️','#64748b','Devolver aprobación',`prodCalidadRev('${id}')`));
-    if(p.calidad_estado==='APROBADA'&&dispProd(p)>0&&!remEnTramite(p.op)) b.push(btn('📦','#1565c0','Pedir remisión',`remPedirOp(${p.op})`));
-  }
-  if(puede('comercial')&&!p.es_garantia) b.push(btn('🛡️','#ea580c','Crear garantía',`formGarantia('${id}')`));
-  if(puede('diseno','comercial','produccion','calidad')) b.push(btn('📎','#475569','Subir plano',`prodSubirPlano('${id}')`));
-  if(_esAdmin()) b.push(btn('🗑','#dc2626','Eliminar este ítem',`prodEliminarItem('${id}')`));
-  return b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:'';
-}
-function formGarantia(id){
-  const p=prodDe(id); if(!p) return;
-  openModal('Crear garantía',`<div style="font-size:13px;font-weight:700;margin-bottom:6px">OP-${p.op} · Ítem ${p.item_num??''} · ${esc(p.descripcion||'')}</div>
-    <div style="background:#fef2e2;border:1px solid #f6cd97;color:#b5650a;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px">La garantía queda en la <b>misma OP y mismo ítem</b>, con los mismos procesos y materiales, <b>costo $0</b> y tipo <b>GR. Garantia</b>.</div>
-    <div class="form-grid"><div class="field span2"><label>Unidades en garantía (máx. ${p.unidades})</label><input id="gr1" type="number" min="1" max="${p.unidades}" step="1" value="${p.unidades}"></div>
-    <div class="field span2"><label>Motivo de la garantía (obligatorio)</label><textarea id="gr2" placeholder="¿Por qué se crea esta garantía?"></textarea></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="crearGarantia('${id}')" style="background:#ea580c">🛡️ Crear garantía</button>`);
-}
-async function crearGarantia(id){
-  const p=prodDe(id); const cant=gn('gr1'), mot=gv('gr2');
-  if(!(cant>0)||cant>Number(p.unidades)){ toast('La cantidad debe estar entre 1 y '+p.unidades,'error'); return; }
-  if(mot.length<5){ toast('Escribe el motivo de la garantía','error'); return; }
-  closeModal(); const r=await rpcAct('prod_crear_garantia',{p_id:id,p_cantidad:cant,p_motivo:mot},'🛡️ Garantía creada en la misma OP');
-  if(r){ closeDetail(); updateBadges(); refreshCurrentView(); }
-}
-function pdResumen(p){
-  const pr=verPrecios(); const reps=repsDe(p.id); const rems=remsDeOp(p.op).filter(m=>(m.lineas||[]).some(l=>l.id_prod===p.id)||['PEDIDA'].includes(m.estado));
-  const abiertos=reps.filter(r=>r.estado==='ABIERTO');
-  return `${abiertos.length?`<div class="dp-section"><div style="background:#fdeaea;border:1px solid #f3b3b3;color:#c62828;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">⚠️ Reproceso abierto: ${abiertos.map(r=>r.cantidad+' und').join(' · ')} — ${esc(abiertos[0].motivo||'')}</div></div>`:''}
-    ${p.externo?`<div class="dp-section"><div style="background:#f7e6fb;border:1px solid #e6b8ef;color:#7b1fa2;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">🚚 En trabajo externo desde ${fmtDT(p.externo_desde)}${p.externo_detalle?' — '+esc(p.externo_detalle):''}</div></div>`:''}
-    <div class="dp-section"><h4>📌 Orden</h4>${dr('OP','<strong>OP-'+p.op+'</strong>')}${dr('Cotización','COT-'+(p.cot_num||'—'))}${dr('Ítem',p.item_num)}${dr('Empresa',esc(p.empresa||'—'))}${p.tipo?dr('Tipo',bTipo(p.tipo)):''}${dr('Asesor',esc(p.asesor||'—'))}${dr('Diseñador',esc(p.disenador||'Sin asignar'))}
-      ${dr('Cantidad',p.unidades)}${dr('Prioridad',bPrior(p.prioridad))}${dr('Inicio',fmtDate(p.fecha_inicio))}${dr('Entrega pactada',pactadaTag(p))}${p.entrega_prod_fecha?dr('Entregado por producción',fmtDT(p.entrega_prod_fecha)+(p.terminado_por?' · '+esc(p.terminado_por):'')):''}
-      ${p.calidad_fecha?dr('Calidad aprobó',fmtDT(p.calidad_fecha)+(p.calidad_por?' · '+esc(p.calidad_por):'')):''}</div>
-    ${pr?`<div class="dp-section"><h4>💵 Precio</h4>${dr('Precio unitario',`<span style="font-family:var(--mono)">${fmt(p.precio_unit)}</span>`)}${Number(p.descuento_pct)>0?dr('Descuento de la cotización',`<strong>${Number(p.descuento_pct).toFixed(2).replace(/\.?0+$/,'')}%</strong> (ya aplicado)`):''}${dr('Total ítem',`<strong style="color:var(--gold);font-family:var(--mono)">${fmt(p.precio_total)}</strong>`)}</div>`:''}
-    ${p.es_garantia?`<div class="dp-section"><div style="background:#fef2e2;border:1px solid #f6cd97;color:#b5650a;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">🛡️ Garantía — costo $0. Motivo: ${esc(p.garantia_motivo||'')}</div></div>`:''}
-    ${p.observaciones?`<div class="dp-section"><h4>📝 Observaciones</h4><div class="obs-html" style="font-size:13px;line-height:1.5">${obsHtml(p.observaciones)}</div></div>`:''}
-    <div class="dp-section"><h4>⚠️ Reprocesos</h4>${reps.length?reps.map(r=>`<div style="padding:9px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${r.cantidad} und</b><span class="badge ${r.estado==='ABIERTO'?'rojo':'verde'}">${r.estado}</span></div>
-      <div style="font-size:12px;color:var(--muted)">${esc(r.motivo||'')}</div><div style="font-size:10px;color:var(--muted)">${fmtDT(r.created_at)}${r.creado_por?' · '+esc(r.creado_por):''}${r.cerrado_at?' · cerrado '+fmtDT(r.cerrado_at):''}</div>
-      <div style="display:flex;gap:6px;margin-top:6px">${r.evidencia_id?`<button class="btn btn-ghost btn-sm" onclick="verArchivo('${r.evidencia_id}')">📷 Evidencia</button>`:''}${r.estado==='ABIERTO'&&puede('produccion')?`<button class="btn btn-primary btn-sm" onclick="prodCerrarRep('${r.id}','${p.id}')">✅ Reproceso terminado</button>`:''}</div></div>`).join(''):mutedP('Sin reprocesos')}</div>
-    <div class="dp-section"><h4>📦 Remisiones</h4>${rems.length?rems.map(m=>`<div class="list-card" style="margin-bottom:6px" onclick="detalleRem('${m.id}')"><div class="lc-top"><div><div class="lc-id">${m.numero?'REM-'+m.numero:'Remisión en trámite'}</div><div class="lc-sub">${fmtDate(m.pedida_fecha)}</div></div>${bRem(m.estado)}</div></div>`).join(''):mutedP('Sin remisiones')}</div>`;
-}
-function pdProcesos(p){
-  const procs=p.procesos||[]; const ok=puede('produccion')&&p.diseno_ok&&p.mp_ok&&!p.terminado;
-  const msg=!(p.diseno_ok&&p.mp_ok)?'Aún no se puede dar avance: falta diseño y/o compras.':p.terminado?'Producción ya marcó este ítem como terminado.':'';
-  return `<div class="dp-section"><h4>⚙️ Avance por proceso</h4>${msg&&puede('produccion')?`<div style="font-size:12px;color:var(--warn);margin-bottom:8px">⏳ ${msg}</div>`:''}
-    ${procs.length?procs.map((x,i)=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(x.nombre||'Proceso')}</b><div style="font-size:11px;color:var(--muted)">${Number(x.horas||0)} h estimadas</div></div><b style="font-size:14px">${Number(x.avance||0).toFixed(0)}%</b></div>${prog(x.avance)}
-      ${ok?`<div style="display:flex;gap:6px;margin-top:8px;align-items:center"><div class="field" style="margin:0;width:92px"><input type="number" id="av-${i}" min="0" max="100" step="1" value="${Number(x.avance||0)}"></div><button class="btn btn-primary btn-sm" onclick="prodAvance('${p.id}',${i},document.getElementById('av-${i}').value)">Guardar %</button><button class="btn btn-ghost btn-sm" onclick="prodAvance('${p.id}',${i},100)">✓ 100%</button></div>`:''}</div>`).join(''):mutedP('Sin procesos')}
-    <div style="margin-top:10px;font-size:12px;color:var(--muted)">El avance general se calcula ponderando cada proceso por sus horas.</div></div>`;
-}
-function pdMateriales(p){
-  const mats=matsDe(p.id); const cot=mats.reduce((s,m)=>s+Number(m.costo_cotizado||0),0); const real=mats.reduce((s,m)=>s+Number(m.costo_real||0),0);
-  const estCol={PENDIENTE:'gris',SOLICITADO:'naranja',COMPRADO:'verde'}; const dis=puede('diseno'); const com=puede('compras');
-  return `<div class="dp-section"><h4>🧱 Materiales de la OP</h4>
-    ${dis?`<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="formMatProd('${p.id}')">＋ Agregar material</button>${mats.some(m=>m.estado==='PENDIENTE')?`<button class="btn btn-ghost btn-sm" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button>`:''}</div>`:''}
-    ${mats.length?mats.map(m=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(m.material)}</b>${m.detalle?`<div style="font-size:11px;color:var(--muted)">${esc(m.detalle)}</div>`:''}<div style="font-size:11px;color:var(--muted)">${cantMat(m)}${m.proveedor?' · '+esc(m.proveedor):''}</div></div><span class="badge ${estCol[m.estado]||'gris'}">${m.estado}</span></div>
-      <div style="display:flex;gap:14px;margin-top:6px;font-size:12px;font-family:var(--mono)"><span>Cotizado: <b>${fmt(m.costo_cotizado)}</b></span><span>Real: <b style="color:${m.costo_real!=null&&Number(m.costo_real)>Number(m.costo_cotizado)?'var(--danger)':'var(--text)'}">${m.costo_real!=null?fmt(m.costo_real):'—'}</b></span></div>
-      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${dis&&m.estado==='PENDIENTE'?`<button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}','${m.id}')">✏️ Editar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delMatProd('${m.id}','${p.id}')">🗑</button>`:''}
-      ${com&&m.estado==='SOLICITADO'?`<button class="btn btn-primary btn-sm" onclick="formCompraMat('${m.id}','${p.id}')">🛒 Registrar compra</button>`:''}${com&&m.estado==='COMPRADO'&&!p.mp_ok?`<button class="btn btn-ghost btn-sm" onclick="prodMatDevolver('${m.id}','${p.id}')">↩ Devolver</button>`:''}</div></div>`).join(''):mutedP('Sin materiales'+(dis?' — agrega los que necesita la OP':''))}
-    ${mats.length?`<div style="margin-top:12px;background:var(--card2);border-radius:10px;padding:10px 12px;font-size:12.5px;font-family:var(--mono)">Total cotizado: <b>${fmt(cot)}</b><br>Total gastado: <b style="color:${real>cot?'var(--danger)':'var(--accent)'}">${fmt(real)}</b>${real>cot&&cot>0?` <span style="color:var(--danger)">(+${fmt(real-cot)})</span>`:''}</div>`:''}</div>`;
-}
-
-// ── Acciones sobre la OP ────────────────────────────────────────
-async function prodDiseno(id,ok){ if(!ok&&!confirm('¿Devolver el diseño a “no terminado”?')) return; if(ok&&!await askConfirm('✅ Diseño terminado','¿Confirmas que el <b>diseño de este ítem está terminado</b>?','Sí, terminado')) return; if(await rpcAct('prod_set_diseno',{p_id:id,p_ok:ok},ok?'✅ Diseño terminado':'Diseño devuelto')) afterAct(id); }
-async function prodCompras(id,ok){ if(!ok&&!confirm('¿Devolver compras (faltan materiales)?')) return; if(ok&&!await askConfirm('✅ Compras completas','¿Confirmas que <b>ya llegaron todos los materiales</b> de este ítem? Si el diseño también está terminado, pasa a producción.','Sí, completas')) return; if(await rpcAct('prod_set_compras',{p_id:id,p_ok:ok},ok?'✅ Compras completas — la OP pasa a producción':'Compras devuelto')) afterAct(id); }
-async function prodTerminar(id,ok){ if(!ok&&!confirm('¿Devolver este ítem a producción?')) return; if(!ok||confirm('¿Confirmas que producción terminó este ítem y lo entrega a calidad?')){ if(await rpcAct('prod_terminar',{p_id:id,p_ok:ok},ok?'✅ Entregado a calidad':'Devuelto a producción')) afterAct(id); } }
-async function prodAvance(id,idx,val){ const v=Number(val); if(isNaN(v)||v<0||v>100){ toast('El avance debe estar entre 0 y 100','error'); return; } if(await rpcAct('prod_set_avance',{p_id:id,p_idx:idx,p_pct:v})) afterAct(id); }
-function prodExterno(id,ok){
-  if(ok) openModal('Enviar a trabajo externo',`<div class="field"><label>¿A dónde / qué proceso? (opcional)</label><textarea id="ex1" placeholder="Ej: Torno CNC — Taller X"></textarea></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="prodExternoOk('${id}')">Enviar</button>`);
-  else prodExternoRet(id);
-}
-async function prodExternoOk(id){ const d=gv('ex1'); closeModal(); if(await rpcAct('prod_set_externo',{p_id:id,p_ok:true,p_detalle:d||null},'🚚 Ítem enviado a trabajo externo')) afterAct(id); }
-async function prodExternoRet(id){ if(!await askConfirm('🏠 Regresó de trabajo externo','¿Confirmas que <b>el ítem ya regresó</b> del trabajo externo? Vuelve a “En proceso”.','Sí, regresó')) return; if(await rpcAct('prod_set_externo',{p_id:id,p_ok:false,p_detalle:null},'🏠 Regresó de trabajo externo — vuelve a “En proceso”')) afterAct(id); }
-async function prodCalidadOk(id){ if(!confirm('¿Aprobar la calidad de este ítem?')) return; if(await rpcAct('prod_calidad',{p_id:id,p_ok:true,p_cantidad:null,p_motivo:null,p_evidencia:null},'✅ Calidad aprobada')) afterAct(id); }
-async function prodCalidadRev(id){ if(!confirm('¿Devolver la aprobación de calidad?')) return; if(await rpcAct('prod_calidad_revertir',{p_id:id},'Aprobación devuelta')) afterAct(id); }
-let _evidTmp=null;
-function formCalidadRechazo(id){
-  const p=prodDe(id); if(!p) return; _evidTmp=null;
-  openModal('Rechazar calidad → reproceso',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Se crea un reproceso automático solo para las unidades afectadas.</div><div class="form-grid">
-    <div class="field"><label>Unidades afectadas (1 a ${p.unidades})</label><input id="cr1" type="number" min="1" max="${p.unidades}" step="1" value="${p.unidades}"></div>
-    <div class="field span2"><label>Motivo del rechazo</label><textarea id="cr2" placeholder="Describe qué está mal…"></textarea></div>
-    <div class="field span2"><label>Evidencia (foto)</label><button type="button" class="btn btn-ghost btn-sm" onclick="crFoto()">📷 Tomar / elegir foto</button><div id="cr-foto" style="font-size:12px;color:var(--muted);margin-top:4px">Sin foto</div></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="prodCalidadNo('${id}')">Rechazar y crear reproceso</button>`);
-}
-function crFoto(){ pickFile('image/*',f=>{ _evidTmp=f; const el=document.getElementById('cr-foto'); if(el) el.textContent='📷 '+(f.name||'foto')+' lista'; }); }
-async function prodCalidadNo(id){
-  const cant=gn('cr1'), mot=gv('cr2'); const p=prodDe(id);
-  if(!(cant>=1)||(p&&cant>p.unidades)){ toast('Indica cuántas unidades tuvieron problema','error'); return; }
-  if(!mot){ toast('Escribe el motivo del rechazo','error'); return; }
-  let evid=null;
-  if(_evidTmp){ evid=await subirArchivo({id_prod:id},'evidencia',_evidTmp); if(!evid) return; }
-  closeModal(); if(await rpcAct('prod_calidad',{p_id:id,p_ok:false,p_cantidad:cant,p_motivo:mot,p_evidencia:evid},'Reproceso creado')) afterAct(id);
-}
-async function prodCerrarRep(rep,id){ if(!confirm('¿Marcar el reproceso como terminado?')) return; if(await rpcAct('prod_reproceso_cerrar',{p_rep:rep},'✅ Reproceso terminado')) afterAct(id); }
-async function prodEliminarItem(id){
-  showBusy(); let i;
-  try{ i=await sb.rpc('prod_item_eliminar_info',{p_id:id}); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); return; }
-  hideBusy();
-  const li=t=>`<li style="margin:5px 0">${t}</li>`; const n=(v,s,pl)=>`${v} ${v===1?s:pl}`;
-  const titulo='🗑 Eliminar ítem de la OP-'+i.op;
-  const cab=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">Ítem ${i.item_num??'—'} · ${esc(i.descripcion||'Sin descripción')}</div>`;
-  if(i.bloqueado){ openModal(titulo,cab+`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:12px;font-size:13px">🚫 ${esc(i.bloqueado)}</div>`,`<button class="btn btn-primary" onclick="closeModal()">Entendido</button>`); return; }
-  const borra=[]; if(i.materiales) borra.push(n(i.materiales,'pedido de material','pedidos de material')); if(i.reprocesos) borra.push(n(i.reprocesos,'reproceso','reprocesos'));
-  if(i.eventos) borra.push(n(i.eventos,'registro del historial','registros del historial')); if(i.archivos_propios) borra.push(n(i.archivos_propios,'archivo subido directo a la OP','archivos subidos directo a la OP'));
-  const otros=i.items_en_op-1;
-  const alcance=i.es_ultimo
-    ? `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px;font-size:12.5px;margin-bottom:10px">⚠️ Es el <b>único ítem</b> de la OP-${i.op}: al eliminarlo, la OP desaparece.</div>`
-    : `<div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);border-radius:10px;padding:10px;font-size:12.5px;margin-bottom:10px">✅ Solo se elimina <b>esta línea</b>. Los otros ${n(otros,'ítem','ítems')} de la OP-${i.op} no se tocan.</div>`;
-  const cuerpo=cab+alcance+`<div style="font-size:12px;font-weight:700;margin-bottom:4px">¿Qué pasa si la eliminas?</div><ul style="font-size:12.5px;padding-left:18px;margin:0 0 10px">
-    ${li(`Se borra el registro de producción de este ítem (${esc(i.estado||'—')} · ${Math.round(Number(i.avance)||0)}% de avance).`)}
-    ${borra.length?li('También se borra: '+borra.join(', ')+'.'):''}
-    ${i.planos_item>0?li(`Los ${n(i.planos_item,'plano','planos')} subidos en el ítem de la cotización <b>se conservan</b>.`):''}
-    ${i.con_item_cot?li('El ítem de la cotización queda otra vez <b>sin OP</b> y se podrá enviar de nuevo a producción.'):''}
-    ${i.es_ultimo&&i.remisiones_pedidas>0?li(i.remisiones_pedidas===1?'Se cancela 1 remisión pedida que aún no se ha despachado.':`Se cancelan ${i.remisiones_pedidas} remisiones pedidas que aún no se han despachado.`):''}
-    ${li('<b>Esta acción no se puede deshacer.</b>')}</ul>
-    <div style="font-size:13px;font-weight:700">¿Estás seguro de eliminar este ítem?</div>`;
-  openModal(titulo,cuerpo,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626" onclick="prodEliminarItemOk('${id}')">Sí, eliminar ítem</button>`);
-}
-async function prodEliminarItemOk(id){ closeModal(); if(await rpcAct('prod_eliminar_item',{p_id:id},'🗑 Ítem eliminado')){ closeDetail(); updateBadges(); refreshCurrentView(); } }
-function prodPickImagen(id){
-  pickFile('image/*',async f=>{ showBusy(); try{ const t=await imgFromFile(f,360,0.72); hideBusy(); if(await rpcAct('prod_set_imagen',{p_id:id,p_thumb:t},'🖼️ Imagen actualizada')) afterAct(id); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); } });
-}
-// materiales
-async function prodMatSolicitar(id){ if(!confirm('¿Enviar los materiales pendientes a compras?')) return; if(await rpcAct('prod_mat_solicitar',{p_id:id},'📨 Materiales enviados a compras')) afterAct(id); }
-function pmCalc(){
-  const nom=gv('pm1'), kg=gn('pm2'), c=document.getElementById('pm3'); if(!c) return;
-  const cat=(DB.materiales||[]).find(x=>x.material===nom);
-  if(cat&&kg>0&&(c.value===''||c.dataset.auto==='1')){ c.value=Math.round(kg*Number(cat.precio||0)); c.dataset.auto='1'; }
-}
-function formMatProd(pid,mid){
-  const m=mid?(DB.prodMats||[]).find(x=>x.id===mid):null;
-  openModal(m?'Editar material':'Agregar material',`<div class="form-grid">
-    <div class="field span2"><label>Material</label><input id="pm1" list="pm-list" value="${esc(m?.material||'')}" placeholder="Elige del catálogo o escribe" oninput="pmCalc()"><datalist id="pm-list">${(DB.materiales||[]).map(x=>`<option value="${esc(x.material)}">`).join('')}</datalist></div>
-    <div class="field"><label>Cantidad (kg)</label><input id="pm2" type="number" step="0.001" min="0" value="${m?m.cantidad_kg:''}" placeholder="0" oninput="pmCalc()"></div>
-    <div class="field"><label>Costo cotizado ($)</label><input id="pm3" type="number" step="1" min="0" value="${m?m.costo_cotizado:''}" placeholder="0" oninput="this.dataset.auto='0'"></div>
-    <div class="field span2"><label>Detalle / medidas</label><textarea id="pm4" placeholder="Ej: Ø200 × 100 mm">${esc(m?.detalle||'')}</textarea></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarMatProd('${pid}',${m?`'${m.id}'`:'null'})">Guardar</button>`);
-}
-async function guardarMatProd(pid,mid){
-  const row={material:gv('pm1'),cantidad_kg:gn('pm2'),costo_cotizado:gn('pm3'),detalle:gv('pm4')||null};
-  if(!row.material){ toast('Escribe el material','error'); return; }
-  try{
-    if(mid) await PATCH('prod_materiales',mid,row); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
-    await prodRefreshAll(); closeModal(); toast('✅ Material guardado'); afterAct(pid);
-  }catch(e){ toast('❌ '+errMsg(e),'error'); }
-}
-async function delMatProd(mid,pid){ if(!confirm('¿Quitar este material?')) return; try{ await DELETE('prod_materiales',mid); DB.prodMats=(DB.prodMats||[]).filter(m=>m.id!==mid); await prodRefreshAll(); toast('🗑 Material eliminado'); afterAct(pid); }catch(e){ toast('❌ '+errMsg(e),'error'); } }
-function formCompraMat(mid,pid){
-  const m=(DB.prodMats||[]).find(x=>x.id===mid); if(!m) return;
-  openModal('Registrar compra',`<div style="font-size:13px;font-weight:700;margin-bottom:8px">${esc(m.material)} · ${cantMat(m)}</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cotizado: <b>${fmt(m.costo_cotizado)}</b></div><div class="form-grid">
-    <div class="field"><label>Costo real ($)</label><input id="cm1" type="number" step="1" min="0" value="${m.costo_real??m.costo_cotizado??''}"></div>
-    <div class="field"><label>Proveedor</label><input id="cm2" value="${esc(m.proveedor||'')}" placeholder="Proveedor"></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="prodMatComprar('${mid}','${pid}')">Guardar compra</button>`);
-}
-async function prodMatComprar(mid,pid){ const c=gn('cm1'); if(!(c>0)){ toast('Escribe el costo real de la compra','error'); return; } const pv=gv('cm2'); closeModal(); if(await rpcAct('prod_mat_comprar',{p_mat:mid,p_costo:c,p_proveedor:pv||null,p_ok:true},'🛒 Compra registrada')) afterAct(pid); }
-async function prodMatDevolver(mid,pid){ if(!confirm('¿Devolver este material a “solicitado”?')) return; if(await rpcAct('prod_mat_comprar',{p_mat:mid,p_costo:null,p_proveedor:null,p_ok:false},'Compra devuelta')) afterAct(pid); }
-
-// ── CREAR OP desde la cotización ────────────────────────────────
-function opBtnInfo(cotId){
-  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||_normEstado(c.estado)!=='APROBADA'||!puede('comercial')) return null;
-  const its=itemsDe(cotId); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
-  if(!its.some(it=>!enP.has(it.id))) return null; const op=opDeCot(cotId);
-  return {op, lbl:op?'Agregar a OP-'+op:'Crear OP'};
-}
-function opCotHtml(cotId){
-  const rows=(DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).sort((a,b)=>Number(a.item_num)-Number(b.item_num)); if(!rows.length) return '';
-  return `<div class="dp-section" style="margin-top:12px"><h4>🏭 Producción · OP-${rows[0].op}</h4>${rows.map(p=>`<div class="list-card" style="margin-bottom:6px" onclick="detalleProd('${p.id}')"><div class="lc-top"><div style="min-width:0"><div class="lc-id">ÍTEM ${p.item_num}</div><div class="lc-sub">${esc(p.descripcion||'—')}</div></div>${bProd(p.estado)}${gar(p)}</div>${prog(p.avance)}<div style="font-size:10px;color:var(--muted);margin-top:2px">${Number(p.avance).toFixed(0)}% de avance</div></div>`).join('')}</div>`;
-}
-function _isoLocal(d){ const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
-function addDias(iso,n){ const d=iso?new Date(iso+'T00:00:00'):new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+Number(n||0)); return _isoLocal(d); }
-function horasItem(it){ return (it.prcs||[]).reduce((s,p)=>s+(p.nombre?Number(p.tiempo||0)*Number(it.unidades||1):0),0); }
-function rutaItem(it){ return (it.prcs||[]).filter(p=>p.nombre).map(p=>p.nombre).join(' → ')||'—'; }
-function _opToggleAllItems(cb){ document.querySelectorAll('.cop-chk:not(:disabled)').forEach(x=>x.checked=cb.checked); _opUpdateItemCount(); }
-function _opUpdateItemCount(){ const n=document.querySelectorAll('.cop-chk:checked').length; const el=document.getElementById('op-item-count'); if(el) el.textContent=n; }
-// ── Editor enriquecido de observaciones (texto + imágenes pegadas) ──
-const _OBS_TAGS=new Set(['B','STRONG','I','EM','U','BR','P','DIV','UL','OL','LI','IMG','SPAN']);
-function sanitizeObs(html){
-  const doc=new DOMParser().parseFromString('<body>'+String(html||'')+'</body>','text/html');
-  (function walk(n){
-    [...n.childNodes].forEach(c=>{
-      if(c.nodeType===8){ c.remove(); return; }
-      if(c.nodeType!==1) return;
-      if(!_OBS_TAGS.has(c.tagName)){ if(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','LINK','META'].includes(c.tagName)){ c.remove(); return; } walk(c); c.replaceWith(...c.childNodes); return; }
-      [...c.attributes].forEach(a=>{
-        const nm=a.name.toLowerCase();
-        if(c.tagName==='IMG'&&nm==='src'&&/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(a.value)) return;
-        c.removeAttribute(a.name);
-      });
-      if(c.tagName==='IMG'&&!c.getAttribute('src')){ c.remove(); return; }
-      walk(c);
-    });
-  })(doc.body);
-  return doc.body.innerHTML;
-}
-function obsHtml(s){
-  s=String(s||''); if(!s.trim()) return '';
-  if(!/<[a-z][\s\S]*>/i.test(s)) return esc(s).replace(/\n/g,'<br>');   // texto plano antiguo
-  return sanitizeObs(s);
-}
-function opToggleFecha(on){
-  const i=document.getElementById('op3'); i.readOnly=!on; i.style.opacity=on?1:.75;
-  document.getElementById('op3m-wrap').style.display=on?'block':'none';
-  if(!on){ i.value=window._opFpCalc||i.value; document.getElementById('op3m').value=''; } else i.focus();
-}
-function rteCmd(cmd){ document.getElementById('op4').focus(); document.execCommand(cmd,false,null); }
-async function rteInsertImg(file){
-  try{ const d=await imgFromFile(file,900,0.7); const ed=document.getElementById('op4'); ed.focus();
-    document.execCommand('insertHTML',false,'<img src="'+d+'"><br>'); }catch(e){ toast('❌ '+errMsg(e),'error'); }
-}
-function rteAddImg(){ pickFile('image/*',f=>rteInsertImg(f)); }
-function rteInit(){
-  const ed=document.getElementById('op4'); if(!ed) return;
-  ed.addEventListener('paste',e=>{
-    const items=[...(e.clipboardData&&e.clipboardData.items||[])];
-    const img=items.find(i=>i.kind==='file'&&/^image\//.test(i.type));
-    if(img){ e.preventDefault(); const f=img.getAsFile(); if(f) rteInsertImg(f); return; }
-    setTimeout(()=>{ ed.innerHTML=sanitizeObs(ed.innerHTML); },0);
-  });
-  ed.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/^image\//.test(f.type)){ e.preventDefault(); rteInsertImg(f); } });
-}
-function rteValue(){
-  const ed=document.getElementById('op4'); if(!ed) return null;
-  const h=sanitizeObs(ed.innerHTML).trim();
-  if(!ed.textContent.trim()&&!ed.querySelector('img')) return null;
-  return h;
-}
-function formCrearOP(cotId){
-  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c) return;
-  if(_normEstado(c.estado)!=='APROBADA'){ toast('La cotización debe estar APROBADA para crear la OP','error'); return; }
-  const its=itemsDe(cotId); const enProd=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
-  const libres=its.filter(it=>!enProd.has(it.id)); if(!libres.length){ toast('Todos los ítems de esta cotización ya están en producción','error'); return; }
-  const pct=Number(c.descuento_pct)||(Number(c.precio_total)>0?Number(c.descuento||0)/Number(c.precio_total)*100:0);
-  const dis=USUARIOS.filter(u=>u.rol==='diseno').map(u=>u.nombre);
-  const opEx=opDeCot(cotId);
-  // Diseñador por defecto: el que ya tenga asignada la OP existente (todos los ítems de una OP comparten diseñador)
-  const disActual=(DB.produccion||[]).find(p=>p.id_cotizacion===cotId&&p.disenador)?.disenador||'';
-  const hoy=_isoLocal(new Date());
-  const fpEx=(DB.produccion||[]).find(p=>p.id_cotizacion===cotId&&p.fecha_pactada)?.fecha_pactada||'';
-  const fpCalc=fpEx||addDias(hoy,Number(c.lead_time_dias||0));
-  window._opFpCalc=fpCalc;
-  const opInfo=opEx?`Esta cotización ya tiene la <b>OP-${opEx}</b> — se agregarán a esa misma OP los ítems que marques abajo.`:`Se creará una nueva OP (el número lo asigna el sistema al guardar) con los ítems que marques abajo.`;
-  openModal(opEx?`Agregar ítems a OP-${opEx}`:'Crear orden de producción',`${ayudaForm(`Revisa el **Nº OP** y elige el **Diseñador**, la **Prioridad** y la **Entrega pactada**. Marca en la lista los **ítems** que entran a producción y toca **Crear orden de producción**. Solo puedes crear la OP si la cotización está **APROBADA**.`)}<div style="font-size:12.5px;margin-bottom:10px"><b>COT-${c.cotizacion}</b> · ${esc(c.empresa||'')} ${c.tipo?`<span class="badge azul" style="margin-left:4px">${esc(c.tipo)}</span>`:''}</div>
-    <div style="background:#0d2137;border:1px solid #1565c0;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:#90caf9">${opInfo}</div>
-    ${pct>0?`<div style="background:#fef2e2;border:1px solid #f6cd97;color:#b5650a;border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:10px">💸 La cotización tiene <b>${pct.toFixed(2).replace(/\.?0+$/,'')}% de descuento</b>: se aplica a todos los ítems y ese precio es el que carga producción.</div>`:''}
-    <div class="dp-section"><h4>Ítems a producir</h4>
-    <label style="display:flex;align-items:center;gap:8px;padding:4px 0 8px;font-size:12px;color:var(--muted)"><input type="checkbox" id="op-chk-all" checked onchange="_opToggleAllItems(this)">Seleccionar todos · <span id="op-item-count">${libres.length}</span> de ${libres.length} seleccionados</label>
-    ${its.map(it=>{ const ya=enProd.has(it.id); const pu=Math.round(Number(it.precio_unit||0)*(1-pct/100)); const hrs=horasItem(it);
-      return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);${ya?'opacity:.5':'cursor:pointer'}"><input type="checkbox" class="cop-chk" value="${it.id}" ${ya?'disabled':'checked'} onchange="_opUpdateItemCount()" style="margin-top:3px"><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Ítem ${it.item??'—'} · ×${it.unidades||1}${ya?' <span class="badge gris">ya en OP</span>':''}</div><div style="font-size:12px;color:var(--muted)">${esc((it.descripcion||'—').slice(0,140))}</div><div style="font-size:11px;font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px"><span>${fmt(pu)} c/u${pct>0?' (con desc.)':''}</span>${hrs>0?`<span>⏱ ${hrs.toFixed(1)} h</span>`:''}</div><div style="font-size:10px;color:var(--muted)">${esc(rutaItem(it))}</div></div></label>`; }).join('')}</div>
-    <div class="form-grid" style="margin-top:10px">
-    <div class="field"><label>Nº OP</label><input value="${opEx?'OP-'+opEx:'Se asigna al guardar'}" readonly style="opacity:.7"></div>
-    <div class="field"><label>Diseñador</label><input id="op1" list="op1-list" value="${esc(disActual)}" placeholder="${dis.length?'Escribe para buscar…':'Sin diseñadores creados'}" autocomplete="off"><datalist id="op1-list">${dis.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>${dis.length?'':'<span style="font-size:10px;color:#b5650a">No hay usuarios con rol Diseño. Créalos en Usuarios y roles (desarrollador).</span>'}</div>
-    <div class="field"><label>Prioridad</label><select id="op2"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Urgente</option></select></div>
-    <div class="field span2"><label>Entrega pactada</label><input id="op3" type="date" value="${esc(fpCalc)}" readonly style="opacity:.75">
-      <span style="font-size:10px;color:var(--muted)">${fpEx?'Fecha de la OP existente.':`Hoy (${fmtDate(hoy)}) + ${c.lead_time_dias||0} día(s) de lead time.`}</span>
-      <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;cursor:pointer"><input type="checkbox" id="op3c" onchange="opToggleFecha(this.checked)" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;accent-color:#1565c0;flex-shrink:0">Cambiar fecha de entrega pactada</label>
-      <div id="op3m-wrap" style="display:none;margin-top:6px"><textarea id="op3m" placeholder="Motivo del cambio de fecha (obligatorio)…" style="min-height:60px"></textarea></div></div>
-    <div class="field span2"><label>Tipo</label><select id="op5" style="font-weight:700">${tiposElegibles(c.tipo).map(t=>`<option value="${esc(t)}" ${c.tipo===t?'selected':''}>${esc(t)}</option>`).join('')}</select><span style="font-size:10px;color:var(--muted)">Por defecto el de la cotización. Puedes cambiarlo solo para esta OP.</span></div>
-    <div class="field span2"><label>Observaciones</label><div class="rte-wrap"><div class="rte-bar"><button type="button" onmousedown="event.preventDefault();rteCmd('bold')"><b>B</b></button><button type="button" onmousedown="event.preventDefault();rteCmd('italic')"><i>I</i></button><button type="button" onmousedown="event.preventDefault();rteCmd('underline')"><u>U</u></button><button type="button" onmousedown="event.preventDefault();rteCmd('insertUnorderedList')">• Lista</button><button type="button" onclick="rteAddImg()">🖼️ Imagen</button></div><div id="op4" class="rte-ed" contenteditable="true" data-ph="Notas para diseño / producción… (puedes pegar imágenes)"></div></div></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="crearOP('${cotId}')" style="background:#1565c0">🏭 ${opEx?'Agregar a la OP':'Crear OP'}</button>`);
-  rteInit();
-}
-async function crearOP(cotId){
-  const ids=[...document.querySelectorAll('.cop-chk:checked')].map(x=>x.value); if(!ids.length){ toast('Selecciona al menos un ítem','error'); return; }
-  const btn=document.querySelector('#modal-foot .btn-primary'); if(btn){ btn.disabled=true; btn.textContent='⏳ Creando…'; }
-  const fp=gv('op3'), cambio=!!(document.getElementById('op3c')?.checked)&&fp&&fp!==window._opFpCalc, motivo=gv('op3m');
-  const dList=[...document.querySelectorAll('#op1-list option')].map(o=>o.value); const dSel=gv('op1');
-  if(dSel&&!dList.includes(dSel)){ toast('Elige un diseñador de la lista','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
-  if(cambio&&motivo.length<5){ toast('Escribe el motivo del cambio de fecha','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
-  const obs=rteValue();
-  if(obs&&obs.length>1500000){ toast('Las observaciones pesan demasiado (muchas imágenes). Reduce o quita alguna.','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
-  const r=await rpcAct('prod_crear_op',{p_cot:cotId,p_items:ids,p_disenador:gv('op1')||null,p_prioridad:gv('op2')||'Media',p_obs:obs,p_fecha_pactada:cambio?fp:null,p_motivo_fecha:cambio?motivo:null,p_tipo:gv('op5')||null});
-  if(r&&r!==true){ closeModal(); toast(`✅ OP-${r.op} creada con ${r.n} ítem(s)`); updateBadges(); if(modPermitido('produccion')) qaGo('produccion'); }
-  else if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; }
-}
-
-// ── REMISIONES ──────────────────────────────────────────────────
-const REM_EST={PEDIDA:'naranja',SELECCIONADA:'azul',GENERADA:'urg',DESPACHADA:'verde',CANCELADA:'rojo'};
-const bRem=e=>`<span class="badge ${REM_EST[e]||'gris'}">${esc(e||'—')}</span>`;
-const opR=m=>m.op!=null?'OP-'+m.op:'Sin OP';   // v5: remisiones históricas sin OP
-const remUnd=m=>(m.lineas||[]).reduce((s,l)=>s+Number(l.cantidad||0),0);
-let _remFiltro=null;
-const remFiltro=()=>_remFiltro||(_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))?'pend':'todas');
-function setRemFiltro(v){ _remFiltro=v; refreshCurrentView(); }
-function remisiones(){
-  const all=_misFiltro(DB.remisiones); const modo=remFiltro();
-  const base=all.filter(m=>modo==='pend'?remPendiente(m):modo==='curso'?!['DESPACHADA','CANCELADA'].includes(m.estado):true);
-  const data=sortData('remisiones',filtrarExacto('remisiones',base,r=>'op-'+r.op+' cot-'+r.cot_num+' rem-'+(r.numero||'')));
-  const chip=(k,l,n)=>`<button class="btn btn-sm ${modo===k?'btn-primary':'btn-ghost'}" style="${modo===k?'':'background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)'}" onclick="setRemFiltro('${k}')">${l} (${n})</button>`;
-  const banner=moduleBanner('📦','Remisiones','Pedido → selección → generación → despacho',`<div style="display:flex;gap:6px;flex-wrap:wrap">${_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))?chip('pend','Pendientes para mí',all.filter(remPendiente).length):''}${chip('curso','En curso',all.filter(m=>!['DESPACHADA','CANCELADA'].includes(m.estado)).length)}${chip('todas','Todas',all.length)}</div>`,'linear-gradient(135deg,#0f2443,#0d9c94)');
-  const fb=filterBar('remisiones',[{key:'__search__',label:'Buscar OP, cotización, empresa...',type:'text'},{key:'estado',label:'Estado',type:'select',opts:Object.keys(REM_EST)},{key:'empresa',label:'Empresa',type:'select',opts:[...new Set(all.map(m=>m.empresa).filter(Boolean))].sort()}]);
-  if(!all.length){ setContent(banner+empty('Aún no hay remisiones — calidad las pide cuando un ítem queda aprobado')); return; }
-  if(getView('remisiones')==='table'){
-    setContent(banner+fb+viewToggleBtns('remisiones')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('remisiones','numero','REM #')}${thSort('remisiones','op','OP')}${thSort('remisiones','cot_num','COT')}${thSort('remisiones','empresa','Empresa')}${thSort('remisiones','estado','Estado')}<th>Und</th>${thSort('remisiones','pedida_fecha','Pedida')}${thSort('remisiones','generada_fecha','Generada')}${thSort('remisiones','despachada_fecha','Despachada')}</tr></thead><tbody>
-      ${data.length?pgSlice('rem',data).map(m=>`<tr onclick="detalleRem('${m.id}')"><td style="font-weight:800;color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600">${esc(m.empresa||'—')}</td><td>${bRem(m.estado)}${remPendiente(m)?' <span title="Requiere tu acción">🔔</span>':''}</td><td class="td-center">${remUnd(m)||'—'}</td><td>${fmtDT(m.pedida_fecha)}</td><td>${fmtDT(m.generada_fecha)}</td><td>${fmtDT(m.despachada_fecha)}</td></tr>`).join(''):'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
-  }else{
-    setContent(banner+fb+viewToggleBtns('remisiones')+`<div class="card-list" style="padding:0 14px 80px">${data.length?pgSlice('rem',data).map(m=>`<div class="list-card" onclick="detalleRem('${m.id}')"><div class="lc-top"><div><div class="lc-id">${m.numero?'REM-'+m.numero:'Remisión sin número'} · ${opR(m)}</div><div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub">COT-${m.cot_num||'—'} · ${remUnd(m)||0} und</div></div><div style="text-align:right">${bRem(m.estado)}${remPendiente(m)?'<div style="margin-top:4px">🔔</div>':''}</div></div><div class="lc-meta"><span style="font-size:11px;color:var(--muted)">📅 ${fmtDT(m.pedida_fecha)}</span></div></div>`).join(''):empty('Nada en esta vista')}</div>`);
-  }
-  updateFilterCount('remisiones',data.length,base.length);
-}
-function detalleRem(id){
-  const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  try{chatCtx('',m.op,'Remisión '+(m.numero||'')+' · OP '+m.op,'remisiones');}catch(e){}
-  const pasos=[{label:'Pedida',key:'PEDIDA'},{label:'Seleccionada',key:'SELECCIONADA'},{label:'Generada',key:'GENERADA'},{label:'Despachada',key:'DESPACHADA'}];
-  const btn=(ic,bg,lbl,fn)=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${bg}">${ic}</span><span class="cot-action-lbl">${lbl}</span></button>`; const b=[];
-  const final=['DESPACHADA','CANCELADA'].includes(m.estado);
-  if(puede('comercial')&&['PEDIDA','SELECCIONADA'].includes(m.estado)) b.push(btn('☑️','#1565c0',m.estado==='PEDIDA'?'Seleccionar ítems y cantidades':'Cambiar selección',`formSelRem('${id}')`));
-  if(puede('administracion')&&m.estado==='SELECCIONADA') b.push(btn('🧾','#2e7d32','Generar remisión',`remGenerar('${id}')`));
-  if(puede('calidad')&&m.estado==='GENERADA') b.push(btn('🚚','#0d9c94','Marcar despachado',`remDespachar('${id}')`));
-  if(['GENERADA','DESPACHADA'].includes(m.estado)){ b.push(btn('🖨️','#7b1fa2','Formato de despacho',`docRemision('${id}','despacho')`)); if(puede('administracion','comercial')) b.push(btn('📄','#d32f2f','Remisión (PDF)',`docRemision('${id}','remision')`)); }
-  if(puede('administracion')&&!final) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
-  const ls=m.lineas||[];
-  openDetail(m.numero?'REM-'+m.numero:'Remisión '+opR(m),`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${m.numero?'REM-'+m.numero:'SIN NÚMERO'} · ${opR(m)}</div><div class="cot-hero-empresa">${esc(m.empresa||'—')}</div><div class="cot-hero-sub">COT-${m.cot_num||'—'}</div></div><div class="cot-hero-right"><div class="cot-hero-total-label">Unidades</div><div class="cot-hero-total-value">${remUnd(m)||0}</div></div></div><div class="cot-hero-badges">${bRem(m.estado)}${m.asesor?`<span class="cot-hero-asesor">👤 ${esc(m.asesor)}</span>`:''}</div></div>
-    ${timelineH(pasos,m.estado,{PEDIDA:m.pedida_fecha,SELECCIONADA:m.seleccion_fecha,GENERADA:m.generada_fecha,DESPACHADA:m.despachada_fecha})}
-    ${b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:''}
-    <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:380px"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map(l=>`<tr><td class="td-center" style="font-weight:700">${l.item??'—'}</td><td style="max-width:240px">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:700">${l.cantidad}${l.unidades?`<div style="font-size:10px;color:var(--muted)">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP(m.estado==='PEDIDA'?'Calidad pidió la remisión — el comercial debe seleccionar qué se despacha.':'Sin líneas')}</div>
-    <div class="dp-section"><h4>🏢 Cliente</h4>${dr('Empresa',esc(m.empresa||'—'))}${dr('NIT',esc(m.nit||'—'))}${dr('Dirección',esc(m.direccion||'—'))}${dr('Ciudad',esc(m.ciudad||'—'))}${dr('Contacto',esc(m.contacto||'—'))}${dr('Teléfono',esc(m.telefono||'—'))}</div>
-    <div class="dp-section"><h4>🕘 Trazabilidad</h4>${dr('Pedida',fmtDT(m.pedida_fecha)+(m.pedida_por?' · '+esc(m.pedida_por):''))}${dr('Selección',m.seleccion_fecha?fmtDT(m.seleccion_fecha)+' · '+esc(m.seleccion_por||''):'—')}${dr('Generada',m.generada_fecha?fmtDT(m.generada_fecha)+' · '+esc(m.generada_por||''):'—')}${dr('Despachada',m.despachada_fecha?fmtDT(m.despachada_fecha)+' · '+esc(m.despachada_por||''):'—')}</div>`,'');
-}
-async function afterRem(id){ updateBadges(); refreshCurrentView(); if(id) detalleRem(id); }
-async function remPedirOp(op){
-  if(!confirm('¿Pedir la remisión de la OP-'+op+' a la administración?')) return;
-  if(await rpcAct('remision_pedir',{p_op:op},'📦 Remisión solicitada — el comercial debe seleccionar qué se despacha')){ updateBadges(); if(modPermitido('remisiones')) qaGo('remisiones'); else refreshCurrentView(); }
-}
-function remPedirModal(){
-  const ops=[...new Set((DB.produccion||[]).filter(p=>p.calidad_estado==='APROBADA'&&dispProd(p)>0&&!remEnTramite(p.op)).map(p=>p.op))].sort((a,b)=>b-a);
-  if(!ops.length){ toast('No hay ítems aprobados por calidad con cantidad por despachar','error'); return; }
-  openModal('Pedir remisión',`<div class="field"><label>Orden de producción</label><select id="rp1">${ops.map(o=>{ const p=(DB.produccion||[]).find(x=>x.op===o); return `<option value="${o}">OP-${o} · ${esc(p?.empresa||'')}</option>`; }).join('')}</select></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="closeModal();remPedirOp(Number(gv('rp1')))">Pedir remisión</button>`);
-}
-function formSelRem(id){
-  const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
-  const rows=(DB.produccion||[]).filter(p=>p.op===m.op&&p.calidad_estado==='APROBADA').map(p=>({p,disp:dispProd(p,m.id)})).filter(x=>x.disp>0).sort((a,b)=>Number(a.p.item_num)-Number(b.p.item_num));
-  if(!rows.length){ toast('No hay ítems aprobados por calidad con cantidad por despachar','error'); return; }
-  const cur={}; (m.lineas||[]).forEach(l=>{ cur[l.id_prod]=Number(l.cantidad); });
-  openModal('¿Qué se despacha?',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Indica la cantidad de cada ítem (solo lo aprobado por calidad). Puedes despachar parcial o todo.</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value=i.dataset.max)">Toda la cotización</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value='')">Limpiar</button></div>
-    ${rows.map(({p,disp})=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div class="lc-title">Ítem ${p.item_num}${gar(p)}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><div class="field" style="margin:0;width:96px"><input type="number" class="rsel" data-p="${p.id}" data-max="${disp}" min="0" max="${disp}" step="1" value="${cur[p.id]??''}" placeholder="0"></div><span style="font-size:12px;color:var(--muted)">de ${disp} por despachar (total ${p.unidades})</span><button class="btn btn-ghost btn-sm" onclick="this.parentNode.querySelector('.rsel').value=${disp}">Todo</button></div></div>`).join('')}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarSelRem('${id}')">Guardar selección</button>`);
-}
-async function guardarSelRem(id){
-  const ls=[]; let bad=false;
-  document.querySelectorAll('.rsel').forEach(i=>{ const v=Number(i.value)||0; if(v>Number(i.dataset.max)) bad=true; if(v>0) ls.push({id_prod:i.dataset.p,cantidad:v}); });
-  if(bad){ toast('Una cantidad supera lo disponible','error'); return; } if(!ls.length){ toast('Selecciona al menos un ítem y su cantidad','error'); return; }
-  closeModal(); if(await rpcAct('remision_seleccionar',{p_id:id,p_lineas:ls},'☑️ Selección enviada a administración')) afterRem(id);
-}
-async function remGenerar(id){ if(!confirm('¿Generar la remisión? Se le asignará su número.')) return; const r=await rpcAct('remision_generar',{p_id:id}); if(r){ toast('🧾 Remisión REM-'+(r.numero||'')+' generada'); afterRem(id); } }
-async function remDespachar(id){ if(!confirm('¿Marcar esta remisión como despachada? Se descuenta de la OP.')) return; if(await rpcAct('remision_despachar',{p_id:id},'🚚 Despachado')) afterRem(id); }
-async function remCancelar(id){ if(!confirm('¿Cancelar esta remisión?')) return; if(await rpcAct('remision_cancelar',{p_id:id},'Remisión cancelada')) afterRem(id); }
-function docRemision(id,modo){
-  const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; };
-  const des=modo==='despacho'; const ls=m.lineas||[];
-  const fecha=new Date(m.generada_fecha||m.pedida_fecha||Date.now()).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const rows=ls.map((l,i)=>`<tr class="${i%2?'azul-row':''}"><td class="center borde">${l.item??i+1}</td><td class="borde" style="white-space:pre-wrap">${cl(l.descripcion)}</td><td class="center borde negrita">${l.cantidad}</td>${des?'<td class="center borde" style="width:60px">☐</td>':''}</tr>`).join('');
-  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${des?'Formato de despacho':'Remisión'} ${m.numero||''}</title><style>
-    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.negrita{}.center{text-align:center}
-    @page{size:letter portrait;margin:10mm 16mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
-    <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
-    <table style="margin-bottom:14px"><tr><td style="width:55%;vertical-align:top"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"><div style="font-size:9px;color:#444;line-height:1.7;margin-top:6px"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br><b>Tel:</b> ${EMPRESA_WEDM.tel} &nbsp; <b>Cel:</b> ${EMPRESA_WEDM.cel}<br><b>NIT:</b> ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
-      <td style="width:45%;vertical-align:top"><table><tr><td class="azul borde center" style="font-size:12px">${des?'FORMATO DE DESPACHO':'REMISIÓN'}</td></tr><tr><td class="borde center negrita" style="font-size:15px">${m.numero?'No. '+m.numero:'—'}</td></tr><tr><td class="borde center" style="font-size:10px">Fecha: ${fecha}</td></tr></table></td></tr></table>
-    <table style="margin-bottom:12px;font-size:10px"><tr><td class="azul borde" style="width:14%">CLIENTE</td><td class="borde" style="width:36%">${cl(m.empresa)}</td><td class="azul borde" style="width:14%">NIT</td><td class="borde">${cl(m.nit)}</td></tr>
-      <tr><td class="azul borde">DIRECCIÓN</td><td class="borde">${cl(m.direccion)}</td><td class="azul borde">CIUDAD</td><td class="borde">${cl(m.ciudad)}</td></tr>
-      <tr><td class="azul borde">CONTACTO</td><td class="borde">${cl(m.contacto)}</td><td class="azul borde">TELÉFONO</td><td class="borde">${cl(m.telefono)}</td></tr>
-      <tr><td class="azul borde">ORDEN PROD.</td><td class="borde">${opR(m)}</td><td class="azul borde">COTIZACIÓN</td><td class="borde">COT-${m.cot_num||'—'}</td></tr></table>
-    <table style="margin-bottom:14px"><thead><tr class="azul"><th class="borde center" style="width:8%">ÍTEM</th><th class="borde">DESCRIPCIÓN</th><th class="borde center" style="width:12%">CANT.</th>${des?'<th class="borde center" style="width:60px">VERIF.</th>':''}</tr></thead><tbody>${rows}${ls.length<4?Array(4-ls.length).fill(`<tr><td class="borde" colspan="${des?4:3}" style="height:22px"></td></tr>`).join(''):''}</tbody></table>
-    <p style="margin-bottom:6px"><b>Observaciones:</b> ${cl(m.observaciones,'')}</p><div style="border:1px solid #999;height:${des?'46':'30'}px;margin-bottom:26px"></div>
-    <table><tr><td style="width:33%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>${des?esc(m.despachada_por||'Despachó (Calidad)'):'Elaboró'}</b><div style="font-size:9px;color:#555">${des?'Despachó — Calidad':'Administración — Grupo WEDM'}</div></td>
-      <td style="width:33%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>Transportó</b><div style="font-size:9px;color:#555">Nombre / placa</div></td>
-      <td style="width:34%;text-align:center"><div style="border-top:1.5px solid #1a3a6b;margin:0 14px 4px"></div><b>Recibí conforme</b><div style="font-size:9px;color:#555">Nombre · C.C. · Fecha</div></td></tr></table></body></html>`;
-  _abrirDocParaImprimir(html,`REM-${m.numero||'borrador'}.pdf`,'remisiones');
-}
-
-/* ══ IMÁGENES desde Google Drive (producción e ítems de cotización) ══ */
-const driveThumb=(id,sz)=>id?'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(sz||200):'';
-const imgHtml=(id,sz,style,extra)=>`<img loading="lazy" referrerpolicy="no-referrer" src="${driveThumb(id,sz)}" alt="" style="${style||''}" ${extra||''} onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${sz||200}';}else{this.style.opacity=.25;}">`;
-function verImagenProd(pid){
-  const p=(typeof prodDe==='function'?prodDe(pid):null)||DB.produccion.find(x=>x.id===pid); if(!p||!p.imagen_drive_id) return;
-  openModal('OP '+(p.op||'')+' · Ítem '+(p.item_num??''),`<div style="text-align:center">${imgHtml(p.imagen_drive_id,1200,'max-width:100%;border-radius:10px')}<p style="margin-top:8px;font-size:12px"><a href="https://drive.google.com/file/d/${encodeURIComponent(p.imagen_drive_id)}/view" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">Abrir en Drive ↗</a></p></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
-}
-const _thBox='width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border)';
-const _thEmpty='<div style="width:38px;height:38px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>';
-const imgItem=it=>{ const pr=(typeof prodDeItem==='function')?prodDeItem(it.id):null; return pr&&pr.imagen_drive_id?pr:null; };
-const thumbItem=it=>{ const pr=imgItem(it); return pr?`<span onclick="event.stopPropagation();verImagenProd('${pr.id}')" style="cursor:zoom-in;flex-shrink:0;display:inline-flex">${imgHtml(pr.imagen_drive_id,120,_thBox)}</span>`:_thEmpty; };
-const itemImgSection=it=>{ const pr=imgItem(it); return pr?`<div class="dp-section"><h4>🖼 Imagen del ítem</h4><div style="text-align:center">${imgHtml(pr.imagen_drive_id,600,'max-width:100%;max-height:280px;border-radius:10px;cursor:zoom-in',`onclick="verImagenProd('${pr.id}')"`)}</div></div>`:''; };
-
-
-// ── Actualización periódica de notificaciones ───────────────────
-setInterval(async()=>{
-  if(!_SESSION||document.hidden||!DB.produccion) return;
-  try{
-    const hubo=await prodRefreshAll(); updateBadges();
-    if(!hubo) return;
-    const a=document.activeElement; const typing=a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); const modal=document.getElementById('modal-ov')?.classList.contains('open');
-    if(['produccion','remisiones'].includes(MOD)&&!_detailOpen&&!modal&&!typing&&Date.now()-(window._lastTouch||0)>10000) refreshCurrentView();
-  }catch(e){}
-},60000);
-
-
-
-const AYUDA={
-general:{icono:'🚀',titulo:'Primeros pasos',
-  que:'Este es el ERP de Grupo WEDM. Aquí se cotiza, se lleva el control de producción y se despacha. Tu clave y tu rol definen qué módulos ves y qué puedes cambiar.',
-  pasos:[
-   {t:'Entrar',items:['Abre el enlace del ERP y **toca tu nombre** en la lista.','Escribe tu **clave de 4 dígitos**. Si te equivocas, la pantalla lo avisa y puedes intentar de nuevo.']},
-   {t:'Moverte',items:['El **menú lateral** (ícono arriba a la izquierda) tiene todos los módulos que tu rol puede ver: Cotizaciones, Ítems, Clientes, Control Producción, Remisiones y los catálogos.','En el celular también tienes la **barra de abajo** con los atajos principales y, arriba, los atajos rápidos (Mis cotizaciones, En espera…).','🔍 **Buscar** arriba encuentra por número, empresa o descripción. ↻ **Actualiza** los datos. ❓ abre la ayuda de la vista donde estás.']},
-   {t:'Tu rol',items:['**Comercial**: crea y sigue sus cotizaciones y clientes. **Diseño**: trabaja las OP que le asignan. **Compras**: registra las compras. **Producción** y **Calidad**: avanzan y aprueban los ítems. **Administración / Admin**: ven todo y autorizan. **Lectura**: solo consulta.']}],
-  consejos:['Si no ves un módulo, es porque tu rol no lo usa.','Los botones ✏️ (editar) y ＋ (crear) solo aparecen si tu rol puede cambiar esa información.']},
-dashboard:{icono:'📊',titulo:'Dashboard comercial',
-  que:'Es la pantalla de inicio: un resumen de cotizaciones y de producción para saber en qué estamos hoy.',
-  quien:'Todos los roles.',
-  pasos:[{t:'Cómo usarlo',items:['Mira las **tarjetas de resumen**: cotizaciones en espera y aprobadas, órdenes en proceso y vencidas, valores.','**Toca una tarjeta o un atajo** para ir a la lista ya filtrada (por ejemplo, las cotizaciones en espera).','Usa ↻ para traer los datos más recientes.']}],
-  consejos:['Si una cifra te llama la atención, tócala: te lleva al detalle en lugar de tener que buscarlo.']},
-cotizaciones:{icono:'📋',titulo:'Cotizaciones',
-  que:'Aquí se crean y se siguen las cotizaciones a los clientes: su estado, los ítems que las componen, el PDF y la orden de compra del cliente.',
-  quien:'Comercial (y admin). Los demás roles consultan.',
-  pasos:[
-   {t:'Crear una cotización',items:['Toca **＋ Nueva Cotización** (o el botón flotante ＋). El formulario tiene tres pestañas: **📅 Inicio, 🏢 Empresa y ✅ Estado**, y se avanza con **Siguiente →**.','**📅 Inicio:** el **Nº de cotización** lo asigna el sistema. Revisa la **Fecha de emisión**, elige el **Tipo** (al elegirlo ves su definición, condiciones y quién lo libera), el **Asesor** y escribe la **Descripción del proyecto**.','**🏢 Empresa:** empieza a escribir y **elige la empresa de la lista** (se completan NIT, ciudad, dirección, encargado y teléfono). Escribe el **Lead time** en días: la **Fecha de entrega pactada** se calcula sola y puedes ajustarla. Completa la **Forma de pago** y la **Validez**.','**✅ Estado:** deja **EN ESPERA** (o el que corresponda) y escribe las **observaciones especiales** si las hay.','Toca **Crear Cotización**. Ese botón aparece solo cuando ya están los datos obligatorios; si falta alguno verás un aviso naranja: tócalo y te lleva a la pestaña donde falta.']},
-   {t:'Agregar los ítems (lo que se cotiza)',items:['Abre la cotización (toca su tarjeta).','Toca **＋ Agregar Elemento** y llena el ítem (mira la ayuda de **Ítems**).','El **precio, el IVA y el total no se escriben**: se forman con la suma de los ítems. Cuando ya hay valor, la cotización muestra el total y el descuento.','Si cambiaste ítems y el total no se ve actualizado, toca **🔄 Recalcular Total**.']},
-   {t:'Cambiar el estado',items:['Toca la **etiqueta de estado** de la cotización (EN ESPERA, APROBADA, ANULADA, RECHAZADA, FACTURADA, CANCELADO) y elige el nuevo.','Cuando pasa a **APROBADA** aparecen los campos de la **orden de compra**: escribe el **número** y **adjunta el archivo** (foto o PDF). El archivo se sube al guardar.']},
-   {t:'PDF, duplicar y editar',items:['**Generar PDF / Imprimir / Guardar PDF** arma el documento para el cliente.','**Duplicar Cotización** copia la cotización: eliges el estado inicial, la fecha, la empresa y el asesor.','**✏️ Editar** cambia los datos generales. Si vas a cotizar algo parecido, duplicar es más rápido que empezar de cero.']},
-   {t:'Pasar a producción',items:['Cuando la cotización está **APROBADA** aparece el botón **Crear OP**. Sigue los pasos de la ayuda de **Control Producción**.']}],
-  reglas:['Obligatorios al crear: **Asesor, Descripción del proyecto, Empresa, Fecha de emisión y Fecha de entrega pactada**.','Una cotización que **ya tiene OP** queda con el estado bloqueado (🔒): no se puede cambiar.','El tipo **Garantía (GR)** no se elige al crear una cotización.'],
-  consejos:['Antes de crear la cotización revisa que la empresa exista en **Clientes**; si no, créala primero.','La fecha de entrega pactada que pongas se copia a la orden de producción.']},
-items:{icono:'🔩',titulo:'Ítems / Elementos',
-  que:'Un ítem es cada pieza o trabajo dentro de una cotización, con sus materiales, servicios, procesos y su precio.',
-  quien:'Comercial (y admin).',
-  pasos:[
-   {t:'Agregar un ítem',items:['Los ítems se crean **desde una cotización**: ábrela y toca **＋ Agregar Elemento**. (El botón ＋ de esta lista no crea ítems.)','Escribe el **Nº de ítem** y las **Unidades**, y describe el ítem.','**＋ Agregar Material:** elige el material del catálogo y las medidas; el costo sale del peso por el precio/kg.','**＋ Agregar Servicio:** elige el servicio externo (tratamientos, cortes…), con sus días y costo.','**＋ Agregar Proceso:** elige la máquina y el **tiempo**. Puedes escribirlo en **Horas**, en **H : MM** (horas y minutos) o en **Minutos**; los botones − / + cambian de 15 en 15 minutos.','Escribe el **costo del flete** si aplica y las **horas de diseño** (hay una calculadora de minutos a horas).']},
-   {t:'Fijar el precio',items:['Revisa el **Costo total** y el **Presupuesto unitario** que calcula el sistema.','Ajusta el **Sobremargen %** o escribe directamente el **Precio unitario** (obligatorio).','El sistema muestra el **Precio × ítem**. Toca **Guardar** para agregarlo a la cotización.']},
-   {t:'Otras acciones del ítem',items:['**Duplicar ítem** crea una copia dentro de la misma cotización.','**Copiar a otra cotización** lo lleva a la cotización que elijas.','**Subir plano** adjunta el plano del ítem.','**Eliminar** lo quita de la cotización.']}],
-  reglas:['Un ítem debe llevar una descripción o al menos un material o proceso para poder guardarse.','Si la cotización ya tiene OP, cambiar un ítem no cambia lo que ya está en producción.'],
-  consejos:['Si te faltan materiales, servicios o procesos en las listas, se agregan en los **Catálogos** (Materiales, Servicios, Procesos).']},
-clientes:{icono:'🏢',titulo:'Clientes',
-  que:'Directorio de las empresas a las que se cotiza. De aquí salen los datos que se copian a cada cotización.',
-  quien:'Comercial y admin crean y editan; los demás consultan.',
-  pasos:[
-   {t:'Crear un cliente',items:['Toca **Nuevo Cliente** (o ＋).','Escribe la **Empresa** (obligatoria) y, si los tienes, NIT, ciudad, dirección, correo, teléfono, contacto y **condición de pago**.','Elige el **asesor encargado** y agrega notas si hace falta. Toca **Guardar**.']},
-   {t:'Consultar y editar',items:['Toca una empresa para ver sus datos y **sus cotizaciones**.','Usa ✏️ para corregir los datos cuando cambien.']}],
-  consejos:['Un NIT y una dirección completos evitan tener que corregirlos en cada cotización o remisión.']},
-produccion:{icono:'🏭',titulo:'Control Producción',
-  que:'Aquí se ve todo lo que está en fabricación: cada orden de producción (OP), sus ítems y en qué etapa van. Una OP recorre: **Diseño → Compras → Producción → Calidad → Remisión → Despacho**.',
-  quien:'Todos ven; cada rol actúa sobre su etapa (diseño, compras, producción, calidad, administración).',
-  pasos:[
-   {t:'Crear una OP desde una cotización',items:['Abre una cotización **APROBADA** y toca **Crear OP**.','Revisa el **Nº OP** que propone el sistema y elige el **Diseñador**.','Elige la **Prioridad**, el **Tipo** y la **Entrega pactada**. Si cambias la fecha, escribe el **motivo del cambio**.','En **Observaciones** puedes escribir, hacer listas (• Lista) y pegar una imagen (🖼️ Imagen).','En **Ítems a producir** marca los ítems que entran. Toca **Crear orden de producción**.','Si la cotización ya tiene una OP y faltan ítems, el botón dice **Agregar ítems a OP-…**.']},
-   {t:'Seguir una OP',items:['Toca la tarjeta de la OP para ver su detalle: semáforo de etapas, ítems, materiales, archivos y observaciones.','Usa los filtros y los botones de resumen para ver, por ejemplo, lo pendiente de diseño, de compras, en producción o por despachar.']},
-   {t:'Lo que hace cada área',items:['**Diseño:** agrega los materiales que necesita el ítem, sube imagen y plano y marca **✅ Diseño terminado**.','**Compras:** en cada material toca **📨 Enviar a compras** (lo hace diseño) y luego **🛒 Registrar compra**; cuando llegó todo, **✅ Compras completas**. Con diseño y compras listos, el ítem **pasa a producción**.','**Producción:** actualiza el **avance %** (Guardar % o ✓ 100%), manda a **trabajo externo** cuando aplica y marca cuando **terminó**.','**Calidad:** aprueba el ítem o lo devuelve. Si hay unidades con problema, **Rechazar y crear reproceso** (indica cuántas unidades y el motivo). Al terminarlo, **✅ Reproceso terminado**.','**Remisión y despacho:** mira la ayuda de **Remisiones**.']}],
-  reglas:['La cotización debe estar **APROBADA** para crear la OP.','Una etapa solo la marca el rol que le corresponde; si no ves el botón, esa etapa no es de tu rol.','Los pasos se pueden **devolver** (↩) si se marcaron por error.'],
-  consejos:['El texto de las observaciones y las imágenes que pegues en la creación de la OP las ve todo el equipo.']},
-remisiones:{icono:'🚚',titulo:'Remisiones',
-  que:'La remisión es el documento con el que se despacha lo que ya fue aprobado por calidad.',
-  quien:'Lo pide quien maneja la OP; lo genera y despacha quien tenga permiso de despacho (administración).',
-  pasos:[
-   {t:'Pedir una remisión',items:['En **Remisiones** (o desde la OP) toca **Pedir remisión**.','Elige la **Orden de producción**. Solo salen los ítems **aprobados por calidad** que todavía tienen cantidad por despachar.','Confirma con **Pedir remisión**.']},
-   {t:'Generar y despachar',items:['La remisión pedida queda pendiente en la lista de **Remisiones**. Al **Generarla**, el sistema le asigna el número (**REM-…**) y arma el documento.','Cuando la mercancía sale se marca como **Despachada**.','Si se pidió por error, se puede **Cancelar** mientras no se haya despachado.']}],
-  reglas:['Si aparece "No hay ítems aprobados por calidad…", esos ítems todavía no pasaron por calidad o ya se despacharon completos.'],
-  consejos:['Revisa NIT, dirección y contacto del cliente antes de generar: se imprimen en el documento.']},
-materiales:{icono:'🧱',titulo:'Materiales (catálogo)',
-  que:'Lista de materiales con su densidad y su precio por kilo. Se usa para calcular el costo de los ítems.',
-  quien:'Admin / comercial.',
-  pasos:[{t:'Crear o actualizar un material',items:['Toca ＋ y escribe el **Material**, una descripción, la **Densidad (g/mm³)** y el **Precio por kg**.','Para cambiar un precio, toca el material y edítalo. Las cotizaciones nuevas usan el precio actualizado.']}],
-  consejos:['Mantén los precios al día: son la base de todos los costos de material.']},
-servicios:{icono:'🛠️',titulo:'Servicios externos (catálogo)',
-  que:'Servicios que se contratan fuera (tratamientos, cortes, etc.) con sus días de entrega y costos.',
-  quien:'Admin / comercial.',
-  pasos:[{t:'Crear o actualizar un servicio',items:['Toca ＋ y escribe el **Servicio**, su descripción y los **Días de entrega**.','Llena los costos: **Costo por kg**, **hasta 2 kg** y **hasta 10 kg**, según cómo cobre el proveedor.']}],
-  consejos:['El costo hasta 2 kg y hasta 10 kg sirve para piezas pequeñas donde el cobro por kilo no aplica.']},
-procesos:{icono:'⚙️',titulo:'Procesos / máquinas (catálogo)',
-  que:'Máquinas y procesos con su tarifa por hora. Se usan para costear el tiempo de cada ítem.',
-  quien:'Admin / comercial.',
-  pasos:[{t:'Crear o actualizar un proceso',items:['Toca ＋ y escribe el **Proceso / Máquina**, la descripción, el **Cuadrante** y la **Tarifa por hora**.','Al cotizar un ítem, el tiempo que escribas se multiplica por esta tarifa.']}],
-  consejos:['Si una máquina cambia de tarifa, edítala aquí y las nuevas cotizaciones la usarán.']}
-};
-
-
-// ═══ MANUAL DE USO (ayuda dentro de cada vista) ═══
-const _ay=s=>esc(String(s==null?'':s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
-function ayudaSeccionHtml(m){
-  let h=`<div class="ay-que">${_ay(m.que||'')}</div>`;
-  if(m.quien) h+=`<div class="ay-quien">👤 ${_ay(m.quien)}</div>`;
-  (m.pasos||[]).forEach(p=>{ h+=`<div class="ay-blk"><h4>${_ay(p.t)}</h4><ol>${(p.items||[]).map(i=>`<li>${_ay(i)}</li>`).join('')}</ol></div>`; });
-  if(m.reglas&&m.reglas.length) h+=`<div class="ay-warn"><b>⚠️ Ten en cuenta</b><ul>${m.reglas.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
-  if(m.consejos&&m.consejos.length) h+=`<div class="ay-tip"><b>💡 Consejos</b><ul>${m.consejos.map(i=>`<li>${_ay(i)}</li>`).join('')}</ul></div>`;
-  return h;
-}
-function ayudaAbrir(k){
-  if(!k){ k=(typeof _detailOpen!=='undefined'&&_detailOpen&&AYUDA.op)?'op':(typeof MOD!=='undefined'?MOD:''); } const m=AYUDA[k];
-  if(!m){ ayudaManual(); return; }
-  openModal(`${m.icono||'📖'} ${m.titulo}`,ayudaSeccionHtml(m),`<button class="btn btn-ghost" onclick="ayudaManual('${k}')">📖 Manual completo</button><button class="btn btn-primary" onclick="closeModal()">Entendido</button>`);
-}
-function ayudaManual(abierto){
-  const keys=Object.keys(AYUDA);
-  openModal('📖 Manual de uso',`<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Toca una vista para ver cómo se usa. El botón ❓ de arriba abre la ayuda de la vista en la que estás.</div>`
-    +keys.map(k=>{ const m=AYUDA[k]; return `<details class="ay-det" ${abierto===k?'open':''}><summary>${m.icono||''} ${_ay(m.titulo)}</summary>${ayudaSeccionHtml(m)}</details>`; }).join(''),
-    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
-  if(abierto) setTimeout(()=>{ const d=document.querySelector('#modal-body details[open]'); if(d) d.scrollIntoView({block:'start'}); },80);
-}
-
-// ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
-function ayudaForm(texto){
-  return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
-}
-
-</script>
-<!-- MENÚ (tarjetas de módulos) -->
-<style>
-#qa-bar .qbar-item[data-qa=remisiones],#qa-bar .qbar-item[data-qa=materiales],#qa-bar .qbar-item[data-qa=servicios],#qa-bar .qbar-item[data-qa=procesos],#qa-bar .qbar-item[data-qa=importar]{display:none !important}
-#qa-bar #bn-menu .qbar-icon{background:#0f2443;color:#fff;font-size:15px;width:36px;height:36px}
-#mn-ov{position:fixed;z-index:150;background:var(--bg,#f1f5f9);overflow:auto;display:none;-webkit-overflow-scrolling:touch}
-#mn-ov.open{display:block}
-.mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
-@media(min-width:700px){.mn-grid{grid-template-columns:repeat(4,1fr)}}
-.mn-card{position:relative;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);-webkit-tap-highlight-color:transparent}
-.mn-card:active{transform:scale(.97)}
-.mn-img{background:#000;aspect-ratio:1/.85;display:flex;align-items:center;justify-content:center}
-.mn-circle{width:78%;aspect-ratio:1;border-radius:50%;background:#4f83f1;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,16vw,84px)}
-.mn-t{padding:14px 12px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.2px;color:var(--text,#0f172a)}
-.mn-b{position:absolute;top:8px;right:8px;background:#dc2626;color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:99px}
-</style>
-<script>
-(function(){
-  var nav=document.getElementById('qa-bar')||document.getElementById('bottom-nav'); if(!nav) return;
-  var old=nav.querySelectorAll('.bn-item'); // se conservan ocultos: el código de cada módulo los sigue actualizando
-  var b=document.createElement('div'); b.className='bn-item'; b.id='bn-menu';
-  if(nav.id==='qa-bar'){ b.className='qbar-item'; b.innerHTML='<div class="qbar-icon">▦</div><div class="qbar-label">MENÚ</div>'; } else b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
-  var ref=nav.querySelector('.qbar-item[data-qa="items"]'); nav.insertBefore(b,ref||nav.firstChild);
-  var ov=document.createElement('div'); ov.id='mn-ov'; document.body.appendChild(ov);
-  function pos(){ var c=document.getElementById('content')||document.body, r=c.getBoundingClientRect();
-    ov.style.left=r.left+'px'; ov.style.top=r.top+'px'; ov.style.width=r.width+'px'; ov.style.height=(nav.getBoundingClientRect().top-r.top)+'px'; }
-  function items(){ var out=[]; document.querySelectorAll('#sidebar .nav-item[data-m]').forEach(function(el){
-      if(el.offsetParent===null && getComputedStyle(el).position!=='fixed') return;
-      var c=el.cloneNode(true); var ic=c.querySelector('.nav-icon'); var icon=ic?ic.textContent:'📁';
-      c.querySelectorAll('.nav-icon,.nav-badge').forEach(function(x){x.remove();});
-      var bd=el.querySelector('.nav-badge'); var n=bd&&bd.style.display!=='none'?bd.textContent.trim():'';
-      out.push({el:el,icon:icon,t:c.textContent.trim(),n:n}); }); return out; }
-  window.mnCerrar=function(){ ov.classList.remove('open'); b.classList.remove('active'); };
-  window.mnToggle=function(){ if(ov.classList.contains('open')) return mnCerrar();
-    var its=items(); pos();
-    ov.innerHTML='<div class="mn-grid">'+its.map(function(x,i){ return '<div class="mn-card" data-i="'+i+'"><div class="mn-img"><div class="mn-circle">'+x.icon+'</div></div><div class="mn-t">'+x.t.replace(/</g,'&lt;')+'</div>'+(x.n&&x.n!=='0'?'<span class="mn-b">'+x.n+'</span>':'')+'</div>'; }).join('')+'</div>';
-    ov.querySelectorAll('.mn-card').forEach(function(cd){ cd.onclick=function(){ var it=its[+cd.dataset.i]; mnCerrar(); it.el.click(); }; });
-    ov.classList.add('open'); b.classList.add('active'); };
-  window.addEventListener('resize',function(){ if(ov.classList.contains('open')) pos(); });
-  document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('#sidebar .nav-item')) mnCerrar(); },true);
-})();
-</script>
-<!-- SPLASH de carga con porcentaje en tiempo real (solo después de iniciar sesión) -->
-<script>
-(function(){
-  var spl=document.getElementById('splash'); if(!spl) return;
-  var shown=0,target=0,ms=0,active=false,timer=null,creepT=0,started=0,finished=0,expected=14;
-  function el(i){ return document.getElementById(i); }
-  function render(){ var b=el('splash-bar'),t=el('splash-pct'); if(b) b.style.width=shown+'%'; if(t) t.textContent=shown+'%'; }
-  function hideNow(){ spl.classList.add('hide','hidden'); setTimeout(function(){ if(!active) spl.style.display='none'; },450); }
-  function kick(){ if(!timer) timer=setInterval(tick,22); }
-  function tick(){
-    if(shown<target){ shown++; render(); creepT=0; return; }
-    if(!active){ clearInterval(timer); timer=null; if(shown>=100) setTimeout(hideNow,250); return; }
-    if(++creepT>=24 && target<Math.min(96,ms+5)){ target++; creepT=0; }   // avanza poquito mientras espera la respuesta
-  }
-  function setT(p){ p=Math.min(96,Math.max(0,p)); if(p>ms) ms=p; if(p>target) target=p; kick(); }
-  function show(){ active=true; shown=0; target=0; ms=0; creepT=0; started=0; finished=0; expected=14; spl.style.display=''; spl.classList.remove('hide','hidden'); render(); var m=el('splash-msg'); if(m) m.textContent='Iniciando...'; kick(); }
-  function done(){ if(!active){ hideNow(); return; } active=false; target=100; kick(); }
-  function prog(p,m){ if(!active) return; if(m){ var e=el('splash-msg'); if(e) e.textContent=m; } if(p<100) setT(p*0.9); }
-  window.setSplash=p
+  }catch(e){ toast('❌ '+e.message,'error'); if(btn){ btn.disabled=fal

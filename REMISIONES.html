@@ -2489,5 +2489,58 @@ tbody tr{transition:none!important}
 </script>
 <!-- /WEDM-LISTAS -->
 
+<!-- WEDM-FUNCIONES (panel del desarrollador: decide qué funciones se muestran) -->
+<style>
+#fn-btn{width:32px;height:32px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+#fn-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:3500;display:none;align-items:flex-start;justify-content:center;padding:4vh 10px;overflow:auto}
+#fn-ov.open{display:flex}
+#fn-box{background:var(--card,#fff);color:var(--text,#1e293b);border-radius:16px;width:min(640px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+#fn-box h3{margin:0;padding:14px 16px;font-size:15px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border,#e2e8f0)}
+#fn-box .fn-mod{padding:8px 16px 2px;font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--muted,#64748b)}
+#fn-box .fn-row{display:flex;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border,#e2e8f0)}
+#fn-box .fn-row .t{flex:1;min-width:0}#fn-box .fn-row b{font-size:13px}#fn-box .fn-row small{display:block;color:var(--muted,#64748b);font-size:11px}
+#fn-box input[type=text]{width:120px;padding:5px 7px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:11px;background:var(--surface,#fff);color:inherit}
+.fn-sw{position:relative;width:38px;height:22px;flex-shrink:0}.fn-sw input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:1}
+.fn-sw i{position:absolute;inset:0;background:#cbd5e1;border-radius:99px;transition:.15s}.fn-sw i:after{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s}
+.fn-sw input:checked+i{background:#16a34a}.fn-sw input:checked+i:after{left:19px}
+</style>
+<script>
+(function(){
+ window.FN=window.FN||{};
+ var mine=function(){ try{ return _misRoles(); }catch(e){ return []; } };
+ var esDev=function(){ var m=mine(); return m.indexOf('desarrollador')>-1||m.indexOf('admin')>-1; };
+ // F('clave') → true si la función está visible para este usuario (por defecto todo está activo)
+ window.F=function(k){ var r=FN[k]; if(!r) return true; if(r.activo===false) return false;
+   if(r.roles&&r.roles.length){ if(esDev()) return true; var m=mine(); return r.roles.some(function(x){return m.indexOf(x)>-1}); } return true; };
+ function sess(){ try{ return !!(typeof _SESSION!=='undefined'&&_SESSION&&_SESSION.token); }catch(e){ return false; } }
+ function cargar(){ if(!sess()||typeof sb==='undefined') return; sb.rpc('funciones_get').then(function(rows){
+   if(!Array.isArray(rows)) return; var n={},ch=false; rows.forEach(function(r){ n[r.clave]=r; var o=FN[r.clave]; if(!o||o.activo!==r.activo||String(o.roles)!==String(r.roles)) ch=true; });
+   window.FN=n; window.FN_OK=true; if(ch&&window._fnLoaded&&typeof refreshCurrentView==='function'&&!document.getElementById('fn-ov').classList.contains('open')){ try{refreshCurrentView();}catch(e){} } window._fnLoaded=true;
+ }).catch(function(){ window.FN_OK=false; }); }
+ window.fnAbrir=function(){ var ov=document.getElementById('fn-ov'); ov.classList.add('open'); fnPintar(); };
+ window.fnCerrar=function(){ document.getElementById('fn-ov').classList.remove('open'); };
+ window.fnPintar=function(){
+  var b=document.getElementById('fn-lista'); var arr=Object.keys(FN).map(function(k){return FN[k]});
+  if(!arr.length){ b.innerHTML='<div style="padding:18px 16px;font-size:12.5px;color:var(--muted)">Aún no existe la tabla de funciones en la base. Ejecuta el archivo <b>01_funciones.sql</b> en Supabase (SQL Editor) y vuelve a abrir este panel. Mientras tanto todas las funciones están activas.</div>'; return; }
+  var mods={}; arr.forEach(function(r){ (mods[r.modulo]=mods[r.modulo]||[]).push(r); });
+  var NM={comercial:'Comercial',planeacion:'Planeación',diseno:'Diseño',compras:'Compras',calidad:'Calidad',general:'General'};
+  b.innerHTML=Object.keys(mods).map(function(m){ return '<div class="fn-mod">'+(NM[m]||m)+'</div>'+mods[m].map(function(r){
+   return '<div class="fn-row"><label class="fn-sw"><input type="checkbox" '+(r.activo?'checked':'')+' onchange="fnSet(\''+r.clave+'\',this.checked,null)"><i></i></label><div class="t"><b>'+r.nombre+'</b><small>'+(r.descripcion||'')+'</small></div>'+
+    '<input type="text" placeholder="roles (todos)" value="'+((r.roles||[]).join(','))+'" title="Roles que la ven, separados por coma. Vacío = todos" onchange="fnSet(\''+r.clave+'\',null,this.value)"></div>'; }).join(''); }).join('');
+ };
+ window.fnSet=function(k,act,roles){ var r=FN[k]; if(!r) return; var a=act===null?r.activo:act; var ro=roles===null?(r.roles||[]):String(roles).split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean);
+   sb.rpc('funciones_set',{p_clave:k,p_activo:a,p_roles:ro}).then(function(){ r.activo=a; r.roles=ro.length?ro:null; try{toast('Guardado');}catch(e){} try{ refreshCurrentView(); }catch(e){} }).catch(function(e){ try{toast('❌ '+(e.message||e),'error');}catch(x){} fnPintar(); }); };
+ function init(){
+  var ov=document.createElement('div'); ov.id='fn-ov'; ov.onclick=function(e){ if(e.target===ov) fnCerrar(); };
+  ov.innerHTML='<div id="fn-box"><h3><span>⚙️ Funciones del sistema</span><button class="btn btn-ghost btn-sm" onclick="fnCerrar()">✕</button></h3><div style="padding:8px 16px;font-size:11.5px;color:var(--muted)">Activa o desactiva lo que se muestra, o limita una función a ciertos roles. El cambio aplica a todos los usuarios.</div><div id="fn-lista"></div></div>';
+  document.body.appendChild(ov);
+  var t=document.getElementById('topbar'), rf=document.getElementById('refresh-btn');
+  if(t&&rf&&!document.getElementById('fn-btn')){ var b=document.createElement('div'); b.id='fn-btn'; b.title='Módulo Desarrollador'; b.textContent='⚙️'; b.onclick=function(){location.href='DESARROLLADOR.html'}; t.insertBefore(b,rf); }
+  setInterval(function(){ var b=document.getElementById('fn-btn'); if(b) b.style.display=(sess()&&esDev())?'flex':'none'; if(sess()&&!window._fnT){ window._fnT=1; cargar(); setInterval(cargar,300000); } },1000);
+ }
+ if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<!-- /WEDM-FUNCIONES -->
 </body>
 </html>
