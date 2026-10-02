@@ -83,7 +83,7 @@ body{display:flex;flex-direction:column;font-family:var(--sans);font-size:14px;
 
 /* ═══ QUICK ACCESS BAR (barra superior de navegación) ══════ */
 #qa-bar{
-  display:flex;align-items:center;gap:4px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-evenly;gap:4px;flex-shrink:0;
   background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -3px 14px rgba(15,23,42,.07);
   padding:5px 6px calc(5px + env(safe-area-inset-bottom,0px));overflow-x:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;z-index:190;
@@ -6059,7 +6059,8 @@ importar=function(){
 </script>
 <!-- MENÚ (tarjetas de módulos) -->
 <style>
-#qa-bar #bn-menu .qbar-icon{background:#0f2443;color:#fff;font-size:14px}
+#qa-bar .qbar-item[data-qa=remisiones],#qa-bar .qbar-item[data-qa=materiales],#qa-bar .qbar-item[data-qa=servicios],#qa-bar .qbar-item[data-qa=procesos],#qa-bar .qbar-item[data-qa=importar]{display:none !important}
+#qa-bar #bn-menu .qbar-icon{background:#0f2443;color:#fff;font-size:15px;width:36px;height:36px}
 #mn-ov{position:fixed;z-index:150;background:var(--bg,#f1f5f9);overflow:auto;display:none;-webkit-overflow-scrolling:touch}
 #mn-ov.open{display:block}
 .mn-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
@@ -6077,7 +6078,7 @@ importar=function(){
   var old=nav.querySelectorAll('.bn-item'); // se conservan ocultos: el código de cada módulo los sigue actualizando
   var b=document.createElement('div'); b.className='bn-item'; b.id='bn-menu';
   if(nav.id==='qa-bar'){ b.className='qbar-item'; b.innerHTML='<div class="qbar-icon">▦</div><div class="qbar-label">MENÚ</div>'; } else b.innerHTML='<div class="bn-icon">▾</div><div>MENÚ</div>'; b.onclick=function(){ mnToggle(); };
-  nav.insertBefore(b,nav.firstChild);
+  var ref=nav.querySelector('.qbar-item[data-qa="items"]'); nav.insertBefore(b,ref||nav.firstChild);
   var ov=document.createElement('div'); ov.id='mn-ov'; document.body.appendChild(ov);
   function pos(){ var c=document.getElementById('content')||document.body, r=c.getBoundingClientRect();
     ov.style.left=r.left+'px'; ov.style.top=r.top+'px'; ov.style.width=r.width+'px'; ov.style.height=(nav.getBoundingClientRect().top-r.top)+'px'; }
