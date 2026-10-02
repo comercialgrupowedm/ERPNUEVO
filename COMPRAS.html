@@ -1171,7 +1171,20 @@ let _CV={vista:'tabla'};
 function cvVista(k){ _CV.vista=k; refreshCurrentView(); }
 const cvCtl=()=>`<div class="chips" data-tbctl="1">${[['tabla','⊞ Tabla'],['tarjetas','▦ Tarjetas']].map(([k,l])=>`<button class="chip ${_CV.vista===k?'on':''}" onclick="cvVista('${k}')">${l}</button>`).join('')}</div>`;
 const cvThumb=(h,ph)=>h||`<div class="lc-thumb ph" style="width:34px;height:34px;font-size:16px">${ph}</div>`;
-function pedidosTabla(rows){
+// ── Orden por columna (clic en el encabezado) para las tablas de pedidos, órdenes y proveedores ──
+const _CS={};
+const _csN=v=>{ if(v==null||v==='') return ''; if(typeof v==='number') return v; const t=String(v); const n=Number(t.replace(/[$.\s]/g,'').replace(',','.')); return (/^[\d$.,\s-]+$/.test(t)&&!isNaN(n))?n:t.toLowerCase(); };
+const ACC={
+  pd:{'Material / servicio':m=>m.material,'OP':m=>(prodDe(m.id_prod)||{}).op,'Ítem':m=>(prodDe(m.id_prod)||{}).item_num,'Cliente':m=>(prodDe(m.id_prod)||{}).empresa,'Tipo':m=>m.tipo,'Cant.':m=>Number(m.cantidad)||cantTxt(m),'Proveedor':m=>m.proveedor,'Costo':m=>costoDe(m)||0,'OC':m=>{ const o=m.id_oc?(DB.ocs||[]).find(x=>x.id===m.id_oc):null; return o?ocNum(o):''; },'Estado':m=>m.estado,'Entrega OP':m=>(prodDe(m.id_prod)||{}).fecha_pactada||'','Pedido':m=>m.solicitado_at||''},
+  oc:{'OC':o=>Number(String(ocNum(o)).replace(/\D/g,''))||ocNum(o),'Fecha':o=>o.fecha||'','Proveedor':o=>o.prov_nombre,'OP':o=>ocOpsDe(o),'Proyecto':o=>o.proyecto,'Líneas':o=>(DB.lineas||[]).filter(m=>m.id_oc===o.id).length,'Total':o=>Number(o.total)||0,'Estado':o=>o.estado},
+  pv:{'Proveedor':p=>p.nombre,'NIT':p=>p.nit,'Tipo':p=>p.tipo_proveedor||p.categoria,'Ciudad':p=>p.ciudad,'Encargado':p=>p.contacto,'Teléfono':p=>p.telefono||p.celular,'Email':p=>p.email,'Plazo':p=>p.plazo_pago,'OC':p=>provStats(p).n,'Total OC':p=>provStats(p).total||0,'Estado':p=>p.activo?'activo':'inactivo'}
+};
+function cvSort(key,c){ const o=_CS[key]; _CS[key]=(o&&o.c===c)?{c,d:o.d==='asc'?'desc':'asc'}:{c,d:'asc'}; try{pgReset();}catch(e){ for(const k in _PGN) delete _PGN[k]; } refreshCurrentView(); }
+function cvApply(key,rows){ const st=_CS[key], f=st&&ACC[key][st.c]; if(!f) return rows; const k=st.d==='asc'?1:-1;
+  return rows.slice().sort((a,b)=>{ const x=_csN(f(a)), y=_csN(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return r*k; }); }
+function cvHead(key,html){ const st=_CS[key];
+  return html.replace(/<th((?: class="[^"]*")?)>([^<]+)<\/th>/g,(m,cl,t)=>ACC[key][t]?`<th${cl} style="cursor:pointer" onclick="cvSort('${key}','${t.replace(/'/g,"\\'")}')">${t}${st&&st.c===t?(st.d==='asc'?' ▲':' ▼'):''}</th>`:m); }
+function _pedidosTabla(rows){
   const th=`<div style="width:34px">`;
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th class="sk sk0"></th><th class="sk sk1"></th><th class="sk sk2">Material / servicio</th><th>Acciones</th><th>OP</th><th>Ítem</th><th>Cliente</th><th>Tipo</th><th>Cant.</th><th>Proveedor</th><th>Costo</th><th>OC</th><th>Estado</th><th>Entrega OP</th><th>Pedido</th></tr></thead><tbody>
   ${rows.map(m=>{
@@ -1194,7 +1207,7 @@ function pedidosTabla(rows){
       <td style="${venc?'color:var(--danger);font-weight:800':''}">${p.fecha_pactada?pactadaTag(p):'—'}</td><td>${m.solicitado_at?fmtDate(m.solicitado_at):'—'}</td></tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
-function ordenesTabla(rows){
+function _ordenesTabla(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th class="sk sk1 skl0"></th><th class="sk sk2 skl1">OC</th><th>Fecha</th><th>Proveedor</th><th>Acciones</th><th>OP</th><th>Proyecto</th><th>Líneas</th><th>Total</th><th>Estado</th></tr></thead><tbody>
   ${rows.map(o=>{
     const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=ls.length?[]:(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const n=ls.length||hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
@@ -1205,13 +1218,16 @@ function ordenesTabla(rows){
 </tr>${det}`; }).join('')}
   </tbody></table></div></div>`;
 }
-function proveedoresTabla(rows){
+function _proveedoresTabla(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th class="sk sk1 skl0"></th><th class="sk sk2 skl1">Proveedor</th><th>Acciones</th><th>NIT</th><th>Tipo</th><th>Ciudad</th><th>Encargado</th><th>Teléfono</th><th>Email</th><th>Plazo</th><th>OC</th><th>Total OC</th><th>Estado</th></tr></thead><tbody>
   ${rows.map(p=>{ const s=provStats(p);
     return `<tr onclick="${puedeCompras()?`abrirProv('${p.id}')`:''}"><td class="sk sk1 skl0">${cvThumb(p.logo?`<img src="${esc(p.logo)}" class="lc-thumb" style="width:34px;height:34px;object-fit:contain;background:#fff" alt="">`:'','🏭')}</td><td class="sk sk2 skl1" style="font-weight:700">${esc(p.nombre)}</td><td onclick="event.stopPropagation()" style="overflow:visible;white-space:nowrap">${puedeCompras()?`<button class="btn btn-sm btn-ghost" title="Editar" onclick="abrirProv('${p.id}')">✏️</button> <button class="btn btn-sm btn-ghost" title="${p.activo?'Desactivar':'Activar'}" onclick="pvActivo('${p.id}',${!p.activo})">${p.activo?'⏸':'▶'}</button>`:''}</td><td>${esc(p.nit||'—')}</td><td style="max-width:160px">${esc(String(p.tipo_proveedor||p.categoria||'').replace(/^PROVEEDORES? DE /i,'')||'—')}</td><td>${esc(p.ciudad||'—')}</td><td style="max-width:150px">${esc(p.contacto||'—')}</td><td>${esc(p.telefono||p.celular||'—')}</td><td style="max-width:200px">${esc(p.email||'—')}</td><td>${esc(p.plazo_pago||'—')}</td><td class="td-center">${s.n}</td><td style="text-align:right;font-weight:700;color:var(--gold)">${s.total?fmt(s.total):'—'}</td><td>${p.activo?'<span class="badge verde">Activo</span>':'<span class="badge gris">Inactivo</span>'}</td>
 </tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
+function proveedoresTabla(rows){ return cvHead('pv',_proveedoresTabla(rows)); }
+function pedidosTabla(rows){ return cvHead('pd',_pedidosTabla(rows)); }
+function ordenesTabla(rows){ return cvHead('oc',_ordenesTabla(rows)); }
 function lineaCard(m){
   const p=prodDe(m.id_prod)||{}; const [lbl,cls]=EST[m.estado]||[m.estado,'gris']; const oc=m.id_oc?(DB.ocs||[]).find(o=>o.id===m.id_oc):null;
   const d=diasPactada(p); const venc=m.estado==='SOLICITADO'&&d!=null&&d<0;
@@ -1250,7 +1266,7 @@ function pedidos(){
     <select onchange="pdSet('tipo',this.value)" style="height:40px;border-radius:11px;border:1.5px solid var(--border);background:var(--surface);padding:0 8px;font-size:12px"><option value="">Todo</option><option value="MATERIAL" ${_PD.tipo==='MATERIAL'?'selected':''}>Materiales</option><option value="SERVICIO EXTERNO" ${_PD.tipo==='SERVICIO EXTERNO'?'selected':''}>Servicios</option></select>
     <span class="filter-count">${rows.length}/${all.length}</span></div></div>`;
   const selAll=(puedeCompras()&&rows.some(puedeSel))?`<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-sm btn-ghost" onclick="selTodo()">☑ Seleccionar todo</button><button class="btn btn-sm btn-ghost" onclick="selLimpiar();pedidos()">✖ Limpiar</button></div>`:'';
-  const pg=pgSlice('pd',rows);
+  const pg=pgSlice('pd',cvApply('pd',rows));
   const vacio=_PD.est==='SOLICITADO'?['✅','No hay pedidos por comprar']:['📭','Sin registros en esta vista'];
   setContent(`${banner}${cvCtl()}${kp}${fb}${selAll}${rows.length?`${_CV.vista==='tabla'?pedidosTabla(pg):`<div class="card-list">${pg.map(lineaCard).join('')}</div>`}${pgMore('pd',rows)}`:empty(all.length&&(_PD.q||_PD.tipo)?'Sin resultados':vacio[1],all.length&&(_PD.q||_PD.tipo)?'🔍':vacio[0])}`);
 }
@@ -1568,7 +1584,7 @@ function ordenes(){
   const emit=all.filter(o=>o.estado==='EMITIDA');
   const kp=`<div class="kstrip" style="margin-top:12px">${kchip(emit.length,'📄 Por recibir','#0f766e')}${kchip(fmt(emit.reduce((s,o)=>s+Number(o.total||0),0)),'💲 Valor por recibir','var(--gold)')}</div>`;
   const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OC, proveedor, proyecto…" value="${esc(_OC.q)}" autocomplete="off" data-fkey="ocq" oninput="ocSetQ(this.value)"></div><span class="filter-count">${rows.length}/${all.length}</span></div></div>`;
-  const pg=pgSlice('oc',rows);
+  const pg=pgSlice('oc',cvApply('oc',rows));
   setContent(`${banner}${cvCtl()}${kp}${fb}${rows.length?`${_CV.vista==='tabla'?ordenesTabla(pg):`<div class="card-list">${pg.map(ocCard).join('')}</div>`}${pgMore('oc',rows)}`:empty(all.length?'Sin resultados':'Todavía no hay órdenes de compra',all.length?'🔍':'📄')}`);
 }
 function ocRecibirAbrir(id){
@@ -1598,7 +1614,7 @@ function proveedores(){
     <div class="lc-meta" style="flex-wrap:wrap">${p.nit?`<span style="font-size:11px">NIT ${esc(p.nit)}</span>`:''}${p.contacto?`<span style="font-size:11px">👤 ${esc(p.contacto)}</span>`:''}${p.telefono?`<a href="tel:${esc(p.telefono)}" style="font-size:11px;color:var(--info)">📞 ${esc(p.telefono)}</a>`:''}${p.celular?`<a href="tel:${esc(p.celular)}" style="font-size:11px;color:var(--info)">📱 ${esc(p.celular)}</a>`:''}${p.plazo_pago?`<span style="font-size:11px">💳 ${esc(p.plazo_pago)}</span>`:''}${p.email?`<a href="mailto:${esc(p.email)}" style="font-size:11px;color:var(--info)">✉️ ${esc(p.email)}</a>`:''}</div>
     <div class="lc-meta" style="margin-top:4px"><span style="font-size:11px;color:var(--muted)">${s.n} OC · ${fmt(s.total)}</span></div>${p.actividad?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(String(p.actividad).slice(0,140))}</div>`:''}
     ${puedeCompras()?`<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-sm btn-ghost" onclick="abrirProv('${p.id}')">✏️ Editar</button><button class="btn btn-sm btn-ghost" onclick="pvActivo('${p.id}',${!p.activo})">${p.activo?'⏸ Desactivar':'▶ Activar'}</button></div>`:''}</div>`; };
-  const pg=pgSlice('pv',rows);
+  const pg=pgSlice('pv',cvApply('pv',rows));
   setContent(`${banner}${cvCtl()}${fb}${rows.length?`${_CV.vista==='tabla'?proveedoresTabla(pg):`<div class="card-list">${pg.map(card).join('')}</div>`}${pgMore('pv',rows)}`:empty(all.length?'Sin resultados':'Todavía no hay proveedores',all.length?'🔍':'🏭')}`);
 }
 function abrirProv(id){

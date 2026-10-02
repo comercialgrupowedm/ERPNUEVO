@@ -1980,6 +1980,14 @@ async function guardarAvance(id){
   if(r) trasGuardar(id);
 }
 
+const opCols=extra=>[
+  {h:'',w:'46px',v:o=>thumbProd(o,34),s:()=>''},
+  {h:'OP · Ítem',v:o=>'<b style="white-space:nowrap">'+opTitulo(o)+'</b>',s:o=>(Number(o.op)||0)*1000+(Number(o.item_num)||0)},
+  {h:'Cliente',v:o=>`<div style="min-width:140px">${esc(o.empresa||'—')}</div>`,s:o=>o.empresa||''},
+  {h:'Descripción',v:o=>`<div style="min-width:170px;max-width:290px;overflow-wrap:anywhere">${esc(String(o.descripcion||'').slice(0,100))}</div>`},
+  {h:'Estado',v:o=>bEst(o.estado),s:o=>o.estado||''},
+  ...extra];
+const diasBadge=o=>{ const d=diasPactada(o); return `<span style="white-space:nowrap">${fmtDate(o.fecha_pactada)} ${d!=null?diasTag(d):''}</span>`; };
 // ── PESTAÑA: EN PRODUCCIÓN (solo EN PROCESO y TRABAJO EXTERNO) ──────────
 let _prodF={chip:'todas',q:'',maq:'',prio:''};
 function prodSet(k,v){ _prodF[k]=v; pgReset(); produccion(); }
@@ -2017,7 +2025,15 @@ function produccion(){
     <select onchange="prodSet('prio',this.value)"><option value="">Prioridad</option>${prios.map(p=>`<option ${_prodF.prio===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
     ${(_prodF.chip!=='todas'||_prodF.q||_prodF.maq||_prodF.prio)?`<button class="btn btn-ghost btn-sm" onclick="_prodF={chip:'todas',q:'',maq:'',prio:''};pgReset();produccion()">✕ Limpiar</button>`:''}</div></div>`;
   if(!data.length){ setContent(banner+fb+empty('No hay OP en producción con estos filtros','🏭')); return; }
-  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('prod',data).map(prodCard).join('')}</div>${pgMore('prod',data)}`);
+  const cols=opCols([
+    {h:'Prioridad',v:o=>bPrio(o.prioridad),s:o=>o.prioridad||''},
+    {h:'Paso actual',v:o=>pasoChip(o)+' '+extBadge(o)},
+    {h:'Operario',v:o=>operBadge(o)||'—'},
+    {h:'Avance',v:o=>`<div style="min-width:110px;display:flex;align-items:center;gap:6px"><div style="flex:1">${prog(pctOp(o))}</div><b style="font-family:var(--mono);font-size:11.5px">${pctOp(o)}%</b></div>`,s:o=>pctOp(o)},
+    {h:'Pactada',v:diasBadge,s:o=>o.fecha_pactada||''},
+    {h:'Sem',cls:'td-center',v:o=>o.semana||'—',s:o=>Number(o.semana)||0},
+    {h:'Score',v:o=>scoreBadge(o)||'—',s:o=>(scoreOP(o)||{}).total||0}]);
+  setContent(banner+fb+LV.render('prod',data,{card:prodCard,cols,click:o=>`detailOP('${idq(o)}')`}));
 }
 
 // ── PESTAÑA: RUTA (por máquina = vista principal; por OP = detalle de su ruta) ──
@@ -2062,10 +2078,12 @@ function rutaPorOP(tabs){
     return;
   }
   const data=base.filter(o=>buscaOP(o,_rutaF.q)).sort(porUrgencia);
-  const lista=pgSlice('rutaop',data).map(o=>{ const ps=pasosDe(o);
+  const cardR=o=>{ const ps=pasosDe(o);
     return `<div class="list-card" style="padding:11px 13px" onclick="rutaVerOP('${idq(o)}')"><div class="lc-top" style="margin-bottom:2px"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(o)}</div><div class="lc-title" style="font-size:13px">${esc(o.empresa||'—')}</div></div>${bEst(o.estado)}</div>
-      <div class="lc-meta" style="margin-top:4px">${ps.length?ps.map(s=>`<span class="badge ${pasoActual(o)?.i===s.i?'azul':'gris'}" title="${esc(s.raw)}">${s.i}. ${MAQ[s.b].ic} ${s.b==='externo'?esc(s.raw.slice(0,18)):MAQ[s.b].l+' '+s.pct+'%'}</span>`).join(''):'<span class="badge gris">Sin ruta</span>'}</div></div>`; }).join('');
-  setContent(`${banner}${filtroBusqueda('ruta-q',_rutaF.q,"_rutaF.q=this.value;pgReset();ruta()",data.length+'/'+base.length)}<div class="card-list" style="margin-top:10px">${lista||empty('Sin resultados')}</div>${pgMore('rutaop',data)}`);
+      <div class="lc-meta" style="margin-top:4px">${ps.length?ps.map(s=>`<span class="badge ${pasoActual(o)?.i===s.i?'azul':'gris'}" title="${esc(s.raw)}">${s.i}. ${MAQ[s.b].ic} ${s.b==='externo'?esc(s.raw.slice(0,18)):MAQ[s.b].l+' '+s.pct+'%'}</span>`).join(''):'<span class="badge gris">Sin ruta</span>'}</div></div>`; };
+  const colsR=opCols([
+    {h:'Ruta (pasos)',v:o=>{ const ps=pasosDe(o); return ps.length?`<div style="display:flex;flex-wrap:wrap;gap:3px;min-width:240px">${ps.map(s=>`<span class="badge ${pasoActual(o)?.i===s.i?'azul':'gris'}" title="${esc(s.raw)}">${s.i}. ${MAQ[s.b].ic} ${s.b==='externo'?esc(s.raw.slice(0,18)):MAQ[s.b].l+' '+s.pct+'%'}</span>`).join('')}</div>`:'<span class="badge gris">Sin ruta</span>'; },s:o=>pasosDe(o).length}]);
+  setContent(`${banner}${filtroBusqueda('ruta-q',_rutaF.q,"_rutaF.q=this.value;pgReset();ruta()",data.length+'/'+base.length)}${data.length?LV.render('rutaop',data,{card:cardR,cols:colsR,click:o=>`rutaVerOP('${idq(o)}')`}):empty('Sin resultados')}`);
 }
 
 // ── PESTAÑA: OPERARIOS ──────────────────────────────────────────────
@@ -2095,7 +2113,11 @@ function operarios(){
       ${pasosDe(o).map(s=>`<div class="opr-step"><span class="rp-num" style="width:22px;height:22px;font-size:11px;background:${MAQ[s.b].c}">${s.i}</span><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.raw)}${act&&act.i===s.i?' <span class="badge azul">actual</span>':''}</div>${s.nota?`<div style="font-size:11px;color:var(--muted)">${esc(s.nota)}</div>`:''}</div>
         ${s.oper?`<span class="badge teal">👷 ${esc(s.oper)}</span>`:'<span class="badge naranja">Sin asignar</span>'}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();modalOperarios('${j}',${s.i})">${s.oper?'Cambiar':'Asignar'}</button></div>`).join('')}</div>`; };
   if(!data.length){ setContent(banner+cargaH+fb+empty(_oprF.chip==='sin'?'Todas las OP de esta vista tienen sus pasos asignados 👏':'Sin resultados','👷')); return; }
-  setContent(`${banner}${cargaH}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('opr',data).map(card).join('')}</div>${pgMore('opr',data)}`);
+  const cols=opCols([
+    {h:'Pactada',v:diasBadge,s:o=>o.fecha_pactada||''},
+    {h:'Pasos de la ruta · operario',v:o=>{ const act=pasoActual(o); return `<div style="min-width:260px;display:flex;flex-direction:column;gap:3px">${pasosDe(o).map(s=>`<div style="display:flex;gap:6px;align-items:center;font-size:11.5px"><span class="rp-num" style="width:20px;height:20px;font-size:10.5px;flex:none;background:${MAQ[s.b].c}">${s.i}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.raw)}${act&&act.i===s.i?' <span class="badge azul">actual</span>':''}</span>${s.oper?`<span class="badge teal">👷 ${esc(s.oper)}</span>`:'<span class="badge naranja">Sin asignar</span>'}</div>`).join('')}</div>`; },s:o=>pasosDe(o).filter(s=>!s.oper).length},
+    {h:'',act:1,v:o=>`<button class="btn btn-soft btn-sm" onclick="modalOperarios('${idq(o)}')">👷 Asignar</button>`}]);
+  setContent(banner+cargaH+fb+LV.render('opr',data,{card,cols,click:o=>`modalOperarios('${idq(o)}')`}));
 }
 
 // ── PESTAÑA: AVANCES (cola de trabajo: las más vencidas primero) ──────
@@ -2124,7 +2146,12 @@ function avances(){
     `<div class="chips">${[['prod','En producción'],['curso','Todas en curso']].map(([k,l])=>`<button class="chip ${_avqF.alcance===k?'on':''}" onclick="avqSet('alcance','${k}')">${l}</button>`).join('')}</div>`);
   const fb=filtroBusqueda('avq-q',_avqF.q,"avqSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+fb+empty('No hay OP en esta vista','📈')); return; }
-  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('avq',data).map(avqCard).join('')}</div>${pgMore('avq',data)}`);
+  const cols=opCols([
+    {h:'Pactada',v:diasBadge,s:o=>o.fecha_pactada||''},
+    {h:'Avance',v:o=>`<div style="min-width:110px;display:flex;align-items:center;gap:6px"><div style="flex:1">${prog(pctOp(o))}</div><b style="font-family:var(--mono);font-size:11.5px;color:${pctColor(pctOp(o))}">${pctOp(o)}%</b></div>`,s:o=>pctOp(o)},
+    {h:'Paso actual',v:o=>pasoChip(o)+' '+operBadge(o)},
+    {h:'Acciones',act:1,v:o=>{ const j=idq(o); return `<button class="btn btn-soft btn-sm" onclick="modalAvancePasos('${j}')">📈 Avance</button> <button class="btn btn-soft btn-sm" onclick="modalEtapas('${j}')">⏭️ Etapa</button> <button class="btn btn-soft btn-sm" onclick="modalHoras('${j}')">⏱️ Horas</button>`; }}]);
+  setContent(banner+fb+LV.render('avq',data,{card:avqCard,cols,click:o=>`detailOP('${idq(o)}')`}));
 }
 
 // ── PESTAÑA: REPORTES ───────────────────────────────────────────────
@@ -3225,6 +3252,37 @@ tbody tr{transition:none!important}
 })();
 </script>
 <!-- /WEDM-RENDIMIENTO -->
+
+<!-- WEDM-LISTAS (vista Tabla / Tarjetas con tabla por defecto) -->
+<style>
+.data-tbl .btn-soft,.data-tbl .btn-ghost.btn-sm,.data-tbl .btn.btn-sm{padding:3px 8px!important;font-size:11px!important;min-height:0!important;height:auto!important;white-space:nowrap;border-radius:7px}
+.data-tbl td{vertical-align:middle}
+.data-tbl td.td-center,.data-tbl th.td-center{text-align:center}
+</style>
+<script>
+(function(){
+ const S={}; const st=k=>S[k]||(S[k]={vista:'tabla',col:null,dir:'asc'});
+ const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const norm=v=>{ if(v==null) return ''; if(typeof v==='number') return v; const s=String(v).replace(/<[^>]*>/g,'').trim(); const n=Number(s.replace(/[$.\s]/g,'').replace(',','.')); return (s!==''&&!isNaN(n)&&/^[\d$.,\s-]+$/.test(s))?n:s.toLowerCase(); };
+ window.LV={
+  st:st,
+  set:function(k,v){ st(k).vista=v; try{pgReset();}catch(e){} refreshCurrentView(); },
+  sort:function(k,i){ const s=st(k); if(s.col===i) s.dir=s.dir==='asc'?'desc':'asc'; else{ s.col=i; s.dir='asc'; } try{pgReset();}catch(e){} refreshCurrentView(); },
+  ctl:function(k){ const v=st(k).vista; return `<div class="chips" data-tbctl="1" style="margin:0 0 6px">${[['tabla','⊞ Tabla'],['cards','▦ Tarjetas']].map(function(a){return `<button class="chip ${v===a[0]?'on':''}" onclick="LV.set('${k}','${a[0]}')">${a[1]}</button>`;}).join('')}</div>`; },
+  // k: clave única de la lista · data: arreglo · o.card(row)->html · o.cols:[{h,v(row)->html,s(row)->valor ordenable,cls}] · o.click(row)->js · o.rowCls(row)
+  render:function(k,data,o){
+   const s=st(k); let rows=data;
+   if(s.vista==='cards'){ const pg=pgSlice(k,rows); return LV.ctl(k)+`<div class="card-list" style="margin-top:6px">${pg.map(o.card).join('')}</div>`+(typeof pgMore==='function'?pgMore(k,rows):''); }
+   if(s.col!=null&&o.cols[s.col]){ const c=o.cols[s.col], f=c.s||c.v; rows=data.slice().sort(function(a,b){ const x=norm(f(a)), y=norm(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return s.dir==='asc'?r:-r; }); }
+   const pg=pgSlice(k,rows);
+   const th=o.cols.map(function(c,i){ return `<th style="cursor:pointer;${c.w?'width:'+c.w+';':''}" onclick="LV.sort('${k}',${i})">${c.h}${s.col===i?(s.dir==='asc'?' ▲':' ▼'):''}</th>`; }).join('');
+   const tr=pg.map(function(r){ return `<tr ${o.click?`onclick="${o.click(r)}"`:''} ${o.rowCls?`class="${o.rowCls(r)}"`:''}>`+o.cols.map(function(c){ return `<td class="${c.cls||''}" ${c.act?'onclick="event.stopPropagation()" style="white-space:nowrap;cursor:default"':''}>${c.v(r)}</td>`; }).join('')+`</tr>`; }).join('');
+   return LV.ctl(k)+`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`+(typeof pgMore==='function'?pgMore(k,rows):'');
+  }
+ };
+})();
+</script>
+<!-- /WEDM-LISTAS -->
 
 </body>
 </html>

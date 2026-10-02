@@ -1095,7 +1095,7 @@ function opsPorPedir(){
 }
 
 // ── REMISIONES (lista) ─────────────────────────────────────────────
-let _RM={f:null,per:'todo',q:'',emp:'',orden:'numero',dir:'desc',vista:(window.innerWidth<=700?'cards':'tabla')};
+let _RM={f:null,per:'todo',q:'',emp:'',orden:'numero',dir:'desc',vista:'tabla'};
 const RM_PER=[['1m','1 mes',30],['3m','3 meses',90],['6m','6 meses',180],['1a','1 año',365],['todo','Todo',null]];
 const remFiltro=()=>_RM.f||'todas';
 function rmSet(k,v){ _RM[k]=v; pgReset(); remisiones(); }
@@ -1369,11 +1369,19 @@ function porpedir(){
   const ops=opsPorPedir(); const puedePedir=puede('calidad','comercial','administracion');
   const banner=moduleBanner('📥','Por pedir','OP activas con unidades pendientes de remisionar');
   if(!ops.length){ setContent(banner+empty('No hay OP esperando remisión','✅')); return; }
-  const cards=ops.map(o=>{ const und=o.items.reduce((s,x)=>s+x.d,0);
+  const cardP=o=>{ const und=o.items.reduce((s,x)=>s+x.d,0);
     return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">OP-${o.op}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub">COT-${o.cot||'—'}${o.asesor?' · 👤 '+esc(o.asesor):''}</div></div><div style="text-align:right;flex-shrink:0"><span class="badge verde">${o.items.length} ítem${o.items.length!==1?'s':''}</span><div style="font-size:11px;margin-top:4px;color:var(--muted)">${und} und</div></div></div>
       <div style="margin-top:8px;font-size:12px;color:var(--muted)">${o.items.slice(0,4).map(x=>`<div>Ítem ${x.p.item_num}: ${esc(String(x.p.descripcion||'').slice(0,70))} <b style="color:var(--text)">· ${x.d} und</b>${x.p.calidad_estado==='APROBADA'?' <span class=\"badge verde\" style=\"font-size:9px\">Calidad OK</span>':' <span class=\"badge gris\" style=\"font-size:9px\">Sin aprobar calidad</span>'}</div>`).join('')}${o.items.length>4?`<div>… y ${o.items.length-4} más</div>`:''}</div>
-      <div style="margin-top:10px">${puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">Sin permiso para pedirla</span>'}</div></div>`; }).join('');
-  setContent(`${banner}<div class="card-list" style="margin-top:12px">${cards}</div><div style="height:80px"></div>`);
+      <div style="margin-top:10px">${puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">Sin permiso para pedirla</span>'}</div></div>`; };
+  const cols=[
+    {h:'OP',v:o=>'<b style="color:var(--accent);white-space:nowrap">OP-'+o.op+'</b>',s:o=>Number(o.op)||0},
+    {h:'Cliente',v:o=>`<div style="min-width:150px">${esc(o.empresa||'—')}</div>`,s:o=>o.empresa||''},
+    {h:'COT',v:o=>o.cot||'—',s:o=>Number(o.cot)||0},
+    {h:'Asesor',v:o=>esc(o.asesor||'—'),s:o=>o.asesor||''},
+    {h:'Ítems por remisionar',v:o=>`<div style="min-width:260px;font-size:11.5px">${o.items.slice(0,4).map(x=>`<div>Ítem ${x.p.item_num}: ${esc(String(x.p.descripcion||'').slice(0,60))} <b>· ${x.d} und</b> ${x.p.calidad_estado==='APROBADA'?'<span class="badge verde" style="font-size:9px">Calidad OK</span>':'<span class="badge gris" style="font-size:9px">Sin aprobar</span>'}</div>`).join('')}${o.items.length>4?`<div style="color:var(--muted)">+${o.items.length-4} más</div>`:''}</div>`},
+    {h:'Und',cls:'td-center',v:o=>o.items.reduce((s,x)=>s+x.d,0),s:o=>o.items.reduce((s,x)=>s+x.d,0)},
+    {h:'',act:1,v:o=>puedePedir?`<button class="btn btn-primary btn-sm" onclick="remPedirOp(${o.op})">📦 Pedir remisión</button>`:'<span style="font-size:11px;color:var(--muted)">Sin permiso</span>'}];
+  setContent(`${banner}<div style="margin-top:12px">${LV.render('pp',ops,{card:cardP,cols})}</div><div style="height:80px"></div>`);
 }
 
 // ── INICIO ─────────────────────────────────────────────────────────
@@ -2447,6 +2455,37 @@ tbody tr{transition:none!important}
 })();
 </script>
 <!-- /WEDM-RENDIMIENTO -->
+
+<!-- WEDM-LISTAS (vista Tabla / Tarjetas con tabla por defecto) -->
+<style>
+.data-tbl .btn-soft,.data-tbl .btn-ghost.btn-sm,.data-tbl .btn.btn-sm{padding:3px 8px!important;font-size:11px!important;min-height:0!important;height:auto!important;white-space:nowrap;border-radius:7px}
+.data-tbl td{vertical-align:middle}
+.data-tbl td.td-center,.data-tbl th.td-center{text-align:center}
+</style>
+<script>
+(function(){
+ const S={}; const st=k=>S[k]||(S[k]={vista:'tabla',col:null,dir:'asc'});
+ const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const norm=v=>{ if(v==null) return ''; if(typeof v==='number') return v; const s=String(v).replace(/<[^>]*>/g,'').trim(); const n=Number(s.replace(/[$.\s]/g,'').replace(',','.')); return (s!==''&&!isNaN(n)&&/^[\d$.,\s-]+$/.test(s))?n:s.toLowerCase(); };
+ window.LV={
+  st:st,
+  set:function(k,v){ st(k).vista=v; try{pgReset();}catch(e){} refreshCurrentView(); },
+  sort:function(k,i){ const s=st(k); if(s.col===i) s.dir=s.dir==='asc'?'desc':'asc'; else{ s.col=i; s.dir='asc'; } try{pgReset();}catch(e){} refreshCurrentView(); },
+  ctl:function(k){ const v=st(k).vista; return `<div class="chips" data-tbctl="1" style="margin:0 0 6px">${[['tabla','⊞ Tabla'],['cards','▦ Tarjetas']].map(function(a){return `<button class="chip ${v===a[0]?'on':''}" onclick="LV.set('${k}','${a[0]}')">${a[1]}</button>`;}).join('')}</div>`; },
+  // k: clave única de la lista · data: arreglo · o.card(row)->html · o.cols:[{h,v(row)->html,s(row)->valor ordenable,cls}] · o.click(row)->js · o.rowCls(row)
+  render:function(k,data,o){
+   const s=st(k); let rows=data;
+   if(s.vista==='cards'){ const pg=pgSlice(k,rows); return LV.ctl(k)+`<div class="card-list" style="margin-top:6px">${pg.map(o.card).join('')}</div>`+(typeof pgMore==='function'?pgMore(k,rows):''); }
+   if(s.col!=null&&o.cols[s.col]){ const c=o.cols[s.col], f=c.s||c.v; rows=data.slice().sort(function(a,b){ const x=norm(f(a)), y=norm(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return s.dir==='asc'?r:-r; }); }
+   const pg=pgSlice(k,rows);
+   const th=o.cols.map(function(c,i){ return `<th style="cursor:pointer;${c.w?'width:'+c.w+';':''}" onclick="LV.sort('${k}',${i})">${c.h}${s.col===i?(s.dir==='asc'?' ▲':' ▼'):''}</th>`; }).join('');
+   const tr=pg.map(function(r){ return `<tr ${o.click?`onclick="${o.click(r)}"`:''} ${o.rowCls?`class="${o.rowCls(r)}"`:''}>`+o.cols.map(function(c){ return `<td class="${c.cls||''}" ${c.act?'onclick="event.stopPropagation()" style="white-space:nowrap;cursor:default"':''}>${c.v(r)}</td>`; }).join('')+`</tr>`; }).join('');
+   return LV.ctl(k)+`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`+(typeof pgMore==='function'?pgMore(k,rows):'');
+  }
+ };
+})();
+</script>
+<!-- /WEDM-LISTAS -->
 
 </body>
 </html>

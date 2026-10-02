@@ -1279,6 +1279,16 @@ function itemCard(o,extra='',acts=''){
     ${acts?`<div class="avq-acts" onclick="event.stopPropagation()">${acts}</div>`:''}
   </div>`;
 }
+const itemCols=(extra,acts)=>[
+  {h:'',w:'46px',v:o=>thumbProd(o,34),s:()=>''},
+  {h:'OP · Ítem',v:o=>'<b style="white-space:nowrap">'+opTitulo(o)+'</b>',s:o=>(Number(o.op)||0)*1000+(Number(o.item_num)||0)},
+  {h:'Cliente',v:o=>esc(o.empresa||'—')},
+  {h:'Descripción',v:o=>`<div style="min-width:180px;max-width:300px;overflow-wrap:anywhere">${esc(String(o.descripcion||'').slice(0,110))}</div>`},
+  {h:'Und',cls:'td-center',v:o=>esc(String(o.unidades??'—')),s:o=>Number(o.unidades)||0},
+  {h:'Calidad',v:o=>bCal(o)+' '+bQA(o)+' '+bGar(o)},
+  {h:'Pactada',v:o=>{ const d=diasPactada(o); return o.fecha_pactada?`<span style="white-space:nowrap">${fmtDate(o.fecha_pactada)} ${!o.despachado&&d!=null?diasTag(d):''}</span>`:'—'; },s:o=>o.fecha_pactada||''},
+  ...extra,
+  {h:'Acciones',act:1,v:o=>`<div style="display:flex;gap:4px;flex-wrap:wrap;min-width:150px">${acts(o)||''}</div>`,s:()=>''}];
 const actBtn=(l,fn)=>`<button class="btn btn-soft" onclick="event.stopPropagation();${fn}">${l}</button>`;
 
 // ── DASHBOARD ──────────────────────────────────────────────────────
@@ -1336,17 +1346,22 @@ function pendiente(){
   const nota=_penF.chip==='entrega'?`<div class="callout">ℹ️ Estos ítems tienen el avance al 100% pero producción todavía <b>no los marcó como entregados</b> (en el sistema anterior ya aparecían aquí). Calidad no puede aprobarlos hasta que se marque la entrega: pídela a Planeación (etapa «Entrega Prod.»). Solo lectura.</div>`:'';
   const fb=filtroBusqueda('pen-q',_penF.q,"pendSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+nota+fb+empty(_penF.chip==='inspeccionar'?'Todo inspeccionado — sin pendientes de calidad':'Sin ítems en esta vista','✅')); return; }
-  const card=o=>{
-    if(_penF.chip==='entrega') return itemCard(o,`<div class="lc-meta" style="font-size:11px;color:var(--muted)">${bEst(o.estado)} Avance ${Math.round(Number(o.avance)||0)}% · falta marcar la entrega de producción</div>`);
+  const penX=o=>{
+    if(_penF.chip==='entrega') return [`<div class="lc-meta" style="font-size:11px;color:var(--muted)">${bEst(o.estado)} Avance ${Math.round(Number(o.avance)||0)}% · falta marcar la entrega de producción</div>`,''];
     const reps=repAbiertos(o.id);
     const extra=entregaLinea(o)+(reps.length?`<div class="lc-meta" style="font-size:11.5px;color:var(--danger)">⚠️ ${reps.length} reproceso(s) abierto(s): ${esc(reps.map(r=>r.cantidad+' und · '+(r.tipo_nc||r.motivo)).join(' / ').slice(0,110))}</div>`:'');
     const j=idq(o);
     const acts=puedeCal()?(reps.length
       ?actBtn('📋 Inspección',`abrirInspeccion('${j}')`)+actBtn('🔧 Reprocesos',`detailItem('${j}','rep')`)+actBtn('🖨️ Reporte NC',`imprimirReproceso('${jsq(reps[0].id)}')`)
       :actBtn('📋 Inspección',`abrirInspeccion('${j}')`)+actBtn('✅ Aprobar',`aprobarItem('${j}')`)+actBtn('⚠️ Rechazar',`modalRechazo('${j}')`)):'';
-    return itemCard(o,extra,acts);
+    return [extra,acts];
   };
-  setContent(`${banner}${nota}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('pen',data).map(card).join('')}</div>${pgMore('pen',data)}`);
+  const card=o=>{ const [e,a]=penX(o); return itemCard(o,e,a); };
+  const cols=itemCols([
+    {h:'Entregado',v:o=>{ const f=fEntrega(o), d=diasDesde(f); return f?`<span style="white-space:nowrap">${fmtF(f)}${d!=null?` <b style="color:${d>3?'var(--danger)':'var(--text)'}">· ${d} d</b>`:''}</span>`:'—'; },s:o=>fEntrega(o)||''},
+    {h:'Reprocesos',cls:'td-center',v:o=>{ const r=repAbiertos(o.id); return r.length?`<span class="badge rojo">⚠️ ${r.length}</span>`:'—'; },s:o=>repAbiertos(o.id).length}
+  ],o=>penX(o)[1]);
+  setContent(banner+nota+fb+LV.render('pen',data,{card,cols,click:o=>`detailItem('${idq(o)}')`}));
 }
 
 // ── ETAPAS (misma línea de tiempo que Planeación; aquí solo lectura) ──
@@ -1729,10 +1744,15 @@ function externo(){
     +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="pickItem('🚚 Enviar a servicio externo',o=>vivo(o)&&!enExterno(o),'modalExterno')">➕ Enviar un ítem a externo</button> <button class="chip" onclick="pickItem('🔥 Hoja de temple',o=>vivo(o),'modalTemple')">🔥 Hoja de temple</button></div>`:''));
   const fb=filtroBusqueda('ext-q',_extF.q,"extSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+fb+empty('Sin ítems en servicio externo','🚚')); return; }
-  const card=o=>{ const j=idq(o); const ss=solsDe(o.id);
+  const extA=o=>{ const j=idq(o); return puedeCal()?actBtn('📥 Recibir',`recibirExterno('${j}')`)+actBtn('✏️ Editar',`modalExterno('${j}')`)+actBtn('📝 Solicitud',`modalSolicitud('${j}')`):''; };
+  const card=o=>{ const ss=solsDe(o.id);
     const extra=extLinea(o)+(ss.length?`<div class="lc-meta" style="font-size:11px;color:var(--muted)">📋 ${ss.length} solicitud(es): ${esc(ss.slice(0,2).map(s=>s.material+(s.proveedor?' · '+s.proveedor:'')).join(' / '))} ${bSol(ss[0].estado)}</div>`:'');
-    return itemCard(o,extra,puedeCal()?actBtn('📥 Recibir',`recibirExterno('${j}')`)+actBtn('✏️ Editar',`modalExterno('${j}')`)+actBtn('📝 Solicitud',`modalSolicitud('${j}')`):''); };
-  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('ext',data).map(card).join('')}</div>${pgMore('ext',data)}`);
+    return itemCard(o,extra,extA(o)); };
+  const cols=itemCols([
+    {h:'Regreso',v:o=>{ const d=diasDe(o.externo_hasta); return o.externo_hasta?`<span style="white-space:nowrap">${fmtDate(o.externo_hasta)} ${d!=null?`<b style="color:${d<0?'var(--danger)':'var(--text)'}">${d<0?'vencido '+(-d)+' d':'en '+d+' d'}</b>`:''}</span>`:'<span style="color:var(--muted)">sin fecha</span>'; },s:o=>o.externo_hasta||'9999'},
+    {h:'Proveedor / servicio',v:o=>{ const ss=solsDe(o.id); return `<div style="min-width:150px;font-size:11.5px">${esc(String(o.externo_detalle||(ss[0]&&ss[0].proveedor)||'—').slice(0,90))}${ss.length?`<div style="color:var(--muted)">📋 ${ss.length} solicitud(es) ${bSol(ss[0].estado)}</div>`:''}</div>`; }}
+  ],extA);
+  setContent(banner+fb+LV.render('ext',data,{card,cols,click:o=>`detailItem('${idq(o)}')`}));
 }
 
 // Selector de ítem (para acciones que empiezan desde una pestaña sin ítem elegido)
@@ -1773,13 +1793,21 @@ function despacho(){
   const nota=`<div class="callout">ℹ️ Calidad <b>pide</b> la remisión de la OP (📦 Pedir remisión); luego comercial elige qué sale y administración la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
   const fb=filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+nota+fb+empty('Sin ítems pendientes de despacho','📦')); return; }
-  const card=o=>{ const j=idq(o); const c=certVigente(o.id); const d=diasDesde(o.calidad_fecha);
+  const desA=o=>{ const j=idq(o); const c=certVigente(o.id);
+    const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
+    return puedeCal()?actBtn(c?'🏅 Ver certificado':'🏅 Certificado',c?`detailCert('${jsq(c.id)}')`:`editorCert(null,'${j}')`)+pedir+actBtn('↩️ Devolver',`revertirItem('${j}')`):''; };
+  const card=o=>{ const c=certVigente(o.id); const d=diasDesde(o.calidad_fecha);
     const extra=`<div class="lc-meta" style="font-size:11px;color:var(--muted)">✅ Aprobado ${o.calidad_fecha?fmtF(o.calidad_fecha):'(sin fecha)'}${o.calidad_por?' · '+esc(o.calidad_por):''}${d!=null?` · hace ${d} d`:''}</div>
       ${heredada(o)?`<div class="lc-meta" style="font-size:11.5px;color:var(--warn)">⚠️ Aprobación heredada del sistema anterior: confírmala para que comercial pueda incluir el ítem en la remisión.</div>`:''}
       <div class="lc-meta">${remBadge(o)}<span class="badge ${dispDe(o)?'azul':'gris'}">${dispDe(o)} und por despachar</span>${c?`<span class="badge verde">🏅 Cert. ${certNum(c)}</span>`:''}</div>`;
-    const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
-    return itemCard(o,extra,puedeCal()?actBtn(c?'🏅 Ver certificado':'🏅 Certificado',c?`detailCert('${jsq(c.id)}')`:`editorCert(null,'${j}')`)+pedir+actBtn('↩️ Devolver',`revertirItem('${j}')`):''); };
-  setContent(`${banner}${nota}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('des',data).map(card).join('')}</div>${pgMore('des',data)}`);
+    return itemCard(o,extra,desA(o)); };
+  const cols=itemCols([
+    {h:'Aprobado',v:o=>{ const d=diasDesde(o.calidad_fecha); return o.calidad_fecha?`<span style="white-space:nowrap">${fmtF(o.calidad_fecha)}${d!=null?` · ${d} d`:''}</span>${heredada(o)?'<div style="color:var(--warn);font-size:10.5px">⚠️ heredada</div>':''}`:'—'; },s:o=>o.calidad_fecha||''},
+    {h:'Por despachar',cls:'td-center',v:o=>`<span class="badge ${dispDe(o)?'azul':'gris'}">${dispDe(o)} und</span>`,s:o=>dispDe(o)},
+    {h:'Remisión',v:o=>remBadge(o)},
+    {h:'Certificado',v:o=>{ const c=certVigente(o.id); return c?`<span class="badge verde">🏅 ${certNum(c)}</span>`:'<span style="color:var(--muted)">—</span>'; },s:o=>certVigente(o.id)?1:0}
+  ],desA);
+  setContent(banner+nota+fb+LV.render('des',data,{card,cols,click:o=>`detailItem('${idq(o)}')`}));
 }
 
 // Pedir la remisión de una OP: mismo RPC que «Por pedir» del módulo Remisiones (remision_pedir: calidad, comercial o administración).
@@ -1804,7 +1832,7 @@ function solChip(k){ solSet('chip',k); }
 function solicitudes(){
   const all=DB.solicitudes||[];
   const ab=s=>['PENDIENTE','SOLICITADO','COMPRADO'].includes(s.estado);
-  const cnt={abiertas:all.filter(ab).length,recibidas:all.filter(s=>s.estado==='RECIBIDO').length,rech:all.filter(s=>s.estado==='RECHAZADO').length,mias:all.filter(s=>_normNom(s.solicitado_por)===_normNom(_SESSION?.nombre)).length,todas:all.length,libres};
+  const cnt={abiertas:all.filter(ab).length,recibidas:all.filter(s=>s.estado==='RECIBIDO').length,rech:all.filter(s=>s.estado==='RECHAZADO').length,mias:all.filter(s=>_normNom(s.solicitado_por)===_normNom(_SESSION?.nombre)).length,todas:all.length};
   const data=all.filter(s=>{
     if(_solF.chip==='abiertas'&&!ab(s)) return false;
     if(_solF.chip==='recibidas'&&s.estado!=='RECIBIDO') return false;
@@ -1821,7 +1849,16 @@ function solicitudes(){
   const card=s=>{ const o=opDe(s.id_prod);
     return `<div class="list-card" onclick="detailSol('${jsq(s.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${o?opTitulo(o):'OP —'} · ${o?esc(o.empresa||''):''}</div><div class="lc-title">${esc(s.material||'—')}</div><div class="lc-sub">${esc(s.detalle||'')}</div></div><div style="text-align:right;flex-shrink:0">${bSol(s.estado)}</div></div>
       <div class="lc-meta" style="font-size:11px;color:var(--muted)">${s.cantidad!=null?`<b style="color:var(--text)">${esc(String(s.cantidad))} ${esc(s.unidad||'')}</b>`:''}<span>🏷️ ${esc(s.proveedor||'Sin proveedor')}</span>${Number(s.costo_cotizado)?`<span>${fmt(s.costo_cotizado)}</span>`:''}<span style="margin-left:auto">${fmtDate(s.solicitado_at)} · ${esc(s.solicitado_por||'')}</span></div></div>`; };
-  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('sol',data).map(card).join('')}</div>${pgMore('sol',data)}`);
+  const cols=[
+    {h:'OP · Ítem',v:s=>{ const o=opDe(s.id_prod); return o?'<b style="white-space:nowrap">'+opTitulo(o)+'</b>':'—'; },s:s=>{ const o=opDe(s.id_prod)||{}; return (Number(o.op)||0)*1000+(Number(o.item_num)||0); }},
+    {h:'Cliente',v:s=>{ const o=opDe(s.id_prod); return esc(o?o.empresa||'—':'—'); },s:s=>(opDe(s.id_prod)||{}).empresa||''},
+    {h:'Servicio',v:s=>`<div style="min-width:170px;max-width:300px;overflow-wrap:anywhere"><b>${esc(s.material||'—')}</b>${s.detalle?`<div style="color:var(--muted);font-size:11px">${esc(String(s.detalle).slice(0,90))}</div>`:''}</div>`,s:s=>s.material||''},
+    {h:'Cant.',cls:'td-center',v:s=>s.cantidad!=null?esc(String(s.cantidad))+' '+esc(s.unidad||''):'—',s:s=>Number(s.cantidad)||0},
+    {h:'Proveedor',v:s=>esc(s.proveedor||'Sin proveedor'),s:s=>s.proveedor||''},
+    {h:'Precio est.',cls:'td-num',v:s=>Number(s.costo_cotizado)?fmt(s.costo_cotizado):'—',s:s=>Number(s.costo_cotizado)||0},
+    {h:'Estado',v:s=>bSol(s.estado),s:s=>s.estado||''},
+    {h:'Solicitado',v:s=>`<span style="white-space:nowrap">${fmtDate(s.solicitado_at)}</span><div style="color:var(--muted);font-size:10.5px">${esc(s.solicitado_por||'')}</div>`,s:s=>s.solicitado_at||''}];
+  setContent(banner+fb+LV.render('sol',data,{card,cols,click:s=>`detailSol('${jsq(s.id)}')`}));
 }
 function detailSol(id){
   const s=(DB.solicitudes||[]).find(x=>x.id===id); if(!s) return; const o=opDe(s.id_prod);
@@ -1946,7 +1983,18 @@ function certificados(){
     return `<div class="list-card" onclick="detailCert('${jsq(c.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">CERTIFICADO N° ${certNum(c)}</div><div class="lc-title">${esc(c.empresa||'—')}</div><div class="lc-sub">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''} · ${esc(String(c.referencia||'').slice(0,70))}</div></div>
       <div style="text-align:right;flex-shrink:0">${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':r.nc?`<span class="badge rojo">${r.nc} cota(s) NC</span>`:r.medidas?'<span class="badge verde">✓ Conforme</span>':'<span class="badge gris">Sin mediciones</span>'}</div></div>
       <div class="lc-meta" style="font-size:11px;color:var(--muted)"><span>📅 ${fmtDate(c.fecha_emision)}</span><span>${(c.cotas||[]).length} cotas · ${c.piezas_medidas||1} pieza(s)</span>${c.orden_compra?`<span>OC ${esc(c.orden_compra)}</span>`:''}<span style="margin-left:auto">👤 ${esc(c.inspector||'')}</span></div></div>`; };
-  setContent(`${banner}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('cert',data).map(card).join('')}</div>${pgMore('cert',data)}`);
+  const cols=[
+    {h:'N°',v:c=>'<b style="white-space:nowrap;color:var(--accent)">'+certNum(c)+'</b>',s:c=>Number(c.numero)||0},
+    {h:'Cliente',v:c=>esc(c.empresa||'—'),s:c=>c.empresa||''},
+    {h:'OP · Ítem',v:c=>`<span style="white-space:nowrap">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · '+c.item_num:''}</span>`,s:c=>Number(c.op)||0},
+    {h:'Referencia',v:c=>`<div style="min-width:150px;max-width:260px;overflow-wrap:anywhere">${esc(String(c.referencia||'—').slice(0,90))}</div>`,s:c=>c.referencia||''},
+    {h:'Cotas',cls:'td-center',v:c=>(c.cotas||[]).length+' · '+(c.piezas_medidas||1)+' pz',s:c=>(c.cotas||[]).length},
+    {h:'Resultado',v:c=>{ const r=certResumen(c); return c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':r.nc?`<span class="badge rojo">${r.nc} cota(s) NC</span>`:r.medidas?'<span class="badge verde">✓ Conforme</span>':'<span class="badge gris">Sin mediciones</span>'; },s:c=>c.estado==='ANULADO'?'z':certResumen(c).nc},
+    {h:'OC',v:c=>esc(c.orden_compra||'—'),s:c=>c.orden_compra||''},
+    {h:'Emisión',v:c=>'<span style="white-space:nowrap">'+fmtDate(c.fecha_emision)+'</span>',s:c=>c.fecha_emision||''},
+    {h:'Inspector',v:c=>esc(c.inspector||'—'),s:c=>c.inspector||''},
+    {h:'',act:1,v:c=>`<button class="btn btn-soft" onclick="docCertificado('${jsq(c.id)}')">🏅 PDF</button>`}];
+  setContent(banner+fb+LV.render('cert',data,{card,cols,click:c=>`detailCert('${jsq(c.id)}')`}));
 }
 function tablaResumenCert(c){
   const r=certResumen(c);
@@ -2121,7 +2169,19 @@ function remisiones(){
   const card=m=>{ const ls=m.lineas||[]; const und=ls.reduce((a,l)=>a+(Number(l.cantidad)||0),0);
     return `<div class="list-card" onclick="detailRem('${jsq(m.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${m.numero?'REM-'+m.numero:'Sin número'} · OP-${esc(String(m.op??'—'))}</div><div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub">${esc(String(m.proyecto||'').slice(0,80))}</div></div><div style="flex-shrink:0">${bRem(m.estado)}</div></div>
       <div class="lc-meta" style="font-size:11px;color:var(--muted)"><span>${ls.length} línea(s) · ${und} und</span><span>Pedida ${fmtDate(m.pedida_fecha)}${m.pedida_por?' · '+esc(m.pedida_por):''}</span>${m.despachada_fecha?`<span>🚚 ${fmtDate(m.despachada_fecha)}</span>`:''}</div>${remAcciones(m)}</div>`; };
-  setContent(`${banner}${nota}${fb}<div class="card-list" style="margin-top:10px">${pgSlice('rem',data).map(card).join('')}</div>${pgMore('rem',data)}`);
+  const und=m=>(m.lineas||[]).reduce((a,l)=>a+(Number(l.cantidad)||0),0);
+  const cols=[
+    {h:'REM',v:m=>'<b style="white-space:nowrap;color:var(--accent)">'+(m.numero?'REM-'+m.numero:'—')+'</b>',s:m=>Number(m.numero)||0},
+    {h:'OP',v:m=>'OP-'+esc(String(m.op??'—')),s:m=>Number(m.op)||0},
+    {h:'Cliente',v:m=>`<div style="min-width:150px">${esc(m.empresa||'—')}</div>`,s:m=>m.empresa||''},
+    {h:'Proyecto',v:m=>`<div style="min-width:140px;max-width:240px;font-size:11.5px;overflow-wrap:anywhere">${esc(String(m.proyecto||'').slice(0,90))}</div>`},
+    {h:'Estado',v:m=>bRem(m.estado)+(m.libre?' <span class="badge gris" style="font-size:9px">libre</span>':''),s:m=>m.estado||''},
+    {h:'Líneas',cls:'td-center',v:m=>(m.lineas||[]).length,s:m=>(m.lineas||[]).length},
+    {h:'Und',cls:'td-center',v:m=>und(m),s:m=>und(m)},
+    {h:'Pedida',v:m=>'<span style="white-space:nowrap">'+fmtDate(m.pedida_fecha||m.fecha)+'</span>',s:m=>m.pedida_fecha||m.fecha||''},
+    {h:'Despachada',v:m=>m.despachada_fecha?'<span style="white-space:nowrap">'+fmtDate(m.despachada_fecha)+'</span>':'—',s:m=>m.despachada_fecha||''},
+    {h:'Acciones',act:1,v:m=>{ const h=remAcciones(m); return h.replace(/^<div[^>]*>/,'<div style="display:flex;gap:4px;flex-wrap:wrap;min-width:150px">').replace(/margin-top:10px/,''); }}];
+  setContent(banner+nota+fb+LV.render('rem',data,{card,cols,click:m=>`detailRem('${jsq(m.id)}')`}));
 }
 function detailRem(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return; const ls=m.lineas||[];
@@ -2853,6 +2913,38 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 .dp-tab{padding:7px 11px!important;font-size:12px!important}
 .dp-section{margin-bottom:8px!important}
 </style>
+<!-- WEDM-LISTAS (vista Tabla / Tarjetas con tabla por defecto) -->
+<style>
+.data-tbl .btn-soft,.data-tbl .btn-ghost.btn-sm,.data-tbl .btn.btn-sm{padding:3px 8px!important;font-size:11px!important;min-height:0!important;height:auto!important;white-space:nowrap;border-radius:7px}
+.data-tbl td{vertical-align:middle}
+.data-tbl td.td-center,.data-tbl th.td-center{text-align:center}
+</style>
+<script>
+(function(){
+ const S={}; const st=k=>S[k]||(S[k]={vista:'tabla',col:null,dir:'asc'});
+ const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const norm=v=>{ if(v==null) return ''; if(typeof v==='number') return v; const s=String(v).replace(/<[^>]*>/g,'').trim(); const n=Number(s.replace(/[$.\s]/g,'').replace(',','.')); return (s!==''&&!isNaN(n)&&/^[\d$.,\s-]+$/.test(s))?n:s.toLowerCase(); };
+ window.LV={
+  st:st,
+  set:function(k,v){ st(k).vista=v; try{pgReset();}catch(e){} refreshCurrentView(); },
+  sort:function(k,i){ const s=st(k); if(s.col===i) s.dir=s.dir==='asc'?'desc':'asc'; else{ s.col=i; s.dir='asc'; } try{pgReset();}catch(e){} refreshCurrentView(); },
+  ctl:function(k){ const v=st(k).vista; return `<div class="chips" data-tbctl="1" style="margin:0 0 6px">${[['tabla','⊞ Tabla'],['cards','▦ Tarjetas']].map(function(a){return `<button class="chip ${v===a[0]?'on':''}" onclick="LV.set('${k}','${a[0]}')">${a[1]}</button>`;}).join('')}</div>`; },
+  // k: clave única de la lista · data: arreglo · o.card(row)->html · o.cols:[{h,v(row)->html,s(row)->valor ordenable,cls}] · o.click(row)->js · o.rowCls(row)
+  render:function(k,data,o){
+   const s=st(k); let rows=data;
+   if(s.vista==='cards'){ const pg=pgSlice(k,rows); return LV.ctl(k)+`<div class="card-list" style="margin-top:6px">${pg.map(o.card).join('')}</div>`+(typeof pgMore==='function'?pgMore(k,rows):''); }
+   if(s.col!=null&&o.cols[s.col]){ const c=o.cols[s.col], f=c.s||c.v; rows=data.slice().sort(function(a,b){ const x=norm(f(a)), y=norm(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return s.dir==='asc'?r:-r; }); }
+   const pg=pgSlice(k,rows);
+   const th=o.cols.map(function(c,i){ return `<th style="cursor:pointer;${c.w?'width:'+c.w+';':''}" onclick="LV.sort('${k}',${i})">${c.h}${s.col===i?(s.dir==='asc'?' ▲':' ▼'):''}</th>`; }).join('');
+   const tr=pg.map(function(r){ return `<tr ${o.click?`onclick="${o.click(r)}"`:''} ${o.rowCls?`class="${o.rowCls(r)}"`:''}>`+o.cols.map(function(c){ return `<td class="${c.cls||''}" ${c.act?'onclick="event.stopPropagation()" style="white-space:nowrap;cursor:default"':''}>${c.v(r)}</td>`; }).join('')+`</tr>`; }).join('');
+   return LV.ctl(k)+`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`+(typeof pgMore==='function'?pgMore(k,rows):'');
+  }
+ };
+})();
+</script>
+<!-- /WEDM-LISTAS -->
+
+
 <!-- FE-EDITORES (formatos editables dentro del ERP: solicitud, certificado, remisión) -->
 <style>
 #fe-ov{position:fixed;inset:0;z-index:9300;background:#eef2f7;display:none;overflow:auto;padding:58px 12px 40px}

@@ -1421,13 +1421,23 @@ async function planos(){
   const banner=moduleBanner('📄','Planos',mias?'Ítems activos que tienes asignados':'Ítems activos de toda la planta',chips);
   const fb=`<div class="filter-bar" style="margin:12px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OP, empresa, ítem…" value="${esc(_PS.q)}" autocomplete="off" data-fkey="psq" oninput="psSetQ(this.value)"></div>
     <button class="chip ${mias?'on':''}" onclick="psSet('mias',${!mias})">⭐ Solo mis OP</button><span class="filter-count">${rows.length}/${base.length}</span></div></div>`;
-  const pg=pgSlice('ps',rows);
-  const cards=pg.map(p=>{
+  const card=p=>{
     const pl=planosDe(p);
     return `<div class="list-card" onclick="detalleProd('${p.id}','archivos')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">📅 ${fmtDate(p.fecha_pactada)}</div></div></div>
       <div class="lc-meta">${pl.length?`<span class="badge teal">📄 ${pl.length} plano${pl.length!==1?'s':''}</span><span style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${esc(pl[0].nombre||'')}</span>`:'<span class="badge rojo">⚠️ Sin plano</span>'}${disBadge(p)}
-      <span style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">${tieneImg(p)?'':`<button class="btn btn-sm" style="background:#0284c7;color:#fff" onclick="event.stopPropagation();prodPickImagen('${p.id}')">🖼️ Imagen</button>`}<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></span></div></div>`; }).join('');
-  setContent(`${banner}${fb}${rows.length?`<div class="card-list">${cards}</div>${pgMore('ps',rows)}`:empty(base.length?'Sin resultados':(_PS.f==='sin'?'¡Todos los ítems tienen plano!':'No hay ítems en esta vista'),base.length?'🔍':'📄')}`);
+      <span style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">${tieneImg(p)?'':`<button class="btn btn-sm" style="background:#0284c7;color:#fff" onclick="event.stopPropagation();prodPickImagen('${p.id}')">🖼️ Imagen</button>`}<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();prodSubirPlano('${p.id}')">📎 Subir</button></span></div></div>`; };
+  const cols=[
+    {h:'',w:'46px',v:p=>thumbProd(p),s:()=>''},
+    {h:'OP · Ítem',v:p=>`<b style="white-space:nowrap">OP-${p.op}</b> · ${p.item_num??'—'}`,s:p=>(Number(p.op)||0)*1000+(Number(p.item_num)||0)},
+    {h:'COT',v:p=>p.cot_num||'—',s:p=>Number(p.cot_num)||0},
+    {h:'Cliente',v:p=>esc(p.empresa||'—'),s:p=>p.empresa||''},
+    {h:'Descripción',v:p=>`<div style="min-width:180px;max-width:300px;overflow-wrap:anywhere">${esc(String(p.descripcion||'—').slice(0,110))}</div>`},
+    {h:'Prioridad',v:p=>bPrior(p.prioridad),s:p=>p.prioridad||''},
+    {h:'Pactada',v:p=>'<span style="white-space:nowrap">'+fmtDate(p.fecha_pactada)+'</span>',s:p=>p.fecha_pactada||''},
+    {h:'Planos',v:p=>{ const pl=planosDe(p); return pl.length?`<span class="badge teal">📄 ${pl.length}</span> <span style="font-size:11px;color:var(--muted)">${esc(String(pl[0].nombre||'').slice(0,28))}</span>`:'<span class="badge rojo">⚠️ Sin plano</span>'; },s:p=>planosDe(p).length},
+    {h:'Diseñador',v:p=>disBadge(p)},
+    {h:'',act:1,v:p=>`${tieneImg(p)?'':`<button class="btn btn-sm" style="background:#0284c7;color:#fff" onclick="prodPickImagen('${p.id}')">🖼️ Imagen</button> `}<button class="btn btn-primary btn-sm" onclick="prodSubirPlano('${p.id}')">📎 Subir</button>`}];
+  setContent(`${banner}${fb}${rows.length?LV.render('ps',rows,{card,cols,click:p=>`detalleProd('${p.id}','archivos')`}):empty(base.length?'Sin resultados':(_PS.f==='sin'?'¡Todos los ítems tienen plano!':'No hay ítems en esta vista'),base.length?'🔍':'📄')}`);
 }
 function psF(k){ psSet('f',k); }
 function psI(k){ psSet('img',k); }
@@ -3601,7 +3611,17 @@ function pedidos(){
     return `<div class="list-card" onclick="detalleProd('${p.id}','materiales')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-id">OP-${p.op} · ÍTEM ${p.item_num??'—'} · ${esc(p.empresa||'')}</div><div class="lc-title">${esc(m.material)}</div>${m.detalle?`<div class="lc-sub">${esc(m.detalle)}</div>`:''}</div><span class="badge ${cls}">${lbl}</span></div>
       <div class="lc-meta"><span style="font-size:12px">⚖️ ${Number(m.cantidad_kg||0)} kg</span><span style="font-size:12px;color:var(--muted)">Cotizado ${fmt(m.costo_cotizado)}${m.costo_real?` · Real <b>${fmt(m.costo_real)}</b>`:''}</span>${m.proveedor?`<span style="font-size:11px;color:var(--muted)">🏷️ ${esc(m.proveedor)}</span>`:''}${disBadge(p)}</div>
       ${peSeguimiento(m)}</div>`; };
-  setContent(`${banner}${kp}${fb}${rows.length?`<div class="card-list">${pg.map(card).join('')}</div>${pgMore('pe',rows)}`:empty(base.length?'Sin resultados':'No hay pedidos de material en esta vista',base.length?'🔍':'🧱')}`);
+  const cols=[
+    {h:'OP · Ítem',v:({p})=>`<b style="white-space:nowrap;color:var(--info)">OP-${p.op}</b> · ${p.item_num??'—'}`,s:({p})=>(Number(p.op)||0)*1000+(Number(p.item_num)||0)},
+    {h:'Cliente',v:({p})=>esc(p.empresa||'—'),s:({p})=>p.empresa||''},
+    {h:'Material / servicio',v:({m})=>`<div style="min-width:170px;max-width:300px;overflow-wrap:anywhere"><b>${esc(m.material)}</b>${m.detalle?`<div style="color:var(--muted);font-size:11px">${esc(m.detalle)}</div>`:''}</div>`,s:({m})=>m.material||''},
+    {h:'Kg',cls:'td-center',v:({m})=>Number(m.cantidad_kg||0)||'—',s:({m})=>Number(m.cantidad_kg)||0},
+    {h:'Cotizado',cls:'td-num',v:({m})=>m.costo_cotizado?fmt(m.costo_cotizado):'—',s:({m})=>Number(m.costo_cotizado)||0},
+    {h:'Real',cls:'td-num',v:({m})=>m.costo_real?fmt(m.costo_real):'—',s:({m})=>Number(m.costo_real)||0},
+    {h:'Proveedor',v:({m})=>esc(m.proveedor||'—'),s:({m})=>m.proveedor||''},
+    {h:'Estado',v:({m})=>{ const [l,c]=PE_EST[m.estado]||[m.estado,'gris']; return `<span class="badge ${c}">${l}</span>`; },s:({m})=>m.estado||''},
+    {h:'Seguimiento',v:({m})=>`<div style="min-width:200px;max-width:320px">${peSeguimiento(m)}</div>`,s:()=>''}];
+  setContent(`${banner}${kp}${fb}${rows.length?LV.render('pe',rows,{card,cols,click:({p})=>`detalleProd('${p.id}','materiales')`}):empty(base.length?'Sin resultados':'No hay pedidos de material en esta vista',base.length?'🔍':'🧱')}`);
 }
 function peScope(k){ peSet('scope',k); }
 // Seguimiento de compras (solo lectura): lo que compras registra sobre cada línea — orden de compra, autorización, fechas, factura y motivo de rechazo
@@ -3740,7 +3760,7 @@ const PR_CHIPS=[
   ['penddesp','🚚 Pend. despacho',p=>estU(p)==='PENDIENTE DESPACHO'||ST.despachar(p)],
   ['externo','🛠 Trabajo externo',p=>estU(p)==='TRABAJO EXTERNO'],
 ];
-let _PRD={per:'todo',q:'',est:'',tipo:'',prio:'',asesor:'',dis:'',sem:'',chip:'',vista:(window.innerWidth<=700?'cards':'tabla'),fb:false};
+let _PRD={per:'todo',q:'',est:'',tipo:'',prio:'',asesor:'',dis:'',sem:'',chip:'',vista:'tabla',fb:false};
 function prSet(k,v){ _PRD[k]=v; pgReset(); produccion(); }
 function prPer(k){ prSet('per',k); }
 function prVista(k){ prSet('vista',k); }
@@ -3873,7 +3893,17 @@ async function itemscot(){
     <div class="chips">${[['lista','☰ Con detalle'],['tarjetas','▦ Resumen']].map(([k,l])=>`<button class="chip ${_IC.vista===k?'on':''}" onclick="icVista('${k}')">${l}</button>`).join('')}<button class="chip ${_IC.mias?'on':''}" onclick="icSet('mias',${!_IC.mias})">⭐ Asignadas a mí</button></div>
     <span style="font-size:11px;color:var(--muted);font-weight:700">${rows.length} cot. · ${nIt} ítem${nIt!==1?'s':''}</span></div>`;
   const pg=pgSlice('ic',rows);
-  const body=rows.length?`<div class="card-list">${pg.map(c=>icCotCard(c,_IC.vista==='lista')).join('')}</div>${pgMore('ic',rows)}`
+  const cols=[
+    {h:'COT',v:c=>'<b style="color:var(--accent);white-space:nowrap">COT-'+(c.cotizacion??'—')+'</b>',s:c=>Number(c.cotizacion)||0},
+    {h:'Cliente',v:c=>`<div style="min-width:150px">${esc(c.empresa||'—')}</div>`,s:c=>c.empresa||''},
+    {h:'Proyecto',v:c=>`<div style="min-width:140px;max-width:240px;font-size:11.5px;overflow-wrap:anywhere">${esc(String(c.proyecto||'').slice(0,90))}</div>`},
+    {h:'Estado',v:c=>_icEst(c.estado),s:c=>c.estado||''},
+    {h:'Ítems',cls:'td-center',v:c=>(c.items||[]).length,s:c=>(c.items||[]).length},
+    {h:'Asesor',v:c=>esc(c.asesor||'—'),s:c=>c.asesor||''},
+    {h:'Diseñador',v:c=>String(c.disenador||'').trim()?disBadgeN(c.disenador):'<span class="badge gris">Sin diseñador</span>',s:c=>c.disenador||''},
+    {h:'Emisión',v:c=>'<span style="white-space:nowrap">'+fmtDate(c.fecha_emision)+'</span>',s:c=>c.fecha_emision||''},
+    {h:'Entrega',v:c=>c.fecha_entrega_pactada?`<span style="white-space:nowrap">${fmtDate(c.fecha_entrega_pactada)} ${diasTag(diasDe(c.fecha_entrega_pactada))}</span>`:'—',s:c=>c.fecha_entrega_pactada||''}];
+  const body=rows.length?LV.render('ic',rows,{card:c=>icCotCard(c,_IC.vista==='lista'),cols,click:c=>`_IC.vista='lista';_IC.q='${c.cotizacion??''}';LV.st('ic').vista='cards';pgReset();itemscot()`})
     :empty(all.length?'Sin resultados con estos filtros':(_IC.todos?'No hay cotizaciones en este periodo':'No hay ítems cotizados pendientes de OP en este periodo'),all.length?'🔍':'📋');
   setContent(`${banner}${kp}${fb}${ctl}${body}`);
 }
@@ -4764,6 +4794,37 @@ tbody tr{transition:none!important}
 })();
 </script>
 <!-- /WEDM-RENDIMIENTO -->
+
+<!-- WEDM-LISTAS (vista Tabla / Tarjetas con tabla por defecto) -->
+<style>
+.data-tbl .btn-soft,.data-tbl .btn-ghost.btn-sm,.data-tbl .btn.btn-sm{padding:3px 8px!important;font-size:11px!important;min-height:0!important;height:auto!important;white-space:nowrap;border-radius:7px}
+.data-tbl td{vertical-align:middle}
+.data-tbl td.td-center,.data-tbl th.td-center{text-align:center}
+</style>
+<script>
+(function(){
+ const S={}; const st=k=>S[k]||(S[k]={vista:'tabla',col:null,dir:'asc'});
+ const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const norm=v=>{ if(v==null) return ''; if(typeof v==='number') return v; const s=String(v).replace(/<[^>]*>/g,'').trim(); const n=Number(s.replace(/[$.\s]/g,'').replace(',','.')); return (s!==''&&!isNaN(n)&&/^[\d$.,\s-]+$/.test(s))?n:s.toLowerCase(); };
+ window.LV={
+  st:st,
+  set:function(k,v){ st(k).vista=v; try{pgReset();}catch(e){} refreshCurrentView(); },
+  sort:function(k,i){ const s=st(k); if(s.col===i) s.dir=s.dir==='asc'?'desc':'asc'; else{ s.col=i; s.dir='asc'; } try{pgReset();}catch(e){} refreshCurrentView(); },
+  ctl:function(k){ const v=st(k).vista; return `<div class="chips" data-tbctl="1" style="margin:0 0 6px">${[['tabla','⊞ Tabla'],['cards','▦ Tarjetas']].map(function(a){return `<button class="chip ${v===a[0]?'on':''}" onclick="LV.set('${k}','${a[0]}')">${a[1]}</button>`;}).join('')}</div>`; },
+  // k: clave única de la lista · data: arreglo · o.card(row)->html · o.cols:[{h,v(row)->html,s(row)->valor ordenable,cls}] · o.click(row)->js · o.rowCls(row)
+  render:function(k,data,o){
+   const s=st(k); let rows=data;
+   if(s.vista==='cards'){ const pg=pgSlice(k,rows); return LV.ctl(k)+`<div class="card-list" style="margin-top:6px">${pg.map(o.card).join('')}</div>`+(typeof pgMore==='function'?pgMore(k,rows):''); }
+   if(s.col!=null&&o.cols[s.col]){ const c=o.cols[s.col], f=c.s||c.v; rows=data.slice().sort(function(a,b){ const x=norm(f(a)), y=norm(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return s.dir==='asc'?r:-r; }); }
+   const pg=pgSlice(k,rows);
+   const th=o.cols.map(function(c,i){ return `<th style="cursor:pointer;${c.w?'width:'+c.w+';':''}" onclick="LV.sort('${k}',${i})">${c.h}${s.col===i?(s.dir==='asc'?' ▲':' ▼'):''}</th>`; }).join('');
+   const tr=pg.map(function(r){ return `<tr ${o.click?`onclick="${o.click(r)}"`:''} ${o.rowCls?`class="${o.rowCls(r)}"`:''}>`+o.cols.map(function(c){ return `<td class="${c.cls||''}" ${c.act?'onclick="event.stopPropagation()" style="white-space:nowrap;cursor:default"':''}>${c.v(r)}</td>`; }).join('')+`</tr>`; }).join('');
+   return LV.ctl(k)+`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`+(typeof pgMore==='function'?pgMore(k,rows):'');
+  }
+ };
+})();
+</script>
+<!-- /WEDM-LISTAS -->
 
 </body>
 </html>

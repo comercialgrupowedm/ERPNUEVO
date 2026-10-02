@@ -2100,7 +2100,7 @@ function thSort(mod,col,label){
   const arrow=on?(s.dir==='asc'?' ▲':' ▼'):' ↕';
   return `<th class="${on?(s.dir==='asc'?'sort-asc':'sort-desc'):''}" onclick="sortTable('${mod}','${col}')" style="cursor:pointer;user-select:none">${label}<span style="${on?'color:#60a5fa':'color:rgba(255,255,255,.3)'};font-size:10px;margin-left:3px">${arrow}</span></th>`;
 }
-function getView(mod){ return _VIEW[mod]||(window.matchMedia('(max-width:700px)').matches?'cards':'table'); }
+function getView(mod){ return _VIEW[mod]||'table'; }
 function setView(mod,v){ _VIEW[mod]=v; refreshCurrentView(); }
 const SORT_OPTS={
   cotizaciones:[['cotizacion','COT #'],['empresa','Cliente'],['fecha_emision','Fecha emisión'],['precio_total','Total'],['asesor','Asesor'],['estado','Estado'],['_opNum','OP']],
@@ -2527,13 +2527,26 @@ function usados(){
       <label style="font-size:12px;display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" ${_US.envios?'checked':''} onchange="usSet('envios',this.checked)">Incluir envíos/fletes</label>
       <span style="font-size:11px;color:var(--muted);margin-left:auto">${data.length} ítems</span></div></div>`;
   if(!data.length){ setContent(banner+fb+empty('Sin ítems con estos filtros')); return; }
-  setContent(banner+fb+`<div class="card-list" style="padding:6px 14px 80px">${pgSlice('us',data).map((x,i)=>`
+  const cardU=(x)=>{ const i=data.indexOf(x); return `
     <div class="list-card" onclick="usDetalle(${i})"><div class="lc-top"><div style="flex:1;min-width:0">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="lc-id">#${i+1}</span><b style="font-family:var(--mono);color:var(--accent)">${x.veces} usos</b><span style="font-size:11px">${usTend(x)}</span></div>
       <div class="lc-title" style="white-space:normal;line-height:1.25">${esc(x.nombre)}</div>
       <div class="lc-sub">${x.cots} cotizaciones · ${x.clientes} clientes · ${fmtNum(x.und)} und · último: ${fmtDate(x.ultima.toISOString().slice(0,10))}</div></div>
       <div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(Math.round(x.valor))}</div><div style="font-size:10px;color:var(--muted)">${Math.round(x.tasa*100)}% aprobadas</div></div></div>
-      <div style="margin-top:8px">${usBarras12(x)}<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px"><span>últimos 12 meses</span><span>${x.pprom?'prom. '+fmt(Math.round(x.pprom)):''}</span></div></div></div>`).join('')}</div>`);
+      <div style="margin-top:8px">${usBarras12(x)}<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px"><span>últimos 12 meses</span><span>${x.pprom?'prom. '+fmt(Math.round(x.pprom)):''}</span></div></div></div>`; };
+  const cols=[
+    {h:'#',cls:'td-center',v:x=>data.indexOf(x)+1,s:x=>data.indexOf(x)},
+    {h:'Ítem',v:x=>`<div style="min-width:220px;max-width:360px;font-weight:600;overflow-wrap:anywhere">${esc(x.nombre)}</div>`,s:x=>x.nombre},
+    {h:'Usos',cls:'td-center',v:x=>`<b style="font-family:var(--mono);color:var(--accent)">${x.veces}</b> <span style="font-size:11px">${usTend(x)}</span>`,s:x=>x.veces},
+    {h:'Cotiz.',cls:'td-center',v:x=>x.cots,s:x=>x.cots},
+    {h:'Clientes',cls:'td-center',v:x=>x.clientes,s:x=>x.clientes},
+    {h:'Und',cls:'td-num',v:x=>fmtNum(x.und),s:x=>x.und},
+    {h:'Valor cotizado',cls:'td-num',v:x=>fmt(Math.round(x.valor)),s:x=>x.valor},
+    {h:'Precio prom.',cls:'td-num',v:x=>x.pprom?fmt(Math.round(x.pprom)):'—',s:x=>x.pprom||0},
+    {h:'% aprob.',cls:'td-center',v:x=>Math.round(x.tasa*100)+'%',s:x=>x.tasa},
+    {h:'Último uso',v:x=>'<span style="white-space:nowrap">'+fmtDate(x.ultima.toISOString().slice(0,10))+'</span>',s:x=>x.ultima.getTime()},
+    {h:'12 meses',v:x=>`<div style="min-width:110px">${usBarras12(x)}</div>`,s:()=>0}];
+  setContent(banner+fb+LV.render('us',data,{card:cardU,cols,click:x=>`usDetalle(${data.indexOf(x)})`}));
 }
 const fmtNum=n=>Number(n||0).toLocaleString('es-CO',{maximumFractionDigits:1});
 function usDetalle(i){
@@ -6898,6 +6911,37 @@ tbody tr{transition:none!important}
 })();
 </script>
 <!-- /WEDM-RENDIMIENTO -->
+
+<!-- WEDM-LISTAS (vista Tabla / Tarjetas con tabla por defecto) -->
+<style>
+.data-tbl .btn-soft,.data-tbl .btn-ghost.btn-sm,.data-tbl .btn.btn-sm{padding:3px 8px!important;font-size:11px!important;min-height:0!important;height:auto!important;white-space:nowrap;border-radius:7px}
+.data-tbl td{vertical-align:middle}
+.data-tbl td.td-center,.data-tbl th.td-center{text-align:center}
+</style>
+<script>
+(function(){
+ const S={}; const st=k=>S[k]||(S[k]={vista:'tabla',col:null,dir:'asc'});
+ const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const norm=v=>{ if(v==null) return ''; if(typeof v==='number') return v; const s=String(v).replace(/<[^>]*>/g,'').trim(); const n=Number(s.replace(/[$.\s]/g,'').replace(',','.')); return (s!==''&&!isNaN(n)&&/^[\d$.,\s-]+$/.test(s))?n:s.toLowerCase(); };
+ window.LV={
+  st:st,
+  set:function(k,v){ st(k).vista=v; try{pgReset();}catch(e){} refreshCurrentView(); },
+  sort:function(k,i){ const s=st(k); if(s.col===i) s.dir=s.dir==='asc'?'desc':'asc'; else{ s.col=i; s.dir='asc'; } try{pgReset();}catch(e){} refreshCurrentView(); },
+  ctl:function(k){ const v=st(k).vista; return `<div class="chips" data-tbctl="1" style="margin:0 0 6px">${[['tabla','⊞ Tabla'],['cards','▦ Tarjetas']].map(function(a){return `<button class="chip ${v===a[0]?'on':''}" onclick="LV.set('${k}','${a[0]}')">${a[1]}</button>`;}).join('')}</div>`; },
+  // k: clave única de la lista · data: arreglo · o.card(row)->html · o.cols:[{h,v(row)->html,s(row)->valor ordenable,cls}] · o.click(row)->js · o.rowCls(row)
+  render:function(k,data,o){
+   const s=st(k); let rows=data;
+   if(s.vista==='cards'){ const pg=pgSlice(k,rows); return LV.ctl(k)+`<div class="card-list" style="margin-top:6px">${pg.map(o.card).join('')}</div>`+(typeof pgMore==='function'?pgMore(k,rows):''); }
+   if(s.col!=null&&o.cols[s.col]){ const c=o.cols[s.col], f=c.s||c.v; rows=data.slice().sort(function(a,b){ const x=norm(f(a)), y=norm(f(b)); const r=(typeof x==='number'&&typeof y==='number')?x-y:String(x).localeCompare(String(y),'es',{numeric:true}); return s.dir==='asc'?r:-r; }); }
+   const pg=pgSlice(k,rows);
+   const th=o.cols.map(function(c,i){ return `<th style="cursor:pointer;${c.w?'width:'+c.w+';':''}" onclick="LV.sort('${k}',${i})">${c.h}${s.col===i?(s.dir==='asc'?' ▲':' ▼'):''}</th>`; }).join('');
+   const tr=pg.map(function(r){ return `<tr ${o.click?`onclick="${o.click(r)}"`:''} ${o.rowCls?`class="${o.rowCls(r)}"`:''}>`+o.cols.map(function(c){ return `<td class="${c.cls||''}" ${c.act?'onclick="event.stopPropagation()" style="white-space:nowrap;cursor:default"':''}>${c.v(r)}</td>`; }).join('')+`</tr>`; }).join('');
+   return LV.ctl(k)+`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`+(typeof pgMore==='function'?pgMore(k,rows):'');
+  }
+ };
+})();
+</script>
+<!-- /WEDM-LISTAS -->
 
 </body>
 </html>
