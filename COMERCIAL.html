@@ -2506,6 +2506,8 @@ function usGrupos(){
 function usBarras12(x,h=22){ const now=new Date(); const ms=[]; for(let i=11;i>=0;i--) ms.push(_usYM(new Date(now.getFullYear(),now.getMonth()-i,1))); const mx=Math.max(1,...ms.map(m=>x.mes[m]||0));
   return `<div style="display:flex;align-items:flex-end;gap:2px;height:${h}px">${ms.map(m=>`<i title="${_usMes(m)}: ${x.mes[m]||0}" style="flex:1;min-width:3px;height:${Math.max(2,Math.round((x.mes[m]||0)/mx*h))}px;background:${x.mes[m]?'var(--accent)':'var(--border)'};border-radius:1px"></i>`).join('')}</div>`; }
 const usTend=x=>{ if(!x.p6&&!x.r6) return ''; if(!x.p6) return '<span style="color:#16a34a">▲ nuevo</span>'; const d=x.r6-x.p6; return d>0?`<span style="color:#16a34a">▲ +${d}</span>`:d<0?`<span style="color:#dc2626">▼ ${d}</span>`:'<span style="color:var(--muted)">= estable</span>'; };
+function usProd(x){ if(x._pp!==undefined) return x._pp; let r=null; for(const z of x.usos){ const p=prodDeItem(z.it.id); if(p&&(imgSrcOP(p)||p.tiene_imagen)){ r=p; break; } } return x._pp=r; }
+const usImg=x=>{ const p=usProd(x); return p?thumbProd(p):''; };
 function usados(){
   const todos=usGrupos(); const q=_usKey(_US.q);
   const K={veces:x=>x.veces,cots:x=>x.cots,clientes:x=>x.clientes,und:x=>x.und,valor:x=>x.valor,ultima:x=>x.ultima.getTime(),tasa:x=>x.tasa,pprom:x=>x.pprom};
@@ -2528,7 +2530,7 @@ function usados(){
       <span style="font-size:11px;color:var(--muted);margin-left:auto">${data.length} ítems</span></div></div>`;
   if(!data.length){ setContent(banner+fb+empty('Sin ítems con estos filtros')); return; }
   const cardU=(x)=>{ const i=data.indexOf(x); return `
-    <div class="list-card" onclick="usDetalle(${i})"><div class="lc-top"><div style="flex:1;min-width:0">
+    <div class="list-card" onclick="usDetalle(${i})"><div class="lc-top">${usImg(x)?`<div style="margin-right:10px;flex-shrink:0">${usImg(x)}</div>`:''}<div style="flex:1;min-width:0">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="lc-id">#${i+1}</span><b style="font-family:var(--mono);color:var(--accent)">${x.veces} usos</b><span style="font-size:11px">${usTend(x)}</span></div>
       <div class="lc-title" style="white-space:normal;line-height:1.25">${esc(x.nombre)}</div>
       <div class="lc-sub">${x.cots} cotizaciones · ${x.clientes} clientes · ${fmtNum(x.und)} und · último: ${fmtDate(x.ultima.toISOString().slice(0,10))}</div></div>
@@ -2536,6 +2538,7 @@ function usados(){
       <div style="margin-top:8px">${usBarras12(x)}<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px"><span>últimos 12 meses</span><span>${x.pprom?'prom. '+fmt(Math.round(x.pprom)):''}</span></div></div></div>`; };
   const cols=[
     {h:'#',cls:'td-center',v:x=>data.indexOf(x)+1,s:x=>data.indexOf(x)},
+    {h:'Img',cls:'td-center',v:x=>usImg(x)||'',s:x=>usProd(x)?1:0},
     {h:'Ítem',v:x=>`<div style="min-width:220px;max-width:360px;font-weight:600;overflow-wrap:anywhere">${esc(x.nombre)}</div>`,s:x=>x.nombre},
     {h:'Usos',cls:'td-center',v:x=>`<b style="font-family:var(--mono);color:var(--accent)">${x.veces}</b> <span style="font-size:11px">${usTend(x)}</span>`,s:x=>x.veces},
     {h:'Cotiz.',cls:'td-center',v:x=>x.cots,s:x=>x.cots},
@@ -2549,6 +2552,62 @@ function usados(){
   setContent(banner+fb+LV.render('us',data,{card:cardU,cols,click:x=>`usDetalle(${data.indexOf(x)})`}));
 }
 const fmtNum=n=>Number(n||0).toLocaleString('es-CO',{maximumFractionDigits:1});
+async function usEvolucion(x){
+  const el=()=>document.getElementById('us-evo'); if(!el()) return;
+  try{
+    const us=x.usos.slice(0,40).map(z=>({...z,p:prodDeItem(z.it.id)}));
+    const inl=a=>'in.('+a.map(v=>'"'+v+'"').join(',')+')';
+    const pids=[...new Set(us.filter(z=>z.p).map(z=>z.p.id))], iids=[...new Set(us.map(z=>z.it.id))], ops=[...new Set(us.filter(z=>z.p&&z.p.op).map(z=>z.p.op))];
+    const safe=pr=>pr.catch(()=>[]);
+    const [ph,ar,mt,rt]=await Promise.all([
+      pids.length?safe(GET('produccion','select=id,horas_total,horas_total_real&id='+inl(pids))):[],
+      safe(GET('prod_archivos',ARCH_COLS+'&tipo=eq.plano&or=(id_item.'+inl(iids)+(pids.length?',id_prod.'+inl(pids):'')+')&order=created_at.asc')),
+      pids.length?safe(GET('prod_materiales','select=id_prod,material,cantidad_kg,cantidad,unidad,estado,solicitado_at&id_prod='+inl(pids))):[],
+      ops.length?safe(GET('registro_tiempos','select=op,item_num,duracion_horas,tipo_registro&op=in.('+ops.join(',')+')&limit=5000')):[]
+    ]);
+    if(!el()) return;
+    const H={}; (ph||[]).forEach(r=>H[r.id]=r);
+    const num=v=>{ const n=parseFloat(String(v==null?'':v).replace(',','.')); return isNaN(n)?0:n; };
+    const rows=us.map(z=>{
+      const p=z.p, it=z.it;
+      const pl=(ar||[]).filter(a=>a.id_item===it.id||(p&&a.id_prod===p.id));
+      const plSig=pl.map(a=>a.nombre).sort().join('|')||(it.plano_nombre||'');
+      const mats=(it.mats||[]).map(m=>m&&m.nombre).filter(Boolean); const matTxt=mats.length?mats.join(' + '):(it.material||'');
+      const mp=(mt||[]).filter(m=>p&&m.id_prod===p.id);
+      const h=p?H[p.id]:null;
+      const hc=h?num(h.horas_total):0;
+      let hr=h?num(h.horas_total_real):0;
+      if(!hr&&p&&p.op){ hr=(rt||[]).filter(r=>r.op===p.op&&Number(r.item_num)===Number(p.item_num)&&/trabajo/i.test(r.tipo_registro||'')).reduce((s,r)=>s+num(r.duracion_horas),0); }
+      return {z,p,pl,plSig,matTxt,mp,hc,hr};
+    });
+    // cambios: se compara cada uso con el anterior en el tiempo
+    const cron=[...rows].reverse();
+    cron.forEach((r,k)=>{ const pv=cron.slice(0,k).reverse(); const ant=f=>pv.find(f);
+      const pp=ant(q=>q.plSig); r.cPl=!!(pp&&r.plSig&&pp.plSig!==r.plSig);
+      const pm=ant(q=>q.matTxt); r.cMat=!!(pm&&r.matTxt&&pm.matTxt!==r.matTxt);
+      const pt=ant(q=>q.hr>0); r.cT=!!(pt&&r.hr>0&&Math.abs(r.hr-pt.hr)/pt.hr>0.2); r.dT=pt&&r.hr>0?(r.hr-pt.hr)/pt.hr:0; });
+    const nPl=new Set(rows.map(r=>r.plSig).filter(Boolean)).size, nMat=new Set(rows.map(r=>r.matTxt).filter(Boolean)).size;
+    const hrs=rows.map(r=>r.hr).filter(v=>v>0); const hcs=rows.map(r=>r.hc).filter(v=>v>0);
+    const f1=v=>(Math.round(v*10)/10).toLocaleString('es-CO')+' h';
+    const chip=(t,c)=>`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:${c};color:#fff;white-space:nowrap">${t}</span>`;
+    const st=(l,v)=>`<div style="background:var(--card2);border-radius:10px;padding:8px 10px;flex:1;min-width:110px"><div style="font-size:10px;color:var(--muted)">${l}</div><div style="font-size:13px;font-weight:800">${v}</div></div>`;
+    const resumen=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${st('Versiones de plano',nPl?nPl+(nPl>1?' distintas':' (sin cambios)'):'Sin planos')}
+      ${st('Materiales distintos',nMat?nMat+(nMat>1?' (ha cambiado)':' (igual)'):'—')}
+      ${st('Tiempo real',hrs.length?'prom. '+f1(hrs.reduce((a,b)=>a+b,0)/hrs.length)+' · '+f1(Math.min(...hrs))+'–'+f1(Math.max(...hrs)):'Sin registros')}
+      ${st('Tiempo cotizado',hcs.length?'prom. '+f1(hcs.reduce((a,b)=>a+b,0)/hcs.length):'—')}</div>`;
+    const tbl=`<div class="tbl-wrap" style="max-height:none"><div class="tbl-scroll"><table class="data-tbl" style="min-width:760px"><thead><tr><th>Fecha</th><th>COT</th><th>OP</th><th>Plano</th><th>Material cotizado</th><th>MP pedida</th><th>T. cotiz.</th><th>T. real</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr onclick="detailCot('${r.z.c.id}')"><td style="white-space:nowrap">${fmtDate(r.z.f.toISOString().slice(0,10))}</td><td><b style="color:var(--accent)">COT-${r.z.c.cotizacion}</b></td><td>${r.p&&r.p.op?esc(r.p.op):'—'}</td>
+      <td style="max-width:200px">${r.pl.length?`<div style="overflow-wrap:anywhere">📄 ${esc(r.pl[r.pl.length-1].nombre||'plano')}${r.pl.length>1?` <span style="color:var(--muted)">(+${r.pl.length-1})</span>`:''}</div><div style="font-size:10px;color:var(--muted)">${fmtDate(String(r.pl[r.pl.length-1].created_at||'').slice(0,10))}</div>`:(r.plSig?esc(r.plSig):'<span style="color:var(--muted)">—</span>')} ${r.cPl?chip('cambió','#d97706'):''}</td>
+      <td style="max-width:200px;overflow-wrap:anywhere">${r.matTxt?esc(r.matTxt):'—'} ${r.cMat?chip('cambió','#d97706'):''}</td>
+      <td style="max-width:220px;font-size:11px">${r.mp.length?r.mp.map(m=>esc(m.material||'')+(num(m.cantidad_kg)?' · '+fmtNum(num(m.cantidad_kg))+' kg':(num(m.cantidad)?' · '+fmtNum(num(m.cantidad))+' '+esc(m.unidad||''):''))).join('<br>'):'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="white-space:nowrap">${r.hc?f1(r.hc):'—'}</td>
+      <td style="white-space:nowrap">${r.hr?f1(r.hr):'—'} ${r.cT?chip((r.dT>0?'▲ +':'▼ ')+Math.round(r.dT*100)+'%',r.dT>0?'#dc2626':'#16a34a'):''}</td></tr>`).join('')}
+    </tbody></table></div></div>${x.usos.length>40?`<div style="font-size:11px;color:var(--muted);margin-top:4px">Se muestran los 40 usos más recientes.</div>`:''}
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">«cambió» compara cada uso con el anterior en el tiempo (plano distinto, otro material, o tiempo real con más de 20% de diferencia).</div>`;
+    el().innerHTML=resumen+tbl;
+  }catch(e){ if(el()) el().innerHTML=mutedP(esc(errMsg(e))); }
+}
 function usDetalle(i){
   const x=(window._usData||[])[i]; if(!x) return;
   const ord=[...x.usos].reverse(); // cronológico
@@ -2565,14 +2624,16 @@ function usDetalle(i){
   const cl={}; x.usos.forEach(z=>{ const e=z.c.empresa||'—'; const o=cl[e]||(cl[e]={n:0,und:0,v:0}); o.n++; o.und+=Number(z.it.unidades)||0; o.v+=Number(z.it.precio_total)||0; });
   const topCl=Object.entries(cl).sort((a,b)=>b[1].n-a[1].n||b[1].v-a[1].v).slice(0,8);
   const st=(l,v)=>`<div style="background:var(--card2);border-radius:10px;padding:8px 10px"><div style="font-size:10px;color:var(--muted)">${l}</div><div style="font-size:14px;font-weight:800;font-family:var(--mono)">${v}</div></div>`;
-  openDetail('Ítem más usado',`<div class="dp-section"><h4 style="white-space:normal">🔁 ${esc(x.nombre)}</h4>
+  openDetail('Ítem más usado',`<div class="dp-section"><h4 style="white-space:normal">🔁 ${esc(x.nombre)}</h4>${(()=>{const p=usProd(x); const src=p&&imgSrcOP(p,400); return src?`<div style="margin:8px 0"><img src="${esc(src)}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.remove()" style="max-width:100%;max-height:220px;object-fit:contain;border-radius:12px;border:1px solid var(--border)"></div>`:''})()}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">${st('Usos',x.veces)}${st('Cotizaciones',x.cots)}${st('Clientes',x.clientes)}${st('Unidades',fmtNum(x.und))}${st('Valor cotizado',fmt(Math.round(x.valor)))}${st('% aprobación',Math.round(x.tasa*100)+'%')}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:8px">Primera vez: <b>${fmtDate(x.primera.toISOString().slice(0,10))}</b> · Última: <b>${fmtDate(x.ultima.toISOString().slice(0,10))}</b> · Últimos 6 meses: <b>${x.r6}</b> vs 6 anteriores: <b>${x.p6}</b> ${usTend(x)}</div></div>
     <div class="dp-section"><h4>📈 Uso por mes</h4>${chart}</div>
     <div class="dp-section"><h4>💲 Evolución del precio unitario</h4>${line}${x.pprom?`<div style="font-size:11px;color:var(--muted)">Promedio ${fmt(Math.round(x.pprom))}</div>`:''}</div>
     <div class="dp-section"><h4>🏢 Clientes que más lo piden</h4>${topCl.map(([e,o])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e)}</span><span style="font-family:var(--mono);white-space:nowrap">${o.n}× · ${fmtNum(o.und)} und</span></div>`).join('')}</div>
+    <div class="dp-section"><h4>🧬 Evolución por uso: planos, tiempos y materiales</h4><div id="us-evo">${mutedP('Cargando…')}</div></div>
     <div class="dp-section"><h4>🕘 Historial (${x.veces})</h4><div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:420px"><thead><tr><th>COT</th><th>Fecha</th><th>Cliente</th><th>Und</th><th>P. unit</th><th>Estado</th></tr></thead><tbody>
       ${x.usos.map(z=>`<tr onclick="detailCot('${z.c.id}')"><td><b style="color:var(--accent)">COT-${z.c.cotizacion}</b></td><td>${fmtDate(z.f.toISOString().slice(0,10))}</td><td style="max-width:140px">${esc(z.c.empresa||'—')}</td><td>${fmtNum(z.it.unidades)}</td><td>${Number(z.it.precio_unit)?fmt(Math.round(z.it.precio_unit)):'—'}</td><td>${bEst(z.c.estado)}</td></tr>`).join('')}</tbody></table></div></div>`);
+  usEvolucion(x);
 }
 
 // ══ COTIZACIONES ════════════════════════════════════════════════
