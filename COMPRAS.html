@@ -1731,7 +1731,8 @@ function dashboard(){
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
-function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores,sugeridos,resumen,subir}; if(mods[MOD]) mods[MOD](); }
+function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
+function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores,sugeridos,resumen,subir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   if(m==='subir'&&!puedeImportar()){ toast('Solo el administrador puede subir datos','error'); return; }
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
