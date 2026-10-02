@@ -611,6 +611,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- WEDM-FAVICON --><script>(function(){try{var t=setInterval(function(){if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){clearInterval(t);var l=document.querySelector('link[rel=icon]')||document.createElement('link');l.rel='icon';l.type='image/png';l.href=LOGO_B64_PNG;document.head.appendChild(l);}},100);setTimeout(function(){clearInterval(t)},8000);}catch(e){}})();</script><!-- /WEDM-FAVICON -->
 </head>
 <body>
 <div id="prog-bar-top"><div id="prog-bar-top-fill"></div></div>
@@ -3274,7 +3275,7 @@ function feAbrir(titulo,html,btns){
   ov().innerHTML=`<div class="fe-bar"><b>${titulo}</b>${btns}<button class="cl" onclick="feCerrar()">✕ Cerrar</button></div>${html}`;
   ov().classList.add('open'); ov().scrollTop=0; document.body.style.overflow='hidden';
 }
-const hdr=(titulo,opHtml,fechas)=>`<div class="fe-hdr"><div class="fe-logo"><span>GRUPO<br>WEDM<small>Metalmecánica Avanzada</small></span></div><div class="fe-title">${titulo}</div><div class="fe-dates">${fechas}</div><div class="fe-op">${opHtml}</div></div>`;
+const hdr=(titulo,opHtml,fechas)=>`<div class="fe-hdr"><div class="fe-logo"><img src="${LOGO_B64_PNG}" alt="GRUPO WEDM" style="max-width:100%;max-height:56px;width:auto;height:auto"></div><div class="fe-title">${titulo}</div><div class="fe-dates">${fechas}</div><div class="fe-op">${opHtml}</div></div>`;
 window.feHdr=hdr; window.feAbrir=feAbrir; window.feE=E;
 
 /* ========== SOLICITUD DE BIENES Y SERVICIOS EXTERNOS (COMPRAS-FO-002) ========== */
@@ -3348,7 +3349,7 @@ window.renderEditorCert=function(){
   const sel=o?itemsDeOp(o.op):[];
   const html=`<div class="fe-sheet">
    <datalist id="fe-dl-ops">${ops.map(x=>`<option value="${x}">`).join('')}</datalist>
-   <div class="fe-hdr" style="grid-template-columns:130px 1fr 170px"><div class="fe-logo"><span>GRUPO<br>WEDM<small>Metalmecánica Avanzada</small></span></div><div class="fe-title" style="flex-direction:column">Certificado de conformidad<span style="font-size:10px;font-weight:600;color:#334155;text-transform:uppercase">Centralizar resultados de medición</span></div><div style="text-align:center"><div style="background:#1a3a6b;color:#fff;font-size:9px;font-weight:700;padding:4px">CERTIFICADO N°</div><div style="font-size:22px;font-weight:900;color:#16a34a;padding:10px 0">${num}</div></div></div>
+   <div class="fe-hdr" style="grid-template-columns:130px 1fr 170px"><div class="fe-logo"><img src="${LOGO_B64_PNG}" alt="GRUPO WEDM" style="max-width:100%;max-height:56px;width:auto;height:auto"></div><div class="fe-title" style="flex-direction:column">Certificado de conformidad<span style="font-size:10px;font-weight:600;color:#334155;text-transform:uppercase">Centralizar resultados de medición</span></div><div style="text-align:center"><div style="background:#1a3a6b;color:#fff;font-size:9px;font-weight:700;padding:4px">CERTIFICADO N°</div><div style="font-size:22px;font-weight:900;color:#16a34a;padding:10px 0">${num}</div></div></div>
    <div class="fe-bar1" style="border:2px solid #1a3a6b;border-top:0;border-bottom:0"><span>Datos generales</span></div>
    <div class="fe-gen">
     <div class="g" style="grid-template-columns:230px 1fr 160px 160px"><div><label>OP — Ítem</label>${o?`<div style="font-weight:800;font-size:15px;padding:3px">OP-${E(ce.d.op)} · Ítem ${E(ce.d.item_num)}</div>`:`<input list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(ce.d.op||'')}" onchange="feCertOp(this.value)" style="font-weight:800;font-size:15px">`}
