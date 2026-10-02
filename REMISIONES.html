@@ -1768,6 +1768,11 @@ body[data-dens="compacto"] #content .card-list .lc-meta{margin-top:5px}
 @media(max-width:560px){
 body[data-dens="compacto"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-dens="mosaico"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){grid-template-columns:repeat(3,minmax(0,1fr))}}
+/*DENS-MOVIL*/@media(max-width:560px){
+body[data-dens] #content .card-list .lc-top>:first-child{flex:1 1 100%!important;min-width:0!important}
+body[data-dens] #content .card-list .lc-top>:not(:first-child){margin-left:0!important;text-align:left!important}
+body[data-dens] #content .card-list .lc-title{word-break:normal!important;overflow-wrap:break-word;hyphens:auto}
+}
 #dens-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;margin-right:6px;user-select:none}
 </style>
 <script>
@@ -2030,6 +2035,7 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 .dp-tab{padding:7px 11px!important;font-size:12px!important}
 .dp-section{margin-bottom:8px!important}
 </style>
+
 <!-- WEDM-CHAT (campana, chat entre áreas, hoja de vida) -->
 <style>
 #chat-bell{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;font-size:16px;flex-shrink:0;user-select:none}
@@ -2078,11 +2084,25 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 #ci-ment .mi{padding:6px 10px;font-size:13px;cursor:pointer;font-weight:600}#ci-ment .mi.on,#ci-ment .mi:hover{background:#2563eb;color:#fff}
 .cm b.mn{color:#1d4ed8;background:#dbeafe;border-radius:4px;padding:0 3px}.cm.yo b.mn{background:#bbf7d0;color:#166534}
 #chat-in button.at{background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:0 10px;font-size:16px;cursor:pointer}
-#chat-in textarea,#chat-in input{text-transform:none!important}
+#chat-box,#chat-box *,#chat-dd,#chat-dd *{text-transform:none!important}
 #ci-prev{display:flex;gap:6px;flex-wrap:wrap}#ci-prev:empty{display:none}
 #ci-prev .pv{display:inline-flex;align-items:center;gap:5px;background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:2px 6px;font-size:11px}
 #ci-prev .pv img{height:34px;border-radius:4px}#ci-prev .pv b{cursor:pointer;color:#dc2626}
-@media(max-width:600px){#chat-ov{padding:0}#chat-box{height:100vh;border-radius:0}}
+@media(max-width:600px){
+#chat-ov{padding:0;align-items:stretch}
+#chat-box{width:100%;height:100%;max-height:100%;border-radius:0}
+.cc-h{padding:8px 8px;gap:6px;flex-wrap:wrap}
+.cc-h .tt{flex:1 1 40%}
+.cc-h button{padding:6px 9px;font-size:12px}
+.cc-h button.lb{font-size:0}.cc-h button.lb::first-letter{font-size:15px}
+#chat-in{padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+#chat-in .r>span{display:none}
+#chat-in select{flex:1;min-width:0}
+#chat-in textarea{font-size:16px;height:44px}
+#chat-in button.s{padding:0 14px;min-height:44px}
+#chat-in button.at{min-width:44px}
+.cm{max-width:90%}
+}
 </style>
 <div id="chat-dd"></div>
 <div id="chat-ov" onclick="if(event.target===this)chatCerrar()"><div id="chat-box"></div></div>
@@ -2181,7 +2201,7 @@ window.chatAbrir=async function(id,op,ref,para){
   const ov=document.getElementById('chat-ov'); ov.classList.add('open');
   const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
   const defPara=C.para||'todos';
-  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
+  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
   <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
   <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
   <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
@@ -2388,6 +2408,14 @@ setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 })();
 </script>
+<script>
+(function(){try{var vv=window.visualViewport; if(!vv) return;
+function aj(){var ov=document.getElementById('chat-ov'); if(!ov||!ov.classList.contains('open')) return;
+ if(window.innerWidth>600){ov.style.height='';ov.style.top='';return;}
+ ov.style.top=vv.offsetTop+'px'; ov.style.height=vv.height+'px'; ov.style.bottom='auto';}
+vv.addEventListener('resize',aj); vv.addEventListener('scroll',aj); setInterval(aj,400);}catch(e){}})();
+</script>
 <!-- /WEDM-CHAT -->
+
 </body>
 </html>

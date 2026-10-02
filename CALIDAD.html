@@ -2586,6 +2586,11 @@ body[data-dens="compacto"] #content .card-list .lc-meta{margin-top:5px}
 @media(max-width:560px){
 body[data-dens="compacto"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-dens="mosaico"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){grid-template-columns:repeat(3,minmax(0,1fr))}}
+/*DENS-MOVIL*/@media(max-width:560px){
+body[data-dens] #content .card-list .lc-top>:first-child{flex:1 1 100%!important;min-width:0!important}
+body[data-dens] #content .card-list .lc-top>:not(:first-child){margin-left:0!important;text-align:left!important}
+body[data-dens] #content .card-list .lc-title{word-break:normal!important;overflow-wrap:break-word;hyphens:auto}
+}
 #dens-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;margin-right:6px;user-select:none}
 </style>
 <script>
@@ -2848,365 +2853,6 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 .dp-tab{padding:7px 11px!important;font-size:12px!important}
 .dp-section{margin-bottom:8px!important}
 </style>
-<!-- WEDM-CHAT (campana, chat entre áreas, hoja de vida) -->
-<style>
-#chat-bell{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;font-size:16px;flex-shrink:0;user-select:none}
-#chat-bell:hover{background:rgba(127,127,127,.15)}
-#chat-bell b{position:absolute;top:0;right:0;min-width:15px;height:15px;border-radius:8px;background:#dc2626;color:#fff;font-size:9px;line-height:15px;text-align:center;padding:0 3px;display:none}
-#chat-bell.on b{display:block}
-#chat-bell.on{animation:cbell .6s 2}
-@keyframes cbell{25%{transform:rotate(14deg)}75%{transform:rotate(-14deg)}}
-#chat-dd{position:fixed;top:46px;right:8px;width:min(380px,calc(100vw - 16px));max-height:70vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.25);z-index:9000;display:none}
-#chat-dd.open{display:block}
-.cd-h{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border,#e2e8f0);font-weight:800;font-size:13px;position:sticky;top:0;background:inherit}
-.cd-h button{margin-left:auto;font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--border,#e2e8f0);background:var(--bg,#f8fafc);cursor:pointer;color:inherit}
-.cd-i{padding:8px 10px;border-bottom:1px solid var(--border,#eef2f7);cursor:pointer;font-size:12px}
-.cd-i:hover{background:rgba(37,99,235,.07)}
-.cd-i.nv{background:rgba(37,99,235,.08);border-left:3px solid #2563eb}
-.cd-i .t{display:flex;gap:6px;font-weight:700;font-size:11px}.cd-i .t span{margin-left:auto;font-weight:400;opacity:.6}
-.cd-i .x{opacity:.85;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cd-x{float:right;border:0;background:transparent;color:inherit;opacity:.45;cursor:pointer;font-size:12px;padding:0 4px;margin-left:4px}.cd-x:hover{opacity:1;color:#dc2626}
-.cd-n{background:#2563eb;color:#fff;border-radius:8px;padding:0 6px;font-size:10px;order:-1}
-.cd-ac{display:inline-block;background:#fef3c7;color:#92400e;border-radius:6px;padding:0 6px;font-size:10px;font-weight:700;margin-right:4px}
-#chat-ov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9100;display:none;align-items:center;justify-content:center;padding:10px}
-#chat-ov.open{display:flex}
-#chat-box{width:min(560px,100%);height:min(640px,92vh);background:var(--surface,#fff);color:var(--text,#0f172a);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.cc-h{padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0);display:flex;gap:8px;align-items:center}
-.cc-h .tt{flex:1;min-width:0;font-weight:800;font-size:14px;line-height:1.25}.cc-h .tt small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-weight:400;opacity:.75;font-size:11.5px;overflow:hidden;margin-top:1px}
-#cc-img{display:none;width:46px;height:46px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#e2e8f0);flex-shrink:0;cursor:zoom-in;background:#fff}
-.cc-h button{border:1px solid var(--border,#e2e8f0);background:var(--bg,#f8fafc);border-radius:8px;padding:4px 9px;font-size:12px;cursor:pointer;color:inherit}
-#chat-msgs{flex:1;overflow:auto;padding:10px;background:var(--bg,#f1f5f9);display:flex;flex-direction:column;gap:6px}
-.cc-s{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border,#e2e8f0)}.cc-s input{flex:1;border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:5px 9px;font-size:12px;background:var(--bg,#fff);color:inherit}.cc-s span{font-size:10px;opacity:.6;white-space:nowrap}
-.cm{max-width:82%;padding:6px 9px;border-radius:10px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);font-size:13px;align-self:flex-start;word-wrap:break-word}
-.cm.yo{align-self:flex-end;background:#dcfce7;border-color:#bbf7d0;color:#052e16}
-.cm .a{font-size:10px;font-weight:800;opacity:.75;margin-bottom:1px}
-.cm .a i{font-style:normal;font-weight:500;opacity:.8}
-.cm .f{font-size:9px;opacity:.55;text-align:right;margin-top:2px}
-.cm.ac{border-left:4px solid #f59e0b}
-.cm .btns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-.cm .btns button{font-size:11px;padding:4px 10px;border-radius:7px;border:0;cursor:pointer;font-weight:700;background:#2563eb;color:#fff}
-.cm .btns button.g{background:#16a34a}
-.cm.ok{opacity:.8;border-left-color:#16a34a}
-#chat-in{border-top:1px solid var(--border,#e2e8f0);padding:8px;display:flex;flex-direction:column;gap:6px}
-#chat-in .r{display:flex;gap:6px}
-#chat-in select,#chat-in input,#chat-in textarea{border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:6px 8px;font-size:13px;background:var(--bg,#fff);color:inherit;font-family:inherit}
-#chat-in textarea{flex:1;resize:none;height:38px}
-#chat-in button.s{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:0 14px;font-weight:700;cursor:pointer}
-#ci-ment{max-height:230px;overflow:auto;display:none;position:absolute;bottom:100%;left:0;right:0;margin-bottom:4px;background:var(--surface,#fff);border:1px solid var(--border,#cbd5e1);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow:hidden;z-index:2}
-#ci-ment .mi{padding:6px 10px;font-size:13px;cursor:pointer;font-weight:600}#ci-ment .mi.on,#ci-ment .mi:hover{background:#2563eb;color:#fff}
-.cm b.mn{color:#1d4ed8;background:#dbeafe;border-radius:4px;padding:0 3px}.cm.yo b.mn{background:#bbf7d0;color:#166534}
-#chat-in button.at{background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:0 10px;font-size:16px;cursor:pointer}
-#chat-in textarea,#chat-in input{text-transform:none!important}
-#ci-prev{display:flex;gap:6px;flex-wrap:wrap}#ci-prev:empty{display:none}
-#ci-prev .pv{display:inline-flex;align-items:center;gap:5px;background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:2px 6px;font-size:11px}
-#ci-prev .pv img{height:34px;border-radius:4px}#ci-prev .pv b{cursor:pointer;color:#dc2626}
-@media(max-width:600px){#chat-ov{padding:0}#chat-box{height:100vh;border-radius:0}}
-</style>
-<div id="chat-dd"></div>
-<div id="chat-ov" onclick="if(event.target===this)chatCerrar()"><div id="chat-box"></div></div>
-<script>
-(function(){
-const AREAS=[['comercial','💼 Comercial'],['diseno','🎨 Diseño'],['compras','🛒 Compras'],['planeacion','🗓️ Planeación'],['calidad','✅ Calidad'],['remisiones','🚚 Remisiones'],['administracion','🏛️ Administración'],['todos','👥 Todos'],['mencion','👤 Solo mencionados']];
-const ACC=[['','💬 Solo mensaje'],['plano','📐 Pedir plano'],['compra','🛒 Pedir compra / material'],['revision','🔎 Pedir revisión'],['remision','🚚 Pedir remisión'],['info','❓ Pedir información']];
-const ACCL=Object.fromEntries(ACC);
-const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const Q=v=>String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-const fmt=d=>{try{return new Date(d).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
-const SS=()=>{try{return _SESSION}catch(e){return null}};
-const me=()=>(SS()&&SS().nombre)||'';
-const rpc=(f,p)=>sb.rpc(f,p||{});
-const T=(m,t)=>{try{toast(m,t)}catch(e){}};
-const arLbl=k=>(AREAS.find(a=>a[0]===k)||[k,k])[1];
-const _rolArea={comercial:'comercial',diseno:'diseno',compras:'compras',calidad:'calidad',administracion:'planeacion',admin:'planeacion',desarrollador:'planeacion'};
-let C={id:null,op:null,ref:'',rows:[],last:-1,timer:null,para:null,list:[]};
-let lastNuevos=0,lastUlt=null;
-
-
-/* menciones @ */
-const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-const EXCL=['admin','solo lectura','felipe davalos'];
-let UL=null;
-const LINDO=n=>{try{return nombreLindo(n)}catch(e){return n}};
-async function cargaUsers(){ if(UL) return UL; let U=[]; try{U=await rpc('listar_usuarios');}catch(e){} if(!Array.isArray(U)||!U.length){try{U=USUARIOS||[]}catch(e){U=[]}}
-  UL=U.filter(u=>u&&u.nombre&&!EXCL.includes(norm(u.nombre))).map(u=>({n:u.nombre,d:LINDO(u.nombre),rol:u.rol,as:u.asesor||''})); return UL; }
-const usuarios=()=>(UL||[]).filter(u=>u.n!==me());
-const RL={comercial:'Comercial',diseno:'Diseño',compras:'Compras',calidad:'Calidad',administracion:'Planeación',admin:'Admin',desarrollador:'Desarrollo'};
-const hl=t=>{let h=E(t).replace(/\n/g,'<br>').replace(/@grupal/gi,'<b class="mn">@grupal</b>'); (UL||[]).slice().sort((a,b)=>b.d.length-a.d.length).forEach(u=>{[u.d,u.n].forEach(nm=>{const k=E('@'+nm); const i=norm(h).indexOf(norm(k)); if(i>=0&&h.substr(Math.max(0,i-14),14)!=='<b class="mn">') h=h.substr(0,i)+'<b class="mn">'+h.substr(i,k.length)+'</b>'+h.substr(i+k.length);});}); return h;};
-function mentList(txt){const t=norm(txt); return [...new Set(usuarios().filter(u=>t.includes('@'+norm(u.d))||t.includes('@'+norm(u.n))).map(u=>u.n))];}
-let MI=-1,MC=[];
-function mentInput(){
-  const ta=document.getElementById('ci-txt'), box=document.getElementById('ci-ment'); const pre=ta.value.slice(0,ta.selectionStart); const m=pre.match(/(?:^|\s)@([^@\n]{0,20})$/);
-  if(!m){box.style.display='none';MC=[];return;}
-  const q=norm(m[1]); MC=('grupal'.startsWith(q)?[{n:'__g',d:'grupal',rol:'todos los usuarios'}]:[]).concat(usuarios().filter(u=>!q||norm(u.d+' '+u.n).split(/[\s.]+/).some(w=>w.startsWith(q)))).slice(0,14);
-  if(!MC.length){box.style.display='none';return;}
-  MI=0; box.style.display='block'; box.innerHTML=MC.map((n,i)=>`<div class="mi ${i===0?'on':''}" onmousedown="event.preventDefault();mentPick(${i})">@${E(n.d)} <small style="opacity:.6;font-weight:400">${E(RL[n.rol]||n.rol||'')}</small></div>`).join('');
-}
-function mentKey(e){
-  const box=document.getElementById('ci-ment'); const open=box&&box.style.display==='block'&&MC.length;
-  if(open){
-    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();MI=(MI+(e.key==='ArrowDown'?1:-1)+MC.length)%MC.length;[...box.children].forEach((c,i)=>c.classList.toggle('on',i===MI));return;}
-    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();mentPick(MI);return;}
-    if(e.key==='Escape'){e.stopPropagation();box.style.display='none';return;}
-  }
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();chatEnviar();}
-}
-window.mentPick=function(i){
-  const ta=document.getElementById('ci-txt'), box=document.getElementById('ci-ment'); const n=MC[i]&&MC[i].d; if(!n) return;
-  const pos=ta.selectionStart, pre=ta.value.slice(0,pos).replace(/@[^@\n]{0,20}$/,'@'+n+' '); ta.value=pre+ta.value.slice(pos); ta.selectionStart=ta.selectionEnd=pre.length; box.style.display='none'; ta.focus();
-};
-window.chatDetalle=function(id){
-  chatCerrar();
-  const fn=['detailOP','detalleProd','detailItem'].find(f=>typeof window[f]==='function');
-  if(!fn){T('Abre la OP desde su módulo','error');return;}
-  try{window[fn](id);}catch(e){T('❌ '+(e.message||e),'error');}
-};
-/* ---------- campana ---------- */
-function ensureBell(){
-  if(document.getElementById('chat-bell')) return;
-  const rb=document.getElementById('refresh-btn'); if(!rb) return;
-  const b=document.createElement('div'); b.id='chat-bell'; b.title='Mensajes y notificaciones'; b.innerHTML='🔔<b>0</b>';
-  b.onclick=e=>{e.stopPropagation();ddToggle()};
-  rb.parentNode.insertBefore(b,rb);
-}
-function ddToggle(){const d=document.getElementById('chat-dd'); if(d.classList.contains('open')){d.classList.remove('open');return;} ddRender(); d.classList.add('open');}
-function ddRender(){
-  const d=document.getElementById('chat-dd'); const L=C.list||[];
-  d.innerHTML=`<div class="cd-h">🔔 Notificaciones <button onclick="chatNueva()">✏️ Nueva</button><button onclick="chatMarcar()" title="Quita el aviso de no leído; las conversaciones se quedan en la lista">Marcar leídas</button></div>`+
-   (L.length?L.map(m=>`<div class="cd-i ${m.nuevo?'nv':''}" onclick="chatAbrir('${Q(m.id_prod||'')}','${Q(m.op||'')}','${Q(m.ref||'')}')"><div class="t"><button class="cd-x" title="Cerrar conversación (se quita de aquí hasta que vuelvan a escribir)" onclick="event.stopPropagation();chatCerrarConv('${Q(m.clave||'')}')">✕</button>${m.sinleer>0?'<b class="cd-n">'+m.sinleer+'</b>':''}${E(m.de)} <small>(${E(arLbl(m.de_rol==='administracion'?'planeacion':m.de_rol))})</small> · ${E(fmtRef(m.ref)||m.op||'general')}<span>${fmt(m.fecha)}</span></div><div class="x">${m.mencion?'<i class="cd-ac" style="background:#dbeafe;color:#1e40af">@ TE MENCIONÓ</i>':''}${m.accion&&m.estado==='abierta'?'<i class="cd-ac">PENDIENTE: '+E(ACCL[m.accion]||m.accion)+'</i>':''}${E(m.texto)}</div></div>`).join(''):'<div class="cd-i" style="cursor:default;opacity:.6">Sin notificaciones</div>');
-}
-async function poll(){
-  if(document.hidden||!SS()||!SS().token) return;
-  ensureBell();
-  try{
-    const r=await rpc('chat_pendientes'); if(!r) return;
-    C.list=r.items||[];
-    const b=document.getElementById('chat-bell'); if(!b) return;
-    const n=(r.nuevos||0)+0, ab=r.abiertas||0, tot=Math.max(n,0)+((ab&&!n)?ab:0);
-    b.querySelector('b').textContent=tot>99?'99+':tot; b.classList.toggle('on',tot>0);
-    if(lastUlt!==null&&r.ultimo>lastUlt&&n>0){const m=C.list.find(x=>x.nuevo&&x.mencion)||C.list.find(x=>x.nuevo); if(m) T('🔔 '+m.de+(m.mencion?' te mencionó':'')+(m.ref?' · '+m.ref:'')+': '+m.texto.slice(0,70));}
-    lastUlt=r.ultimo; lastNuevos=n;
-    if(document.getElementById('chat-dd').classList.contains('open')) ddRender();
-    if(C.id!==null&&document.getElementById('chat-ov').classList.contains('open')) cargarMsgs(true);
-  }catch(e){}
-}
-window.chatCerrarConv=async function(clave){ if(!clave) return; try{ await rpc('chat_cerrar',{p_clave:clave}); }catch(e){T('❌ '+(e.message||e),'error');} C.list=(C.list||[]).filter(m=>m.clave!==clave); if(document.getElementById('chat-dd').classList.contains('open')) ddRender(); poll(); };
-window.chatMarcar=async function(){try{await rpc('chat_visto_marcar');}catch(e){} poll();};
-
-/* ---------- conversación ---------- */
-window.chatAbrir=async function(id,op,ref,para){
-  document.getElementById('chat-dd').classList.remove('open');
-  C.q=''; C.id=id||''; C.op=op||''; C.ref=ref||id||op||''; C.rows=[]; C.last=-1; C.para=para||null;
-  const ov=document.getElementById('chat-ov'); ov.classList.add('open');
-  const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
-  const defPara=C.para||'todos';
-  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
-  <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
-  <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
-  <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
-  <div class="r"><button class="at" title="Adjuntar archivo" onclick="chatAdj()">📎</button><div style="position:relative;flex:1;display:flex"><div id="ci-ment"></div><textarea id="ci-txt" data-no-upper="1" style="flex:1" placeholder="Escribe… @ para mencionar (Enter envía)"></textarea></div><button class="s" onclick="chatEnviar()">Enviar ➤</button></div></div></div>`;
-  const ta=document.getElementById('ci-txt'); ta.oninput=mentInput; ta.onkeydown=mentKey; ta.onpaste=pegar;
-  const bx=document.getElementById('chat-box'); bx.ondragover=e=>{e.preventDefault();}; bx.ondrop=e=>{e.preventDefault(); [...(e.dataTransfer.files||[])].forEach(addAdj);}; PEND=[]; prevPint();
-  cabecera(); await cargaUsers(); await cargarMsgs(); try{await rpc('chat_visto_marcar');}catch(e){} poll(); await prefill();
-  setTimeout(()=>{const t=document.getElementById('ci-txt'); t&&t.focus();},50);
-};
-const fmtRef=r=>String(r||'').replace(/^OP-(\d+)-(\d+)/,'OP $1 · Ítem $2');
-const HC={};
-async function cabecera(){
-  if(!C.id) return; const id=C.id;
-  try{
-    let p=HC[id]; if(!p){ const r=await GET('produccion','select=op,item_num,unidades,descripcion,empresa,asesor,disenador,imagen_thumb,imagen_url,imagen_drive_id&id=eq.'+encodeURIComponent(id)); p=HC[id]=(r&&r[0])||null; }
-    if(!p||C.id!==id) return;
-    const t=document.getElementById('cc-t'), sb2=document.getElementById('cc-sub'), im=document.getElementById('cc-img'); if(!t) return;
-    const u=Number(p.unidades); t.textContent='💬 OP '+p.op+' · Ítem '+(p.item_num||id.split('-')[1]||'')+(u?' · '+u+(u===1?' und':' und'):'');
-    sb2.textContent=[p.descripcion,p.empresa].filter(Boolean).join(' — ');
-    const src=p.imagen_thumb||p.imagen_url||(p.imagen_drive_id?'https://lh3.googleusercontent.com/d/'+p.imagen_drive_id+'=w200':'');
-    if(src&&im){ im.src=src; im.style.display='block'; im.onerror=()=>{ if(p.imagen_drive_id&&!im.dataset.f){im.dataset.f=1; im.src='https://drive.google.com/thumbnail?sz=w200&id='+p.imagen_drive_id;} else im.style.display='none'; }; }
-  }catch(e){}
-}
-async function prefill(){
-  const ta=document.getElementById('ci-txt'); if(!ta||ta.value) return;
-  let cand=[]; const ult=[...C.rows].reverse().find(m=>m.de!==me()); if(ult) cand.push(ult.de);
-  if(C.id){ try{ const r=await GET('produccion','select=asesor,disenador&id=eq.'+encodeURIComponent(C.id)); if(r&&r[0]){cand.push(r[0].asesor,r[0].disenador);} }catch(e){} }
-  for(const c of cand){ if(!c) continue; const u=usuarios().find(x=>norm(x.n)===norm(c)||norm(x.as)===norm(c)||norm(x.d)===norm(c)); if(u&&!ta.value){ ta.value='@'+u.d+' '; ta.selectionStart=ta.selectionEnd=ta.value.length; break; } }
-  ta.focus();
-}
-window.chatCerrar=function(){document.getElementById('chat-ov').classList.remove('open');C.id=null;};
-async function cargarMsgs(quiet){
-  try{
-    const rows=await rpc('chat_listar',{p_id_prod:C.id||null,p_op:C.id?null:(C.op||null)})||[];
-    const last=rows.length?rows[rows.length-1].id+':'+rows.filter(r=>r.estado==='hecha').length:'0';
-    if(quiet&&last===C.sig) return; C.sig=last; C.rows=rows; pintar();
-    if(quiet&&rows.length&&C.seen!==undefined&&rows.length>C.seen){try{await rpc('chat_visto_marcar');}catch(e){}} C.seen=rows.length;
-  }catch(e){const m=document.getElementById('chat-msgs'); if(m) m.innerHTML='<div style="color:#b91c1c;font-size:12px">'+E(e.message||e)+'</div>';}
-}
-function accionBtns(m){
-  if(m.accion!=='plano'&&m.accion!=='compra'&&m.accion!=='remision'&&m.estado!=='abierta') return '';
-  if(m.estado!=='abierta') return '';
-  const mia=m.de===me(); let b='';
-  if(!mia){
-    if(m.accion==='plano'&&m.id_prod) b+=`<button onclick="chatPlano(${m.id},'${Q(m.id_prod)}')">📎 Cargar plano</button>`;
-    b+=`<button class="g" onclick="chatHecho(${m.id})">✔ Hecho</button>`;
-  } else b+=`<button class="g" onclick="chatHecho(${m.id})">✔ Marcar atendida</button>`;
-  return `<div class="btns">${b}</div>`;
-}
-function pintar(){
-  const box=document.getElementById('chat-msgs'); if(!box) return;
-  const bottom=box.scrollHeight-box.scrollTop-box.clientHeight<60;
-  const q=norm(C.q||''); const rows=q?C.rows.filter(m=>norm([m.texto,m.de,m.nota,m.accion,ACCL[m.accion]||'',m.resuelto_por].join(' ')).includes(q)):C.rows; const qn=document.getElementById('cc-qn'); if(qn) qn.textContent=q?rows.length+' / '+C.rows.length:C.rows.length?C.rows.length+' msj':'';
-  box.innerHTML=rows.length?rows.map(m=>{const yo=m.de===me();
-    return `<div class="cm ${yo?'yo':''} ${m.accion?'ac':''} ${m.estado==='hecha'?'ok':''}"><div class="a">${E(m.de)} <i>${E(arLbl(m.de_rol==='administracion'?'planeacion':m.de_rol))} → ${E(arLbl(m.para))}</i></div>${m.accion?`<div class="cd-ac">${E(ACCL[m.accion]||m.accion)}${m.estado==='hecha'?' · ✔ atendida por '+E(m.resuelto_por):''}</div><br>`:''}${hl(m.texto)}${m.nota?`<div style="font-size:11px;opacity:.7;margin-top:3px">↳ ${E(m.nota)}</div>`:''}<div id="adj-${m.id}"></div>${accionBtns(m)}<div class="f">${fmt(m.fecha)}</div></div>`}).join(''):(q?'<div style="opacity:.6;text-align:center;font-size:12px;margin-top:20px">Sin resultados para «'+E(C.q)+'»</div>':'<div style="opacity:.6;text-align:center;font-size:12px;margin-top:20px">Sin mensajes. Escribe el primero 👇</div>');
-  if(q){ box.querySelectorAll('.cm').forEach(el=>{ markQ(el,C.q); }); }
-  pintaAdj(); if(!q&&(bottom||C.first!==C.id)){box.scrollTop=box.scrollHeight;C.first=C.id;}
-}
-let PEND=[], _drvWarn=false;
-/* sube a Drive (Apps Script del ERP); devuelve id del archivo o null para guardar en la base como respaldo */
-async function aDrive(f){
-  const url='https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec';
-  try{
-    const carpeta='CHAT/'+String(C.ref||C.op||'general').replace(/[\\/:*?"<>|]/g,'').slice(0,60);
-    const r=await fetch(url,{method:'POST',body:JSON.stringify({carpeta,nombre:f.nombre,base64:String(f.data).split(',')[1]||'',mime:f.mime,tipo:f.mime})});
-    const j=await r.json().catch(()=>null);
-    const id=j&&j.ok&&(j.id||j.fileId||((j.url||'').match(/[-\w]{25,}/)||[])[0]);
-    if(id) return id;
-  }catch(e){}
-  if(!_drvWarn){_drvWarn=true; T('⚠️ Drive no devolvió el enlace del archivo; se guardó en la base como respaldo','error');}
-  return null;
-}
-const confirmSin=async()=>confirm('No mencionaste a nadie: nadie recibirá notificación (el mensaje solo quedará en la conversación).\n\nEscribe @nombre o @grupal para avisar.\n\n¿Enviar así de todas formas?');
-window.chatBuscar=function(v){ C.q=v; pintar(); };
-function markQ(root,q){ const re=new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'); if(!q.trim()) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const ns=[]; while(w.nextNode()) ns.push(w.currentNode); ns.forEach(n=>{ if(!re.test(n.nodeValue)) return; re.lastIndex=0; const sp=document.createElement('span'); sp.innerHTML=E(n.nodeValue).replace(new RegExp(E(q.trim()).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark style="background:#fde047;color:#000;border-radius:2px">'+m+'</mark>'); n.parentNode.replaceChild(sp,n); }); }
-window.chatEnviar=async function(){
-  const t=document.getElementById('ci-txt'); const txt=(t.value||'').trim(); if(!txt&&!PEND.length) return;
-  const acc=document.getElementById('ci-acc').value; const gr=/(^|\s)@grupal\b/i.test(txt);
-  const mens=mentList(txt); const pp=gr?'todos':'mencion';
-  if(!gr&&!mens.length&&!(await confirmSin())) return;
-  t.disabled=true;
-  try{
-    const mid=await rpc('chat_enviar2',{p_id_prod:C.id||null,p_op:C.op||null,p_ref:C.ref||null,p_para:pp,p_texto:txt||'📎 Archivo adjunto',p_accion:acc||null,p_menciones:mens});
-    for(const f of PEND){ let dato=f.data; const dr=await aDrive(f); if(dr) dato='drive:'+dr; await rpc('chat_adjuntar',{p_msg:mid,p_nombre:f.nombre,p_mime:f.mime,p_size:f.size,p_data:dato}); }
-    t.value=''; PEND=[]; prevPint(); document.getElementById('ci-acc').value=''; await cargarMsgs();
-  }catch(e){ T('❌ '+(e.message||e),'error'); }
-  t.disabled=false; t.focus();
-};
-function prevPint(){const p=document.getElementById('ci-prev'); if(!p) return; p.innerHTML=PEND.map((f,i)=>`<span class="pv">${/^image\//.test(f.mime)?`<img src="${f.data}">`:'📄'} ${E(f.nombre).slice(0,24)} <b onclick="PENDdel(${i})">✕</b></span>`).join('');}
-window.PENDdel=i=>{PEND.splice(i,1);prevPint();};
-async function addAdj(file){
-  try{
-    let data,mime=file.type||'application/octet-stream';
-    if(/^image\//.test(mime)){data=await readImg(file);mime='image/jpeg';}
-    else{ if(file.size>4*1048576) throw new Error('El archivo pesa más de 4 MB'); data=await new Promise((a,b)=>{const r=new FileReader();r.onload=()=>a(r.result);r.onerror=b;r.readAsDataURL(file);}); }
-    PEND.push({nombre:file.name||('imagen_'+Date.now()+'.jpg'),mime,size:Math.round(data.length*.75),data}); prevPint();
-  }catch(e){T('❌ '+(e.message||e),'error');}
-}
-function pegar(e){const it=[...(e.clipboardData&&e.clipboardData.items||[])].filter(i=>i.kind==='file'); if(!it.length) return; e.preventDefault(); it.forEach(i=>{const f=i.getAsFile(); if(f) addAdj(f);});}
-window.chatAdj=function(){const i=document.createElement('input'); i.type='file'; i.multiple=true; i.style.display='none'; i.onchange=()=>{[...i.files].forEach(addAdj); i.remove();}; document.body.appendChild(i); i.click();};
-const ADJC={};
-async function adjData(id){ if(ADJC[id]) return ADJC[id]; let d=await rpc('chat_adjunto_get',{p_id:id}); if(typeof d==='string'&&d.startsWith('drive:')) d='https://drive.google.com/thumbnail?sz=w900&id='+d.slice(6); ADJC[id]=d; return d; }
-const drvId=d=>(d.match(/[?&]id=([-\w]+)/)||[])[1];
-window.chatVerAdj=async function(id,nombre,mime){
-  try{ const d=await adjData(id); if(!d) return; if(/^https:\/\/drive\.google\.com\/thumbnail/.test(d)){ window.open('https://drive.google.com/file/d/'+drvId(d)+'/view','_blank'); return; } const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes','error');return;}
-   if(/^image\//.test(mime)) w.document.write('<title>'+E(nombre)+'</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="'+d+'" style="max-width:100%;max-height:100vh">');
-   else { const bin=atob(d.split(',')[1]||''); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); const url=URL.createObjectURL(new Blob([u],{type:mime})); w.location.href=url; } }catch(e){T('❌ '+(e.message||e),'error');}
-};
-async function pintaAdj(){
-  const ids=C.rows.filter(m=>m.adj_n>0).map(m=>m.id); if(!ids.length) return;
-  try{ const meta=await rpc('chat_adjuntos_meta',{p_ids:ids})||[];
-   for(const a of meta){ const host=document.getElementById('adj-'+a.id_msg); if(!host||host.querySelector('[data-a="'+a.id+'"]')) continue;
-     if(/^image\//.test(a.mime)){ const im=document.createElement('img'); im.dataset.a=a.id; im.style.cssText='max-width:220px;max-height:160px;border-radius:8px;cursor:zoom-in;display:block;margin-top:5px'; im.onclick=()=>chatVerAdj(a.id,a.nombre,a.mime); host.appendChild(im); adjData(a.id).then(d=>{im.src=d;}); }
-     else { const l=document.createElement('a'); l.dataset.a=a.id; l.href='javascript:void 0'; l.style.cssText='display:block;margin-top:5px;font-size:12px'; l.textContent='📄 '+a.nombre; l.onclick=()=>chatVerAdj(a.id,a.nombre,a.mime); host.appendChild(l); } } }catch(e){}
-}
-window.chatHecho=async function(id){
-  const n=prompt('Nota (opcional):',''); if(n===null) return;
-  try{await rpc('chat_resolver',{p_id:id,p_nota:n||null}); await cargarMsgs(); poll();}catch(e){T('❌ '+(e.message||e),'error');}
-};
-function readImg(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.8));};im.onerror=()=>rej(new Error('Imagen inválida'));im.src=fr.result;};fr.onerror=()=>rej(new Error('No se pudo leer'));fr.readAsDataURL(file);});}
-window.chatPlano=function(mid,idp){
-  const i=document.createElement('input'); i.type='file'; i.accept='image/*,application/pdf'; i.style.display='none';
-  i.onchange=async()=>{const f=i.files&&i.files[0]; i.remove(); if(!f) return;
-    try{
-      let data,mime;
-      if(/^image\//.test(f.type)){data=await readImg(f);mime='image/jpeg';}
-      else if(f.type==='application/pdf'){ if(f.size>3.5*1048576) throw new Error('El PDF pesa más de 3.5 MB'); data=await new Promise((a,b)=>{const r=new FileReader();r.onload=()=>a(r.result);r.onerror=b;r.readAsDataURL(f);}); mime=f.type; }
-      else throw new Error('Solo imágenes o PDF');
-      const h={...sb.h,'Prefer':'return=minimal','Content-Type':'application/json'};
-      const r=await fetch(SB_URL+'/rest/v1/prod_archivos',{method:'POST',headers:h,body:JSON.stringify({tipo:'plano',nombre:f.name||'plano',mime,size:Math.round(data.length*.75),data,created_by:me(),id_prod:idp})});
-      if(!r.ok){ if(sb._fail) await sb._fail(r,'subir archivos'); throw new Error('No se pudo subir ('+r.status+')'); }
-      await rpc('chat_resolver',{p_id:mid,p_nota:'Plano cargado: '+(f.name||'plano')}); T('✅ Plano cargado y solicitud atendida'); await cargarMsgs(); poll();
-    }catch(e){T('❌ '+(e.message||e),'error');}
-  };
-  document.body.appendChild(i); i.click();
-};
-/* nueva conversación por número de OP / ítem */
-window.chatNueva=async function(){
-  document.getElementById('chat-dd').classList.remove('open');
-  const q=prompt('Número de OP o ítem (ej. 13415 ó 13415-1). Vacío = conversación general:'); if(q===null) return;
-  const v=q.trim(); if(!v) return chatAbrir('','','General');
-  try{
-    const r=await GET('produccion','select=id,op,descripcion,empresa&or=(id.eq.'+encodeURIComponent(v)+',op.eq.'+encodeURIComponent(v)+')&order=id&limit=30');
-    if(!r||!r.length){T('No encontré esa OP / ítem','error');return;}
-    if(r.length===1||r.some(x=>x.id===v)){const x=r.find(x=>x.id===v)||r[0]; return chatAbrir(x.id,x.op,'OP-'+x.id);}
-    return chatAbrir('',v,'OP '+v+' (general)');
-  }catch(e){T('❌ '+(e.message||e),'error');}
-};
-/* ---------- hoja de vida (imprimible / PDF) ---------- */
-window.chatHoja=async function(id,op){
-  const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes para ver la hoja','error');return;}
-  w.document.write('<p style="font-family:sans-serif">Generando hoja de vida…</p>');
-  try{
-    const f=id?'id.eq.'+encodeURIComponent(id):'op.eq.'+encodeURIComponent(op);
-    const filtro=id?'id_prod=eq.'+encodeURIComponent(id):'op=eq.'+encodeURIComponent(op);
-    const [pr,ev,ms,ma,rm]=await Promise.all([
-      GET('produccion','select=id,op,item_num,descripcion,empresa,asesor,unidades,estado,avance,prioridad,disenador,fecha_inicio,fecha_pactada,fecha_entrega_prod,cant_despachada,despachado,terminado,calidad_estado,proceso_actual,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10&order=id&'+(id?'id=eq.':'op=eq.')+encodeURIComponent(id||op)),
-      GET('prod_eventos','select=id_prod,evento,detalle,usuario,rol,fecha&order=fecha.asc&limit=2000&'+filtro),
-      rpc('chat_hoja',{p_id:id||null,p_op:id?null:op}).catch(()=>[]),
-      GET('prod_materiales','select=id_prod,material,detalle,cantidad,unidad,cantidad_kg,proveedor,estado,solicitado_por,solicitado_at,autorizado_por,autorizado_at,comprado_por,comprado_at,recibido_por,recibido_at,costo_real,id_oc,factura&order=solicitado_at.asc&limit=500&'+(id?'id_prod=eq.'+encodeURIComponent(id):'id_prod=like.'+encodeURIComponent(op+'-*'))).catch(()=>[]),
-      GET('remisiones','select=numero,estado,pedida_por,pedida_fecha,generada_por,generada_fecha,despachada_por,despachada_fecha&order=numero&op=eq.'+encodeURIComponent(op||(id||'').split('-')[0])).catch(()=>[])
-    ]);
-    const ops=op||(pr[0]&&pr[0].op)||'';
-    const tl=[];
-    ev.forEach(e=>tl.push({t:e.fecha,k:'Evento',i:e.id_prod,a:e.evento,d:e.detalle,u:e.usuario,r:e.rol}));
-    ms.forEach(m=>{tl.push({t:m.fecha,k:m.accion?'Solicitud':'Chat',i:m.id_prod,a:(m.accion?(ACCL[m.accion]||m.accion)+' ':'')+'→ '+arLbl(m.para).replace(/^\S+\s/,''),d:m.texto+(m.estado==='hecha'?' [Atendida por '+m.resuelto_por+(m.nota?': '+m.nota:'')+']':''),u:m.de,r:m.de_rol});});
-    ma.forEach(m=>{ if(m.solicitado_at) tl.push({t:m.solicitado_at,k:'Compra',i:m.id_prod,a:'Material solicitado: '+m.material,d:[m.detalle,m.cantidad?m.cantidad+' '+(m.unidad||''):'',m.cantidad_kg?m.cantidad_kg+' kg':''].filter(Boolean).join(' · '),u:m.solicitado_por,r:''});
-      if(m.autorizado_at) tl.push({t:m.autorizado_at,k:'Compra',i:m.id_prod,a:'Autorizado: '+m.material,d:'',u:m.autorizado_por,r:''});
-      if(m.comprado_at) tl.push({t:m.comprado_at,k:'Compra',i:m.id_prod,a:'Comprado: '+m.material,d:[m.proveedor,m.factura?'Fact. '+m.factura:'',m.costo_real?'$'+Number(m.costo_real).toLocaleString('es-CO'):''].filter(Boolean).join(' · '),u:m.comprado_por,r:''});
-      if(m.recibido_at) tl.push({t:m.recibido_at,k:'Compra',i:m.id_prod,a:'Recibido: '+m.material,d:'',u:m.recibido_por,r:''}); });
-    rm.forEach(r=>{ if(r.pedida_fecha) tl.push({t:r.pedida_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' pedida',d:'',u:r.pedida_por,r:''}); if(r.generada_fecha) tl.push({t:r.generada_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' generada',d:'',u:r.generada_por,r:''}); if(r.despachada_fecha) tl.push({t:r.despachada_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' despachada',d:'',u:r.despachada_por,r:''}); });
-    tl.sort((a,b)=>new Date(a.t)-new Date(b.t));
-    const col={Evento:'#475569',Chat:'#2563eb',Solicitud:'#d97706',Compra:'#7c3aed','Remisión':'#16a34a'};
-    const items=pr.map(p=>`<tr><td><b>${E(p.id)}</b></td><td>${E(p.descripcion||'')}</td><td>${E(p.unidades||'')}</td><td>${E(p.estado||'')}</td><td>${p.avance!=null?Math.round(p.avance)+'%':''}</td><td>${E(p.fecha_pactada||'')}</td></tr>`).join('');
-    const mats=ma.map(m=>`<tr><td>${E(m.id_prod)}</td><td>${E(m.material)}</td><td>${E(m.cantidad||m.cantidad_kg||'')} ${E(m.unidad||'')}</td><td>${E(m.estado||'')}</td><td>${E(m.proveedor||'')}</td><td>${m.costo_real?'$'+Number(m.costo_real).toLocaleString('es-CO'):''}</td></tr>`).join('');
-    const p0=pr[0]||{};
-    const html=`<!doctype html><meta charset="utf-8"><title>Hoja de vida ${E(id||('OP '+ops))}</title><style>
-body{font-family:Segoe UI,Arial,sans-serif;font-size:11px;color:#0f172a;margin:0;padding:18px}h1{font-size:18px;margin:0}h2{font-size:12px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #0f172a;padding-bottom:2px}
-table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e2e8f0;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f1f5f9;font-size:10px}
-.b{display:inline-block;color:#fff;border-radius:4px;padding:0 5px;font-size:9px;font-weight:700}.pb{position:fixed;top:8px;right:8px}@media print{.pb{display:none}body{padding:0}}tr{page-break-inside:avoid}</style>
-<button class="pb" onclick="print()">🖨 Imprimir / Guardar PDF</button>
-<h1>Hoja de vida · ${E(id?'Ítem '+id:'OP '+ops)}</h1><div style="opacity:.7">${E(p0.empresa||'')}${p0.asesor?' · Asesor: '+E(p0.asesor):''} · Generada ${new Date().toLocaleString('es-CO')} por ${E(me())}</div>
-<h2>Ítems</h2><table><tr><th>Ítem</th><th>Descripción</th><th>Und</th><th>Estado</th><th>Avance</th><th>Entrega pactada</th></tr>${items}</table>
-${mats?`<h2>Compras / materiales</h2><table><tr><th>Ítem</th><th>Material</th><th>Cant.</th><th>Estado</th><th>Proveedor</th><th>Costo</th></tr>${mats}</table>`:''}
-<h2>Línea de tiempo (${tl.length})</h2><table><tr><th style="width:95px">Fecha</th><th>Tipo</th>${id?'':'<th>Ítem</th>'}<th>Qué pasó</th><th>Usuario</th></tr>${tl.map(x=>`<tr><td>${fmt(x.t)}</td><td><span class="b" style="background:${col[x.k]||'#475569'}">${x.k}</span></td>${id?'':'<td>'+E(x.i||'')+'</td>'}<td><b>${E(x.a||'')}</b>${x.d?'<br>'+E(x.d):''}</td><td>${E(x.u||'')}${x.r?' <small>('+E(x.r)+')</small>':''}</td></tr>`).join('')}</table>`;
-    w.document.open(); w.document.write(html); w.document.close();
-  }catch(e){ w.document.body.innerHTML='<p style="color:#b91c1c;font-family:sans-serif">'+E(e.message||e)+'</p>'; }
-};
-
-/* tira de chat dentro del detalle */
-let CTX=null;
-window.chatCtx=function(id,op,ref,para){CTX={id:id||'',op:op||'',ref:ref||'',para:para||'',t:Date.now()};};
-const _od=window.openDetail;
-if(typeof _od==='function'){ window.openDetail=function(){ const r=_od.apply(this,arguments);
-  try{ if(CTX&&Date.now()-CTX.t<2500){ const b=document.getElementById('dp-body'); if(b&&!b.querySelector('.chat-strip')){ const c=CTX; const d=document.createElement('div'); d.className='chat-strip'; d.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
-   d.innerHTML=`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button><button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`;
-   b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
-  return r; }; }
-/* botones reutilizables para los módulos */
-window.chatBtn=function(id,op,ref,para,label){return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
-document.addEventListener('click',e=>{const d=document.getElementById('chat-dd'); if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!(e.target.closest&&e.target.closest('#chat-bell'))) d.classList.remove('open');});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('chat-ov').classList.contains('open')) chatCerrar();});
-setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
-})();
-</script>
-<!-- /WEDM-CHAT -->
 <!-- FE-EDITORES (formatos editables dentro del ERP: solicitud, certificado, remisión) -->
 <style>
 #fe-ov{position:fixed;inset:0;z-index:9300;background:#eef2f7;display:none;overflow:auto;padding:58px 12px 40px}
@@ -3469,5 +3115,387 @@ window.feRemImprimir=()=>{
 </script>
 
 <!-- /FE-EDITORES -->
+
+<!-- WEDM-CHAT (campana, chat entre áreas, hoja de vida) -->
+<style>
+#chat-bell{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;font-size:16px;flex-shrink:0;user-select:none}
+#chat-bell:hover{background:rgba(127,127,127,.15)}
+#chat-bell b{position:absolute;top:0;right:0;min-width:15px;height:15px;border-radius:8px;background:#dc2626;color:#fff;font-size:9px;line-height:15px;text-align:center;padding:0 3px;display:none}
+#chat-bell.on b{display:block}
+#chat-bell.on{animation:cbell .6s 2}
+@keyframes cbell{25%{transform:rotate(14deg)}75%{transform:rotate(-14deg)}}
+#chat-dd{position:fixed;top:46px;right:8px;width:min(380px,calc(100vw - 16px));max-height:70vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#0f172a);border:1px solid var(--border,#e2e8f0);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.25);z-index:9000;display:none}
+#chat-dd.open{display:block}
+.cd-h{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border,#e2e8f0);font-weight:800;font-size:13px;position:sticky;top:0;background:inherit}
+.cd-h button{margin-left:auto;font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--border,#e2e8f0);background:var(--bg,#f8fafc);cursor:pointer;color:inherit}
+.cd-i{padding:8px 10px;border-bottom:1px solid var(--border,#eef2f7);cursor:pointer;font-size:12px}
+.cd-i:hover{background:rgba(37,99,235,.07)}
+.cd-i.nv{background:rgba(37,99,235,.08);border-left:3px solid #2563eb}
+.cd-i .t{display:flex;gap:6px;font-weight:700;font-size:11px}.cd-i .t span{margin-left:auto;font-weight:400;opacity:.6}
+.cd-i .x{opacity:.85;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-x{float:right;border:0;background:transparent;color:inherit;opacity:.45;cursor:pointer;font-size:12px;padding:0 4px;margin-left:4px}.cd-x:hover{opacity:1;color:#dc2626}
+.cd-n{background:#2563eb;color:#fff;border-radius:8px;padding:0 6px;font-size:10px;order:-1}
+.cd-ac{display:inline-block;background:#fef3c7;color:#92400e;border-radius:6px;padding:0 6px;font-size:10px;font-weight:700;margin-right:4px}
+#chat-ov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9100;display:none;align-items:center;justify-content:center;padding:10px}
+#chat-ov.open{display:flex}
+#chat-box{width:min(560px,100%);height:min(640px,92vh);background:var(--surface,#fff);color:var(--text,#0f172a);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.cc-h{padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0);display:flex;gap:8px;align-items:center}
+.cc-h .tt{flex:1;min-width:0;font-weight:800;font-size:14px;line-height:1.25}.cc-h .tt small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-weight:400;opacity:.75;font-size:11.5px;overflow:hidden;margin-top:1px}
+#cc-img{display:none;width:46px;height:46px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#e2e8f0);flex-shrink:0;cursor:zoom-in;background:#fff}
+.cc-h button{border:1px solid var(--border,#e2e8f0);background:var(--bg,#f8fafc);border-radius:8px;padding:4px 9px;font-size:12px;cursor:pointer;color:inherit}
+#chat-msgs{flex:1;overflow:auto;padding:10px;background:var(--bg,#f1f5f9);display:flex;flex-direction:column;gap:6px}
+.cc-s{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border,#e2e8f0)}.cc-s input{flex:1;border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:5px 9px;font-size:12px;background:var(--bg,#fff);color:inherit}.cc-s span{font-size:10px;opacity:.6;white-space:nowrap}
+.cm{max-width:82%;padding:6px 9px;border-radius:10px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);font-size:13px;align-self:flex-start;word-wrap:break-word}
+.cm.yo{align-self:flex-end;background:#dcfce7;border-color:#bbf7d0;color:#052e16}
+.cm .a{font-size:10px;font-weight:800;opacity:.75;margin-bottom:1px}
+.cm .a i{font-style:normal;font-weight:500;opacity:.8}
+.cm .f{font-size:9px;opacity:.55;text-align:right;margin-top:2px}
+.cm.ac{border-left:4px solid #f59e0b}
+.cm .btns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cm .btns button{font-size:11px;padding:4px 10px;border-radius:7px;border:0;cursor:pointer;font-weight:700;background:#2563eb;color:#fff}
+.cm .btns button.g{background:#16a34a}
+.cm.ok{opacity:.8;border-left-color:#16a34a}
+#chat-in{border-top:1px solid var(--border,#e2e8f0);padding:8px;display:flex;flex-direction:column;gap:6px}
+#chat-in .r{display:flex;gap:6px}
+#chat-in select,#chat-in input,#chat-in textarea{border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:6px 8px;font-size:13px;background:var(--bg,#fff);color:inherit;font-family:inherit}
+#chat-in textarea{flex:1;resize:none;height:38px}
+#chat-in button.s{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:0 14px;font-weight:700;cursor:pointer}
+#ci-ment{max-height:230px;overflow:auto;display:none;position:absolute;bottom:100%;left:0;right:0;margin-bottom:4px;background:var(--surface,#fff);border:1px solid var(--border,#cbd5e1);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow:hidden;z-index:2}
+#ci-ment .mi{padding:6px 10px;font-size:13px;cursor:pointer;font-weight:600}#ci-ment .mi.on,#ci-ment .mi:hover{background:#2563eb;color:#fff}
+.cm b.mn{color:#1d4ed8;background:#dbeafe;border-radius:4px;padding:0 3px}.cm.yo b.mn{background:#bbf7d0;color:#166534}
+#chat-in button.at{background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:0 10px;font-size:16px;cursor:pointer}
+#chat-box,#chat-box *,#chat-dd,#chat-dd *{text-transform:none!important}
+#ci-prev{display:flex;gap:6px;flex-wrap:wrap}#ci-prev:empty{display:none}
+#ci-prev .pv{display:inline-flex;align-items:center;gap:5px;background:var(--bg,#f1f5f9);border:1px solid var(--border,#cbd5e1);border-radius:8px;padding:2px 6px;font-size:11px}
+#ci-prev .pv img{height:34px;border-radius:4px}#ci-prev .pv b{cursor:pointer;color:#dc2626}
+@media(max-width:600px){
+#chat-ov{padding:0;align-items:stretch}
+#chat-box{width:100%;height:100%;max-height:100%;border-radius:0}
+.cc-h{padding:8px 8px;gap:6px;flex-wrap:wrap}
+.cc-h .tt{flex:1 1 40%}
+.cc-h button{padding:6px 9px;font-size:12px}
+.cc-h button.lb{font-size:0}.cc-h button.lb::first-letter{font-size:15px}
+#chat-in{padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+#chat-in .r>span{display:none}
+#chat-in select{flex:1;min-width:0}
+#chat-in textarea{font-size:16px;height:44px}
+#chat-in button.s{padding:0 14px;min-height:44px}
+#chat-in button.at{min-width:44px}
+.cm{max-width:90%}
+}
+</style>
+<div id="chat-dd"></div>
+<div id="chat-ov" onclick="if(event.target===this)chatCerrar()"><div id="chat-box"></div></div>
+<script>
+(function(){
+const AREAS=[['comercial','💼 Comercial'],['diseno','🎨 Diseño'],['compras','🛒 Compras'],['planeacion','🗓️ Planeación'],['calidad','✅ Calidad'],['remisiones','🚚 Remisiones'],['administracion','🏛️ Administración'],['todos','👥 Todos'],['mencion','👤 Solo mencionados']];
+const ACC=[['','💬 Solo mensaje'],['plano','📐 Pedir plano'],['compra','🛒 Pedir compra / material'],['revision','🔎 Pedir revisión'],['remision','🚚 Pedir remisión'],['info','❓ Pedir información']];
+const ACCL=Object.fromEntries(ACC);
+const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const Q=v=>String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+const fmt=d=>{try{return new Date(d).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
+const SS=()=>{try{return _SESSION}catch(e){return null}};
+const me=()=>(SS()&&SS().nombre)||'';
+const rpc=(f,p)=>sb.rpc(f,p||{});
+const T=(m,t)=>{try{toast(m,t)}catch(e){}};
+const arLbl=k=>(AREAS.find(a=>a[0]===k)||[k,k])[1];
+const _rolArea={comercial:'comercial',diseno:'diseno',compras:'compras',calidad:'calidad',administracion:'planeacion',admin:'planeacion',desarrollador:'planeacion'};
+let C={id:null,op:null,ref:'',rows:[],last:-1,timer:null,para:null,list:[]};
+let lastNuevos=0,lastUlt=null;
+
+
+/* menciones @ */
+const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const EXCL=['admin','solo lectura','felipe davalos'];
+let UL=null;
+const LINDO=n=>{try{return nombreLindo(n)}catch(e){return n}};
+async function cargaUsers(){ if(UL) return UL; let U=[]; try{U=await rpc('listar_usuarios');}catch(e){} if(!Array.isArray(U)||!U.length){try{U=USUARIOS||[]}catch(e){U=[]}}
+  UL=U.filter(u=>u&&u.nombre&&!EXCL.includes(norm(u.nombre))).map(u=>({n:u.nombre,d:LINDO(u.nombre),rol:u.rol,as:u.asesor||''})); return UL; }
+const usuarios=()=>(UL||[]).filter(u=>u.n!==me());
+const RL={comercial:'Comercial',diseno:'Diseño',compras:'Compras',calidad:'Calidad',administracion:'Planeación',admin:'Admin',desarrollador:'Desarrollo'};
+const hl=t=>{let h=E(t).replace(/\n/g,'<br>').replace(/@grupal/gi,'<b class="mn">@grupal</b>'); (UL||[]).slice().sort((a,b)=>b.d.length-a.d.length).forEach(u=>{[u.d,u.n].forEach(nm=>{const k=E('@'+nm); const i=norm(h).indexOf(norm(k)); if(i>=0&&h.substr(Math.max(0,i-14),14)!=='<b class="mn">') h=h.substr(0,i)+'<b class="mn">'+h.substr(i,k.length)+'</b>'+h.substr(i+k.length);});}); return h;};
+function mentList(txt){const t=norm(txt); return [...new Set(usuarios().filter(u=>t.includes('@'+norm(u.d))||t.includes('@'+norm(u.n))).map(u=>u.n))];}
+let MI=-1,MC=[];
+function mentInput(){
+  const ta=document.getElementById('ci-txt'), box=document.getElementById('ci-ment'); const pre=ta.value.slice(0,ta.selectionStart); const m=pre.match(/(?:^|\s)@([^@\n]{0,20})$/);
+  if(!m){box.style.display='none';MC=[];return;}
+  const q=norm(m[1]); MC=('grupal'.startsWith(q)?[{n:'__g',d:'grupal',rol:'todos los usuarios'}]:[]).concat(usuarios().filter(u=>!q||norm(u.d+' '+u.n).split(/[\s.]+/).some(w=>w.startsWith(q)))).slice(0,14);
+  if(!MC.length){box.style.display='none';return;}
+  MI=0; box.style.display='block'; box.innerHTML=MC.map((n,i)=>`<div class="mi ${i===0?'on':''}" onmousedown="event.preventDefault();mentPick(${i})">@${E(n.d)} <small style="opacity:.6;font-weight:400">${E(RL[n.rol]||n.rol||'')}</small></div>`).join('');
+}
+function mentKey(e){
+  const box=document.getElementById('ci-ment'); const open=box&&box.style.display==='block'&&MC.length;
+  if(open){
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();MI=(MI+(e.key==='ArrowDown'?1:-1)+MC.length)%MC.length;[...box.children].forEach((c,i)=>c.classList.toggle('on',i===MI));return;}
+    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();mentPick(MI);return;}
+    if(e.key==='Escape'){e.stopPropagation();box.style.display='none';return;}
+  }
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();chatEnviar();}
+}
+window.mentPick=function(i){
+  const ta=document.getElementById('ci-txt'), box=document.getElementById('ci-ment'); const n=MC[i]&&MC[i].d; if(!n) return;
+  const pos=ta.selectionStart, pre=ta.value.slice(0,pos).replace(/@[^@\n]{0,20}$/,'@'+n+' '); ta.value=pre+ta.value.slice(pos); ta.selectionStart=ta.selectionEnd=pre.length; box.style.display='none'; ta.focus();
+};
+window.chatDetalle=function(id){
+  chatCerrar();
+  const fn=['detailOP','detalleProd','detailItem'].find(f=>typeof window[f]==='function');
+  if(!fn){T('Abre la OP desde su módulo','error');return;}
+  try{window[fn](id);}catch(e){T('❌ '+(e.message||e),'error');}
+};
+/* ---------- campana ---------- */
+function ensureBell(){
+  if(document.getElementById('chat-bell')) return;
+  const rb=document.getElementById('refresh-btn'); if(!rb) return;
+  const b=document.createElement('div'); b.id='chat-bell'; b.title='Mensajes y notificaciones'; b.innerHTML='🔔<b>0</b>';
+  b.onclick=e=>{e.stopPropagation();ddToggle()};
+  rb.parentNode.insertBefore(b,rb);
+}
+function ddToggle(){const d=document.getElementById('chat-dd'); if(d.classList.contains('open')){d.classList.remove('open');return;} ddRender(); d.classList.add('open');}
+function ddRender(){
+  const d=document.getElementById('chat-dd'); const L=C.list||[];
+  d.innerHTML=`<div class="cd-h">🔔 Notificaciones <button onclick="chatNueva()">✏️ Nueva</button><button onclick="chatMarcar()" title="Quita el aviso de no leído; las conversaciones se quedan en la lista">Marcar leídas</button></div>`+
+   (L.length?L.map(m=>`<div class="cd-i ${m.nuevo?'nv':''}" onclick="chatAbrir('${Q(m.id_prod||'')}','${Q(m.op||'')}','${Q(m.ref||'')}')"><div class="t"><button class="cd-x" title="Cerrar conversación (se quita de aquí hasta que vuelvan a escribir)" onclick="event.stopPropagation();chatCerrarConv('${Q(m.clave||'')}')">✕</button>${m.sinleer>0?'<b class="cd-n">'+m.sinleer+'</b>':''}${E(m.de)} <small>(${E(arLbl(m.de_rol==='administracion'?'planeacion':m.de_rol))})</small> · ${E(fmtRef(m.ref)||m.op||'general')}<span>${fmt(m.fecha)}</span></div><div class="x">${m.mencion?'<i class="cd-ac" style="background:#dbeafe;color:#1e40af">@ TE MENCIONÓ</i>':''}${m.accion&&m.estado==='abierta'?'<i class="cd-ac">PENDIENTE: '+E(ACCL[m.accion]||m.accion)+'</i>':''}${E(m.texto)}</div></div>`).join(''):'<div class="cd-i" style="cursor:default;opacity:.6">Sin notificaciones</div>');
+}
+async function poll(){
+  if(document.hidden||!SS()||!SS().token) return;
+  ensureBell();
+  try{
+    const r=await rpc('chat_pendientes'); if(!r) return;
+    C.list=r.items||[];
+    const b=document.getElementById('chat-bell'); if(!b) return;
+    const n=(r.nuevos||0)+0, ab=r.abiertas||0, tot=Math.max(n,0)+((ab&&!n)?ab:0);
+    b.querySelector('b').textContent=tot>99?'99+':tot; b.classList.toggle('on',tot>0);
+    if(lastUlt!==null&&r.ultimo>lastUlt&&n>0){const m=C.list.find(x=>x.nuevo&&x.mencion)||C.list.find(x=>x.nuevo); if(m) T('🔔 '+m.de+(m.mencion?' te mencionó':'')+(m.ref?' · '+m.ref:'')+': '+m.texto.slice(0,70));}
+    lastUlt=r.ultimo; lastNuevos=n;
+    if(document.getElementById('chat-dd').classList.contains('open')) ddRender();
+    if(C.id!==null&&document.getElementById('chat-ov').classList.contains('open')) cargarMsgs(true);
+  }catch(e){}
+}
+window.chatCerrarConv=async function(clave){ if(!clave) return; try{ await rpc('chat_cerrar',{p_clave:clave}); }catch(e){T('❌ '+(e.message||e),'error');} C.list=(C.list||[]).filter(m=>m.clave!==clave); if(document.getElementById('chat-dd').classList.contains('open')) ddRender(); poll(); };
+window.chatMarcar=async function(){try{await rpc('chat_visto_marcar');}catch(e){} poll();};
+
+/* ---------- conversación ---------- */
+window.chatAbrir=async function(id,op,ref,para){
+  document.getElementById('chat-dd').classList.remove('open');
+  C.q=''; C.id=id||''; C.op=op||''; C.ref=ref||id||op||''; C.rows=[]; C.last=-1; C.para=para||null;
+  const ov=document.getElementById('chat-ov'); ov.classList.add('open');
+  const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
+  const defPara=C.para||'todos';
+  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
+  <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
+  <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
+  <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
+  <div class="r"><button class="at" title="Adjuntar archivo" onclick="chatAdj()">📎</button><div style="position:relative;flex:1;display:flex"><div id="ci-ment"></div><textarea id="ci-txt" data-no-upper="1" style="flex:1" placeholder="Escribe… @ para mencionar (Enter envía)"></textarea></div><button class="s" onclick="chatEnviar()">Enviar ➤</button></div></div></div>`;
+  const ta=document.getElementById('ci-txt'); ta.oninput=mentInput; ta.onkeydown=mentKey; ta.onpaste=pegar;
+  const bx=document.getElementById('chat-box'); bx.ondragover=e=>{e.preventDefault();}; bx.ondrop=e=>{e.preventDefault(); [...(e.dataTransfer.files||[])].forEach(addAdj);}; PEND=[]; prevPint();
+  cabecera(); await cargaUsers(); await cargarMsgs(); try{await rpc('chat_visto_marcar');}catch(e){} poll(); await prefill();
+  setTimeout(()=>{const t=document.getElementById('ci-txt'); t&&t.focus();},50);
+};
+const fmtRef=r=>String(r||'').replace(/^OP-(\d+)-(\d+)/,'OP $1 · Ítem $2');
+const HC={};
+async function cabecera(){
+  if(!C.id) return; const id=C.id;
+  try{
+    let p=HC[id]; if(!p){ const r=await GET('produccion','select=op,item_num,unidades,descripcion,empresa,asesor,disenador,imagen_thumb,imagen_url,imagen_drive_id&id=eq.'+encodeURIComponent(id)); p=HC[id]=(r&&r[0])||null; }
+    if(!p||C.id!==id) return;
+    const t=document.getElementById('cc-t'), sb2=document.getElementById('cc-sub'), im=document.getElementById('cc-img'); if(!t) return;
+    const u=Number(p.unidades); t.textContent='💬 OP '+p.op+' · Ítem '+(p.item_num||id.split('-')[1]||'')+(u?' · '+u+(u===1?' und':' und'):'');
+    sb2.textContent=[p.descripcion,p.empresa].filter(Boolean).join(' — ');
+    const src=p.imagen_thumb||p.imagen_url||(p.imagen_drive_id?'https://lh3.googleusercontent.com/d/'+p.imagen_drive_id+'=w200':'');
+    if(src&&im){ im.src=src; im.style.display='block'; im.onerror=()=>{ if(p.imagen_drive_id&&!im.dataset.f){im.dataset.f=1; im.src='https://drive.google.com/thumbnail?sz=w200&id='+p.imagen_drive_id;} else im.style.display='none'; }; }
+  }catch(e){}
+}
+async function prefill(){
+  const ta=document.getElementById('ci-txt'); if(!ta||ta.value) return;
+  let cand=[]; const ult=[...C.rows].reverse().find(m=>m.de!==me()); if(ult) cand.push(ult.de);
+  if(C.id){ try{ const r=await GET('produccion','select=asesor,disenador&id=eq.'+encodeURIComponent(C.id)); if(r&&r[0]){cand.push(r[0].asesor,r[0].disenador);} }catch(e){} }
+  for(const c of cand){ if(!c) continue; const u=usuarios().find(x=>norm(x.n)===norm(c)||norm(x.as)===norm(c)||norm(x.d)===norm(c)); if(u&&!ta.value){ ta.value='@'+u.d+' '; ta.selectionStart=ta.selectionEnd=ta.value.length; break; } }
+  ta.focus();
+}
+window.chatCerrar=function(){document.getElementById('chat-ov').classList.remove('open');C.id=null;};
+async function cargarMsgs(quiet){
+  try{
+    const rows=await rpc('chat_listar',{p_id_prod:C.id||null,p_op:C.id?null:(C.op||null)})||[];
+    const last=rows.length?rows[rows.length-1].id+':'+rows.filter(r=>r.estado==='hecha').length:'0';
+    if(quiet&&last===C.sig) return; C.sig=last; C.rows=rows; pintar();
+    if(quiet&&rows.length&&C.seen!==undefined&&rows.length>C.seen){try{await rpc('chat_visto_marcar');}catch(e){}} C.seen=rows.length;
+  }catch(e){const m=document.getElementById('chat-msgs'); if(m) m.innerHTML='<div style="color:#b91c1c;font-size:12px">'+E(e.message||e)+'</div>';}
+}
+function accionBtns(m){
+  if(m.accion!=='plano'&&m.accion!=='compra'&&m.accion!=='remision'&&m.estado!=='abierta') return '';
+  if(m.estado!=='abierta') return '';
+  const mia=m.de===me(); let b='';
+  if(!mia){
+    if(m.accion==='plano'&&m.id_prod) b+=`<button onclick="chatPlano(${m.id},'${Q(m.id_prod)}')">📎 Cargar plano</button>`;
+    b+=`<button class="g" onclick="chatHecho(${m.id})">✔ Hecho</button>`;
+  } else b+=`<button class="g" onclick="chatHecho(${m.id})">✔ Marcar atendida</button>`;
+  return `<div class="btns">${b}</div>`;
+}
+function pintar(){
+  const box=document.getElementById('chat-msgs'); if(!box) return;
+  const bottom=box.scrollHeight-box.scrollTop-box.clientHeight<60;
+  const q=norm(C.q||''); const rows=q?C.rows.filter(m=>norm([m.texto,m.de,m.nota,m.accion,ACCL[m.accion]||'',m.resuelto_por].join(' ')).includes(q)):C.rows; const qn=document.getElementById('cc-qn'); if(qn) qn.textContent=q?rows.length+' / '+C.rows.length:C.rows.length?C.rows.length+' msj':'';
+  box.innerHTML=rows.length?rows.map(m=>{const yo=m.de===me();
+    return `<div class="cm ${yo?'yo':''} ${m.accion?'ac':''} ${m.estado==='hecha'?'ok':''}"><div class="a">${E(m.de)} <i>${E(arLbl(m.de_rol==='administracion'?'planeacion':m.de_rol))} → ${E(arLbl(m.para))}</i></div>${m.accion?`<div class="cd-ac">${E(ACCL[m.accion]||m.accion)}${m.estado==='hecha'?' · ✔ atendida por '+E(m.resuelto_por):''}</div><br>`:''}${hl(m.texto)}${m.nota?`<div style="font-size:11px;opacity:.7;margin-top:3px">↳ ${E(m.nota)}</div>`:''}<div id="adj-${m.id}"></div>${accionBtns(m)}<div class="f">${fmt(m.fecha)}</div></div>`}).join(''):(q?'<div style="opacity:.6;text-align:center;font-size:12px;margin-top:20px">Sin resultados para «'+E(C.q)+'»</div>':'<div style="opacity:.6;text-align:center;font-size:12px;margin-top:20px">Sin mensajes. Escribe el primero 👇</div>');
+  if(q){ box.querySelectorAll('.cm').forEach(el=>{ markQ(el,C.q); }); }
+  pintaAdj(); if(!q&&(bottom||C.first!==C.id)){box.scrollTop=box.scrollHeight;C.first=C.id;}
+}
+let PEND=[], _drvWarn=false;
+/* sube a Drive (Apps Script del ERP); devuelve id del archivo o null para guardar en la base como respaldo */
+async function aDrive(f){
+  const url='https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec';
+  try{
+    const carpeta='CHAT/'+String(C.ref||C.op||'general').replace(/[\\/:*?"<>|]/g,'').slice(0,60);
+    const r=await fetch(url,{method:'POST',body:JSON.stringify({carpeta,nombre:f.nombre,base64:String(f.data).split(',')[1]||'',mime:f.mime,tipo:f.mime})});
+    const j=await r.json().catch(()=>null);
+    const id=j&&j.ok&&(j.id||j.fileId||((j.url||'').match(/[-\w]{25,}/)||[])[0]);
+    if(id) return id;
+  }catch(e){}
+  if(!_drvWarn){_drvWarn=true; T('⚠️ Drive no devolvió el enlace del archivo; se guardó en la base como respaldo','error');}
+  return null;
+}
+const confirmSin=async()=>confirm('No mencionaste a nadie: nadie recibirá notificación (el mensaje solo quedará en la conversación).\n\nEscribe @nombre o @grupal para avisar.\n\n¿Enviar así de todas formas?');
+window.chatBuscar=function(v){ C.q=v; pintar(); };
+function markQ(root,q){ const re=new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'); if(!q.trim()) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const ns=[]; while(w.nextNode()) ns.push(w.currentNode); ns.forEach(n=>{ if(!re.test(n.nodeValue)) return; re.lastIndex=0; const sp=document.createElement('span'); sp.innerHTML=E(n.nodeValue).replace(new RegExp(E(q.trim()).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark style="background:#fde047;color:#000;border-radius:2px">'+m+'</mark>'); n.parentNode.replaceChild(sp,n); }); }
+window.chatEnviar=async function(){
+  const t=document.getElementById('ci-txt'); const txt=(t.value||'').trim(); if(!txt&&!PEND.length) return;
+  const acc=document.getElementById('ci-acc').value; const gr=/(^|\s)@grupal\b/i.test(txt);
+  const mens=mentList(txt); const pp=gr?'todos':'mencion';
+  if(!gr&&!mens.length&&!(await confirmSin())) return;
+  t.disabled=true;
+  try{
+    const mid=await rpc('chat_enviar2',{p_id_prod:C.id||null,p_op:C.op||null,p_ref:C.ref||null,p_para:pp,p_texto:txt||'📎 Archivo adjunto',p_accion:acc||null,p_menciones:mens});
+    for(const f of PEND){ let dato=f.data; const dr=await aDrive(f); if(dr) dato='drive:'+dr; await rpc('chat_adjuntar',{p_msg:mid,p_nombre:f.nombre,p_mime:f.mime,p_size:f.size,p_data:dato}); }
+    t.value=''; PEND=[]; prevPint(); document.getElementById('ci-acc').value=''; await cargarMsgs();
+  }catch(e){ T('❌ '+(e.message||e),'error'); }
+  t.disabled=false; t.focus();
+};
+function prevPint(){const p=document.getElementById('ci-prev'); if(!p) return; p.innerHTML=PEND.map((f,i)=>`<span class="pv">${/^image\//.test(f.mime)?`<img src="${f.data}">`:'📄'} ${E(f.nombre).slice(0,24)} <b onclick="PENDdel(${i})">✕</b></span>`).join('');}
+window.PENDdel=i=>{PEND.splice(i,1);prevPint();};
+async function addAdj(file){
+  try{
+    let data,mime=file.type||'application/octet-stream';
+    if(/^image\//.test(mime)){data=await readImg(file);mime='image/jpeg';}
+    else{ if(file.size>4*1048576) throw new Error('El archivo pesa más de 4 MB'); data=await new Promise((a,b)=>{const r=new FileReader();r.onload=()=>a(r.result);r.onerror=b;r.readAsDataURL(file);}); }
+    PEND.push({nombre:file.name||('imagen_'+Date.now()+'.jpg'),mime,size:Math.round(data.length*.75),data}); prevPint();
+  }catch(e){T('❌ '+(e.message||e),'error');}
+}
+function pegar(e){const it=[...(e.clipboardData&&e.clipboardData.items||[])].filter(i=>i.kind==='file'); if(!it.length) return; e.preventDefault(); it.forEach(i=>{const f=i.getAsFile(); if(f) addAdj(f);});}
+window.chatAdj=function(){const i=document.createElement('input'); i.type='file'; i.multiple=true; i.style.display='none'; i.onchange=()=>{[...i.files].forEach(addAdj); i.remove();}; document.body.appendChild(i); i.click();};
+const ADJC={};
+async function adjData(id){ if(ADJC[id]) return ADJC[id]; let d=await rpc('chat_adjunto_get',{p_id:id}); if(typeof d==='string'&&d.startsWith('drive:')) d='https://drive.google.com/thumbnail?sz=w900&id='+d.slice(6); ADJC[id]=d; return d; }
+const drvId=d=>(d.match(/[?&]id=([-\w]+)/)||[])[1];
+window.chatVerAdj=async function(id,nombre,mime){
+  try{ const d=await adjData(id); if(!d) return; if(/^https:\/\/drive\.google\.com\/thumbnail/.test(d)){ window.open('https://drive.google.com/file/d/'+drvId(d)+'/view','_blank'); return; } const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes','error');return;}
+   if(/^image\//.test(mime)) w.document.write('<title>'+E(nombre)+'</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="'+d+'" style="max-width:100%;max-height:100vh">');
+   else { const bin=atob(d.split(',')[1]||''); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); const url=URL.createObjectURL(new Blob([u],{type:mime})); w.location.href=url; } }catch(e){T('❌ '+(e.message||e),'error');}
+};
+async function pintaAdj(){
+  const ids=C.rows.filter(m=>m.adj_n>0).map(m=>m.id); if(!ids.length) return;
+  try{ const meta=await rpc('chat_adjuntos_meta',{p_ids:ids})||[];
+   for(const a of meta){ const host=document.getElementById('adj-'+a.id_msg); if(!host||host.querySelector('[data-a="'+a.id+'"]')) continue;
+     if(/^image\//.test(a.mime)){ const im=document.createElement('img'); im.dataset.a=a.id; im.style.cssText='max-width:220px;max-height:160px;border-radius:8px;cursor:zoom-in;display:block;margin-top:5px'; im.onclick=()=>chatVerAdj(a.id,a.nombre,a.mime); host.appendChild(im); adjData(a.id).then(d=>{im.src=d;}); }
+     else { const l=document.createElement('a'); l.dataset.a=a.id; l.href='javascript:void 0'; l.style.cssText='display:block;margin-top:5px;font-size:12px'; l.textContent='📄 '+a.nombre; l.onclick=()=>chatVerAdj(a.id,a.nombre,a.mime); host.appendChild(l); } } }catch(e){}
+}
+window.chatHecho=async function(id){
+  const n=prompt('Nota (opcional):',''); if(n===null) return;
+  try{await rpc('chat_resolver',{p_id:id,p_nota:n||null}); await cargarMsgs(); poll();}catch(e){T('❌ '+(e.message||e),'error');}
+};
+function readImg(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.8));};im.onerror=()=>rej(new Error('Imagen inválida'));im.src=fr.result;};fr.onerror=()=>rej(new Error('No se pudo leer'));fr.readAsDataURL(file);});}
+window.chatPlano=function(mid,idp){
+  const i=document.createElement('input'); i.type='file'; i.accept='image/*,application/pdf'; i.style.display='none';
+  i.onchange=async()=>{const f=i.files&&i.files[0]; i.remove(); if(!f) return;
+    try{
+      let data,mime;
+      if(/^image\//.test(f.type)){data=await readImg(f);mime='image/jpeg';}
+      else if(f.type==='application/pdf'){ if(f.size>3.5*1048576) throw new Error('El PDF pesa más de 3.5 MB'); data=await new Promise((a,b)=>{const r=new FileReader();r.onload=()=>a(r.result);r.onerror=b;r.readAsDataURL(f);}); mime=f.type; }
+      else throw new Error('Solo imágenes o PDF');
+      const h={...sb.h,'Prefer':'return=minimal','Content-Type':'application/json'};
+      const r=await fetch(SB_URL+'/rest/v1/prod_archivos',{method:'POST',headers:h,body:JSON.stringify({tipo:'plano',nombre:f.name||'plano',mime,size:Math.round(data.length*.75),data,created_by:me(),id_prod:idp})});
+      if(!r.ok){ if(sb._fail) await sb._fail(r,'subir archivos'); throw new Error('No se pudo subir ('+r.status+')'); }
+      await rpc('chat_resolver',{p_id:mid,p_nota:'Plano cargado: '+(f.name||'plano')}); T('✅ Plano cargado y solicitud atendida'); await cargarMsgs(); poll();
+    }catch(e){T('❌ '+(e.message||e),'error');}
+  };
+  document.body.appendChild(i); i.click();
+};
+/* nueva conversación por número de OP / ítem */
+window.chatNueva=async function(){
+  document.getElementById('chat-dd').classList.remove('open');
+  const q=prompt('Número de OP o ítem (ej. 13415 ó 13415-1). Vacío = conversación general:'); if(q===null) return;
+  const v=q.trim(); if(!v) return chatAbrir('','','General');
+  try{
+    const r=await GET('produccion','select=id,op,descripcion,empresa&or=(id.eq.'+encodeURIComponent(v)+',op.eq.'+encodeURIComponent(v)+')&order=id&limit=30');
+    if(!r||!r.length){T('No encontré esa OP / ítem','error');return;}
+    if(r.length===1||r.some(x=>x.id===v)){const x=r.find(x=>x.id===v)||r[0]; return chatAbrir(x.id,x.op,'OP-'+x.id);}
+    return chatAbrir('',v,'OP '+v+' (general)');
+  }catch(e){T('❌ '+(e.message||e),'error');}
+};
+/* ---------- hoja de vida (imprimible / PDF) ---------- */
+window.chatHoja=async function(id,op){
+  const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes para ver la hoja','error');return;}
+  w.document.write('<p style="font-family:sans-serif">Generando hoja de vida…</p>');
+  try{
+    const f=id?'id.eq.'+encodeURIComponent(id):'op.eq.'+encodeURIComponent(op);
+    const filtro=id?'id_prod=eq.'+encodeURIComponent(id):'op=eq.'+encodeURIComponent(op);
+    const [pr,ev,ms,ma,rm]=await Promise.all([
+      GET('produccion','select=id,op,item_num,descripcion,empresa,asesor,unidades,estado,avance,prioridad,disenador,fecha_inicio,fecha_pactada,fecha_entrega_prod,cant_despachada,despachado,terminado,calidad_estado,proceso_actual,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10&order=id&'+(id?'id=eq.':'op=eq.')+encodeURIComponent(id||op)),
+      GET('prod_eventos','select=id_prod,evento,detalle,usuario,rol,fecha&order=fecha.asc&limit=2000&'+filtro),
+      rpc('chat_hoja',{p_id:id||null,p_op:id?null:op}).catch(()=>[]),
+      GET('prod_materiales','select=id_prod,material,detalle,cantidad,unidad,cantidad_kg,proveedor,estado,solicitado_por,solicitado_at,autorizado_por,autorizado_at,comprado_por,comprado_at,recibido_por,recibido_at,costo_real,id_oc,factura&order=solicitado_at.asc&limit=500&'+(id?'id_prod=eq.'+encodeURIComponent(id):'id_prod=like.'+encodeURIComponent(op+'-*'))).catch(()=>[]),
+      GET('remisiones','select=numero,estado,pedida_por,pedida_fecha,generada_por,generada_fecha,despachada_por,despachada_fecha&order=numero&op=eq.'+encodeURIComponent(op||(id||'').split('-')[0])).catch(()=>[])
+    ]);
+    const ops=op||(pr[0]&&pr[0].op)||'';
+    const tl=[];
+    ev.forEach(e=>tl.push({t:e.fecha,k:'Evento',i:e.id_prod,a:e.evento,d:e.detalle,u:e.usuario,r:e.rol}));
+    ms.forEach(m=>{tl.push({t:m.fecha,k:m.accion?'Solicitud':'Chat',i:m.id_prod,a:(m.accion?(ACCL[m.accion]||m.accion)+' ':'')+'→ '+arLbl(m.para).replace(/^\S+\s/,''),d:m.texto+(m.estado==='hecha'?' [Atendida por '+m.resuelto_por+(m.nota?': '+m.nota:'')+']':''),u:m.de,r:m.de_rol});});
+    ma.forEach(m=>{ if(m.solicitado_at) tl.push({t:m.solicitado_at,k:'Compra',i:m.id_prod,a:'Material solicitado: '+m.material,d:[m.detalle,m.cantidad?m.cantidad+' '+(m.unidad||''):'',m.cantidad_kg?m.cantidad_kg+' kg':''].filter(Boolean).join(' · '),u:m.solicitado_por,r:''});
+      if(m.autorizado_at) tl.push({t:m.autorizado_at,k:'Compra',i:m.id_prod,a:'Autorizado: '+m.material,d:'',u:m.autorizado_por,r:''});
+      if(m.comprado_at) tl.push({t:m.comprado_at,k:'Compra',i:m.id_prod,a:'Comprado: '+m.material,d:[m.proveedor,m.factura?'Fact. '+m.factura:'',m.costo_real?'$'+Number(m.costo_real).toLocaleString('es-CO'):''].filter(Boolean).join(' · '),u:m.comprado_por,r:''});
+      if(m.recibido_at) tl.push({t:m.recibido_at,k:'Compra',i:m.id_prod,a:'Recibido: '+m.material,d:'',u:m.recibido_por,r:''}); });
+    rm.forEach(r=>{ if(r.pedida_fecha) tl.push({t:r.pedida_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' pedida',d:'',u:r.pedida_por,r:''}); if(r.generada_fecha) tl.push({t:r.generada_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' generada',d:'',u:r.generada_por,r:''}); if(r.despachada_fecha) tl.push({t:r.despachada_fecha,k:'Remisión',i:'',a:'Remisión '+r.numero+' despachada',d:'',u:r.despachada_por,r:''}); });
+    tl.sort((a,b)=>new Date(a.t)-new Date(b.t));
+    const col={Evento:'#475569',Chat:'#2563eb',Solicitud:'#d97706',Compra:'#7c3aed','Remisión':'#16a34a'};
+    const items=pr.map(p=>`<tr><td><b>${E(p.id)}</b></td><td>${E(p.descripcion||'')}</td><td>${E(p.unidades||'')}</td><td>${E(p.estado||'')}</td><td>${p.avance!=null?Math.round(p.avance)+'%':''}</td><td>${E(p.fecha_pactada||'')}</td></tr>`).join('');
+    const mats=ma.map(m=>`<tr><td>${E(m.id_prod)}</td><td>${E(m.material)}</td><td>${E(m.cantidad||m.cantidad_kg||'')} ${E(m.unidad||'')}</td><td>${E(m.estado||'')}</td><td>${E(m.proveedor||'')}</td><td>${m.costo_real?'$'+Number(m.costo_real).toLocaleString('es-CO'):''}</td></tr>`).join('');
+    const p0=pr[0]||{};
+    const html=`<!doctype html><meta charset="utf-8"><title>Hoja de vida ${E(id||('OP '+ops))}</title><style>
+body{font-family:Segoe UI,Arial,sans-serif;font-size:11px;color:#0f172a;margin:0;padding:18px}h1{font-size:18px;margin:0}h2{font-size:12px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #0f172a;padding-bottom:2px}
+table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #e2e8f0;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f1f5f9;font-size:10px}
+.b{display:inline-block;color:#fff;border-radius:4px;padding:0 5px;font-size:9px;font-weight:700}.pb{position:fixed;top:8px;right:8px}@media print{.pb{display:none}body{padding:0}}tr{page-break-inside:avoid}</style>
+<button class="pb" onclick="print()">🖨 Imprimir / Guardar PDF</button>
+<h1>Hoja de vida · ${E(id?'Ítem '+id:'OP '+ops)}</h1><div style="opacity:.7">${E(p0.empresa||'')}${p0.asesor?' · Asesor: '+E(p0.asesor):''} · Generada ${new Date().toLocaleString('es-CO')} por ${E(me())}</div>
+<h2>Ítems</h2><table><tr><th>Ítem</th><th>Descripción</th><th>Und</th><th>Estado</th><th>Avance</th><th>Entrega pactada</th></tr>${items}</table>
+${mats?`<h2>Compras / materiales</h2><table><tr><th>Ítem</th><th>Material</th><th>Cant.</th><th>Estado</th><th>Proveedor</th><th>Costo</th></tr>${mats}</table>`:''}
+<h2>Línea de tiempo (${tl.length})</h2><table><tr><th style="width:95px">Fecha</th><th>Tipo</th>${id?'':'<th>Ítem</th>'}<th>Qué pasó</th><th>Usuario</th></tr>${tl.map(x=>`<tr><td>${fmt(x.t)}</td><td><span class="b" style="background:${col[x.k]||'#475569'}">${x.k}</span></td>${id?'':'<td>'+E(x.i||'')+'</td>'}<td><b>${E(x.a||'')}</b>${x.d?'<br>'+E(x.d):''}</td><td>${E(x.u||'')}${x.r?' <small>('+E(x.r)+')</small>':''}</td></tr>`).join('')}</table>`;
+    w.document.open(); w.document.write(html); w.document.close();
+  }catch(e){ w.document.body.innerHTML='<p style="color:#b91c1c;font-family:sans-serif">'+E(e.message||e)+'</p>'; }
+};
+
+/* tira de chat dentro del detalle */
+let CTX=null;
+window.chatCtx=function(id,op,ref,para){CTX={id:id||'',op:op||'',ref:ref||'',para:para||'',t:Date.now()};};
+const _od=window.openDetail;
+if(typeof _od==='function'){ window.openDetail=function(){ const r=_od.apply(this,arguments);
+  try{ if(CTX&&Date.now()-CTX.t<2500){ const b=document.getElementById('dp-body'); if(b&&!b.querySelector('.chat-strip')){ const c=CTX; const d=document.createElement('div'); d.className='chat-strip'; d.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
+   d.innerHTML=`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button><button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`;
+   b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
+  return r; }; }
+/* botones reutilizables para los módulos */
+window.chatBtn=function(id,op,ref,para,label){return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
+document.addEventListener('click',e=>{const d=document.getElementById('chat-dd'); if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!(e.target.closest&&e.target.closest('#chat-bell'))) d.classList.remove('open');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('chat-ov').classList.contains('open')) chatCerrar();});
+setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
+})();
+</script>
+<script>
+(function(){try{var vv=window.visualViewport; if(!vv) return;
+function aj(){var ov=document.getElementById('chat-ov'); if(!ov||!ov.classList.contains('open')) return;
+ if(window.innerWidth>600){ov.style.height='';ov.style.top='';return;}
+ ov.style.top=vv.offsetTop+'px'; ov.style.height=vv.height+'px'; ov.style.bottom='auto';}
+vv.addEventListener('resize',aj); vv.addEventListener('scroll',aj); setInterval(aj,400);}catch(e){}})();
+</script>
+<!-- /WEDM-CHAT -->
+
 </body>
 </html>
