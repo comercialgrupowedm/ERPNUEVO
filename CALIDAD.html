@@ -552,7 +552,7 @@ details.ay-det[open]{padding-bottom:10px}
 .avp-q{display:flex;gap:6px;margin-top:6px}
 .avp-q button{flex:1;padding:7px 0;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-weight:700;font-size:12px;cursor:pointer;color:var(--text)}
 .avp-q button:active{transform:scale(.94)}
-.avq-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.avq-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px;margin-top:10px}
 .avq-acts .btn{justify-content:center;padding:9px 4px;font-size:11.5px;text-align:center;line-height:1.2}
 .btn-soft{background:#e8f7ee;color:#15803d;border:1px solid #a7e3bd}
 .callout{background:#e8f7ee;border:1px solid #a7e3bd;border-radius:12px;padding:10px 12px;font-size:13px;color:#14532d;margin-top:12px;line-height:1.45}
@@ -1272,8 +1272,7 @@ function itemCard(o,extra='',acts=''){
   const d=diasPactada(o);
   return `<div class="list-card" onclick="detailItem('${idq(o)}')">
     <div style="display:flex;gap:10px;align-items:flex-start">${thumbProd(o,48)}
-      <div style="flex:1;min-width:0"><div class="lc-top" style="margin-bottom:2px"><div style="min-width:0;flex:1"><div class="lc-id">${opTitulo(o)}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub">${esc(String(o.descripcion||'').slice(0,90))}</div></div>
-      <div style="text-align:right;flex-shrink:0">${bCal(o)}</div></div></div></div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="lc-id">${opTitulo(o)}</div>${bCal(o)}</div><div class="lc-title" style="word-break:normal;overflow-wrap:anywhere">${esc(o.empresa||'—')}</div><div class="lc-sub">${esc(String(o.descripcion||'').slice(0,90))}</div></div></div>
     <div class="lc-meta">${bGar(o)}${bQA(o)}<span style="font-size:11px;color:var(--muted)">${esc(String(o.unidades??'—'))} und</span>${d!=null&&!o.despachado?`<span style="font-size:11px;color:var(--muted);margin-left:auto">📅 ${fmtDate(o.fecha_pactada)} ${diasTag(d)}</span>`:''}</div>
     ${extra}
     ${acts?`<div class="avq-acts" onclick="event.stopPropagation()">${acts}</div>`:''}
@@ -1804,7 +1803,7 @@ function solChip(k){ solSet('chip',k); }
 function solicitudes(){
   const all=DB.solicitudes||[];
   const ab=s=>['PENDIENTE','SOLICITADO','COMPRADO'].includes(s.estado);
-  const cnt={abiertas:all.filter(ab).length,recibidas:all.filter(s=>s.estado==='RECIBIDO').length,rech:all.filter(s=>s.estado==='RECHAZADO').length,mias:all.filter(s=>_normNom(s.solicitado_por)===_normNom(_SESSION?.nombre)).length,todas:all.length};
+  const cnt={abiertas:all.filter(ab).length,recibidas:all.filter(s=>s.estado==='RECIBIDO').length,rech:all.filter(s=>s.estado==='RECHAZADO').length,mias:all.filter(s=>_normNom(s.solicitado_por)===_normNom(_SESSION?.nombre)).length,todas:all.length,libres};
   const data=all.filter(s=>{
     if(_solF.chip==='abiertas'&&!ab(s)) return false;
     if(_solF.chip==='recibidas'&&s.estado!=='RECIBIDO') return false;
@@ -1815,7 +1814,7 @@ function solicitudes(){
   });
   const banner=moduleBanner('📋','Solicitudes Externas','Servicios externos pedidos a Compras (formato COMPRAS-FO-002)',
     chipsH([['abiertas','Abiertas',cnt.abiertas],['recibidas','Recibidas',cnt.recibidas],['rech','Rechazadas',cnt.rech],['mias','Mías',cnt.mias],['todas','Todas',cnt.todas]],_solF.chip,'solChip')
-    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="pickItem('📝 Nueva solicitud — elige el ítem',o=>vivo(o),'modalSolicitud')">➕ Nueva solicitud</button></div>`:''));
+    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="modalSolicitud()">➕ Nueva solicitud</button></div>`:''));
   const fb=filtroBusqueda('sol-q',_solF.q,"solSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar OP, servicio, proveedor, quién pidió…');
   if(!data.length){ setContent(banner+fb+empty('Sin solicitudes en esta vista','📋')); return; }
   const card=s=>{ const o=opDe(s.id_prod);
@@ -1840,7 +1839,7 @@ function detailSol(id){
 }
 // Nueva solicitud: encabezado + líneas (bienes) como en el formato anterior
 let _SOL=null;
-function modalSolicitud(id){
+function modalSolicitudModal(id){
   const o=opDe(id); if(!o||!soloCal()) return;
   _SOL={id,n:0};
   const svcs=[...new Set((DB.servicios||[]).map(s=>s.servicio).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
@@ -1939,7 +1938,7 @@ function certificados(){
   });
   const banner=moduleBanner('🏅','Certificados de conformidad','Resultados de medición por pieza y certificado para el cliente',
     chipsH([['emitidos','Emitidos',cnt.emitidos],['anulados','Anulados',cnt.anulados],['todos','Todos',cnt.todos]],_certF.chip,'certChip')
-    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="pickItem('🏅 Nuevo certificado — elige el ítem',o=>vivo(o),'editorCertItem')">➕ Nuevo certificado</button> <button class="chip" onclick="editorCert(null,null)">➕ Para una OP ya despachada</button></div>`:''));
+    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="editorCert(null,null)">➕ Nuevo certificado</button> <button class="chip" onclick="editorCert(null,null)">➕ Para una OP ya despachada</button></div>`:''));
   const fb=filtroBusqueda('cert-q',_certF.q,"certSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar N°, OP, cliente, referencia, OC…');
   if(!data.length){ setContent(banner+fb+empty(all.length?'Sin certificados en esta vista':'Aún no hay certificados. Emítelos desde Pendiente Despacho o con «Nuevo certificado».','🏅')); return; }
   const card=c=>{ const r=certResumen(c);
@@ -2089,7 +2088,7 @@ async function guardarCert(){
   ['cot_num','op','item_num','cantidad'].forEach(k=>{ if(data[k]===''||data[k]==null) delete data[k]; });
   const r=await rpcC('calidad_certificado_guardar',{p_id:ce.id,p_data:data},ce.id?'✅ Certificado actualizado':'🏅 Certificado creado');
   if(!r) return;
-  _CE=null; closeModal(); refreshCurrentView();
+  _CE=null; closeModal(); if(typeof feCerrar==='function') feCerrar(); refreshCurrentView();
   const nid=r.id||ce.id; if(nid) detailCert(nid);
 }
 
@@ -2100,9 +2099,9 @@ let _remF={chip:'despachar',q:''};
 function remSet(k,v){ _remF[k]=v; pgReset(); remisiones(); }
 function remChip(k){ remSet('chip',k); }
 function remisiones(){
-  const all=(DB.remisiones||[]).filter(m=>!m.libre);
+  const nl=(DB.remisiones||[]).filter(m=>!m.libre); const all=_remF.chip==='libres'?(DB.remisiones||[]).filter(m=>m.libre):nl;
   const libres=(DB.remisiones||[]).filter(m=>m.libre).length;
-  const cnt={despachar:all.filter(m=>m.estado==='GENERADA').length,tramite:all.filter(m=>REM_TRAMITE.includes(m.estado)).length,desp:all.filter(m=>m.estado==='DESPACHADA').length,canc:all.filter(m=>m.estado==='CANCELADA').length,todas:all.length};
+  const cnt={despachar:nl.filter(m=>m.estado==='GENERADA').length,tramite:nl.filter(m=>REM_TRAMITE.includes(m.estado)).length,desp:nl.filter(m=>m.estado==='DESPACHADA').length,canc:nl.filter(m=>m.estado==='CANCELADA').length,todas:nl.length};
   const data=all.filter(m=>{
     if(_remF.chip==='despachar'&&m.estado!=='GENERADA') return false;
     if(_remF.chip==='tramite'&&!REM_TRAMITE.includes(m.estado)) return false;
@@ -2113,9 +2112,10 @@ function remisiones(){
   });
   const sinRem=[...new Set((DB.produccion||[]).filter(pendDesp).filter(o=>!remTramite(o.op)&&dispDe(o)>0).map(o=>o.op))];
   const banner=moduleBanner('📄','Remisiones','Estado de las remisiones y despacho de las generadas',
-    chipsH([['despachar','Generadas (por despachar)',cnt.despachar],['tramite','En trámite',cnt.tramite],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',cnt.todas]],_remF.chip,'remChip'));
-  const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se pide desde <b>📦 Pendiente Despacho</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}${libres?`<div style="font-size:11px;margin-top:4px">No se listan ${libres} remisión(es) del formulario libre.</div>`:''}</div>`;
-  const fb=filtroBusqueda('rem-q',_remF.q,"remSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar REM, OP, cliente, proyecto, OC…');
+    chipsH([['despachar','Generadas (por despachar)',cnt.despachar],['tramite','En trámite',cnt.tramite],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',cnt.todas],['libres','📝 Formulario libre',libres]],_remF.chip,'remChip'));
+  const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se pide desde <b>📦 Pendiente Despacho</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}</div>`;
+  const nuevo=puedeCal()?`<div style="margin:8px 0"><button class="chip" onclick="feRemision()">➕ Nueva remisión (formulario)</button></div>`:'';
+  const fb=nuevo+filtroBusqueda('rem-q',_remF.q,"remSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar REM, OP, cliente, proyecto, OC…');
   if(!data.length){ setContent(banner+nota+fb+empty('Sin remisiones en esta vista','📄')); return; }
   const card=m=>{ const ls=m.lineas||[]; const und=ls.reduce((a,l)=>a+(Number(l.cantidad)||0),0);
     return `<div class="list-card" onclick="detailRem('${jsq(m.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${m.numero?'REM-'+m.numero:'Sin número'} · OP-${esc(String(m.op??'—'))}</div><div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub">${esc(String(m.proyecto||'').slice(0,80))}</div></div><div style="flex-shrink:0">${bRem(m.estado)}</div></div>
@@ -2575,8 +2575,8 @@ function ayudaForm(texto){
 </script>
 <!-- DENSIDAD (vistas dinámicas) -->
 <style>
-body[data-dens="compacto"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){display:grid!important;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-body[data-dens="mosaico"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+body[data-dens="compacto"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){display:grid!important;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:8px}
+body[data-dens="mosaico"] #content .card-list:not(.kb-body):not(.bk-wrap):not(:has(.msteps)):not(:has(.bk-wrap)){display:grid!important;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}
 body[data-dens="compacto"] #content .card-list .list-card,body[data-dens="mosaico"] #content .card-list .list-card{margin:0;min-width:0;padding:9px 10px}
 body[data-dens="compacto"] #content .card-list .lc-top,body[data-dens="mosaico"] #content .card-list .lc-top{flex-wrap:wrap;margin-bottom:4px}
 body[data-dens="mosaico"] #content .card-list .lc-sub,body[data-dens="mosaico"] #content .card-list .lc-meta{display:none}
@@ -3206,5 +3206,267 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 })();
 </script>
 <!-- /WEDM-CHAT -->
+<!-- FE-EDITORES (formatos editables dentro del ERP: solicitud, certificado, remisión) -->
+<style>
+#fe-ov{position:fixed;inset:0;z-index:9300;background:#eef2f7;display:none;overflow:auto;padding:58px 12px 40px}
+#fe-ov.open{display:block}
+.fe-bar{position:fixed;top:0;left:0;right:0;z-index:2;background:#1a3a6b;color:#fff;padding:9px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.fe-bar b{flex:1;font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fe-bar button{border:0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;white-space:nowrap}
+.fe-bar .pr{background:#0891b2}.fe-bar .sv{background:#16a34a}.fe-bar .cl{background:rgba(255,255,255,.18)}
+.fe-sheet{background:#fff;max-width:1150px;margin:0 auto;padding:14px;border-radius:8px;box-shadow:0 2px 14px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:11px;color:#000}
+.fe-sheet *{box-sizing:border-box}
+.fe-sheet input,.fe-sheet textarea,.fe-sheet select{font:inherit;color:inherit;border:0;background:transparent;width:100%;padding:3px 4px;border-radius:3px;text-transform:none}
+.fe-sheet input:hover,.fe-sheet textarea:hover{background:rgba(37,99,235,.06)}
+.fe-sheet input:focus,.fe-sheet textarea:focus,.fe-sheet select:focus{outline:0;background:#eaf1ff;box-shadow:0 0 0 2px #2563eb inset}
+.fe-sheet table{width:100%;border-collapse:collapse}
+.fe-hdr{display:grid;grid-template-columns:130px 1fr auto auto;border:2px solid #1a3a6b}
+.fe-hdr>div{border-right:1px solid #1a3a6b}.fe-hdr>div:last-child{border-right:0}
+.fe-logo{padding:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#1a3a6b;line-height:1.2;text-align:center}
+.fe-logo small{display:block;font-size:8px;font-weight:400}
+.fe-title{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:14px;color:#1a3a6b;text-transform:uppercase;line-height:1.3;padding:6px 10px}
+.fe-dates div{padding:4px 10px;font-size:9px;text-align:center;border-bottom:1px solid #1a3a6b}.fe-dates div:last-child{border:0}
+.fe-dates span{display:block;font-weight:700;color:#1a3a6b;font-size:8px;text-transform:uppercase}
+.fe-op{display:flex;flex-direction:column;min-width:130px;background:#1a3a6b;color:#fff}
+.fe-op span{font-size:9px;font-weight:700;text-align:center;padding:4px}
+.fe-op div{flex:1;display:flex;align-items:center;padding:0 6px}
+.fe-op input{color:#fff;font-weight:900;font-size:15px;text-align:center}.fe-op input::placeholder{color:#c7d4ea}
+.fe-op input:hover,.fe-op input:focus{background:rgba(255,255,255,.15);box-shadow:none}
+.fe-bar1{display:flex;justify-content:space-between;background:#1a3a6b;color:#fff;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;border-left:2px solid #1a3a6b;border-right:2px solid #1a3a6b}
+.fe-bar2{background:#1a3a6b;color:#fff;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;text-align:center;border:2px solid #1a3a6b;border-bottom:0}
+.fe-info{border-left:2px solid #1a3a6b;border-right:2px solid #1a3a6b;border-bottom:1px solid #1a3a6b}
+.fe-info th,.fe-aprob th{background:#d0d8e8;color:#1a3a6b;font-size:9px;font-weight:700;text-align:center;padding:4px 6px;border:1px solid #ccc;text-transform:uppercase}
+.fe-info td{border:1px solid #ccc;text-align:center;padding:1px 2px}
+.fe-rows{border:2px solid #1a3a6b;border-top:0}
+.fe-rows th{background:#1a3a6b;color:#fff;font-size:9px;text-align:center;padding:5px 4px;border:1px solid #2a4a7b;text-transform:uppercase}
+.fe-rows td{border:1px solid #ccc;padding:1px;position:relative}
+.fe-rows td .x{position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;border:0;border-radius:4px;width:16px;height:16px;font-size:9px;line-height:1;cursor:pointer;padding:0}
+.fe-add{width:100%;border:1.5px dashed #2563eb;background:#fff;color:#2563eb;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin:8px 0 12px}
+.fe-obs{display:grid;grid-template-columns:110px 1fr;border:2px solid #1a3a6b}
+.fe-obs>b{background:#d0d8e8;color:#1a3a6b;font-size:9px;text-transform:uppercase;padding:6px 8px;display:flex;align-items:center}
+.fe-ap-t{background:#1a3a6b;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:5px;text-transform:uppercase;border:2px solid #1a3a6b;border-bottom:0;margin-top:14px}
+.fe-aprob{border:2px solid #1a3a6b}.fe-aprob td{border:1px solid #ccc;padding:9px 6px;font-size:10px}
+.fe-extra{margin-top:12px;background:#f8fafc;border:1px dashed #94a3b8;border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.fe-extra label{display:block;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:2px}
+.fe-extra input{border:1px solid #cbd5e1;background:#fff;border-radius:6px}
+@media(max-width:700px){.fe-hdr{grid-template-columns:1fr}.fe-hdr>div{border-right:0;border-bottom:1px solid #1a3a6b}.fe-sheet{padding:6px;overflow-x:auto}.fe-rows,.fe-info{min-width:620px}}
+.fe-cert{border:2px solid #1a3a6b}
+.fe-cert th{font-size:9px;padding:5px 4px;border:1px solid #2a4a7b;text-transform:uppercase;color:#fff;text-align:center}
+.fe-cert td{border:1px solid #cbd5e1;padding:0;text-align:center}
+.fe-cert td input{text-align:center;padding:5px 3px}
+.fe-cert td.n{background:#dde6f0;font-weight:700;font-size:9px;width:28px}
+.fe-cert td.s{font-family:Consolas,monospace;font-size:10.5px;font-weight:700;padding:3px 6px}
+.fe-cert .okv{background:#dcfce7!important;color:#166534}.fe-cert .ncv{background:#fee2e2!important;color:#991b1b}
+.fe-cert tr.ncr td.res{color:#b91c1c}.fe-cert tr.okr td.res{color:#15803d}
+.fe-gen{border:2px solid #1a3a6b;border-top:0}
+.fe-gen .g{display:grid;border-bottom:1px solid #1a3a6b}.fe-gen .g>div{border-right:1px solid #cbd5e1;padding:2px 4px}.fe-gen .g>div:last-child{border-right:0}
+.fe-gen label{display:block;font-size:8px;font-weight:700;color:#1a3a6b;text-transform:uppercase;padding:2px 3px 0}
+.fe-gen .g.h{background:#dde6f0}
+@media(max-width:700px){.fe-gen .g{grid-template-columns:1fr!important}.fe-cert-w{overflow-x:auto}}
+</style>
+<div id="fe-ov"></div>
+<script>
+(function(){
+const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ov=()=>document.getElementById('fe-ov');
+window.feCerrar=function(){ov().classList.remove('open');ov().innerHTML='';document.body.style.overflow='';};
+function feAbrir(titulo,html,btns){
+  ov().innerHTML=`<div class="fe-bar"><b>${titulo}</b>${btns}<button class="cl" onclick="feCerrar()">✕ Cerrar</button></div>${html}`;
+  ov().classList.add('open'); ov().scrollTop=0; document.body.style.overflow='hidden';
+}
+const hdr=(titulo,opHtml,fechas)=>`<div class="fe-hdr"><div class="fe-logo"><span>GRUPO<br>WEDM<small>Metalmecánica Avanzada</small></span></div><div class="fe-title">${titulo}</div><div class="fe-dates">${fechas}</div><div class="fe-op">${opHtml}</div></div>`;
+window.feHdr=hdr; window.feAbrir=feAbrir; window.feE=E;
+
+/* ========== SOLICITUD DE BIENES Y SERVICIOS EXTERNOS (COMPRAS-FO-002) ========== */
+let S=null;
+const opsLista=()=>{ const m=new Map(); [...(DB.produccion||[]),...(DB.extra||[])].forEach(o=>{ if(o.op!=null&&!m.has(String(o.op))) m.set(String(o.op),o); }); return [...m.keys()].sort((a,b)=>b-a); };
+const itemsDeOp=op=>[...(DB.produccion||[]),...(DB.extra||[])].filter(o=>String(o.op)===String(op)&&!o.despachado&&o.estado!=='CANCELADO').sort((a,b)=>Number(a.item_num)-Number(b.item_num));
+function filaSol(d){ d=d||{}; return `<tr><td style="width:8%"><input class="s-c" style="text-align:center" value="${E(d.cantidad??'')}"></td><td style="width:30%"><input class="s-d" list="fe-dl-desc" value="${E(d.descripcion||'')}"></td><td style="width:22%"><input class="s-t" list="fe-dl-svc" style="text-align:center" value="${E(d.tipo_servicio||'')}"></td><td style="width:18%"><input class="s-m" style="text-align:center" value="${E(d.material||'')}"></td><td style="width:12%"><input class="s-u" style="text-align:center" value="${E(d.dureza||'')}"></td><td style="width:10%"><input class="s-p" inputmode="decimal" style="text-align:right;padding-right:18px" value="${E(d.precio??'')}"><button type="button" class="x" onclick="feSolQuitar(this)" title="Quitar fila">✕</button></td></tr>`; }
+window.feSolFila=function(d){ document.getElementById('fs-body').insertAdjacentHTML('beforeend',filaSol(d)); };
+window.feSolQuitar=function(b){ const tr=b.closest('tr'); if(document.querySelectorAll('#fs-body tr').length<=1){ tr.querySelectorAll('input').forEach(i=>i.value=''); return; } tr.remove(); };
+window.feSolOp=function(pref){
+  const v=document.getElementById('fs-op').value.trim(); const its=itemsDeOp(v); const sel=document.getElementById('fs-item');
+  sel.innerHTML=its.length?its.map(o=>`<option value="${E(o.id)}">${o.item_num} — ${E(String(o.descripcion||'').slice(0,40))}</option>`).join(''):'<option value="">— sin ítems —</option>';
+  if(pref&&its.some(x=>x.id===pref)) sel.value=pref; const o=its.find(x=>x.id===sel.value)||its[0]; document.getElementById('fs-cot').value=o?(o.cot_num||''):''; document.getElementById('fs-cli').textContent=o?(o.empresa||''):'';
+  document.getElementById('fe-dl-desc').innerHTML=its.map(o=>`<option value="ÍTEM ${o.item_num} - ${E(String(o.descripcion||'').slice(0,80))}">`).join('');
+  feSolItem();
+};
+window.feSolItem=function(){ const id=document.getElementById('fs-item').value; const o=opDe(id); S.id=id; if(!o) return;
+  const first=document.querySelector('#fs-body tr'); if(first){ const c=first.querySelector('.s-c'), d=first.querySelector('.s-d'); if(!c.value&&!d.value){ c.value=o.unidades||''; d.value='ÍTEM '+(o.item_num??'')+' - '+String(o.descripcion||'').slice(0,80); } } };
+function leeFilas(){ return [...document.querySelectorAll('#fs-body tr')].map(tr=>({cantidad:tr.querySelector('.s-c').value.trim(),descripcion:tr.querySelector('.s-d').value.trim(),tipo_servicio:tr.querySelector('.s-t').value.trim(),material:tr.querySelector('.s-m').value.trim(),dureza:tr.querySelector('.s-u').value.trim(),precio:tr.querySelector('.s-p').value.replace(/[^\d.,]/g,'').replace(',','.').trim()})).filter(l=>l.cantidad||l.descripcion||l.tipo_servicio||l.material||l.dureza||l.precio); }
+function leeCab(){ const g=id=>document.getElementById(id).value.trim(); return {proveedor:g('fs-prov'),dias:g('fs-dias'),observaciones:g('fs-obs'),fecha_envio:g('fs-env'),fecha_retorno:g('fs-ret'),solicitante:g('fs-colab'),area:g('fs-area')||'CALIDAD'}; }
+window.feSolImprimir=function(){ const o=opDe(S.id); if(!o){ toast('Elige una OP e ítem','error'); return; } docSolicitud({o,cab:leeCab(),lineas:leeFilas(),numero:S.numero||'—',fecha:hoyISO()}); };
+window.feSolGuardar=async function(){
+  if(!soloCal()) return; const id=document.getElementById('fs-item').value; const o=opDe(id); if(!o){ toast('Elige una OP e ítem válidos','error'); return; }
+  const lineas=leeFilas(); if(!lineas.length){ toast('Agrega al menos una fila','error'); return; }
+  if(lineas.some(l=>(l.descripcion||l.tipo_servicio).length<3)){ toast('Cada fila necesita descripción o tipo de servicio','error'); return; }
+  const cab=leeCab(); const marcar=document.getElementById('fs-ext')&&document.getElementById('fs-ext').checked;
+  const r=await rpcC('calidad_solicitar_servicio',{p_id_prod:id,p_data:Object.assign({},cab,{lineas})},'📋 Solicitud enviada a Compras'); if(!r) return;
+  if(marcar){ try{ await sb.rpc('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:[lineas[0].tipo_servicio||lineas[0].descripcion,cab.proveedor].filter(Boolean).join(' · '),p_hasta:cab.fecha_retorno||null}); await recargar(); }catch(e){ toast('⚠️ La solicitud se creó, pero no se pudo marcar el ítem en externo','error'); } }
+  const numero=String((r.ids||[])[0]||'').slice(0,8).toUpperCase(); feCerrar(); trasGuardar(id);
+  setTimeout(()=>docSolicitud({o,cab,lineas,numero,fecha:hoyISO()}),300);
+};
+window.modalSolicitud=function(id){
+  if(!soloCal()) return; const o=id?opDe(id):null; const hoy=new Date(); S={id:id||'',numero:'Nueva'};
+  const svcs=[...new Set((DB.servicios||[]).map(s=>s.servicio).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const provs=(typeof provsConocidos==='function')?provsConocidos():[];
+  const html=`<div class="fe-sheet">
+   <datalist id="fe-dl-ops">${opsLista().map(x=>`<option value="${x}">`).join('')}</datalist><datalist id="fe-dl-svc">${svcs.map(s=>`<option value="${E(s)}">`).join('')}</datalist><datalist id="fe-dl-desc"></datalist><datalist id="fe-dl-prov">${provs.map(p=>`<option value="${E(p)}">`).join('')}</datalist>
+   ${hdr('Formato de solicitud<br>de bienes y servicios externos',`<span>OP</span><div><input id="fs-op" list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(o?o.op:'')}" onchange="feSolOp()" oninput="if(this.value.length>=5)feSolOp()"></div>`,'<div><span>Fecha de elaboración</span>12/08/2019</div><div><span>Fecha de actualización</span>09/11/2022</div>')}
+   <div class="fe-bar1"><span>Información general</span><span>COMPRAS - FO - 002 &nbsp; N° <b>Nueva</b></span></div>
+   <table class="fe-info"><thead><tr><th>Nombre del colaborador</th><th>Área de trabajo</th><th style="width:60px">Mes</th><th style="width:60px">Día</th><th style="width:70px">Año</th><th>Cotización</th><th>Ítem</th></tr></thead>
+    <tbody><tr><td><input id="fs-colab" style="text-align:center" value="${E(_SESSION&&_SESSION.nombre||'')}"></td><td><input id="fs-area" style="text-align:center" value="CALIDAD"></td><td>${hoy.getMonth()+1}</td><td>${hoy.getDate()}</td><td>${hoy.getFullYear()}</td><td><input id="fs-cot" style="text-align:center" value="${E(o?o.cot_num||'':'')}"></td><td><select id="fs-item" style="text-align:center" onchange="feSolItem()"></select></td></tr></tbody></table>
+   <div class="fe-bar2" style="margin-top:0">Registro de bien o servicio solicitado <span id="fs-cli" style="font-weight:400;opacity:.8;margin-left:8px"></span></div>
+   <table class="fe-rows"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Tipo de servicio</th><th>Material</th><th>Dureza</th><th>Precio</th></tr></thead><tbody id="fs-body">${filaSol()}</tbody></table>
+   <button type="button" class="fe-add" onclick="feSolFila()">+ Agregar fila</button>
+   <div class="fe-obs"><b>Observaciones:</b><textarea id="fs-obs" rows="2"></textarea></div>
+   <div class="fe-ap-t">Aprobación y verificación final</div>
+   <table class="fe-aprob"><thead><tr><th style="width:25%">Responsable</th><th style="width:37%">Firma</th><th>Observaciones</th></tr></thead><tbody><tr><td>Solicitante</td><td></td><td></td></tr><tr><td>Jefatura de Compras</td><td></td><td></td></tr><tr><td>Fecha de recibido</td><td></td><td></td></tr></tbody></table>
+   <div class="fe-extra"><div><label>Proveedor sugerido</label><input id="fs-prov" list="fe-dl-prov" autocomplete="off" placeholder="Buscar o escribir"></div><div><label>Días estimados</label><input id="fs-dias" type="number" min="1" value="3"></div><div><label>Fecha de envío</label><input id="fs-env" type="date" value="${hoyISO()}"></div><div><label>Retorno estimado</label><input id="fs-ret" type="date"></div>
+    <div style="grid-column:1/-1;font-size:11px;color:#475569"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:12px;font-weight:600"><input type="checkbox" id="fs-ext" style="width:18px;height:18px" ${o&&enExterno(o)?'disabled':''}> Marcar también el ítem como <b>en servicio externo</b> (sale de las colas de calidad)</label><div style="margin-top:4px">Estos datos no se imprimen: sirven para que Compras contrate el servicio y para el seguimiento del regreso.</div></div></div>
+  </div>`;
+  feAbrir('📋 Nueva solicitud de bienes y servicios externos',html,`<button class="pr" onclick="feSolImprimir()">🖨️ Vista de impresión</button><button class="sv" onclick="feSolGuardar()">💾 Crear solicitud</button>`);
+  if(o){ feSolOp(o.id); } else { document.getElementById('fs-item').innerHTML='<option value="">— elige OP —</option>'; document.getElementById('fs-op').focus(); }
+};
+
+/* ========== CERTIFICADO DE CONFORMIDAD (editor tipo formato) ========== */
+function fld(k,label,type,ph){ return `<div><label>${label}</label><input ${type?`type="${type}"`:''} ${ph?`placeholder="${ph}"`:''} value="${E(_CE.d[k]??'')}" oninput="_CE.d['${k}']=this.value"></div>`; }
+window.renderEditorCert=function(){
+  const ce=_CE, n=ce.npz; const o=ce.id_prod?opDe(ce.id_prod):null; const c=ce.id?(DB.certificados||[]).find(x=>x.id===ce.id):null;
+  const keep=ov().scrollTop;
+  const num=c?certNum(c):'Nuevo';
+  const head=`<tr><th style="background:#1a3a6b;width:28px">#</th><th style="background:#1a3a6b;width:46px">Cota</th><th style="background:#1a3a6b;width:70px">Nominal</th><th style="background:#1a3a6b;width:56px">Tol +</th><th style="background:#1a3a6b;width:56px">Tol −</th>${Array.from({length:n},(_,p)=>`<th style="background:#16a34a;min-width:70px">P${p+1}</th>`).join('')}<th style="background:#1e40af">Prom.</th><th style="background:#166534">Mín</th><th style="background:#b91c1c">Máx</th><th style="background:#7e22ce">D. est</th><th style="background:#475569">Res.</th><th style="background:#dc2626;width:30px">Del</th></tr>`;
+  const rows=ce.cotas.map((ct,i)=>`<tr id="ce-r${i}"><td class="n">${i+1}</td>
+   <td><input value="${E(ct.letra)}" maxlength="4" style="font-weight:800" oninput="_CE.cotas[${i}].letra=this.value.toUpperCase()"></td>
+   <td><input value="${E(ct.nominal)}" placeholder="ej. 25.00" oninput="ceNominal(${i},this.value)"></td>
+   <td><input id="ce-tp${i}" value="${E(ct.tol_pos)}" placeholder="+0.00" style="color:#166534" oninput="ceTol(${i},'tol_pos',this.value)"></td>
+   <td><input id="ce-tn${i}" value="${E(ct.tol_neg)}" placeholder="-0.00" style="color:#991b1b" oninput="ceTol(${i},'tol_neg',this.value)"></td>
+   ${Array.from({length:n},(_,p)=>`<td><input id="ce-m${i}_${p}" value="${E(ce.med[i+'_'+p]||'')}" placeholder="—" inputmode="decimal" oninput="ceMed(${i},${p},this.value)"></td>`).join('')}
+   <td class="s" id="ce-s${i}-prom" style="background:#eff6ff">—</td><td class="s" id="ce-s${i}-min" style="background:#f0fdf4">—</td><td class="s" id="ce-s${i}-max" style="background:#fef2f2">—</td><td class="s" id="ce-s${i}-dev" style="background:#faf5ff">—</td><td class="s res" id="ce-s${i}-res">—</td>
+   <td><button type="button" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;cursor:pointer" onclick="ceQuitarCota(${i})">✕</button></td></tr>`).join('');
+  const ops=opsLista();
+  const sel=o?itemsDeOp(o.op):[];
+  const html=`<div class="fe-sheet">
+   <datalist id="fe-dl-ops">${ops.map(x=>`<option value="${x}">`).join('')}</datalist>
+   <div class="fe-hdr" style="grid-template-columns:130px 1fr 170px"><div class="fe-logo"><span>GRUPO<br>WEDM<small>Metalmecánica Avanzada</small></span></div><div class="fe-title" style="flex-direction:column">Certificado de conformidad<span style="font-size:10px;font-weight:600;color:#334155;text-transform:uppercase">Centralizar resultados de medición</span></div><div style="text-align:center"><div style="background:#1a3a6b;color:#fff;font-size:9px;font-weight:700;padding:4px">CERTIFICADO N°</div><div style="font-size:22px;font-weight:900;color:#16a34a;padding:10px 0">${num}</div></div></div>
+   <div class="fe-bar1" style="border:2px solid #1a3a6b;border-top:0;border-bottom:0"><span>Datos generales</span></div>
+   <div class="fe-gen">
+    <div class="g" style="grid-template-columns:230px 1fr 160px 160px"><div><label>OP — Ítem</label>${o?`<div style="font-weight:800;font-size:15px;padding:3px">OP-${E(ce.d.op)} · Ítem ${E(ce.d.item_num)}</div>`:`<input list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(ce.d.op||'')}" onchange="feCertOp(this.value)" style="font-weight:800;font-size:15px">`}
+      ${!o&&ce.d.op?`<input type="number" placeholder="N° de ítem" value="${E(ce.d.item_num||'')}" oninput="_CE.d.item_num=this.value" style="border:1px solid #cbd5e1;border-radius:4px;margin-top:2px">`:''}${(!c&&sel.length>1)||(!o&&ce.d.op&&sel.length)?`<select onchange="feCertItem(this.value)" style="border:1px solid #cbd5e1;border-radius:4px;margin-top:2px">${sel.map(x=>`<option value="${E(x.id)}" ${x.id===ce.id_prod?'selected':''}>Ítem ${x.item_num} — ${E(String(x.descripcion||'').slice(0,30))}</option>`).join('')}</select>`:''}</div>
+      ${fld('referencia','Referencia / producto')}${fld('orden_compra','Orden de compra (OC)','','N° OC')}${fld('numero_pieza','N° de pieza','','ej. REF-001')}</div>
+    <div class="g h" style="grid-template-columns:2fr 1fr 80px 1fr 1fr"><div><label>Cliente</label><input value="${E(ce.d.empresa||'')}" oninput="_CE.d.empresa=this.value"></div>${fld('cot_num','Cotización','number')}${fld('cantidad','Cant.','number')}${fld('fecha_fabricacion','F. fabricación','date')}${fld('fecha_emision','F. emisión','date')}</div>
+    <div class="g" style="grid-template-columns:1fr 1fr 1fr;border-bottom:0">${fld('material','Material')}${fld('tratamiento','Tratamiento')}${fld('inspector','Inspector de calidad')}</div>
+   </div>
+   <div class="fe-bar1" style="margin-top:10px;border:2px solid #1a3a6b;border-bottom:0"><span>Medidas críticas — registro por pieza</span><span style="display:flex;gap:6px;align-items:center">${o?`<button type="button" style="background:#0891b2;color:#fff;border:0;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px" onclick="ceDesdeQA()">📋 Traer del Formato QA</button>`:''}Piezas: <button type="button" style="background:rgba(255,255,255,.25);color:#fff;border:0;border-radius:4px;width:20px;cursor:pointer" onclick="cePiezas(-1)">−</button><b>${n}</b><button type="button" style="background:rgba(255,255,255,.25);color:#fff;border:0;border-radius:4px;width:20px;cursor:pointer" onclick="cePiezas(1)">+</button></span></div>
+   <div class="fe-cert-w"><table class="fe-cert"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+   <button type="button" class="fe-add" onclick="ceAgregarCota()">+ Agregar cota</button>
+   <div style="font-size:10px;color:#64748b;margin:-6px 0 10px">Si dejas la tolerancia vacía se llena sola con la tabla HADA S.A. según el nominal. Verde = dentro de límites, rojo = fuera. OK/NC se evalúa con el promedio de la cota.</div>
+   <div class="fe-obs"><b>Observaciones:</b><textarea rows="2" oninput="_CE.d.observaciones=this.value">${E(ce.d.observaciones||'')}</textarea></div>
+  </div>`;
+  feAbrir(c?`🏅 Editar certificado N° ${num}`:'🏅 Nuevo certificado de conformidad',html,`<button class="sv" onclick="guardarCert()">💾 ${c?'Guardar cambios':'Crear certificado'}</button>`);
+  ov().scrollTop=keep; ce.cotas.forEach((_,i)=>ceRecalc(i));
+};
+window.ceReRender=function(){ renderEditorCert(); };
+window.feCertOp=function(v){ const its=itemsDeOp(v); if(!its.length){ _CE.d.op=v; toast('Esa OP no está entre los ítems activos (¿ya despachada?): llena los datos a mano'); renderEditorCert(); return; } feCertItem(its[0].id); };
+window.feCertItem=function(id){ const o=opDe(id); if(!o) return; const keepCotas=_CE.cotas, keepMed=_CE.med, keepN=_CE.npz;
+  _CE.id_prod=o.id; Object.assign(_CE.d,{op:o.op,item_num:o.item_num,cot_num:o.cot_num,empresa:o.empresa,referencia:o.descripcion,cantidad:o.unidades,fecha_fabricacion:fEntrega(o)?String(fEntrega(o)).slice(0,10):_CE.d.fecha_fabricacion}); if(!Object.keys(_CE.med).length) _CE.npz=Math.min(CE_MAX_PZ,Math.max(1,Number(o.unidades)||1)); renderEditorCert(); };
+})();
+</script>
+<script>
+/* ========== REMISIÓN (formulario libre) — documento editable dentro del ERP ========== */
+(function(){
+const E=window.feE, $=id=>document.getElementById(id);
+let R=null;
+const ESTS=['BORRADOR','ENVIADA','RECIBIDA','FACTURADA','ANULADA','DESPACHADA'];
+const puedeRem=()=>puedeCal();
+function lineasHtml(){
+  const ls=R.lineas;
+  return ls.map((l,i)=>`<tr><td class="n" style="width:34px;text-align:center;font-weight:700">${i+1}</td><td style="width:70px"><input type="number" min="0" style="text-align:center" value="${E(l.cantidad)}" onchange="feRemCant(${i},this.value)"></td><td><textarea rows="2" style="resize:vertical" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td><td style="width:36px;text-align:center"><button class="x" style="position:static;width:22px;height:22px" onclick="feRemQuitar(${i})">✕</button></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:#64748b;padding:14px">Sin ítems todavía — busca una OP/cotización o agrega uno manual</td></tr>`;
+}
+function itemsHtml(){
+  const its=R.items||[]; if(!its.length) return `<div style="padding:12px;border:1.5px dashed #94a3b8;border-radius:8px;text-align:center;color:#64748b;font-size:11px">Escribe una OP o una cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
+  const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
+  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El saldo ya descuenta lo despachado y lo reservado en otras remisiones.</div>`;
+}
+function refrescar(){ const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); const t=$('fr-tot'); if(t) t.textContent=R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0)+' und'; }
+window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,descripcion:it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
+window.feRemCant=(i,v)=>{ R.lineas[i].cantidad=Number(v)||0; const t=$('fr-tot'); if(t) t.textContent=R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0)+' und'; };
+window.feRemDesc=(i,v)=>{ R.lineas[i].descripcion=v; };
+window.feRemQuitar=i=>{ R.lineas.splice(i,1); refrescar(); };
+window.feRemManual=()=>{ R.lineas.push({id_prod:null,descripcion:'',cantidad:1}); refrescar(); };
+function listas(){
+  const ops=new Map(),cots=new Map();
+  (DB.allOps||DB.produccion||[]).concat(DB.extra||[]).forEach(p=>{ if(p.op!=null&&!ops.has(p.op)) ops.set(p.op,{cot:p.cot_num,emp:p.empresa||''}); if(p.cot_num!=null){ const c=cots.get(p.cot_num)||{emp:p.empresa||'',ops:new Set()}; if(p.op!=null) c.ops.add(p.op); cots.set(p.cot_num,c); } });
+  R.mapOps=ops;R.mapCots=cots;
+  const o=[...ops.entries()].sort((a,b)=>b[0]-a[0]).map(([k,v])=>`<option value="${k}" label="${E(v.emp)}${v.cot!=null?' · COT-'+v.cot:''}">`).join('');
+  const c=[...cots.entries()].sort((a,b)=>b[0]-a[0]).map(([k,v])=>`<option value="${k}" label="${E(v.emp)}">`).join('');
+  return `<datalist id="fr-ops">${o}</datalist><datalist id="fr-cots">${c}</datalist>`;
+}
+async function cargaIdx(){ try{ if(!DB.allOps) DB.allOps=await GETALL('produccion','select=op,cot_num,empresa&order=op.desc'); const el=$('fr-dl'); if(el&&R) el.innerHTML=listas(); }catch(e){} }
+let tSel=null;
+window.feRemSel=(which,fin)=>{
+  const v=gv('fr-'+which), n=parseInt(v);
+  const known=which==='op'?R.mapOps.has(n):R.mapCots.has(n);
+  if((!known&&!fin)||!v||isNaN(n)) return;
+  if(which==='op'){ const x=R.mapOps.get(n); $('fr-cot').value=x&&x.cot!=null?x.cot:''; }
+  else{ const x=R.mapCots.get(n); $('fr-op').value=x&&x.ops.size===1?[...x.ops][0]:''; }
+  R.lineas=R.lineas.filter(l=>l.id_prod); clearTimeout(tSel); tSel=setTimeout(()=>feRemBuscar(true),150);
+};
+window.feRemBuscar=async force=>{
+  const op=gv('fr-op')?parseInt(gv('fr-op')):null, cot=gv('fr-cot')?parseInt(gv('fr-cot')):null; if(!op&&!cot) return;
+  try{
+    const r=await sb.rpc('remision_buscar_libre',{p_op:op||null,p_cot:cot||null,p_excluir_id:R.id||null});
+    R.items=(r&&r.items)||[];
+    if(r&&r.cliente){ const c=r.cliente; const set=(id,v)=>{ const el=$(id); if(el&&(force||!el.value)) el.value=v||''; };
+      set('fr-emp',c.empresa);set('fr-nit',c.nit);set('fr-dir',c.direccion);set('fr-ciu',c.ciudad);set('fr-con',c.contacto);set('fr-tel',c.telefono);set('fr-oc',c.oc_cliente);set('fr-pro',c.proyecto); }
+    refrescar(); toast(R.items.length+' ítem(s) con saldo');
+  }catch(e){ toast('❌ '+errMsg(e),'error'); }
+};
+function datos(){
+  return {estado:gv('fr-est')||'BORRADOR',op:gv('fr-op')||null,cot_num:gv('fr-cot')||null,empresa:gv('fr-emp'),nit:gv('fr-nit'),direccion:gv('fr-dir'),ciudad:gv('fr-ciu'),contacto:gv('fr-con'),telefono:gv('fr-tel'),oc_cliente:gv('fr-oc'),proyecto:gv('fr-pro'),observaciones:gv('fr-obs'),fecha:gv('fr-fec'),lineas:R.lineas.filter(l=>String(l.descripcion||'').trim()&&Number(l.cantidad)>0)};
+}
+const f=(l,id,v,extra)=>`<div style="padding:2px 4px;border-right:1px solid #cbd5e1"><label style="display:block;font-size:8px;font-weight:700;color:#1a3a6b;text-transform:uppercase;padding:2px 3px 0">${l}</label><input id="${id}" value="${E(v||'')}" ${extra||''}></div>`;
+window.feRemision=function(id){
+  if(!puedeRem()){ toast('Tu rol no puede crear remisiones','error'); return; }
+  const m=id?(DB.remisiones||[]).find(x=>x.id===id):null;
+  R={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
+  const html=`<div class="fe-sheet">
+   ${feHdr('REMISIÓN DE ENTREGA',`<span>REMISIÓN N°</span><div><b style="color:#fff;width:100%;text-align:center;font-size:15px">${m&&m.numero?m.numero:'AUTO'}</b></div>`,`<div><span>Fecha</span><input id="fr-fec" type="date" value="${E(m?(m.fecha||''):hoyISO())||hoyISO()}" style="text-align:center"></div><div><span>Estado</span><select id="fr-est">${ESTS.map(s=>`<option ${((m&&m.estado)||'BORRADOR')===s?'selected':''}>${s}</option>`).join('')}</select></div>`)}
+   <div class="fe-bar2">Encabezado — busca la OP o la cotización y se completa solo</div>
+   <div class="fe-gen" style="border-top:0"><div class="g" style="grid-template-columns:1fr 1fr 2fr">
+     ${f('Orden de producción (OP)','fr-op',m&&m.op!=null?m.op:'','list="fr-ops" inputmode="numeric" placeholder="🔎 N° OP o cliente" autocomplete="off" oninput="feRemSel(\'op\',false)" onchange="feRemSel(\'op\',true)"')}
+     ${f('Cotización','fr-cot',m&&m.cot_num!=null?m.cot_num:'','list="fr-cots" inputmode="numeric" placeholder="🔎 N° cotización" autocomplete="off" oninput="feRemSel(\'cot\',false)" onchange="feRemSel(\'cot\',true)"')}
+     ${f('Proyecto','fr-pro',m?.proyecto)}</div></div>
+   <div id="fr-dl">${'<datalist id="fr-ops"></datalist><datalist id="fr-cots"></datalist>'}</div>
+   <div class="fe-bar2" style="margin-top:10px">Destinatario</div>
+   <div class="fe-gen" style="border-top:0">
+    <div class="g" style="grid-template-columns:2fr 1fr 1fr">${f('Cliente / Señores','fr-emp',m?.empresa)}${f('NIT','fr-nit',m?.nit)}${f('Orden de compra del cliente','fr-oc',m?.oc_cliente)}</div>
+    <div class="g" style="grid-template-columns:2fr 1fr 1fr 1fr">${f('Dirección','fr-dir',m?.direccion)}${f('Ciudad','fr-ciu',m?.ciudad)}${f('Encargado','fr-con',m?.contacto)}${f('Teléfono','fr-tel',m?.telefono)}</div></div>
+   <div class="fe-bar2" style="margin-top:10px">Ítems con saldo pendiente — marca los que van en esta remisión</div>
+   <div id="fr-items" style="border:2px solid #1a3a6b;border-top:0;padding:6px">${itemsHtml()}</div>
+   <div class="fe-bar1" style="margin-top:10px"><span>Ítems de la remisión</span><span id="fr-tot"></span></div>
+   <table class="fe-rows"><thead><tr><th>#</th><th>Cant.</th><th>Descripción</th><th></th></tr></thead><tbody id="fr-body"></tbody></table>
+   <button class="fe-add" onclick="feRemManual()">＋ Agregar ítem manual</button>
+   <div class="fe-obs"><b>Observaciones</b><textarea id="fr-obs" rows="3">${E(m?.observaciones||'')}</textarea></div>
+  </div>`;
+  feAbrir(m?`📄 Editar remisión${m.numero?' N° '+m.numero:''}`:'📄 Nueva remisión',html,`<button class="pr" onclick="feRemImprimir()">🖨️ Imprimir / PDF</button><button class="sv" onclick="feRemGuardar()">💾 ${m?'Guardar cambios':'Crear remisión'}</button>`);
+  const dl=$('fr-dl'); dl.innerHTML=listas(); refrescar(); cargaIdx();
+  if(gv('fr-op')||gv('fr-cot')) feRemBuscar(false);
+};
+window.feRemGuardar=async()=>{
+  const d=datos(); if(!d.empresa){ toast('Escribe el cliente','error'); return; }
+  if(!d.lineas.length){ toast('Agrega al menos un ítem con cantidad','error'); return; }
+  const r=await rpcC('remision_guardar_libre',{p_id:R.id,p_data:d},'✅ Remisión guardada');
+  if(r){ feCerrar(); _remF.chip='libres'; nav('remisiones'); }
+};
+window.feRemImprimir=()=>{
+  const d=datos(); if(!d.empresa){ toast('Escribe el cliente para imprimir','error'); return; }
+  const m=R.id?(DB.remisiones||[]).find(x=>x.id===R.id):null; const prev={...(m||{}),...d,numero:m?.numero};
+  _abrirDocParaImprimir(docHtmlRem(prev,'remision'),`REM-${prev.numero||'borrador'}.pdf`,'remisiones');
+};
+})();
+</script>
+
+<!-- /FE-EDITORES -->
 </body>
 </html>
