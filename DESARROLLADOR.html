@@ -4639,30 +4639,53 @@ function docRemision(id,modo){
   _abrirDocParaImprimir(html,`REM-${m.numero||'borrador'}.pdf`,'remisiones');
 }
 
-// ── USUARIOS (solo desarrollador) ───────────────────────────────
+// ── USUARIOS (solo desarrollador) ───────────────────────────────  [v2: módulos, clave, desbloqueo, visibilidad]
 let _USR=[];
+const MOD_USR=[['comercial','💼 Comercial'],['diseno','🎨 Diseño'],['compras','🛒 Compras'],['remisiones','🚚 Remisiones'],['planeacion','🏭 Planeación'],['calidad','🔍 Calidad'],['planta','⏱️ Planta']];
 async function usuarios(){
   if(!_esDev()){ setContent(errorView('Solo el desarrollador puede gestionar usuarios')); return; }
   loading();
-  try{ const r=await sb.rpc('dev_listar_usuarios'); _USR=Array.isArray(r)?r:[]; }catch(e){ setContent(errorView(errMsg(e))); return; }
-  const banner=moduleBanner('👥','Usuarios y roles','Quién entra al ERP y qué ve cada uno',`<button class="btn btn-sm" style="background:#fff;color:#0f2443;font-weight:800" onclick="formUsuario()">＋ Nuevo usuario</button>`,'linear-gradient(135deg,#0f2443,#475569)');
-  setContent(banner+`<div class="tbl-wrap" style="margin-top:12px"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Rol</th><th>Adicionales</th><th>Asesor</th><th>Activo</th><th>Visible</th><th></th></tr></thead><tbody>${_USR.map(u=>`<tr><td style="font-weight:700">${esc(u.nombre)}</td><td>${esc(ROL_LABEL[u.rol]||u.rol)}</td><td>${esc((u.roles_extra||[]).map(r=>ROL_LABEL[r]||r).join(', ')||'—')}</td><td>${esc(u.asesor||'—')}</td><td>${u.activo?'✅':'⛔'}</td><td>${u.visible?'👁️':'🙈'}</td><td>${u.rol==='desarrollador'?'':`<button class="btn btn-ghost btn-sm" data-n="${esc(u.nombre)}" onclick="formUsuario(this.dataset.n)">✏️ Editar</button>`}</td></tr>`).join('')}</tbody></table></div>`);
+  let r2=null; try{ r2=await sb.rpc('dev_listar_usuarios2'); }catch(e){ r2=null; }
+  _USR_V2=Array.isArray(r2);
+  try{ const r=_USR_V2?r2:await sb.rpc('dev_listar_usuarios'); _USR=Array.isArray(r)?r:[]; }catch(e){ setContent(errorView(errMsg(e))); return; }
+  const banner=moduleBanner('👥','Usuarios, claves y módulos','Quién entra al ERP, con qué clave y a qué módulos',`<button class="btn btn-sm" style="background:#fff;color:#0f2443;font-weight:800" onclick="formUsuario()">＋ Nuevo usuario</button> <a class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;text-decoration:none" href="PLANEACION.html" target="_blank">🔑 Accesos de planta</a>`,'linear-gradient(135deg,#0f2443,#475569)');
+  const aviso=_USR_V2?'':`<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:13px;font-weight:600">⚠️ Falta ejecutar <b>usuarios_modulos.sql</b> en Supabase para gestionar módulos, desbloqueo y visibilidad. Mientras tanto solo funcionan rol, PIN y estado.</div>`;
+  const chips=u=>u.modulos==null?'<span style="color:#64748b;font-size:12px">Según su rol</span>':(u.modulos.length?u.modulos.map(m=>`<span style="display:inline-block;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;margin:1px">${esc((MOD_USR.find(x=>x[0]===m)||[0,m])[1])}</span>`).join(''):'<span style="color:#b91c1c;font-size:12px;font-weight:700">Ninguno</span>');
+  setContent(banner+aviso+`<div class="tbl-wrap" style="margin-top:12px"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Rol</th><th>Adicionales</th><th>Módulos</th><th>Asesor</th><th>Clave</th><th>Estado</th><th>Visible</th><th></th></tr></thead><tbody>${_USR.map(u=>{const dev=u.rol==='desarrollador';const n=esc(u.nombre);
+    return `<tr><td style="font-weight:700">${n}</td><td>${esc(ROL_LABEL[u.rol]||u.rol)}</td><td>${esc((u.roles_extra||[]).map(r=>ROL_LABEL[r]||r).join(', ')||'—')}</td><td>${dev?'<span style="color:#64748b;font-size:12px">Todos</span>':chips(u)}</td><td>${esc(u.asesor||'—')}</td><td>${u.tiene_clave===false?'<span title="Sin clave">⚠️</span>':'••••'}</td><td>${u.activo?'✅':'⛔'}${u.bloqueado?' 🔒':''}</td><td>${u.visible?'👁️':'🙈'}</td><td style="white-space:nowrap">${dev?'':`<button class="btn btn-ghost btn-sm" data-n="${n}" onclick="formUsuario(this.dataset.n)">✏️ Editar</button>`+(_USR_V2?` ${u.bloqueado?`<button class="btn btn-ghost btn-sm" title="Desbloquear" data-n="${n}" onclick="usrAccion(this.dataset.n,'desbloquear')">🔓</button>`:''}<button class="btn btn-ghost btn-sm" title="${u.visible?'Ocultar en la pantalla de ingreso':'Mostrar en la pantalla de ingreso'}" data-n="${n}" onclick="usrAccion(this.dataset.n,'${u.visible?'ocultar':'mostrar'}')">${u.visible?'🙈':'👁️'}</button><button class="btn btn-ghost btn-sm" title="Cerrar su sesión" data-n="${n}" onclick="usrAccion(this.dataset.n,'cerrar_sesion')">🚪</button>`:'')}</td></tr>`}).join('')}</tbody></table></div>`);
 }
+let _USR_V2=false;
+async function usrAccion(nombre,acc){
+  try{ showBusy(); await sb.rpc('dev_usuario_accion',{p_nombre:nombre,p_accion:acc}); hideBusy(); toast('✅ Listo'); usuarios(); }
+  catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
+function usrModSel(){ const c=document.querySelector('input[name=usm]:checked')?.value==='sel'; document.querySelectorAll('.usm-c').forEach(x=>{x.disabled=!c}); const b=document.getElementById('usm-box'); if(b) b.style.opacity=c?1:.45; }
 function formUsuario(nombre){
   const u=nombre?_USR.find(x=>x.nombre===nombre):null; const roles=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion','lectura']; const extras=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion'];
+  const restr=!!(u&&u.modulos!=null);
+  const modsHtml=_USR_V2?`<div class="field span2"><label>Módulos a los que puede entrar</label>
+      <div style="display:flex;gap:16px;padding:4px 0;font-size:13px"><label style="display:flex;align-items:center;gap:5px"><input type="radio" name="usm" value="rol" ${restr?'':'checked'} onchange="usrModSel()"> Los que da su rol</label><label style="display:flex;align-items:center;gap:5px"><input type="radio" name="usm" value="sel" ${restr?'checked':''} onchange="usrModSel()"> Solo los que marque</label></div>
+      <div id="usm-box" style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${MOD_USR.map(m=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="usm-c" value="${m[0]}" ${restr&&u.modulos.includes(m[0])?'checked':''}> ${m[1]}</label>`).join('')}</div>
+      <div style="font-size:11.5px;color:#64748b">Al marcar “solo los que marque”, el usuario únicamente podrá entrar a esos módulos (además de lo que su rol permita). Al guardar se cierra su sesión.</div></div>`:'';
   openModal(u?'Editar usuario':'Nuevo usuario',`<div class="form-grid"><div class="field span2"><label>Nombre</label><input id="us1" value="${esc(u?.nombre||'')}" ${u?'readonly':''} placeholder="Nombre completo"></div>
     <div class="field"><label>Rol</label><select id="us2">${roles.map(r=>`<option value="${r}" ${u?.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('')}</select></div>
     <div class="field"><label>Asesor (solo comerciales)</label><input id="us3" value="${esc(u?.asesor||'')}" placeholder="Nombre como aparece en cotizaciones"></div>
-    <div class="field"><label>PIN (4 dígitos)${u?' — vacío = no cambiar':''}</label><input id="us4" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••"></div>
+    <div class="field"><label>Clave / PIN (4 dígitos)${u?' — vacío = no cambiar':''}</label><input id="us4" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••"></div>
+    <div class="field"><label>Estado</label><select id="us5"><option value="1" ${u&&!u.activo?'':'selected'}>Activo</option><option value="0" ${u&&!u.activo?'selected':''}>Inactivo</option></select></div>
     <div class="field span2"><label>Accesos adicionales (además del rol)</label><div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${extras.map(r=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="us6" value="${r}" ${(u?.roles_extra||[]).includes(r)?'checked':''}> ${ROL_LABEL[r]}</label>`).join('')}</div></div>
-    <div class="field"><label>Estado</label><select id="us5"><option value="1" ${u&&!u.activo?'':'selected'}>Activo</option><option value="0" ${u&&!u.activo?'selected':''}>Inactivo</option></select></div></div>`,
+    ${modsHtml}</div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>`);
+  setTimeout(usrModSel,0);
 }
 async function guardarUsuario(){
   const nombre=gv('us1'); if(!nombre){ toast('Escribe el nombre','error'); return; }
+  const pin=gv('us4'); if(pin&&!/^[0-9]{4}$/.test(pin)){ toast('El PIN debe tener 4 dígitos','error'); return; }
+  const sel=_USR_V2&&document.querySelector('input[name=usm]:checked')?.value==='sel';
+  const mods=sel?[...document.querySelectorAll('.usm-c:checked')].map(x=>x.value):null;
   try{
     showBusy();
-    await sb.rpc('dev_guardar_usuario',{p_nombre:nombre,p_rol:gv('us2'),p_asesor:gv('us3'),p_clave:gv('us4'),p_activo:gv('us5')==='1',p_roles_extra:[...document.querySelectorAll('.us6:checked')].map(x=>x.value).filter(r=>r!==gv('us2'))});
+    await sb.rpc('dev_guardar_usuario',{p_nombre:nombre,p_rol:gv('us2'),p_asesor:gv('us3'),p_clave:pin,p_activo:gv('us5')==='1',p_roles_extra:[...document.querySelectorAll('.us6:checked')].map(x=>x.value).filter(r=>r!==gv('us2'))});
+    if(_USR_V2) await sb.rpc('dev_set_modulos',{p_nombre:nombre,p_modulos:mods});
     closeModal(); toast('✅ Usuario guardado'); await cargarUsuarios(); hideBusy(); usuarios();
   }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
