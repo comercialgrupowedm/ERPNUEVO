@@ -1482,7 +1482,8 @@ body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=s
     <div class="nav-section">Datos</div>
     <div class="nav-item" data-m="usuarios" onclick="qaGo('usuarios')"><span class="nav-icon">👥</span>Usuarios y roles</div>
     <div class="nav-item" data-m="importar" id="nav-importar" onclick="qaGo('importar')"><span class="nav-icon">📥</span>Importar hojas</div>
-    <div class="nav-section">Facturación</div>
+    <div class="nav-section">Facturación y avances</div>
+    <div class="nav-item" data-m="avances" onclick="qaGo('avances')"><span class="nav-icon">📈</span>Avances y entregables</div>
     <div class="nav-item" data-m="cobro" onclick="qaGo('cobro')"><span class="nav-icon">🧾</span>Cuenta de cobro</div>
     <div class="nav-section">Módulos</div>
     <div class="nav-item" onclick="location.href='COMERCIAL.html'"><span class="nav-icon">📋</span>Comercial</div>
@@ -1643,7 +1644,7 @@ const TITLES = {
   dashboard:'Dashboard Comercial', cotizaciones:'Cotizaciones', clientes:'Clientes',
   items:'Items / Elementos', usados:'Ítems más usados', analisis:'Análisis', procesos:'Procesos', materiales:'Materiales', servicios:'Servicios Externos',
   produccion:'Control Producción', remisiones:'Remisiones', usuarios:'Usuarios y roles',
-  importar:'🛠 Importar hojas de datos', funciones:'Funciones del sistema', cobro:'Cuenta de cobro', auditoria:'Auditoría', respaldos:'Respaldos', seguridad:'Seguridad',
+  importar:'🛠 Importar hojas de datos', funciones:'Funciones del sistema', cobro:'Cuenta de cobro', avances:'Avances y entregables', auditoria:'Auditoría', respaldos:'Respaldos', seguridad:'Seguridad',
 };
 const FAB_ACTIONS = {
   cotizaciones:()=>formCot({}),
@@ -1955,7 +1956,7 @@ function cotEnRango(c){ return _normEstado(c.estado)==='EN ESPERA' || _dentroDeR
 // ══ NAVEGACIÓN ══════════════════════════════════════════════════
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
 function refreshCurrentView(){
-  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones,usuarios,importar,funciones,auditoria,respaldos,seguridad,cobro};
+  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones,usuarios,importar,funciones,auditoria,respaldos,seguridad,cobro,avances:(typeof avances==='function'?avances:()=>{})};
   if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } }
 }
 function navigate(m){ const el=document.querySelector(`.nav-item[data-m="${m}"]`); if(el) el.click(); }
@@ -2133,11 +2134,11 @@ function mostrarLogin(){
     <div class="login-card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);color:#e8f0fe">
       <div class="login-step active" id="login-step-user">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;text-align:center">¿Quién eres?</div>
-        <div class="user-grid" id="login-user-grid">${USUARIOS.filter(u=>NOMBRES_VISIBLES_COM.includes(u.nombre)).sort((a,b)=>NOMBRES_VISIBLES_COM.indexOf(a.nombre)-NOMBRES_VISIBLES_COM.indexOf(b.nombre)).map(u=>`
-          <div class="user-btn" style="background:rgba(255,255,255,.06)" data-u="${esc(u.nombre)}" onclick="_loginSelectUser(this.dataset.u)">
-            <div class="u-avatar">${u.rol==='lectura'?'👁️':'👤'}</div><div class="u-name" style="color:#e8f0fe">${esc(nombreLindo(u.nombre))}</div><div class="u-rol" style="color:#6b7db3">${esc(u.rol)}</div>
-          </div>`).join('')}</div>
-        <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)"><button type="button" onclick="_loginDevOpen()" style="background:none;border:none;color:#4a5a86;font-size:12px;cursor:pointer;padding:6px 12px">🛠 Desarrollador</button></div>
+        <div class="user-grid" id="login-user-grid" style="grid-template-columns:1fr;max-width:220px;margin:0 auto">
+          <div class="user-btn" style="background:rgba(255,255,255,.06)" onclick="_loginSelectUser('DUVIER TRUJILLO')">
+            <div class="u-avatar">🛠</div><div class="u-name" style="color:#e8f0fe">Desarrollador</div><div class="u-rol" style="color:#6b7db3">acceso con código</div>
+          </div></div>
+        
       </div>
       <div class="login-step" id="login-step-dev">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;text-align:center">🛠 Acceso desarrollador</div>
@@ -2167,7 +2168,7 @@ function mostrarLogin(){
 function _loginSelectUser(nombre){
   _LOGIN_USER=nombre; const u=USUARIOS.find(x=>x.nombre===nombre);
   document.getElementById('login-step-user')?.classList.remove('active'); document.getElementById('login-step-pin')?.classList.add('active');
-  document.getElementById('login-pin-name').textContent=u?.nombre||nombre; document.getElementById('login-pin-rol').textContent=u?.rol||'';
+  document.getElementById('login-pin-name').textContent=u?.nombre||'Desarrollador'; document.getElementById('login-pin-rol').textContent=u?.rol||'desarrollador';
   const inp=document.getElementById('login-pin-input'); if(inp) inp.value=''; _loginPinRender();
   document.getElementById('login-err').textContent=''; setTimeout(()=>{ if(!_TACTIL) inp?.focus(); },150);
 }
@@ -3880,7 +3881,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 // ══════════════════════════════════════════════════════════════════
 const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
 const MODS_ROL={
-  desarrollador:['funciones','auditoria','respaldos','seguridad','cobro','usuarios','importar'],
+  desarrollador:['funciones','auditoria','respaldos','seguridad','cobro','avances','usuarios','importar'],
   admin:['funciones','auditoria'],
 };
 const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
@@ -7590,6 +7591,123 @@ function cobro(){
 }
 </script>
 <!-- /WEDM-COBRO -->
+<!-- WEDM-AVANCES (avances y entregables semana a semana + informe) -->
+<script>
+const _AV_MODS=['Comercial','Diseño','Compras','Remisiones','Planeación','Calidad','Planta','Inicio','Desarrollador','Todos'];
+const _AV_EST={hecho:['✅ Hecho','#166534','#dcfce7'],en_curso:['🛠 En curso','#92400e','#fef3c7'],pendiente:['⏳ Pendiente','#475569','#e2e8f0']};
+let _AV={all:[],sem:null,ok:true};
+const _avE=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const _avISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function _avLun(iso){ const p=String(iso).slice(0,10).split('-'); const d=new Date(+p[0],+p[1]-1,+p[2]); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return _avISO(d); }
+function _avSum(iso,n){ const p=iso.split('-'); const d=new Date(+p[0],+p[1]-1,+p[2]); d.setDate(d.getDate()+n); return _avISO(d); }
+const _AV_M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function _avRango(lun){ const a=lun.split('-'), f=_avSum(lun,6).split('-'); return (+a[2])+' '+_AV_M[+a[1]-1]+(a[1]!==f[1]?'':'')+' al '+(+f[2])+' '+_AV_M[+f[1]-1]+' '+f[0]; }
+async function _avCargar(){ try{ const r=await sb.rpc('dev_avances_listar'); _AV.all=Array.isArray(r)?r:[]; _AV.ok=true; }catch(e){ _AV.all=[]; _AV.ok=false; _AV.err=(e&&e.message)||String(e); } }
+function _avItem(a){
+  const e=_AV_EST[a.estado]||_AV_EST.hecho;
+  return `<div style="border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--card,#fff)">
+   <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between"><div style="font-weight:700;font-size:14px">${_avE(a.titulo)}</div><button class="btn btn-ghost btn-sm" data-i="${a.id}" onclick="avForm(this.dataset.i)">✏️</button></div>
+   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center"><span style="background:${e[2]};color:${e[1]};border-radius:99px;padding:1px 9px;font-size:11px;font-weight:700">${e[0]}</span>${a.modulo?`<span style="background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 9px;font-size:11px;font-weight:700">${_avE(a.modulo)}</span>`:''}${a.horas?`<span style="font-size:11.5px;color:var(--muted,#64748b)">${a.horas} h</span>`:''}</div>
+   ${a.detalle?`<div style="font-size:12.5px;color:var(--muted,#64748b);margin-top:6px;white-space:pre-wrap">${_avE(a.detalle)}</div>`:''}
+   ${a.enlace?`<div style="margin-top:5px;font-size:12px"><a href="${_avE(a.enlace)}" target="_blank" rel="noopener">🔗 Ver enlace</a></div>`:''}</div>`;
+}
+async function avances(){
+  if(!_esDev()){ setContent(errorView('Solo el desarrollador')); return; }
+  loading(); await _avCargar(); if(!_AV.sem) _AV.sem=_avLun(_avISO(new Date()));
+  const b=_dvBanner('📈','Avances y entregables','Lo que se hizo y se entregó, semana a semana','linear-gradient(135deg,#0f2443,#4f46e5)');
+  if(!_AV.ok){ setContent(b+`<div style="margin:12px 14px;padding:12px 14px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:13px;font-weight:600">⚠️ Falta ejecutar <b>avances_y_pin_dev.sql</b> en Supabase (SQL Editor) para activar este módulo.<br><span style="font-weight:400">${_avE(_AV.err||'')}</span></div>`); return; }
+  const sem=_AV.sem, its=_AV.all.filter(a=>String(a.semana).slice(0,10)===sem);
+  const av=its.filter(a=>a.tipo==='avance'), en=its.filter(a=>a.tipo==='entregable');
+  const horas=its.reduce((s,a)=>s+(Number(a.horas)||0),0);
+  const pend=_AV.all.filter(a=>a.estado!=='hecho'&&String(a.semana).slice(0,10)<sem);
+  const cnt=(k)=>its.filter(a=>a.estado===k).length;
+  const col=(t,l,btn)=>`<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:800;font-size:14px">${t} <span style="color:var(--muted,#64748b);font-weight:600">(${l.length})</span></div><button class="btn btn-sm btn-primary" onclick="${btn}">＋ Agregar</button></div>${l.length?l.map(_avItem).join(''):'<div style="font-size:13px;color:var(--muted,#64748b);padding:14px;border:1px dashed var(--border,#cbd5e1);border-radius:10px;text-align:center">Sin registros esta semana</div>'}</div>`;
+  setContent(b+`<div style="padding:12px 14px">
+   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+    <button class="btn btn-ghost btn-sm" onclick="avSem(-7)">◀</button><div style="font-weight:800;font-size:15px;min-width:200px;text-align:center">Semana del ${_avRango(sem)}</div><button class="btn btn-ghost btn-sm" onclick="avSem(7)">▶</button>
+    <button class="btn btn-ghost btn-sm" onclick="avSem(0)">Esta semana</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-ghost btn-sm" onclick="avInforme('sem')">📄 Informe de la semana</button><button class="btn btn-ghost btn-sm" onclick="avInforme('mes')">📄 Informe del mes</button></div>
+   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;font-size:12.5px;font-weight:700"><span style="background:#dcfce7;color:#166534;border-radius:99px;padding:3px 11px">✅ ${cnt('hecho')} hechos</span><span style="background:#fef3c7;color:#92400e;border-radius:99px;padding:3px 11px">🛠 ${cnt('en_curso')} en curso</span><span style="background:#e2e8f0;color:#475569;border-radius:99px;padding:3px 11px">⏳ ${cnt('pendiente')} pendientes</span>${horas?`<span style="background:#e0e7ff;color:#3730a3;border-radius:99px;padding:3px 11px">⏱ ${horas} h</span>`:''}</div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">${col('🧩 Avances',av,"avForm(null,'avance')")}${col('📦 Entregables',en,"avForm(null,'entregable')")}</div>
+   ${pend.length?`<div style="margin-top:18px"><div style="font-weight:800;font-size:14px;margin-bottom:8px">⏳ Pendiente de semanas anteriores (${pend.length})</div>${pend.map(a=>`<div style="font-size:11px;color:var(--muted,#64748b);margin:6px 0 2px">${_avRango(String(a.semana).slice(0,10))} · ${a.tipo==='avance'?'Avance':'Entregable'}</div>${_avItem(a)}`).join('')}</div>`:''}
+  </div>`);
+}
+function avSem(d){ _AV.sem=d===0?_avLun(_avISO(new Date())):_avSum(_AV.sem,d); avances(); }
+function avForm(id,tipo){
+  const a=id?_AV.all.find(x=>x.id===id):null; tipo=a?a.tipo:(tipo||'avance');
+  const sel=(i,opts,v)=>`<select id="${i}">${opts.map(o=>`<option value="${_avE(o[0])}" ${o[0]===v?'selected':''}>${_avE(o[1])}</option>`).join('')}</select>`;
+  openModal(a?'Editar registro':(tipo==='avance'?'Nuevo avance':'Nuevo entregable'),`<div class="form-grid">
+   <div class="field"><label>Tipo</label>${sel('av-tipo',[['avance','Avance'],['entregable','Entregable']],tipo)}</div>
+   <div class="field"><label>Semana (cualquier día de ella)</label><input id="av-sem" type="date" value="${a?String(a.semana).slice(0,10):_AV.sem}"></div>
+   <div class="field"><label>Módulo</label>${sel('av-mod',[['','—'],..._AV_MODS.map(m=>[m,m])],a?.modulo||'')}</div>
+   <div class="field"><label>Estado</label>${sel('av-est',[['hecho','Hecho'],['en_curso','En curso'],['pendiente','Pendiente']],a?.estado||'hecho')}</div>
+   <div class="field span2"><label>Título</label><input id="av-tit" value="${_avE(a?.titulo||'')}" style="text-transform:none" placeholder="Qué se hizo o qué se entrega"></div>
+   <div class="field span2"><label>Detalle</label><textarea id="av-det" rows="4" style="text-transform:none">${_avE(a?.detalle||'')}</textarea></div>
+   <div class="field"><label>Enlace (opcional)</label><input id="av-url" value="${_avE(a?.enlace||'')}" style="text-transform:none" placeholder="https://…"></div>
+   <div class="field"><label>Horas (opcional)</label><input id="av-hor" type="number" step="0.25" min="0" value="${a?.horas??''}"></div></div>`,
+   `${a?`<button class="btn btn-ghost" style="color:#b91c1c;margin-right:auto" data-i="${a.id}" onclick="avBorrar(this.dataset.i)">🗑 Eliminar</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" data-i="${a?a.id:''}" onclick="avGuardar(this.dataset.i)">Guardar</button>`);
+}
+async function avGuardar(id){
+  const g=i=>document.getElementById(i).value; const tit=g('av-tit').trim(); if(!tit){ toast('Escribe un título','error'); return; }
+  const sem=g('av-sem')||_AV.sem;
+  try{ showBusy(); await sb.rpc('dev_avance_guardar',{p_id:id||null,p_semana:_avLun(sem),p_tipo:g('av-tipo'),p_modulo:g('av-mod'),p_titulo:tit,p_detalle:g('av-det'),p_estado:g('av-est'),p_enlace:g('av-url'),p_horas:g('av-hor')===''?null:Number(g('av-hor'))});
+    _AV.sem=_avLun(sem); closeModal(); hideBusy(); toast('✅ Guardado'); avances(); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
+async function avBorrar(id){ if(!confirm('¿Eliminar este registro?')) return;
+  try{ showBusy(); await sb.rpc('dev_avance_borrar',{p_id:id}); closeModal(); hideBusy(); toast('Eliminado'); avances(); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); } }
+// ── Informe imprimible ──
+function _avCuerpo(items,titulo,sub){
+  const sems=[...new Set(items.map(a=>String(a.semana).slice(0,10)))].sort();
+  const sec=(l,t)=>l.length?`<h4>${t}</h4><table><thead><tr><th style="width:26%">Módulo / Estado</th><th>Descripción</th></tr></thead><tbody>${l.map(a=>`<tr><td><b>${_avE(a.modulo||'—')}</b><br><span class="e">${(_AV_EST[a.estado]||_AV_EST.hecho)[0]}${a.horas?' · '+a.horas+' h':''}</span></td><td><b>${_avE(a.titulo)}</b>${a.detalle?'<br>'+_avE(a.detalle).replace(/\n/g,'<br>'):''}${a.enlace?'<br><span class="e">'+_avE(a.enlace)+'</span>':''}</td></tr>`).join('')}</tbody></table>`:'';
+  const hechos=items.filter(a=>a.estado==='hecho').length, horas=items.reduce((s,a)=>s+(Number(a.horas)||0),0);
+  return `<style>.avr{font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:12px}.avr h2{margin:0 0 2px;font-size:20px;color:#14284B}.avr .s{color:#475569;margin-bottom:12px}.avr h3{margin:16px 0 4px;font-size:14px;color:#1E7B4F;border-bottom:2px solid #1E7B4F;padding-bottom:3px}.avr h4{margin:8px 0 4px;font-size:12px}.avr table{width:100%;border-collapse:collapse;margin-bottom:6px}.avr th,.avr td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top}.avr th{background:#f1f5f9}.avr .e{color:#64748b;font-size:11px;word-break:break-all}.avr .res{margin:8px 0;padding:8px 10px;background:#f1f5f9;border-radius:6px}</style>
+  <div class="avr"><h2>${_avE(titulo)}</h2><div class="s">${_avE(sub)}</div>
+  <div class="res"><b>Resumen:</b> ${items.length} registros · ${hechos} hechos${horas?' · '+horas+' h':''}</div>
+  ${sems.length?sems.map(s=>{ const l=items.filter(a=>String(a.semana).slice(0,10)===s); return `<h3>Semana del ${_avRango(s)}</h3>${sec(l.filter(a=>a.tipo==='avance'),'Avances')}${sec(l.filter(a=>a.tipo==='entregable'),'Entregables')}`; }).join(''):'<p>Sin registros en este periodo.</p>'}</div>`;
+}
+function _avDocHtml(body){ return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe de avances</title><style>@page{size:letter portrait;margin:14mm 16mm}body{margin:0}</style></head><body>${body}</body></html>`; }
+function _dvImprimir(html){
+  try{ document.getElementById('_print_iframe')?.remove(); const f=document.createElement('iframe'); f.id='_print_iframe'; f.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0';
+    document.body.appendChild(f); const d=f.contentDocument||f.contentWindow.document; d.open(); d.write(html); d.close(); setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(()=>f.remove(),2000); },500); return; }catch(e){}
+  const w=window.open('','_blank'); if(!w){ toast('Permite ventanas emergentes','error'); return; } w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500);
+}
+function _avItemsPeriodo(modo,ref){
+  if(modo==='sem') return _AV.all.filter(a=>String(a.semana).slice(0,10)===ref);
+  // mes: ref='YYYY-MM' → semanas cuyo lunes o domingo caen en ese mes
+  return _AV.all.filter(a=>{ const l=String(a.semana).slice(0,10); return l.slice(0,7)===ref||_avSum(l,6).slice(0,7)===ref; });
+}
+function avInforme(modo){
+  const c=(typeof _cbLoad==='function')?_cbLoad():{};
+  const mes=_AV.sem.slice(0,7); const items=_avItemsPeriodo(modo,modo==='sem'?_AV.sem:mes);
+  const titulo=modo==='sem'?'Informe semanal de avances y entregables':'Informe mensual de avances y entregables';
+  const sub=(modo==='sem'?'Semana del '+_avRango(_AV.sem):(typeof _cbPeriodo==='function'?_cbPeriodo(mes):mes))+' · '+(c.nombre||'')+' · '+(c.cliente||'');
+  _dvImprimir(_avDocHtml(_avCuerpo(items,titulo,sub)));
+}
+// ── Cuenta de cobro: automatización mensual + informe adjunto ──
+const _CB_HK='_wedm_cobro_hist';
+function _cbHist(){ try{ return JSON.parse(localStorage.getItem(_CB_HK)||'[]'); }catch(e){ return []; } }
+function _cbHistAdd(o){ const h=_cbHist().filter(x=>x.n!==o.n); h.push({n:o.n,periodo:o.periodo,valor:o.valor,fecha:o.fecha}); h.sort((a,b)=>a.n-b.n); try{ localStorage.setItem(_CB_HK,JSON.stringify(h)); }catch(e){} }
+function _cbHistHtml(){ const h=_cbHist().slice().reverse(); if(!h.length) return ''; return `<div style="margin-top:12px;font-size:12px"><div style="font-weight:700;margin-bottom:4px">Cuentas generadas</div>${h.map(x=>`<div style="padding:3px 0;border-bottom:1px solid var(--border,#e2e8f0)">No. ${String(x.n).padStart(3,'0')} · ${_cbPeriodo(x.periodo)} · ${_cbMoney(x.valor)} · ${_cbFechaLarga(x.fecha)}</div>`).join('')}</div>`; }
+async function cobroImprimir(){
+  cobroVista(); let html=_cbHtml(_CB); _cbHistAdd(_CB);
+  const inf=document.getElementById('cb-inf'); 
+  if(inf&&inf.checked){ try{ await _avCargar(); const items=_avItemsPeriodo('mes',_CB.periodo); if(items.length){ const body=_avCuerpo(items,'Informe de actividades — '+_cbPeriodo(_CB.periodo),(_CB.nombre||'')+' · '+(_CB.cliente||'')+' · Cuenta de cobro No. '+String(_CB.n).padStart(3,'0')); html=html.replace('</body>','<div style="page-break-before:always;padding:14mm 16mm">'+body+'</div></body>'); } else toast('No hay avances registrados en ese mes; se genera solo la cuenta','info'); }catch(e){} }
+  _dvImprimir(html); const h=document.getElementById('cb-hist'); if(h) h.innerHTML=_cbHistHtml();
+}
+(function(){ const orig=window.cobro; if(typeof orig!=='function') return;
+  window.cobro=function(){
+    try{ const o=_cbLoad(), h=_cbHist(), mes=_avISO(new Date()).slice(0,7);
+      if(h.length&&h[h.length-1].n===o.n&&String(o.periodo||'')<mes){ o.n=o.n+1; o.fecha=_avISO(new Date()); o.periodo=mes; _cbSave(o); setTimeout(()=>toast('🧾 Cuenta del mes lista: No. '+String(o.n).padStart(3,'0')),400); } }catch(e){}
+    orig();
+    try{ const w=document.getElementById('cb-wrap'); if(w){
+      const l=document.getElementById('cb-letras'); if(l&&!document.getElementById('cb-inf')){ l.insertAdjacentHTML('afterend','<label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-top:8px"><input type="checkbox" id="cb-inf" checked style="width:18px;height:18px;flex:none"> Adjuntar informe de actividades del mes (desde Avances y entregables)</label>'); }
+      const p=w.querySelector('p'); if(p&&!document.getElementById('cb-hist')) p.insertAdjacentHTML('afterend','<div id="cb-hist">'+_cbHistHtml()+'</div>'); } }catch(e){}
+  };
+})();
+</script>
+<!-- /WEDM-AVANCES -->
+
 
 </body>
 </html>
