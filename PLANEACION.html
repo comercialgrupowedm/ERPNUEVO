@@ -3480,6 +3480,27 @@ function rkVistaBloq(){
 }
 </script>
 <!-- /WEDM-RIESGOS-PLA -->
+<!-- WEDM-INICIO (botón para volver a la pantalla de inicio desde cualquier módulo) -->
+<style>
+#home-btn{width:34px;height:34px;border-radius:11px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;-webkit-tap-highlight-color:transparent;text-decoration:none;color:inherit}
+#home-btn:active{transform:scale(.92)}
+@media(max-width:600px){#topbar-logo{display:none!important}}
+@media(max-width:400px){#topbar{gap:4px!important;padding-left:8px!important;padding-right:8px!important}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn,#topbar #chat-btn,#topbar .tb-search{min-width:0}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn{width:30px!important;height:30px!important}#topbar #menu-btn{width:34px!important;height:34px!important}#topbar .tb-search{padding:5px 7px}}
+.nav-item.nav-home{background:rgba(255,255,255,.07);margin:4px 8px 6px;border-radius:10px;font-weight:700}
+</style>
+<script>
+(function(){
+ function ir(){ location.href='index.html'; }
+ function init(){
+  var t=document.getElementById('topbar'), m=document.getElementById('menu-btn');
+  if(t&&m&&!document.getElementById('home-btn')){ var b=document.createElement('a'); b.id='home-btn'; b.href='index.html'; b.title='Ir al inicio (todos los módulos)'; b.setAttribute('aria-label','Ir al inicio'); b.textContent='🏠'; m.insertAdjacentElement('afterend',b); }
+  var ns=document.querySelector('#sidebar .nav-scroll');
+  if(ns&&!document.getElementById('nav-home')){ var n=document.createElement('div'); n.className='nav-item nav-home'; n.id='nav-home'; n.onclick=ir; n.innerHTML='<span class="nav-icon">🏠</span>Ir al inicio'; ns.insertBefore(n,ns.firstChild); }
+ }
+ if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<!-- /WEDM-INICIO -->
 <!-- WEDM-HORARIO -->
 <style>
 .nuevo-b{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
@@ -3562,7 +3583,7 @@ async function horario(){
   const delDia=act.map(c=>({c,s:estadoDia(c.nombre_registro,f)}));
   const nTurno=delDia.filter(x=>x.s.k==='turno').length, nVac=delDia.filter(x=>x.s.k==='vac').length, nAhora=act.filter(c=>enTurnoAhora(c.nombre_registro)).length;
   const puedeCargar=puede('planeacion','administracion');
-  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button></div>`;
+  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
   const banner=moduleBanner('📅','Horario y disponibilidad 🆕',`${act.length} colaboradores activos · ${sems.length} semana(s) cargada(s)`,acciones);
   const wk=sems.length?`<div class="hz-wk"><button class="btn btn-ghost btn-sm" onclick="horSem(-1)">◀</button><select onchange="H_.sem=this.value;horario()">${sems.map(s=>`<option value="${s}" ${s===H.sem?'selected':''}>Semana del ${esc(fmtDate(s))} al ${esc(fmtDate(addD(s,5)))}${s===lunes(f)?' · esta semana':''}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="horSem(1)">▶</button></div>`
     :`<div class="callout" style="margin:12px 0">Aún no hay horario cargado. Sube el Excel del mes con el botón <b>📤 Subir horario</b>.</div>`;
@@ -3682,6 +3703,29 @@ function horNavSync(){ const on=!!(window.chatOn&&chatOn('pla_horario')); const 
 setInterval(horNavSync,1500); setTimeout(horNavSync,300);
 Object.assign(window,{horario,horSem,horColab,horSubir,horParsear,horPrevia,horGuardar,horPlantilla,horSugerencias,horPick});
 })();
+
+// ── 🆕 NUEVO · Accesos de planta (usuario + código por empleado) ──
+let ACC=[];
+async function accesosPlanta(){
+  openModal('🔑 Accesos de planta','<div class="empty" style="padding:20px;text-align:center;color:var(--muted)">Cargando…</div>','');
+  try{ ACC=await sb.rpc('plan_acceso_listar')||[]; accPintar(); }catch(e){ toast(e.message,true); closeModal(); }
+}
+function accPintar(msg){
+  const act=ACC.filter(a=>a.activo&&a.tiene_pin).length;
+  openModal('🔑 Accesos de planta',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada empleado entra a PLANTA con su <b>usuario</b> y su <b>código</b> (4 a 8 números) y ve su horario. Con ${act} de ${ACC.length} activos.<br>El código solo se muestra al crearlo o cambiarlo: anótalo y entrégaselo.</div>
+   ${msg?`<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14px">${msg}</div>`:''}
+   <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th>Empleado</th><th>Usuario</th><th>Estado</th><th></th></tr></thead><tbody>${ACC.map((a,i)=>`<tr><td><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--muted)">${esc(a.cargo||'')}</div></td>
+     <td><input type="text" value="${esc(a.usuario)}" style="width:110px;padding:4px 6px" onchange="accUsuario(${i},this.value)"></td>
+     <td style="font-size:12px">${a.bloqueado?'🔒 Bloqueado':a.activo&&a.tiene_pin?'✅ Activo':'⚪ Sin código'}${a.ultimo?`<div style="color:var(--muted);font-size:11px">Último: ${esc(new Date(a.ultimo).toLocaleDateString('es-CO'))}</div>`:''}</td>
+     <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="accCodigo(${i})">${a.tiene_pin?'Cambiar código':'Dar código'}</button>${a.activo&&a.tiene_pin?` <button class="btn btn-ghost btn-sm" onclick="accOff(${i})">Desactivar</button>`:''}</td></tr>`).join('')}</tbody></table></div>`,
+   `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+}
+async function accUsuario(i,v){ const a=ACC[i]; try{ await sb.rpc('plan_acceso_set',{p_colab:a.colaborador,p_usuario:v}); a.usuario=v.trim(); toast('Usuario guardado'); }catch(e){ toast(e.message,true); accPintar(); } }
+async function accOff(i){ const a=ACC[i]; if(!confirm('¿Desactivar el acceso de '+a.nombre+'?')) return; try{ await sb.rpc('plan_acceso_set',{p_colab:a.colaborador,p_usuario:a.usuario,p_activo:false}); a.activo=false; accPintar(); }catch(e){ toast(e.message,true); } }
+async function accCodigo(i){ const a=ACC[i]; const v=prompt('Código para '+a.nombre+' (4 a 8 números).\nDéjalo vacío para que el sistema genere uno:',''); if(v===null) return;
+  try{ const r=await sb.rpc('plan_acceso_reset',{p_colab:a.colaborador,p_pin:v.trim()||null}); a.activo=true; a.tiene_pin=true; a.bloqueado=false;
+    accPintar(`Usuario <b>${esc(a.usuario)}</b> · código <b style="font-size:18px;letter-spacing:2px">${esc(r.pin)}</b> — ${esc(a.nombre)}`); }
+  catch(e){ toast(e.message,true); } }
 </script>
 <!-- /WEDM-HORARIO -->
 

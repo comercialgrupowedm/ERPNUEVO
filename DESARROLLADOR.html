@@ -4805,6 +4805,8 @@ const CSV_MAP_PRODUCCION = {
   'TOTAL HRS Real':               'horas_total_real',
   'OBSERVACIONES DE VALIDACION':  'observaciones',
   'REGISTRO_FOTOGRAFICO':         'imagen_url',
+  'IMAGEN_B64':                   'imagen_link',   // link de la imagen de la OP (lh3.googleusercontent.com/d/<id>) → imagen_drive_id
+  'PLANO_URL':                    'plano_link',    // link del plano en Drive → prod_archivos (plano)
 };
 
 // ── Mapeo de columnas CSV AppSheet → columnas Supabase ───────────
@@ -4871,6 +4873,7 @@ const CSV_MAP_ITEMS = {
   'COSTO HORAS DISEÑO (costo total)': 'costo_diseno',
   'COSTO FLETE (Costo total)':   'costo_flete',
   'PLANO':                       'plano_url',
+  'PLANO_URL':                   'plano_link',    // link del plano en Drive → prod_archivos (plano del ítem)
 };
 
 const IMPORT_TABLES = {
@@ -4894,7 +4897,7 @@ const IMPORT_TABLES = {
     csvMap: CSV_MAP_ITEMS,
     // Lógica especial: el precio_unit y precio_total deben aplicar el descuento de la cotización
     applyDiscount: true,
-    dbOmit:['asesor','ciudad','cot_item','cotizacion','descripcion_proyecto','empresa','fecha_emision','fecha_pactada','tipo'],   // no existen en la tabla items
+    dbOmit:['asesor','ciudad','cot_item','cotizacion','descripcion_proyecto','empresa','fecha_emision','fecha_pactada','tipo','plano_link'],   // no existen en la tabla items
     cols:{
       id:'str', id_cotizacion:'str', cotizacion:'int', item:'int',
       cot_item:'str', descripcion:'str', descripcion_proyecto:'str',
@@ -4904,7 +4907,7 @@ const IMPORT_TABLES = {
       material:'str', proceso:'str', servicio:'str',
       costo_total:'float', presup_unit:'float', margen_pct:'float',
       diseno:'str', horas_diseno:'float', costo_diseno:'float',
-      costo_flete:'float', plano_url:'str',
+      costo_flete:'float', plano_url:'str', plano_link:'str',
       mats:'json', svcs:'json', prcs:'json',
       created_at:'ts', updated_at:'ts'
     }
@@ -4984,6 +4987,7 @@ const IMPORT_TABLES = {
     key:'id', label:'Control Producción', icon:'🏭', color:'#7c3aed',
     csvMap: CSV_MAP_PRODUCCION,
     preprocessRow: 'produccion',
+    dbOmit:['imagen_link','plano_link'],   // solo sirven para el importador de Excel completo
     // Estados posibles de la OP:
     // PENDIENTE DISEÑO Y MP → PENDIENTE DISEÑO → PENDIENTE MP
     // → EN PROCESO → TRABAJO EXTERNO → PENDIENTE DESPACHO → DESPACHADO
@@ -4991,7 +4995,7 @@ const IMPORT_TABLES = {
       id:'str', op:'int', cot_num:'int', item_num:'int',
       descripcion:'str', empresa:'str', tipo:'str',
       asesor:'str', disenador:'str', prioridad:'str',
-      unidades:'float', precio_sin_iva:'float',
+      unidades:'float', precio_sin_iva:'float', imagen_link:'str', plano_link:'str',
       estado:'str', avance:'float',
       fecha_inicio:'ts', fecha_pactada:'ts',
       fecha_entrega_prod:'ts', despacho_fecha:'ts',
