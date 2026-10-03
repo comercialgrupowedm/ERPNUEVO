@@ -66,6 +66,8 @@
   .foot{margin-top:40px;font-size:13px;color:rgba(255,255,255,.62);line-height:1.7;display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center}
   .foot a{color:rgba(255,255,255,.7);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.25)}
   .foot a:hover{color:#fff}
+  .dev{position:fixed;right:14px;bottom:12px;z-index:5;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;text-decoration:none;border-radius:50%;opacity:.28;filter:grayscale(1);transition:opacity .2s}
+  .dev:hover{opacity:.9;filter:none}
   @media (max-width:640px){ header.top{padding:10px 12px;gap:10px} .tag,.sep{display:none} .logo img{height:34px} .menu-btn{padding:11px 14px;font-size:14px} main{padding-left:18px;padding-right:18px} a.mod{min-height:0;flex-direction:row;align-items:center} a.mod .row{flex:0 0 auto;gap:0} a.mod .go{display:none} .mods{grid-template-columns:1fr} a.mod .body{flex:1} }
   @media (prefers-reduced-motion:reduce){ .bg video{display:none} a.mod,.go{transition:none} }
 </style>
@@ -91,7 +93,6 @@
     <a href="CALIDAD.html" data-m="calidad">🔍 Calidad</a>
     <a href="PLANTA.html" data-m="planta">⏱️ Planta · Tiempos</a>
     <hr>
-    <a href="DESARROLLADOR.html">⚙️ Desarrollador</a>
     <a href="https://www.grupowedm.com/" target="_blank" rel="noopener">🌐 Sitio web de Grupo WEDM</a>
   </nav>
 </div>
@@ -112,7 +113,7 @@
     <a class="mod c7" href="PLANTA.html" data-m="planta"><span class="row"><span class="ico" aria-hidden="true">⏱️</span><span class="go" aria-hidden="true">→</span></span><span class="body"><span class="nm">Planta</span><span class="ds" style="display:block">Registro de tiempos del operario: iniciar, pausar y terminar trabajos</span></span></a>
   </nav>
 
-  <div class="foot"><span>Ingresa con tu usuario y tu clave.</span><a href="DESARROLLADOR.html">⚙️ Desarrollador</a></div>
+  <div class="foot"><span>Ingresa con tu usuario y tu clave.</span></div><a class="dev" href="DESARROLLADOR.html" title="Desarrollador" aria-label="Desarrollador">⚙️</a>
 </main>
 
 <script>
