@@ -351,6 +351,14 @@ td.mono{font-family:var(--mono);font-size:11px}
 .badge.azul{background:#e6f0fd;color:#1d4ed8;border:1px solid #b3d0f7}
 .badge.gris{background:#eef1f4;color:#5b6b7a;border:1px solid #d3dbe2}
 .badge.urg{background:#f7e6fb;color:#9c27b0;border:1px solid #e6b8ef}
+/* Botones rápidos de estado en la lista de cotizaciones (EN ESPERA / APROBADA / CANCELADO) */
+.est-btns{display:flex;gap:6px;margin-top:6px}
+.est-b{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-size:15px;font-weight:800;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;-webkit-tap-highlight-color:transparent}
+.est-b:active{transform:scale(.92)}
+.est-b.esp.on{background:#fef2e2;border-color:#f6cd97;color:#b5650a}
+.est-b.apr.on{background:#e6f6ea;border-color:#a8ddb5;color:#1e7d32}
+.est-b.can.on{background:#fdeaea;border-color:#f3b3b3;color:#c62828}
+.est-b.lock{opacity:.5;cursor:not-allowed}
 
 /* ═══ BOTONES ════════════════════════════= */
 .btn{
@@ -1418,6 +1426,7 @@ details.ay-det[open]{padding-bottom:10px}
 
 /* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
 body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=search],body.mayus input[type=email],body.mayus input[type=url],body.mayus textarea,body.mayus select{text-transform:uppercase}
+.nuevo-b{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1758,6 +1767,18 @@ async function _doEstadoCot(cotId, nuevo){
     if(_detailOpen && window._detailCotId===cotId) detailCot(cotId);
     refreshCurrentView();
   }catch(e){ toast(e.message,'err'); }
+}
+// Botones rápidos de estado por fila (como en AppSheet): ⏸ EN ESPERA · ✔ APROBADA · ✕ CANCELADO.
+// Usan _doEstadoCot, así que conservan la confirmación y el bloqueo 🔒 cuando la cotización ya tiene OP.
+function btnsEstCot(c){
+  if(!canEdit()) return '';
+  const est=_normEstado(c.estado), lock=cotTieneOp(c);
+  const B=[['EN ESPERA','⏸','esp'],['APROBADA','✔','apr'],['CANCELADO','✕','can']];
+  return `<div class="est-btns" onclick="event.stopPropagation()">${B.map(([s,ic,k])=>{
+    const tt=lock?'Ya tiene OP: el estado está bloqueado':(est===s?'Estado actual: '+s:'Cambiar a '+s);
+    const fn=lock?`toast('🔒 Esta cotización ya tiene OP: el estado no se puede cambiar','error')`:`_doEstadoCot('${c.id}','${s}')`;
+    return `<button type="button" class="est-b ${k}${est===s?' on':''}${lock?' lock':''}" title="${tt}" onclick="event.stopPropagation();${fn}">${ic}</button>`;
+  }).join('')}</div>`;
 }
 // Catálogo de tipos: viene de la tabla tipos_cot en Supabase (se edita allá, no aquí)
 let TIPOS_COT = {};
@@ -2701,7 +2722,7 @@ function cotizaciones(){
         <td style="white-space:nowrap">${bSem(c._sem)}</td>
         <td title="${esc(c._opTip)}" style="white-space:nowrap"><span style="color:var(--accent);font-weight:700">${c._op?esc(c._op):'—'}</span></td>
         <td><span style="color:var(--accent);font-weight:700">COT-${c.cotizacion||'—'}</span></td>
-        <td onclick="event.stopPropagation()">${bEstCot(c.id,c.estado)}${c._opAv!=null?`<div title="Avance general de ${esc(c._op)}" style="margin-top:5px;min-width:96px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</td><td>${bTipo(c.tipo)}</td>
+        <td onclick="event.stopPropagation()">${bEstCot(c.id,c.estado)}${btnsEstCot(c)}${c._opAv!=null?`<div title="Avance general de ${esc(c._op)}" style="margin-top:5px;min-width:96px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</td><td>${bTipo(c.tipo)}</td>
         <td style="max-width:180px;font-weight:600">${esc(c.empresa||'—')}</td><td style="max-width:220px">${esc(c.descripcion_proyecto||'—')}</td>
         <td>${esc(c.asesor||'—')}</td><td>${esc(c.encargado||'—')}</td><td>${esc(c.ciudad||'—')}</td>
         <td>${fmtDate(c.fecha_emision)}</td><td>${fmtDate(c.fecha_entrega_pactada)}</td><td class="td-num">${c.lead_time_dias??0}d</td>
@@ -2712,7 +2733,7 @@ function cotizaciones(){
       <div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div><div class="lc-id">${c._op?esc(c._op)+' · ':''}COT-${c.cotizacion}</div>
         <div class="lc-title">${esc(c.empresa||'Sin empresa')}</div><div class="lc-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
         <div style="text-align:right;flex-shrink:0">${bTipo(c.tipo)}<br><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(c.precio_total)}</span></div></div>
-        <div class="lc-meta">${c._sem?bSem(c._sem):''}${bEstCot(c.id,c.estado)}<span style="font-size:11px;color:var(--muted)">Lead: ${c.lead_time_dias??0}d</span><span style="font-size:11px;color:var(--muted)">${esc(c.asesor||'')}</span></div>${c._opAv!=null?`<div style="margin-top:6px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</div>`).join(''):empty('Sin resultados para los filtros aplicados')}</div>`);
+        <div class="lc-meta">${c._sem?bSem(c._sem):''}${bEstCot(c.id,c.estado)}${btnsEstCot(c)}<span style="font-size:11px;color:var(--muted)">Lead: ${c.lead_time_dias??0}d</span><span style="font-size:11px;color:var(--muted)">${esc(c.asesor||'')}</span></div>${c._opAv!=null?`<div style="margin-top:6px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</div>`).join(''):empty('Sin resultados para los filtros aplicados')}</div>`);
   }
   window._opmRender=null;
   updateFilterCount('cotizaciones',data.length,all.length);
@@ -2764,8 +2785,8 @@ function detailCot(id){
     <div class="cot-action-grid">
       <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}')"><span class="cot-action-ic" style="background:#d32f2f">🖨️</span><span class="cot-action-lbl">Imprimir</span></button>
       <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}',true)"><span class="cot-action-ic" style="background:#0d9488">💾</span><span class="cot-action-lbl">Guardar PDF</span></button>
-      ${edit?`<button class="cot-action-btn" onclick="actualizarItemsCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">🔄</span><span class="cot-action-lbl">Actualizar Items</span></button>
-      <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
+      <button class="cot-action-btn" onclick="window.open(DRIVE_COT_FOLDER_URL,'_blank','noopener')"><span class="cot-action-ic" style="background:#f9a825">📁</span><span class="cot-action-lbl">Carpeta PDFs</span></button>
+      ${edit?`      <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
       <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button>`:''}
       ${(()=>{ const o=opBtnInfo(id); return o?`<button class="cot-action-btn" onclick="formCrearOP('${id}')"><span class="cot-action-ic" style="background:#1565c0">🏭</span><span class="cot-action-lbl">${o.lbl}</span></button>`:''; })()}
     </div>
@@ -2774,7 +2795,8 @@ function detailCot(id){
       <button class="btn btn-danger-soft btn-sm" onclick="deleteCot('${id}')" style="margin-left:auto">🗑</button></div>`:''}
     ${(()=>{ if(est!=='APROBADA'||!puede('comercial')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
     ${opCotHtml(id)}
-    <div class="dp-tabs"><div class="dp-tab active" onclick="switchDpTab(this,'resumen')">📋 Resumen</div><div class="dp-tab" onclick="switchDpTab(this,'items')">🔩 Ítems (${its.length})</div></div>
+    <div id="cot-rel"></div>
+    <div class="dp-tabs"><div class="dp-tab active" onclick="switchDpTab(this,'resumen')">📋 Resumen</div><div class="dp-tab" onclick="switchDpTab(this,'items')">🔩 Ítems (${its.length})</div>${(window.chatOn&&chatOn('com_detalle_vs_real')&&(DB.produccion||[]).some(p=>p.id_cotizacion===id))?`<div class="dp-tab" onclick="switchDpTab(this,'vs')">📊 Cotizado vs Real <span class="nuevo-b">NUEVO</span></div>`:''}</div>
     <div class="dp-tabpanel active" data-panel="resumen">
       <div class="dp-section"><h4>🏢 Cliente</h4>${dr('Empresa',`<strong>${esc(c.empresa||'—')}</strong>`)}${dr('NIT',esc(c.nit||'—'))}${dr('Dirección',esc(c.direccion||cli?.direccion||'—'))}${dr('Ciudad',esc(c.ciudad||'—'))}
         ${dr('Encargado',esc(c.encargado||'—'))}${dr('Teléfono',esc(c.telefono||cli?.telefono||'—'))}${cli?.correo?dr('Correo',esc(cli.correo)):''}</div>
@@ -2787,8 +2809,11 @@ function detailCot(id){
         ${c.orden_de_compra?dr('Orden de compra',`<strong>${esc(c.orden_de_compra)}</strong>`)+'<div id="cot-oc-files" style="margin-top:6px"></div>':''}</div>
       ${c.observaciones_especiales?`<div class="dp-section"><h4>📝 Observaciones</h4><div style="font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(c.observaciones_especiales)}</div></div>`:''}
     </div>
-    <div class="dp-tabpanel" data-panel="items"><div class="dp-section">${itemsHtml}</div></div>`,'');
+    <div class="dp-tabpanel" data-panel="items"><div class="dp-section">${itemsHtml}</div></div>
+    <div class="dp-tabpanel" data-panel="vs"><div id="cot-vs"><p style="font-size:12px;color:var(--muted);padding:10px 0">Cargando…</p></div></div>`,'');
   if(c.orden_de_compra) cargarOcArchivos(c.id,'cot-oc-files');
+  cargarRelacionadosCot(c);
+  cargarVsCot(c);
 }
 
 const TI_TABS=[
@@ -3496,9 +3521,147 @@ async function saveItem(){
     const cotId=_IT.cotId; closeModal(); refreshCurrentView(); detailCot(cotId);
   }catch(e){ toast('❌ '+e.message,'error'); if(btn){ btn.disabled=false; btn.textContent=_IT.isNew?'✓ Guardar Item':'✓ Actualizar'; } }
 }
+// Renumera 1..n tras eliminar un ítem (solo si la COT aún no tiene OP: en producción el nº de ítem ya está amarrado a la OP).
+// Remisiones y compras relacionadas con la cotización (se pintan debajo de Producción).
+async function cargarRelacionadosCot(c){
+  const el=document.getElementById('cot-rel'); if(!el) return;
+  if(!(window.chatOn&&chatOn('com_detalle_relacionados'))){ el.innerHTML=''; return; }
+  const rems=(DB.remisiones||[]).filter(m=>m.id_cotizacion===c.id||(m.cot_num!=null&&String(m.cot_num)===String(c.cotizacion))).sort((a,b)=>Number(b.numero||0)-Number(a.numero||0));
+  const estC={PEDIDA:'#f59e0b',SELECCIONADA:'#2563eb',GENERADA:'#7c3aed',DESPACHADA:'#16a34a'};
+  const row=(on,top,sub,right)=>`<div class="list-card" style="margin-bottom:6px;${on?'':'cursor:default'}" ${on?`onclick="${on}"`:''}><div class="lc-top"><div style="min-width:0"><div class="lc-title" style="font-weight:700">${top}</div><div style="font-size:11px;color:var(--muted)">${sub}</div></div><div style="text-align:right;flex-shrink:0">${right}</div></div></div>`;
+  const hRem=`<div class="dp-section" style="margin-top:12px"><h4>🚚 Remisiones (${rems.length}) <span class="nuevo-b">NUEVO</span></h4>${rems.length?rems.map(m=>row(`detalleRem('${m.id}')`,m.numero?'REM-'+esc(String(m.numero)):'Sin número',`OP ${esc(String(m.op||'—'))} · ${esc(fmtDate(m.fecha||m.pedida_fecha))}`,`<span class="badge" style="background:${estC[m.estado]||'#64748b'};color:#fff">${esc(m.estado||'—')}</span>`)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin remisiones para esta cotización</p>'}</div>`;
+  el.innerHTML=hRem;
+  // Compras: vienen por la OP (materiales pedidos a compras y líneas de la OC). Solo las ven los roles con permiso sobre las órdenes de compra.
+  try{
+    const prods=(DB.produccion||[]).filter(p=>p.id_cotizacion===c.id); if(!prods.length) return;
+    const ops=[...new Set(prods.map(p=>String(p.op)))], ids=prods.map(p=>p.id);
+    const [mat,lin]=await Promise.all([
+      GET('prod_materiales','select=id_oc&id_oc=not.is.null&id_prod=in.('+ids.map(encodeURIComponent).join(',')+')').catch(()=>[]),
+      GET('oc_lineas','select=id_oc,op&op=in.('+ops.map(encodeURIComponent).join(',')+')').catch(()=>[])]);
+    const ocIds=[...new Set([...(mat||[]),...(lin||[])].map(x=>x.id_oc).filter(Boolean))]; if(!ocIds.length) return;
+    const ocs=await GET('ordenes_compra','select=id,numero,fecha,prov_nombre,total,estado&order=fecha.desc&id=in.('+ocIds.map(encodeURIComponent).join(',')+')').catch(()=>[]);
+    if(!ocs||!ocs.length||!document.getElementById('cot-rel')) return;
+    el.innerHTML=hRem+`<div class="dp-section" style="margin-top:12px"><h4>🛒 Compras (${ocs.length}) <span class="nuevo-b">NUEVO</span></h4>${ocs.map(o=>row('',esc(String(o.numero?'OC-'+o.numero:'OC')),esc((o.prov_nombre||'—')+' · '+fmtDate(o.fecha)),`<b style="font-family:var(--mono)">${fmt(o.total)}</b><div style="font-size:10px;color:var(--muted)">${esc(o.estado||'')}</div>`)).join('')}</div>`;
+  }catch(e){}
+}
+// ── Cotizado vs Real: materiales (cotizado/comprado), plazo (cotizado / prometido en producción / entregado) ──
+function _diasHab(a,b){ // días de trabajo (sin domingos) entre dos fechas ISO, igual que el lead time del cotizador
+  if(!a||!b) return null; let d=new Date(String(a).slice(0,10)+'T00:00:00'); const e=new Date(String(b).slice(0,10)+'T00:00:00'); if(isNaN(d)||isNaN(e)) return null;
+  const sg=e>=d?1:-1; let n=0; while(sg>0?d<e:d>e){ d.setDate(d.getDate()+sg); if(d.getDay()!==0) n+=sg; } return n; }
+function _vsPill(d,unidad){ // d = real - referencia (positivo = más)
+  if(d==null) return '<span class="vs-pill vs-n">—</span>'; const a=Math.abs(d);
+  if(d===0) return '<span class="vs-pill vs-ok">A tiempo</span>';
+  return d<0?`<span class="vs-pill vs-ok">${a} ${unidad} antes</span>`:`<span class="vs-pill vs-bad">${a} ${unidad} tarde</span>`; }
+function _vsDetalleRegs(rg){
+  const por={}; rg.forEach(r=>{ const k=(r.colaborador||'Sin nombre').trim().replace(/\s+/g,' '); (por[k]=por[k]||{h:0,n:0}); por[k].h+=Number(r.horas)||0; por[k].n++; });
+  const tot=rg.reduce((t,r)=>t+(Number(r.horas)||0),0), brut=rg.reduce((t,r)=>t+(Number(r.bruto)||Number(r.horas)||0),0), desc=rg.reduce((t,r)=>t+(Number(r.descuento)||0),0);
+  const rev=rg.filter(r=>r.revisar).length, aj=rg.filter(r=>r.ajustada).length;
+  const t12=v=>String(v||'').replace(/:00(?=\s|$)/,'').replace(/\s?([ap])\.?\s?m\.?/i,(m,x)=>' '+x.toLowerCase()+'.m.');
+  const h12=v=>{ if(!v) return '—'; const [h,m]=String(v).split(':').map(Number); const ap=h>=12?'p.m.':'a.m.'; const hh=h%12||12; return hh+':'+String(m).padStart(2,'0')+' '+ap; };
+  return `<div class="vs-det"><div class="vs-det-sum"><b>${rg.length}</b> marcada${rg.length>1?'s':''} · <b>${tot.toFixed(1)} h netas</b>${desc>0?` <span style="color:var(--muted)">(${brut.toFixed(1)} h marcadas − ${desc.toFixed(2)} h de almuerzo/descansos)</span>`:''}</div>
+    <div class="vs-det-sum" style="color:var(--muted)">${Object.entries(por).map(([n,v])=>`${esc(n)}: ${v.h.toFixed(1)} h (${v.n})`).join(' · ')}</div>
+    ${aj?`<div class="vs-det-info">🕒 ${aj} marcada${aj>1?'s':''} con la hora corregida (a.m./p.m. o reloj militar) según el turno y la hora en que se marcó</div>`:''}
+    ${rev?`<div class="vs-det-warn">⚠️ ${rev} marcada${rev>1?'s':''} para revisar (duración imposible o de más de 12 h)</div>`:''}
+    <div class="vs-det-list">${rg.map(r=>{ const mostrar=r.ini_aj?h12(r.ini_aj)+' → '+h12(r.fin_aj):t12(r.hora_inicio)+' → '+t12(r.hora_fin);
+      return `<div class="vs-reg ${r.revisar?'rev':''}"><div class="vs-reg-d">${esc(fmtDate(r.fecha))}</div><div class="vs-reg-m"><b>${esc((r.colaborador||'—').trim().replace(/\s+/g,' '))}</b><span>${esc(r.maquina||'')}${r.turno?' · '+esc(r.turno):''}</span><span>${esc(mostrar)}${r.ajustada?` <em style="color:#b45309">(marcó ${esc(t12(r.hora_inicio))} → ${esc(t12(r.hora_fin))})</em>`:''}</span>${r.descansos?`<span>Se descontó: ${esc(r.descansos)}</span>`:''}${r.nota&&!r.ajustada?`<span style="color:#b45309">${esc(r.nota)}</span>`:''}</div><div class="vs-reg-h">${r.horas==null?'—':Number(r.horas).toFixed(2)+' h'}${Number(r.descuento)>0?`<small>de ${Number(r.bruto).toFixed(2)}</small>`:''}</div></div>`; }).join('')}</div></div>`; }
+async function cargarVsCot(c){
+  const el=document.getElementById('cot-vs'); if(!el) return;
+  if(!(window.chatOn&&chatOn('com_detalle_vs_real'))){ el.innerHTML=''; return; }
+  const prods=(DB.produccion||[]).filter(p=>p.id_cotizacion===c.id).sort((a,b)=>Number(a.item_num)-Number(b.item_num)); if(!prods.length){ el.innerHTML=''; return; }
+  let mats=[],tr=[],regs=[],ocm={}; const opsL=[...new Set(prods.map(p=>p.op))];
+  await Promise.all([
+    GET('prod_materiales','select=id_prod,material,detalle,costo_cotizado,costo_real,estado,proveedor,dias_entrega,solicitado_at,comprado_at,fecha_compra,recibido_at,id_oc,factura&order=solicitado_at.asc&id_prod=in.('+prods.map(p=>encodeURIComponent(p.id)).join(',')+')').then(r=>{mats=r||[];}).catch(()=>{}),
+    GET('v_tiempos_op_item_calc','select=op,item_num,proceso,registros,horas_reales,costo_real&op=in.('+opsL.map(encodeURIComponent).join(',')+')').then(r=>{tr=r||[];}).catch(()=>{}),
+    GET('v_tiempos_registros_calc','select=op,item_num,proceso,fecha,colaborador,maquina,turno,hora_inicio,hora_fin,horas,calculada,revisar,bruto,descuento,ajustada,nota,ini_aj,fin_aj,descansos&order=fecha.asc,hora_inicio.asc&limit=3000&op=in.('+opsL.map(encodeURIComponent).join(',')+')').then(r=>{regs=r||[];}).catch(()=>{})]);
+  try{ const ids=[...new Set(mats.map(m=>m.id_oc).filter(Boolean))]; if(ids.length) (await GET('ordenes_compra','select=id,numero&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(o=>{ocm[o.id]=o.numero;}); }catch(e){}
+  if(!document.getElementById('cot-vs')) return;
+  const N=v=>Number(v)||0, pct=(cot,real)=>cot>0?((real-cot)/cot*100):null;
+  // ---- Materiales
+  const conReal=(mats||[]).filter(m=>m.costo_real!=null&&N(m.costo_real)>0);
+  const totCot=(mats||[]).filter(m=>N(m.costo_cotizado)>0).reduce((t,m)=>t+N(m.costo_cotizado),0);
+  const parCot=conReal.reduce((t,m)=>t+N(m.costo_cotizado),0), totReal=conReal.reduce((t,m)=>t+N(m.costo_real),0);
+  const dif=totReal-parCot, pg=pct(parCot,totReal);
+  const tono=dif<=0?'ok':'bad';
+  const pillPct=(p)=>p==null?'<span class="vs-pill vs-n">—</span>':`<span class="vs-pill ${p<=0?'vs-ok':'vs-bad'}">${p<=0?'▼ ':'▲ '}${Math.abs(p).toFixed(1)}%</span>`;
+  const maxV=Math.max(1,...conReal.map(m=>Math.max(N(m.costo_cotizado),N(m.costo_real))));
+  const filas=(mats||[]).map(m=>{ const cot=N(m.costo_cotizado), real=m.costo_real!=null&&N(m.costo_real)>0?N(m.costo_real):null, d=real==null?null:real-cot;
+    return `<div class="vs-mat"><div class="vs-mat-top"><div class="vs-mat-n">${esc(m.material||'Material')}${m.detalle?`<span>${esc(m.detalle)}</span>`:''}</div>${real==null?`<span class="vs-pill vs-n">${esc(m.estado||'Pendiente')}</span>`:pillPct(pct(cot,real))}</div>
+      <div class="vs-bars"><div class="vs-bar"><i style="width:${cot/maxV*100}%"></i></div><b>${cot?fmt(cot):'—'}</b><small>Cotizado</small></div>
+      <div class="vs-bars"><div class="vs-bar ${d==null?'':d<=0?'ok':'bad'}"><i style="width:${(real||0)/maxV*100}%"></i></div><b>${real==null?'—':fmt(real)}</b><small>Comprado${m.proveedor?' · '+esc(m.proveedor):''}</small></div>
+      ${(m.id_oc||m.fecha_compra||m.comprado_at||m.recibido_at)?`<div class="vs-compra">🛒 ${m.id_oc?'<b>OC-'+esc(String(ocm[m.id_oc]||'—'))+'</b> · ':''}${(m.fecha_compra||m.comprado_at)?'comprado '+esc(fmtDate(m.fecha_compra||m.comprado_at)):''}${m.recibido_at?' · recibido '+esc(fmtDate(m.recibido_at))+(m.solicitado_at?' ('+_diasHab(m.solicitado_at,m.recibido_at)+' días desde la solicitud)':''):' · sin recibir'}${m.factura?' · fact. '+esc(m.factura):''}</div>`:''}
+      ${d!=null?`<div class="vs-dif ${d<=0?'ok':'bad'}">${d<=0?'Ahorro':'Aumento'} ${fmt(Math.abs(d))}</div>`:''}</div>`; }).join('');
+  const hMat=`<div class="vs-sec"><h4>🧱 Materiales · cotizado vs comprado</h4>${(mats&&mats.length)?`
+    <div class="vs-hero ${conReal.length?tono:''}"><div><small>${conReal.length?(dif<=0?'AHORRO EN MATERIALES':'AUMENTO EN MATERIALES'):'SIN COMPRAS REGISTRADAS'}</small><div class="vs-big">${conReal.length?fmt(Math.abs(dif)):'—'}</div></div>
+      <div class="vs-hero-r">${conReal.length?`<div class="vs-bigpct">${dif<=0?'▼':'▲'} ${pg==null?'—':Math.abs(pg).toFixed(1)+'%'}</div><small>Cotizado ${fmt(parCot)} → Real ${fmt(totReal)}</small>`:`<small>Cotizado ${fmt(totCot)}</small>`}</div></div>
+    ${conReal.length&&conReal.length<mats.length?`<div style="font-size:11px;color:var(--muted);margin:-4px 0 8px">Comparado con los ${conReal.length} de ${mats.length} materiales ya comprados.</div>`:''}${filas}`
+    :'<p style="font-size:12px;color:var(--muted)">Aún no hay materiales solicitados a compras para esta OP.</p>'}</div>`;
+  // ---- Tiempos
+  const hoy=hoyISO(); const fIni=prods.map(p=>p.fecha_inicio).filter(Boolean).sort()[0]||c.fecha_emision;
+  const desp=prods.map(p=>p.despacho_fecha||p.entrega_prod_fecha).filter(Boolean).sort(); const fReal=desp.length===prods.length||prods.every(p=>p.despachado)?desp[desp.length-1]:null;
+  const prom=prods.map(p=>p.fecha_pactada).filter(Boolean).sort(); const fProm=prom[prom.length-1]||null;
+  const lt=c.lead_time_dias!=null?Number(c.lead_time_dias):null;
+  const diasReal=fReal?_diasHab(fIni,fReal):null;
+  const dVsCot=(fReal&&c.fecha_entrega_pactada)?_diasHab(c.fecha_entrega_pactada,fReal):null;
+  const dVsProm=(fReal&&fProm)?_diasHab(fProm,fReal):null;
+  const step=(ic,t,fecha,sub,on)=>`<div class="vs-step ${on?'on':''}"><div class="vs-ic">${ic}</div><div class="vs-st">${t}</div><div class="vs-sd">${fecha?esc(fmtDate(fecha)):'—'}</div><div class="vs-ss">${sub||''}</div></div>`;
+  const hTime=`<div class="vs-sec"><h4>⏱ Plazo · cotizado, prometido y real</h4>
+    <div class="vs-steps">${step('📝','Cotizado',c.fecha_entrega_pactada,lt!=null?lt+' días de lead time':'',true)}<div class="vs-line"></div>${step('🏭','Prometido en producción',fProm,fIni?'Inicio OP '+esc(fmtDate(fIni)):'',!!fProm)}<div class="vs-line"></div>${step('🚚','Entregado',fReal,diasReal!=null?'Tomó '+diasReal+' días hábiles':(prods.some(p=>p.despachado)?'Entrega parcial':'En proceso'),!!fReal)}</div>
+    ${fReal?`<div class="vs-cmp"><div><small>Frente a lo cotizado</small>${_vsPill(dVsCot,'día(s)')}</div><div><small>Frente a lo prometido en producción</small>${_vsPill(dVsProm,'día(s)')}</div>${lt!=null&&diasReal!=null?`<div><small>Lead time cotizado vs real</small><b style="font-family:var(--mono)">${lt} → ${diasReal} días</b></div>`:''}</div>`:`<p style="font-size:12px;color:var(--muted);margin-top:8px">La comparación final aparece cuando todos los ítems se despachan.</p>`}
+    ${prods.length>1?`<div class="vs-items">${prods.map(p=>{ const fr=p.despacho_fecha||p.entrega_prod_fecha; const d=(fr&&p.fecha_pactada)?_diasHab(p.fecha_pactada,fr):null; return `<div class="vs-item"><span>Ítem ${esc(String(p.item_num??''))} · OP-${esc(String(p.op))}</span><span>${p.fecha_pactada?esc(fmtDate(p.fecha_pactada)):'—'} → ${fr&&(p.despachado||p.despacho_fecha)?esc(fmtDate(fr)):'pendiente'}</span>${(p.despachado||p.despacho_fecha)?_vsPill(d,'día(s)'):''}</div>`; }).join('')}</div>`:''}</div>`;
+  // ---- Producción: horas/costo de proceso cotizados vs registrados en planta
+  const hrsC=p=>{ const it=(DB.items||[]).find(x=>x.id===p.id_item); return (it&&it.prcs||[]).filter(x=>x.nombre).map(x=>({n:x.nombre,h:N(x.tarifa)>0&&N(x.costo)>0?N(x.costo)/N(x.tarifa):N(x.tiempo),c:N(x.costo)})); };
+  let tH=0,tHr=0,tC=0,tCr=0,hayReal=false;
+  const itemsP=prods.map(p=>{ const cot={}; hrsC(p).forEach(x=>{ const k=x.n; (cot[k]=cot[k]||{h:0,c:0}); cot[k].h+=x.h; cot[k].c+=x.c; });
+    const real={}; (tr||[]).filter(r=>String(r.op)===String(p.op)&&Number(r.item_num)===Number(p.item_num)).forEach(r=>{ if(r.horas_reales!=null) real[r.proceso]={h:N(r.horas_reales),c:N(r.costo_real)}; });
+    const nombres=[...new Set([...Object.keys(cot),...Object.keys(real)])]; if(!nombres.length) return '';
+    const sc=Object.values(cot).reduce((t,x)=>t+x.h,0), sr=Object.values(real).reduce((t,x)=>t+x.h,0), cc=Object.values(cot).reduce((t,x)=>t+x.c,0), cr=Object.values(real).reduce((t,x)=>t+x.c,0);
+    if(Object.keys(real).length){ hayReal=true; tH+=sc; tHr+=sr; tC+=cc; tCr+=cr; }
+    const mx=Math.max(1,...nombres.map(k=>Math.max((cot[k]||{}).h||0,(real[k]||{}).h||0)));
+    const rows=nombres.map(k=>{ const a=cot[k], b=real[k]; const dH=a&&b?b.h-a.h:null;
+      const rg=regs.filter(r=>String(r.op)===String(p.op)&&Number(r.item_num)===Number(p.item_num)&&r.proceso===k);
+      return `<details class="vs-proc"><summary><div class="vs-mat-top"><div class="vs-mat-n">${esc(k)}${!a?'<span>No estaba cotizado</span>':(!b?'<span>Sin horas registradas</span>':'')}</div><div style="display:flex;gap:6px;align-items:center">${a&&b?pillPct(pct(a.h,b.h)):'<span class="vs-pill vs-n">—</span>'}${rg.length?`<span class="vs-chev">▾</span>`:''}</div></div>
+      <div class="vs-bars"><div class="vs-bar"><i style="width:${(a?a.h:0)/mx*100}%"></i></div><b>${a?a.h.toFixed(1)+' h':'—'}</b><small>Cotizado${a&&a.c?' · '+fmt(a.c):''}</small></div>
+      <div class="vs-bars"><div class="vs-bar ${dH==null?'':dH<=0?'ok':'bad'}"><i style="width:${(b?b.h:0)/mx*100}%"></i></div><b>${b?b.h.toFixed(1)+' h':'—'}</b><small>Real en planta${b&&b.c?' · '+fmt(b.c):''}${rg.length?' · '+rg.length+' marcada'+(rg.length>1?'s':'')+' — toca para ver el detalle':''}</small></div></summary>${rg.length?_vsDetalleRegs(rg):''}</details>`; }).join('');
+    return `<div class="vs-itemp"><div class="vs-itemp-h">Ítem ${esc(String(p.item_num??''))} · OP-${esc(String(p.op))}<span>${sc.toFixed(1)} h cot. → ${Object.keys(real).length?sr.toFixed(1)+' h real':'sin registro'}</span></div>${rows}</div>`; }).join('');
+  const pH=pct(tH,tHr), dC=tCr-tC;
+  const hProd=`<div class="vs-sec"><h4>🏭 Producción · horas de proceso cotizadas vs reales</h4>${itemsP?`
+    ${hayReal?`<div class="vs-hero ${tHr<=tH?'ok':'bad'}"><div><small>${tHr<=tH?'MENOS HORAS DE LAS COTIZADAS':'MÁS HORAS DE LAS COTIZADAS'}</small><div class="vs-big">${Math.abs(tHr-tH).toFixed(1)} h</div></div><div class="vs-hero-r"><div class="vs-bigpct">${tHr<=tH?'▼':'▲'} ${pH==null?'—':Math.abs(pH).toFixed(1)+'%'}</div><small>Cotizado ${tH.toFixed(1)} h → Real ${tHr.toFixed(1)} h · costo ${fmt(tC)} → ${fmt(tCr)} (${dC<=0?'−':'+'}${fmt(Math.abs(dC))})</small></div></div>`:'<p style="font-size:12px;color:var(--muted);margin-bottom:8px">Aún no hay horas registradas en planta para esta OP.</p>'}${itemsP}`
+    :'<p style="font-size:12px;color:var(--muted)">Sin procesos cotizados ni horas registradas.</p>'}</div>`;
+  el.innerHTML=`<style>
+.vs-proc summary{list-style:none;cursor:pointer}.vs-proc summary::-webkit-details-marker{display:none}.vs-chev{font-size:14px;color:var(--muted);transition:transform .2s}.vs-proc[open] .vs-chev{transform:rotate(180deg)}
+.vs-det{margin-top:8px;padding:10px;border-radius:12px;background:rgba(100,116,139,.08);animation:vsIn .18s ease}@keyframes vsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.vs-det-ex{font-size:11px;font-weight:600;color:#6d28d9;background:rgba(124,58,237,.10);border-radius:8px;padding:6px 8px;margin-bottom:6px}.vs-det-info{font-size:11px;font-weight:600;color:#1d4ed8;background:rgba(37,99,235,.10);border-radius:8px;padding:6px 8px;margin-bottom:6px}.vs-reg-h small{display:block;font-size:9.5px;font-weight:500;color:var(--muted);text-align:right}
+.vs-det-sum{font-size:11.5px;line-height:1.5;margin-bottom:6px}.vs-det-warn{font-size:11px;font-weight:600;color:#b45309;background:rgba(245,158,11,.14);border-radius:8px;padding:6px 8px;margin-bottom:6px}
+.vs-reg{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border,#e2e8f0)}.vs-reg.rev{background:rgba(245,158,11,.10);margin:0 -6px;padding-left:6px;padding-right:6px;border-radius:6px}
+.vs-reg-d{font-family:var(--mono);font-size:11px;font-weight:700;min-width:62px}.vs-reg-m{flex:1;min-width:0;display:flex;flex-direction:column;font-size:11.5px}.vs-reg-m span{font-size:10.5px;color:var(--muted)}.vs-reg-h{font-family:var(--mono);font-weight:800;font-size:12.5px;white-space:nowrap}
+.vs-compra{font-size:11px;color:var(--muted);margin-top:6px}.vs-itemp{border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:10px 12px;margin-bottom:10px}.vs-itemp-h{font-weight:700;font-size:12.5px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}.vs-itemp-h span{font-weight:500;color:var(--muted);font-size:11px}.vs-proc{padding:6px 0;border-top:1px dashed var(--border,#e2e8f0)}
+.nuevo-b{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.vs-sec{margin-bottom:18px}.vs-sec h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 10px}
+.vs-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;margin-bottom:10px;flex-wrap:wrap}
+.vs-hero.ok{background:linear-gradient(135deg,#065f46,#059669)}.vs-hero.bad{background:linear-gradient(135deg,#991b1b,#dc2626)}
+.vs-hero small{opacity:.85;font-size:10px;letter-spacing:.08em}.vs-big{font-family:var(--mono);font-size:24px;font-weight:800}.vs-hero-r{text-align:right}.vs-bigpct{font-size:22px;font-weight:800}
+.vs-mat{border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card,#fff)}
+.vs-mat-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}.vs-mat-n{font-weight:700;font-size:13px;min-width:0}.vs-mat-n span{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.vs-bars{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin:3px 0}.vs-bars b{font-family:var(--mono);font-size:12px;text-align:right}.vs-bars small{grid-column:1/3;font-size:10px;color:var(--muted);margin-top:-2px}
+.vs-bar{height:8px;border-radius:6px;background:rgba(100,116,139,.15);overflow:hidden}.vs-bar i{display:block;height:100%;border-radius:6px;background:#64748b}.vs-bar.ok i{background:#16a34a}.vs-bar.bad i{background:#dc2626}
+.vs-dif{font-size:11px;font-weight:700;margin-top:4px}.vs-dif.ok{color:#16a34a}.vs-dif.bad{color:#dc2626}
+.vs-pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}.vs-ok{background:rgba(22,163,74,.14);color:#15803d}.vs-bad{background:rgba(220,38,38,.13);color:#b91c1c}.vs-n{background:rgba(100,116,139,.15);color:#475569}
+.vs-steps{display:flex;align-items:flex-start;gap:4px}.vs-line{flex:1;height:2px;background:var(--border,#cbd5e1);margin-top:20px;min-width:10px}
+.vs-step{flex:0 0 auto;width:30%;text-align:center}.vs-ic{width:40px;height:40px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;background:rgba(100,116,139,.15);font-size:18px}.vs-step.on .vs-ic{background:var(--accent,#2563eb);color:#fff}
+.vs-st{font-size:11px;font-weight:700}.vs-sd{font-family:var(--mono);font-size:12px;font-weight:700}.vs-ss{font-size:10px;color:var(--muted)}
+.vs-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}.vs-cmp>div{padding:10px;border-radius:12px;background:rgba(100,116,139,.08)}.vs-cmp small{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
+.vs-items{margin-top:12px;border-top:1px dashed var(--border,#cbd5e1);padding-top:8px}.vs-item{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:4px 0;flex-wrap:wrap}
+</style>${hMat}${hProd}${hTime}`;
+}
+async function renumerarItemsCot(cotId){
+  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||cotTieneOp(c)) return;
+  const its=itemsDe(cotId).slice().sort((a,b)=>(Number(a.item)||0)-(Number(b.item)||0));
+  for(let i=0;i<its.length;i++){ if(Number(its[i].item)!==i+1){ const r=await sb.patch('items','id='+eq(its[i].id),{item:i+1}); Object.assign(its[i],r[0]||{item:i+1}); } }
+}
+const DRIVE_COT_FOLDER_URL='https://drive.google.com/drive/folders/17BrVsXn16TiZPaqOxxAvL4tJbl_FRBpU';
 async function deleteItem(id){
   const it=DB.items.find(x=>x.id===id); if(!it||!confirm('¿Eliminar este ítem?')) return;
-  try{ await DELETE('items',id); DB.items=DB.items.filter(x=>x.id!==id); await recalcularTotalesCot(it.id_cotizacion).catch(()=>{});
+  try{ await DELETE('items',id); DB.items=DB.items.filter(x=>x.id!==id); await renumerarItemsCot(it.id_cotizacion).catch(()=>{}); await recalcularTotalesCot(it.id_cotizacion).catch(()=>{});
     toast('Ítem eliminado'); refreshCurrentView(); detailCot(it.id_cotizacion); }
   catch(e){ toast('❌ '+e.message,'error'); }
 }
@@ -4401,7 +4564,14 @@ async function crearOP(cotId){
   const obs=rteValue();
   if(obs&&obs.length>1500000){ toast('Las observaciones pesan demasiado (muchas imágenes). Reduce o quita alguna.','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
   const r=await rpcAct('prod_crear_op',{p_cot:cotId,p_items:ids,p_disenador:gv('op1')||null,p_prioridad:gv('op2')||'Media',p_obs:obs,p_fecha_pactada:cambio?fp:null,p_motivo_fecha:cambio?motivo:null,p_tipo:gv('op5')||null});
-  if(r&&r!==true){ closeModal(); toast(`✅ OP-${r.op} creada con ${r.n} ítem(s)`); updateBadges(); if(modPermitido('produccion')) qaGo('produccion'); }
+  if(r&&r!==true){
+    closeModal(); updateBadges();
+    // El número lo asigna Supabase en el instante de guardar (consecutivo, sin huecos): se muestra el real, no uno estimado.
+    const verProd=modPermitido('produccion');
+    openModal('✅ OP creada',
+      `<div style="text-align:center;padding:8px 0 4px"><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase">Número asignado</div><div style="font-size:42px;font-weight:800;font-family:var(--mono);color:var(--accent);margin:6px 0;line-height:1.1">OP-${esc(String(r.op))}</div><div style="font-size:13px;color:var(--muted)">${esc(String(r.n))} ítem(s) enviados a producción</div></div>`,
+      `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${verProd?`<button class="btn btn-primary" onclick="closeModal();qaGo('produccion')">Ver en producción</button>`:''}`);
+  }
   else if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; }
 }
 
@@ -4948,7 +5118,8 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 .cot-hero-id{font-size:14px!important;margin-bottom:1px!important}
 .cot-hero-empresa{font-size:12.5px!important;-webkit-line-clamp:1!important}
 .cot-hero-sub{font-size:11px!important}
-.cot-hero-right img,.cot-hero-right>div{max-width:52px!important;max-height:52px!important;width:52px!important;height:52px!important;object-fit:cover;border-radius:8px!important}
+.cot-hero-right img,.cot-hero-right>div:not(.cot-hero-total-label):not(.cot-hero-total-value){max-width:52px!important;max-height:52px!important;width:52px!important;height:52px!important;object-fit:cover;border-radius:8px!important}
+.cot-hero-right{min-width:max-content}.cot-hero-total-value{font-size:19px!important;white-space:nowrap}
 .cot-hero-badges{margin-top:6px!important;gap:4px!important}
 .cot-hero-badges .badge,.cot-hero-asesor{font-size:10px!important;padding:2px 8px!important}
 .timeline-wrap{padding:6px 0 2px!important}
@@ -5166,7 +5337,10 @@ window.chatDetalle=function(id){
   try{window[fn](id);}catch(e){T('❌ '+(e.message||e),'error');}
 };
 /* ---------- campana ---------- */
+function chatOn(k){ try{ var m=[]; try{ m=_misRoles(); }catch(e){} if(m.indexOf('desarrollador')>-1) return true; return !!(window.FN_OK&&window.FN&&FN[k]&&typeof F==='function'&&F(k)); }catch(e){ return false; } }
+window.chatOn=chatOn;
 function ensureBell(){
+  if(!chatOn('gen_chat')){ var xb=document.getElementById('chat-bell'); if(xb) xb.remove(); return; }
   if(document.getElementById('chat-bell')) return;
   const rb=document.getElementById('refresh-btn'); if(!rb) return;
   const b=document.createElement('div'); b.id='chat-bell'; b.title='Mensajes y notificaciones'; b.innerHTML='🔔<b>0</b>';
@@ -5181,6 +5355,7 @@ function ddRender(){
 }
 async function poll(){
   if(document.hidden||!SS()||!SS().token) return;
+  if(!chatOn('gen_chat')){ ensureBell(); return; }
   ensureBell();
   try{
     const r=await rpc('chat_pendientes'); if(!r) return;
@@ -5199,12 +5374,13 @@ window.chatMarcar=async function(){try{await rpc('chat_visto_marcar');}catch(e){
 
 /* ---------- conversación ---------- */
 window.chatAbrir=async function(id,op,ref,para){
+  if(!chatOn('gen_chat')){ T('El chat no está activado en tu sistema','error'); return; }
   document.getElementById('chat-dd').classList.remove('open');
   C.q=''; C.id=id||''; C.op=op||''; C.ref=ref||id||op||''; C.rows=[]; C.last=-1; C.para=para||null;
   const ov=document.getElementById('chat-ov'); ov.classList.add('open');
   const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
   const defPara=C.para||'todos';
-  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
+  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${(!chatOn('gen_hoja_vida')||/^(COT|CLI|CERT)-/.test(C.op))?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
   <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
   <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
   <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
@@ -5355,6 +5531,7 @@ window.chatNueva=async function(){
 };
 /* ---------- hoja de vida (imprimible / PDF) ---------- */
 window.chatHoja=async function(id,op){
+  if(!chatOn('gen_hoja_vida')){ T('La hoja de vida no está activada en tu sistema','error'); return; }
   const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes para ver la hoja','error');return;}
   w.document.write('<p style="font-family:sans-serif">Generando hoja de vida…</p>');
   try{
@@ -5400,11 +5577,11 @@ window.chatCtx=function(id,op,ref,para){CTX={id:id||'',op:op||'',ref:ref||'',par
 const _od=window.openDetail;
 if(typeof _od==='function'){ window.openDetail=function(){ const r=_od.apply(this,arguments);
   try{ if(CTX&&Date.now()-CTX.t<2500){ const b=document.getElementById('dp-body'); if(b&&!b.querySelector('.chat-strip')){ const c=CTX; const d=document.createElement('div'); d.className='chat-strip'; d.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
-   d.innerHTML=`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button><button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`;
-   b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
+   d.innerHTML=(chatOn('gen_chat')?`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button>`:'')+(chatOn('gen_hoja_vida')?`<button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`:'');
+   if(d.innerHTML) b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
   return r; }; }
 /* botones reutilizables para los módulos */
-window.chatBtn=function(id,op,ref,para,label){return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
+window.chatBtn=function(id,op,ref,para,label){if(!chatOn('gen_chat')) return ''; return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
 document.addEventListener('click',e=>{const d=document.getElementById('chat-dd'); if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!(e.target.closest&&e.target.closest('#chat-bell'))) d.classList.remove('open');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('chat-ov').classList.contains('open')) chatCerrar();});
 setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
@@ -5715,26 +5892,5 @@ async function itSugerir(){
 }
 </script>
 <!-- /WEDM-ANALISIS-COM -->
-<!-- WEDM-INICIO (botón para volver a la pantalla de inicio desde cualquier módulo) -->
-<style>
-#home-btn{width:34px;height:34px;border-radius:11px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;-webkit-tap-highlight-color:transparent;text-decoration:none;color:inherit}
-#home-btn:active{transform:scale(.92)}
-@media(max-width:600px){#topbar-logo{display:none!important}}
-@media(max-width:400px){#topbar{gap:4px!important;padding-left:8px!important;padding-right:8px!important}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn,#topbar #chat-btn,#topbar .tb-search{min-width:0}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn{width:30px!important;height:30px!important}#topbar #menu-btn{width:34px!important;height:34px!important}#topbar .tb-search{padding:5px 7px}}
-.nav-item.nav-home{background:rgba(255,255,255,.07);margin:4px 8px 6px;border-radius:10px;font-weight:700}
-</style>
-<script>
-(function(){
- function ir(){ location.href='index.html'; }
- function init(){
-  var t=document.getElementById('topbar'), m=document.getElementById('menu-btn');
-  if(t&&m&&!document.getElementById('home-btn')){ var b=document.createElement('a'); b.id='home-btn'; b.href='index.html'; b.title='Ir al inicio (todos los módulos)'; b.setAttribute('aria-label','Ir al inicio'); b.textContent='🏠'; m.insertAdjacentElement('afterend',b); }
-  var ns=document.querySelector('#sidebar .nav-scroll');
-  if(ns&&!document.getElementById('nav-home')){ var n=document.createElement('div'); n.className='nav-item nav-home'; n.id='nav-home'; n.onclick=ir; n.innerHTML='<span class="nav-icon">🏠</span>Ir al inicio'; ns.insertBefore(n,ns.firstChild); }
- }
- if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
-})();
-</script>
-<!-- /WEDM-INICIO -->
 </body>
 </html>

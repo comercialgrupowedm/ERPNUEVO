@@ -1235,7 +1235,7 @@ function lineaCard(m){
   const espera=m.estado==='SOLICITADO'&&m.solicitado_at?Math.max(0,Math.round((Date.now()-new Date(m.solicitado_at))/864e5)):null;
   const sel=puedeSel(m);
   const btns=[];
-  btns.push(`<button class="btn btn-sm btn-ghost" title="Chat de este ítem" onclick="event.stopPropagation();chatAbrir('${m.id_prod}','${p.op??''}','OP-${m.id_prod} · ${esc(m.material).replace(/'/g,'')}','')">💬</button>`);
+  if(window.chatOn&&chatOn('gen_chat')) btns.push(`<button class="btn btn-sm btn-ghost" title="Chat de este ítem" onclick="event.stopPropagation();chatAbrir('${m.id_prod}','${p.op??''}','OP-${m.id_prod} · ${esc(m.material).replace(/'/g,'')}','')">💬</button>`);
   if(puedeCompras()){
     btns.push(`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();abrirEditar('${m.id}')">✏️ Editar</button>`);
     if(m.estado==='SOLICITADO'){ btns.push(`<button class="btn btn-sm" style="background:#0f766e;color:#fff" onclick="event.stopPropagation();abrirComprar(['${m.id}'])">🛒 Comprar</button>`,`<button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="event.stopPropagation();abrirRechazar('${m.id}')">✖</button>`); }
@@ -2469,7 +2469,10 @@ window.chatDetalle=function(id){
   try{window[fn](id);}catch(e){T('❌ '+(e.message||e),'error');}
 };
 /* ---------- campana ---------- */
+function chatOn(k){ try{ var m=[]; try{ m=_misRoles(); }catch(e){} if(m.indexOf('desarrollador')>-1) return true; return !!(window.FN_OK&&window.FN&&FN[k]&&typeof F==='function'&&F(k)); }catch(e){ return false; } }
+window.chatOn=chatOn;
 function ensureBell(){
+  if(!chatOn('gen_chat')){ var xb=document.getElementById('chat-bell'); if(xb) xb.remove(); return; }
   if(document.getElementById('chat-bell')) return;
   const rb=document.getElementById('refresh-btn'); if(!rb) return;
   const b=document.createElement('div'); b.id='chat-bell'; b.title='Mensajes y notificaciones'; b.innerHTML='🔔<b>0</b>';
@@ -2484,6 +2487,7 @@ function ddRender(){
 }
 async function poll(){
   if(document.hidden||!SS()||!SS().token) return;
+  if(!chatOn('gen_chat')){ ensureBell(); return; }
   ensureBell();
   try{
     const r=await rpc('chat_pendientes'); if(!r) return;
@@ -2502,12 +2506,13 @@ window.chatMarcar=async function(){try{await rpc('chat_visto_marcar');}catch(e){
 
 /* ---------- conversación ---------- */
 window.chatAbrir=async function(id,op,ref,para){
+  if(!chatOn('gen_chat')){ T('El chat no está activado en tu sistema','error'); return; }
   document.getElementById('chat-dd').classList.remove('open');
   C.q=''; C.id=id||''; C.op=op||''; C.ref=ref||id||op||''; C.rows=[]; C.last=-1; C.para=para||null;
   const ov=document.getElementById('chat-ov'); ov.classList.add('open');
   const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
   const defPara=C.para||'todos';
-  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
+  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${(!chatOn('gen_hoja_vida')||/^(COT|CLI|CERT)-/.test(C.op))?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
   <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
   <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
   <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
@@ -2658,6 +2663,7 @@ window.chatNueva=async function(){
 };
 /* ---------- hoja de vida (imprimible / PDF) ---------- */
 window.chatHoja=async function(id,op){
+  if(!chatOn('gen_hoja_vida')){ T('La hoja de vida no está activada en tu sistema','error'); return; }
   const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes para ver la hoja','error');return;}
   w.document.write('<p style="font-family:sans-serif">Generando hoja de vida…</p>');
   try{
@@ -2703,11 +2709,11 @@ window.chatCtx=function(id,op,ref,para){CTX={id:id||'',op:op||'',ref:ref||'',par
 const _od=window.openDetail;
 if(typeof _od==='function'){ window.openDetail=function(){ const r=_od.apply(this,arguments);
   try{ if(CTX&&Date.now()-CTX.t<2500){ const b=document.getElementById('dp-body'); if(b&&!b.querySelector('.chat-strip')){ const c=CTX; const d=document.createElement('div'); d.className='chat-strip'; d.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
-   d.innerHTML=`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button><button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`;
-   b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
+   d.innerHTML=(chatOn('gen_chat')?`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button>`:'')+(chatOn('gen_hoja_vida')?`<button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`:'');
+   if(d.innerHTML) b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
   return r; }; }
 /* botones reutilizables para los módulos */
-window.chatBtn=function(id,op,ref,para,label){return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
+window.chatBtn=function(id,op,ref,para,label){if(!chatOn('gen_chat')) return ''; return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
 document.addEventListener('click',e=>{const d=document.getElementById('chat-dd'); if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!(e.target.closest&&e.target.closest('#chat-bell'))) d.classList.remove('open');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('chat-ov').classList.contains('open')) chatCerrar();});
 setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
@@ -2884,26 +2890,5 @@ function sgDetalle(i){
 }
 </script>
 <!-- /WEDM-SUGERIDOS-CMP -->
-<!-- WEDM-INICIO (botón para volver a la pantalla de inicio desde cualquier módulo) -->
-<style>
-#home-btn{width:34px;height:34px;border-radius:11px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;-webkit-tap-highlight-color:transparent;text-decoration:none;color:inherit}
-#home-btn:active{transform:scale(.92)}
-@media(max-width:600px){#topbar-logo{display:none!important}}
-@media(max-width:400px){#topbar{gap:4px!important;padding-left:8px!important;padding-right:8px!important}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn,#topbar #chat-btn,#topbar .tb-search{min-width:0}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn{width:30px!important;height:30px!important}#topbar #menu-btn{width:34px!important;height:34px!important}#topbar .tb-search{padding:5px 7px}}
-.nav-item.nav-home{background:rgba(255,255,255,.07);margin:4px 8px 6px;border-radius:10px;font-weight:700}
-</style>
-<script>
-(function(){
- function ir(){ location.href='index.html'; }
- function init(){
-  var t=document.getElementById('topbar'), m=document.getElementById('menu-btn');
-  if(t&&m&&!document.getElementById('home-btn')){ var b=document.createElement('a'); b.id='home-btn'; b.href='index.html'; b.title='Ir al inicio (todos los módulos)'; b.setAttribute('aria-label','Ir al inicio'); b.textContent='🏠'; m.insertAdjacentElement('afterend',b); }
-  var ns=document.querySelector('#sidebar .nav-scroll');
-  if(ns&&!document.getElementById('nav-home')){ var n=document.createElement('div'); n.className='nav-item nav-home'; n.id='nav-home'; n.onclick=ir; n.innerHTML='<span class="nav-icon">🏠</span>Ir al inicio'; ns.insertBefore(n,ns.firstChild); }
- }
- if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
-})();
-</script>
-<!-- /WEDM-INICIO -->
 </body>
 </html>

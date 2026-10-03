@@ -570,6 +570,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 .mn-circle{width:78%;aspect-ratio:1;border-radius:50%;background:#4f83f1;display:flex;align-items:center;justify-content:center;font-size:clamp(48px,16vw,84px)}
 .mn-t{padding:14px 12px;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.2px}
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- WEDM-FAVICON --><script>(function(){try{var t=setInterval(function(){if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){clearInterval(t);var l=document.querySelector('link[rel=icon]')||document.createElement('link');l.rel='icon';l.type='image/png';l.href=LOGO_B64_PNG;document.head.appendChild(l);}},100);setTimeout(function(){clearInterval(t)},8000);}catch(e){}})();</script><!-- /WEDM-FAVICON -->
@@ -618,6 +619,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="ruta" onclick="nav('ruta')"><span class="nav-icon">🧭</span>Ruta por máquina</div>
     <div class="nav-item" data-m="kanban" onclick="nav('kanban')"><span class="nav-icon">🧩</span>Kanban por máquina</div>
     <div class="nav-item" data-m="operarios" onclick="nav('operarios')"><span class="nav-icon">👷</span>Operarios</div>
+    <div class="nav-item" data-m="horario" id="nav-horario" style="display:none" onclick="nav('horario')"><span class="nav-icon">📅</span>Horario <span class="nuevo-b">NUEVO</span></div>
     <div class="nav-item" data-m="avances" onclick="nav('avances')"><span class="nav-icon">📈</span>Avances</div>
     <div class="nav-item" data-m="riesgos" onclick="nav('riesgos')"><span class="nav-icon">🚦</span>Riesgos y carga</div>
     <div class="nav-item" data-m="reportes" onclick="nav('reportes')"><span class="nav-icon">📉</span>Reportes</div>
@@ -1116,7 +1118,7 @@ async function doLogin(){
 //  ERP PLANEACIÓN · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño, Compras y Remisiones
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={menu:'Menú',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
+const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
 const PG_BASE=(window.innerWidth<700?30:60);
 const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
@@ -1840,9 +1842,10 @@ function modalOperarios(id,paso){
       <div class="form-grid" style="margin-top:6px">
         <div class="field"><label>Operario</label><input id="opr-o${s.i}" list="oper-dl" autocomplete="off" value="${esc(s.oper)}" placeholder="Nombre del colaborador"></div>
         <div class="field"><label>Nota (opcional)</label><input id="opr-n${s.i}" value="${esc(s.nota)}" placeholder="Turno, instrucción…"></div>
-      </div>
+      </div><div id="opr-sug${s.i}" class="opr-sug"></div>
       ${s.asig&&s.asig.por?`<div style="font-size:10.5px;color:var(--muted);margin-top:4px">Asignado por ${esc(s.asig.por)}${s.asig.fecha?' · '+fmtDT(s.asig.fecha):''}</div>`:''}</div>`).join(''),
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarOperarios()">💾 Guardar</button>`);
+  try{ if(window.horSugerencias) horSugerencias(ps); }catch(e){}
   if(paso) setTimeout(()=>document.getElementById('opr-o'+paso)?.focus(),120);
 }
 async function guardarOperarios(){
@@ -2280,10 +2283,10 @@ addEventListener('resize',()=>{ if(_pl.open) plRender(true); });
 addEventListener('keydown',e=>{ if(!_pl.open) return; if(e.key==='Escape') plCerrar(); else if(e.key==='ArrowRight') {plNext();plTimer();} else if(e.key==='ArrowLeft') plPrev(); else if(e.key===' '){ e.preventDefault(); plPause(); } });
 setInterval(()=>{ if(_pl.open) plRender(true); },30000);
 
-const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
-function menu(){ setContent(`<div class="mn-grid">${MENU_MODS.map(([m,i,t])=>`<div class="mn-card" onclick="nav('${m}')"><div class="mn-img"><div class="mn-circle">${i}</div></div><div class="mn-t">${t}</div></div>`).join('')}</div>`); }
+const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['horario','📅','Horario 🆕'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
+function menu(){ setContent(`<div class="mn-grid">${MENU_MODS.filter(x=>x[0]!=='horario'||(window.chatOn&&chatOn('pla_horario'))).map(([m,i,t])=>`<div class="mn-card" onclick="nav('${m}')"><div class="mn-img"><div class="mn-circle">${i}</div></div><div class="mn-t">${t}</div></div>`).join('')}</div>`); }
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,produccion,ruta,kanban,operarios,avances,riesgos,reportes,planta}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,produccion,ruta,kanban,operarios,avances,riesgos,reportes,planta,horario:window.horario}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -2971,7 +2974,10 @@ window.chatDetalle=function(id){
   try{window[fn](id);}catch(e){T('❌ '+(e.message||e),'error');}
 };
 /* ---------- campana ---------- */
+function chatOn(k){ try{ var m=[]; try{ m=_misRoles(); }catch(e){} if(m.indexOf('desarrollador')>-1) return true; return !!(window.FN_OK&&window.FN&&FN[k]&&typeof F==='function'&&F(k)); }catch(e){ return false; } }
+window.chatOn=chatOn;
 function ensureBell(){
+  if(!chatOn('gen_chat')){ var xb=document.getElementById('chat-bell'); if(xb) xb.remove(); return; }
   if(document.getElementById('chat-bell')) return;
   const rb=document.getElementById('refresh-btn'); if(!rb) return;
   const b=document.createElement('div'); b.id='chat-bell'; b.title='Mensajes y notificaciones'; b.innerHTML='🔔<b>0</b>';
@@ -2986,6 +2992,7 @@ function ddRender(){
 }
 async function poll(){
   if(document.hidden||!SS()||!SS().token) return;
+  if(!chatOn('gen_chat')){ ensureBell(); return; }
   ensureBell();
   try{
     const r=await rpc('chat_pendientes'); if(!r) return;
@@ -3004,12 +3011,13 @@ window.chatMarcar=async function(){try{await rpc('chat_visto_marcar');}catch(e){
 
 /* ---------- conversación ---------- */
 window.chatAbrir=async function(id,op,ref,para){
+  if(!chatOn('gen_chat')){ T('El chat no está activado en tu sistema','error'); return; }
   document.getElementById('chat-dd').classList.remove('open');
   C.q=''; C.id=id||''; C.op=op||''; C.ref=ref||id||op||''; C.rows=[]; C.last=-1; C.para=para||null;
   const ov=document.getElementById('chat-ov'); ov.classList.add('open');
   const mi=_rolArea[(SS()&&SS().rol)]||'planeacion';
   const defPara=C.para||'todos';
-  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${/^(COT|CLI|CERT)-/.test(C.op)?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
+  document.getElementById('chat-box').innerHTML=`<div class="cc-h"><img id="cc-img" alt=""><div class="tt"><span id="cc-t">💬 ${E(fmtRef(C.ref)||'Conversación')}</span><small id="cc-sub">${E(C.id?'':(C.op&&!/^(COT|CLI|CERT)-/.test(C.op)?'OP '+C.op:''))}</small></div><button class="lb" onclick="chatCerrarConv('${Q(C.id||C.op||C.ref||'general')}');chatCerrar()" title="Cerrar conversación: se quita de tus notificaciones hasta que vuelvan a escribir">✔ Cerrar conv.</button>${C.id?`<button class="lb" onclick="chatDetalle('${Q(C.id)}')" title="Ver el detalle de la OP">🔎 Ver OP</button>`:''}${(!chatOn('gen_hoja_vida')||/^(COT|CLI|CERT)-/.test(C.op))?'':`<button class="lb" onclick="chatHoja('${Q(C.id)}','${Q(C.op)}')" title="Hoja de vida / PDF">📄 Hoja</button>`}<button onclick="chatCerrar()">✕</button></div>
   <div class="cc-s"><input id="cc-q" data-no-upper="1" data-no-sug="1" placeholder="🔍 Buscar en la conversación…" oninput="chatBuscar(this.value)"><span id="cc-qn"></span></div>
   <div id="chat-msgs"><div style="opacity:.6;text-align:center;font-size:12px">Cargando…</div></div>
   <div id="chat-in"><div id="ci-prev"></div><div class="r"><select id="ci-acc" title="Tipo">${ACC.map(a=>`<option value="${a[0]}">${a[1]}</option>`).join('')}</select><span style="font-size:10px;opacity:.65;align-self:center;line-height:1.2">@nombre = avisa a esa persona · <b>@grupal</b> = avisa a todos · pega imágenes con Ctrl+V</span></div>
@@ -3160,6 +3168,7 @@ window.chatNueva=async function(){
 };
 /* ---------- hoja de vida (imprimible / PDF) ---------- */
 window.chatHoja=async function(id,op){
+  if(!chatOn('gen_hoja_vida')){ T('La hoja de vida no está activada en tu sistema','error'); return; }
   const w=window.open('','_blank'); if(!w){T('Permite ventanas emergentes para ver la hoja','error');return;}
   w.document.write('<p style="font-family:sans-serif">Generando hoja de vida…</p>');
   try{
@@ -3205,11 +3214,11 @@ window.chatCtx=function(id,op,ref,para){CTX={id:id||'',op:op||'',ref:ref||'',par
 const _od=window.openDetail;
 if(typeof _od==='function'){ window.openDetail=function(){ const r=_od.apply(this,arguments);
   try{ if(CTX&&Date.now()-CTX.t<2500){ const b=document.getElementById('dp-body'); if(b&&!b.querySelector('.chat-strip')){ const c=CTX; const d=document.createElement('div'); d.className='chat-strip'; d.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
-   d.innerHTML=`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button><button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`;
-   b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
+   d.innerHTML=(chatOn('gen_chat')?`<button class="btn btn-ghost btn-sm" style="border-color:#2563eb;color:#2563eb;font-weight:700" onclick="chatAbrir('${Q(c.id)}','${Q(c.op)}','${Q(c.ref)}','${Q(c.para)}')">💬 Chat de ${E(c.ref)}</button>`:'')+(chatOn('gen_hoja_vida')?`<button class="btn btn-ghost btn-sm" onclick="chatHoja('${Q(c.id)}','${Q(c.op)}')">📄 Hoja de vida (PDF)</button>`:'');
+   if(d.innerHTML) b.insertBefore(d,b.firstChild); } CTX=null; } }catch(e){}
   return r; }; }
 /* botones reutilizables para los módulos */
-window.chatBtn=function(id,op,ref,para,label){return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
+window.chatBtn=function(id,op,ref,para,label){if(!chatOn('gen_chat')) return ''; return `<button class="btn btn-ghost btn-sm" onclick="chatAbrir('${Q(id)}','${Q(op)}','${Q(ref)}','${Q(para||'')}')">${label||'💬 Chat'}</button>`;};
 document.addEventListener('click',e=>{const d=document.getElementById('chat-dd'); if(d&&d.classList.contains('open')&&!d.contains(e.target)&&!(e.target.closest&&e.target.closest('#chat-bell'))) d.classList.remove('open');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('chat-ov').classList.contains('open')) chatCerrar();});
 setInterval(poll,7000); setTimeout(poll,1500); setInterval(ensureBell,2000);
@@ -3471,26 +3480,210 @@ function rkVistaBloq(){
 }
 </script>
 <!-- /WEDM-RIESGOS-PLA -->
-<!-- WEDM-INICIO (botón para volver a la pantalla de inicio desde cualquier módulo) -->
+<!-- WEDM-HORARIO -->
 <style>
-#home-btn{width:34px;height:34px;border-radius:11px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;-webkit-tap-highlight-color:transparent;text-decoration:none;color:inherit}
-#home-btn:active{transform:scale(.92)}
-@media(max-width:600px){#topbar-logo{display:none!important}}
-@media(max-width:400px){#topbar{gap:4px!important;padding-left:8px!important;padding-right:8px!important}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn,#topbar #chat-btn,#topbar .tb-search{min-width:0}#topbar #home-btn,#topbar #refresh-btn,#topbar #help-btn,#topbar #dens-btn,#topbar #fn-btn,#topbar #mayus-btn{width:30px!important;height:30px!important}#topbar #menu-btn{width:34px!important;height:34px!important}#topbar .tb-search{padding:5px 7px}}
-.nav-item.nav-home{background:rgba(255,255,255,.07);margin:4px 8px 6px;border-radius:10px;font-weight:700}
+.nuevo-b{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;color:#fff;background:linear-gradient(135deg,#16a34a,#059669);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.hz-chip{display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:99px;color:#fff;white-space:nowrap}
+.hz-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.hz-kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px}.hz-kpi b{display:block;font-size:22px;font-family:var(--mono)}.hz-kpi span{font-size:11px;color:var(--muted)}
+.hz-wk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}.hz-wk select{max-width:240px}
+.hz-mq{display:inline-flex;gap:3px;align-items:center;font-size:11px;background:rgba(100,116,139,.12);border-radius:8px;padding:2px 7px;margin:1px 3px 1px 0;white-space:nowrap}
+.hz-cov{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}.hz-cov>div{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px}
+.hz-cov h5{margin:0 0 6px;font-size:12.5px}.hz-nm{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;margin:2px 4px 2px 0;background:rgba(22,163,74,.13);color:#15803d;font-weight:600}.hz-nm.off{background:rgba(100,116,139,.13);color:#64748b;font-weight:500}
+.opr-sug{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.opr-sug .sg{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:4px 8px;font-size:11px;cursor:pointer;text-align:left;line-height:1.3}.opr-sug .sg:hover{border-color:var(--accent)}.opr-sug .sg.on{border-color:#16a34a;background:rgba(22,163,74,.08)}.opr-sug .sg.off{opacity:.6}.opr-sug small{display:block;color:var(--muted);font-size:10px}
+.hz-prev td,.hz-prev th{font-size:11.5px;padding:5px 8px;white-space:nowrap}.hz-warn{font-size:11.5px;color:#b45309;background:rgba(245,158,11,.13);border-radius:8px;padding:6px 9px;margin:6px 0}
 </style>
 <script>
+/* ═══ HORARIO Y DISPONIBILIDAD DEL PERSONAL (función pla_horario, se activa desde Desarrollador) ═══ */
 (function(){
- function ir(){ location.href='index.html'; }
- function init(){
-  var t=document.getElementById('topbar'), m=document.getElementById('menu-btn');
-  if(t&&m&&!document.getElementById('home-btn')){ var b=document.createElement('a'); b.id='home-btn'; b.href='index.html'; b.title='Ir al inicio (todos los módulos)'; b.setAttribute('aria-label','Ir al inicio'); b.textContent='🏠'; m.insertAdjacentElement('afterend',b); }
-  var ns=document.querySelector('#sidebar .nav-scroll');
-  if(ns&&!document.getElementById('nav-home')){ var n=document.createElement('div'); n.className='nav-item nav-home'; n.id='nav-home'; n.onclick=ir; n.innerHTML='<span class="nav-icon">🏠</span>Ir al inicio'; ns.insertBefore(n,ns.firstChild); }
- }
- if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+const MESES={ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,sept:8,set:8,oct:9,nov:10,dic:11};
+const TURNOS={
+  'C0':{n:'Normal',lv:[8.5,17],sab:[8,12.5],c:'#0d9488'},
+  'C1':{n:'Mañana',lv:[6,14],sab:[8,12],c:'#2563eb'},
+  'C2':{n:'Tarde',lv:[14,22],sab:[12,16],c:'#d97706'},
+  'C3':{n:'Noche',lv:[21,30],sab:null,c:'#7c3aed'},
+  'C1*':{n:'Día 12 h',lv:[6,18],sab:null,c:'#0284c7'},
+  'C3*':{n:'Noche 12 h',lv:[18,30],sab:null,c:'#5b21b6'},
+  'C2*':{n:'Tarde',lv:[13,21],sab:[12,16],c:'#b45309'},
+  'V':{n:'Vacaciones',lv:null,sab:null,c:'#94a3b8'}
+};
+const H={col:[],hor:[],maq:[],ok:false,sem:null,prev:null};
+window.H_=H;
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const hoy=()=>iso(new Date());
+function lunes(s){ const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()-((d.getDay()+6)%7)); return iso(d); }
+function addD(s,n){ const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); }
+const tn=t=>{ t=String(t||'').toUpperCase().trim(); return t==='S1'?'C1*':t==='S2'?'C3*':t; };
+function hh(h){ h=((h%24)+24)%24; const a=Math.floor(h), m=Math.round((h-a)*60); return ((a%12)||12)+(m?':'+String(m).padStart(2,'0'):'')+(a>=12?' p.m.':' a.m.'); }
+function vent(t,f){ const T=TURNOS[tn(t)]; if(!T) return null; const w=new Date(f+'T00:00:00').getDay(); if(w===0) return null; return w===6?T.sab:T.lv; }
+const rango=w=>w?hh(w[0])+' – '+hh(w[1]):'';
+const chip=t=>{ const T=TURNOS[tn(t)]; return `<span class="hz-chip" style="background:${T?T.c:'#64748b'}" title="${T?esc(T.n):''}">${esc(tn(t)||'—')}</span>`; };
+function turnoDe(nr,f){ const x=H.hor.find(r=>r.colaborador===nr&&r.semana===lunes(f)); return x?tn(x.turno):null; }
+function estadoDia(nr,f){
+  const t=turnoDe(nr,f); if(!t) return {k:'sin',t:null,txt:'Sin horario cargado'};
+  if(t==='V') return {k:'vac',t,txt:'Vacaciones'};
+  const w=vent(t,f); if(!w) return {k:'libre',t,txt:'Libre hoy'};
+  return {k:'turno',t,w,txt:rango(w)};
+}
+function enTurnoAhora(nr){
+  const f=hoy(), n=new Date(), h=n.getHours()+n.getMinutes()/60, t=turnoDe(nr,f);
+  if(t){ const w=vent(t,f); if(w&&h>=w[0]&&h<Math.min(w[1],24)) return true; }
+  const y=addD(f,-1), ty=turnoDe(nr,y); if(ty){ const wy=vent(ty,y); if(wy&&wy[1]>24&&h<wy[1]-24) return true; }
+  return false;
+}
+async function cargar(force){
+  if(H.ok&&!force) return;
+  const [c,h,m]=await Promise.all([
+    GETALL('plan_colaboradores','select=*&order=orden.asc,nombre_corto.asc').catch(()=>[]),
+    GETALL('plan_horario','select=semana,colaborador,turno,cargado_por,cargado_at&order=semana.asc').catch(()=>[]),
+    GETALL('v_colab_maquinas','select=*').catch(()=>[])]);
+  H.col=c||[]; H.hor=h||[]; H.maq=m||[]; H.ok=true;
+}
+function expDe(nr){
+  const o={}; H.maq.filter(x=>x.colaborador===nr).forEach(x=>{ const b=normMaquina(x.proceso||x.maquina); if(!b||b==='externo'||!MAQ[b]) return;
+    const e=o[b]||(o[b]={b,h:0,n:0,u:''}); e.h+=Number(x.horas)||0; e.n+=Number(x.marcadas)||0; if(String(x.ultima||'')>e.u) e.u=String(x.ultima); });
+  return Object.values(o).sort((a,b)=>b.h-a.h);
+}
+function sugeridos(b,f){
+  f=f||hoy(); const r=[];
+  H.col.filter(c=>c.activo!==false).forEach(c=>{ const e=expDe(c.nombre_registro).find(x=>x.b===b); if(!e||e.h<1) return; r.push({c,e,s:estadoDia(c.nombre_registro,f)}); });
+  const pr={turno:0,sin:1,libre:2,vac:3}; return r.sort((a,b2)=>(pr[a.s.k]-pr[b2.s.k])||(b2.e.h-a.e.h));
+}
+const hF=n=>(Math.round(n*10)/10).toLocaleString('es-CO');
+
+/* ── Pantalla ── */
+async function horario(){
+  if(!(window.chatOn&&chatOn('pla_horario'))){ setContent(moduleBanner('📅','Horario','')+empty('Este módulo aún no está activado para tu usuario.','🔒')); return; }
+  if(!H.ok) setContent(moduleBanner('📅','Horario y disponibilidad','Cargando…')+'<div class="callout" style="margin:12px 0">⏳ Cargando horario y marcaciones…</div>');
+  await cargar(!H.ok);
+  const sems=[...new Set(H.hor.map(r=>r.semana))].sort();
+  if(!H.sem||(sems.length&&!sems.includes(H.sem))){ const l=lunes(hoy()); H.sem=sems.includes(l)?l:(sems.filter(s=>s<=l).pop()||sems[0]||l); }
+  const f=hoy(), act=H.col.filter(c=>c.activo!==false);
+  const delDia=act.map(c=>({c,s:estadoDia(c.nombre_registro,f)}));
+  const nTurno=delDia.filter(x=>x.s.k==='turno').length, nVac=delDia.filter(x=>x.s.k==='vac').length, nAhora=act.filter(c=>enTurnoAhora(c.nombre_registro)).length;
+  const puedeCargar=puede('planeacion','administracion');
+  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button></div>`;
+  const banner=moduleBanner('📅','Horario y disponibilidad 🆕',`${act.length} colaboradores activos · ${sems.length} semana(s) cargada(s)`,acciones);
+  const wk=sems.length?`<div class="hz-wk"><button class="btn btn-ghost btn-sm" onclick="horSem(-1)">◀</button><select onchange="H_.sem=this.value;horario()">${sems.map(s=>`<option value="${s}" ${s===H.sem?'selected':''}>Semana del ${esc(fmtDate(s))} al ${esc(fmtDate(addD(s,5)))}${s===lunes(f)?' · esta semana':''}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="horSem(1)">▶</button></div>`
+    :`<div class="callout" style="margin:12px 0">Aún no hay horario cargado. Sube el Excel del mes con el botón <b>📤 Subir horario</b>.</div>`;
+  const kp=`<div class="hz-kpis"><div class="hz-kpi"><b>${nTurno}</b><span>Trabajan hoy</span></div><div class="hz-kpi"><b>${nAhora}</b><span>En turno ahora</span></div><div class="hz-kpi"><b>${nVac}</b><span>De vacaciones</span></div><div class="hz-kpi"><b>${act.length-nTurno-nVac}</b><span>Libres / sin horario hoy</span></div></div>`;
+  const filas=act.map(c=>{ const nr=c.nombre_registro, t=sems.length?((H.hor.find(r=>r.colaborador===nr&&r.semana===H.sem)||{}).turno):null, T=t?TURNOS[tn(t)]:null, s=estadoDia(nr,f), ex=expDe(nr).slice(0,3);
+    const hoyB=s.k==='turno'?(enTurnoAhora(nr)?`<span class="badge verde">🟢 En turno · ${esc(s.txt)}</span>`:`<span class="badge azul">Hoy ${esc(s.txt)}</span>`):s.k==='vac'?'<span class="badge gris">🏖 Vacaciones</span>':s.k==='libre'?'<span class="badge gris">Libre hoy</span>':'<span class="badge gris">—</span>';
+    return `<tr onclick="horColab('${esc(nr).replace(/'/g,"\\'")}')" style="cursor:pointer"><td><b>${esc(c.nombre_corto)}</b><div style="font-size:10.5px;color:var(--muted)">${esc(c.cargo||'')}</div></td>
+      <td>${t?chip(t):'<span style="color:var(--muted)">—</span>'}</td><td style="font-size:11.5px">${T&&T.lv?'L–V '+esc(rango(T.lv))+(T.sab?'<br>Sáb '+esc(rango(T.sab)):''):(t==='V'?'Vacaciones':'')}</td><td>${hoyB}</td>
+      <td style="max-width:none;white-space:normal">${ex.length?ex.map(e=>`<span class="hz-mq">${MAQ[e.b].ic} ${esc(MAQ[e.b].l)} <b>${hF(e.h)} h</b></span>`).join(''):'<span style="color:var(--muted);font-size:11px">Sin marcaciones en 180 días</span>'}</td></tr>`; }).join('');
+  const tabla=`<div class="tbl-wrap"><table class="data-tbl" style="min-width:760px"><thead><tr><th>Colaborador</th><th>Turno semana</th><th>Horario</th><th>Hoy</th><th>Máquinas que ha marcado (180 días)</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  const cov=MAQ_EDIT.map(b=>{ const sg=sugeridos(b,f); if(!sg.length) return `<div><h5>${MAQ[b].ic} ${esc(MAQ[b].n)}</h5><span style="font-size:11px;color:var(--muted)">Nadie ha marcado esta máquina</span></div>`;
+    return `<div><h5>${MAQ[b].ic} ${esc(MAQ[b].n)} <span style="font-weight:400;color:var(--muted)">· ${sg.filter(x=>x.s.k==='turno').length} disponible(s) hoy</span></h5>${sg.map(x=>`<span class="hz-nm ${x.s.k==='turno'?'':'off'}" title="${esc(x.s.txt)} · ${hF(x.e.h)} h marcadas">${esc(x.c.nombre_corto)} <small>${hF(x.e.h)} h</small></span>`).join('')}</div>`; }).join('');
+  setContent(banner+wk+kp+tabla+`<h4 style="margin:18px 0 8px">¿Quién puede cubrir cada máquina hoy?</h4><div class="hz-cov">${cov}</div><p style="font-size:11px;color:var(--muted);margin-top:10px">Las máquinas salen de lo que cada persona ha marcado en planta (últimos 180 días, horas netas). En verde quien trabaja hoy; en gris quien tiene la máquina pero hoy no está en turno.</p>`);
+}
+function horSem(d){ const sems=[...new Set(H.hor.map(r=>r.semana))].sort(); const i=sems.indexOf(H.sem)+d; if(i>=0&&i<sems.length){ H.sem=sems[i]; horario(); } }
+
+function horColab(nr){
+  const c=H.col.find(x=>x.nombre_registro===nr); if(!c) return;
+  const sems=H.hor.filter(r=>r.colaborador===nr).sort((a,b)=>a.semana<b.semana?-1:1);
+  const mq=H.maq.filter(x=>x.colaborador===nr).sort((a,b)=>Number(b.horas)-Number(a.horas));
+  openModal('👷 '+c.nombre_corto,`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${esc(c.cargo||'')} · registrado como «${esc(nr.replace(/\s+/g,' '))}»</div>
+    <h5 style="margin:6px 0">Turnos por semana</h5><div style="display:flex;gap:6px;flex-wrap:wrap">${sems.length?sems.map(r=>`<span style="font-size:11px">${esc(fmtDate(r.semana))} ${chip(r.turno)}</span>`).join(''):'<span style="color:var(--muted);font-size:12px">Sin horario cargado</span>'}</div>
+    <h5 style="margin:14px 0 6px">Máquinas marcadas (últimos 180 días)</h5>
+    ${mq.length?`<div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th>Máquina</th><th>Horas</th><th>Marcadas</th><th>Última</th></tr></thead><tbody>${mq.map(x=>`<tr><td>${esc(x.maquina)}</td><td>${hF(Number(x.horas))} h</td><td>${x.marcadas}</td><td>${esc(fmtDate(x.ultima))}</td></tr>`).join('')}</tbody></table></div>`:'<div style="color:var(--muted);font-size:12px">Sin marcaciones en este periodo.</div>'}`,
+    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+}
+
+/* ── Subir el Excel ── */
+function horSubir(){
+  if(!puede('planeacion','administracion')){ toast('Tu rol no puede modificar Planeación','error'); return; }
+  if(typeof XLSX==='undefined'){ toast('No cargó la librería de Excel; revisa la conexión y recarga','error'); return; }
+  const i=document.createElement('input'); i.type='file'; i.accept='.xlsx,.xls,.csv';
+  i.onchange=()=>{ const f=i.files[0]; if(!f) return; const r=new FileReader();
+    r.onload=e=>{ try{ H.wb=XLSX.read(e.target.result,{type:'array',cellDates:true}); H.archivo=f.name; horParsear(); }catch(er){ toast('No pude leer el archivo: '+er.message,'error'); } };
+    r.readAsArrayBuffer(f); };
+  i.click();
+}
+function _fecha(v,anio){
+  if(v instanceof Date&&!isNaN(v)){ const d=new Date(v.getTime()+12*3600e3); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+  if(typeof v==='number'&&v>40000&&v<60000){ const d=new Date(Math.round((v-25569)*86400e3)+12*3600e3); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+  if(typeof v==='string'){ const m=v.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/^(\d{1,2})[\s\-\/\.]*([a-z]{3,5})\.?(?:[\s\-\/]*(\d{2,4}))?$/);
+    if(m&&MESES[m[2].slice(0,4)]!=null||m&&MESES[m[2].slice(0,3)]!=null){ const mes=MESES[m[2]]!=null?MESES[m[2]]:(MESES[m[2].slice(0,4)]!=null?MESES[m[2].slice(0,4)]:MESES[m[2].slice(0,3)]);
+      let y=m[3]?Number(m[3]):anio; if(y<100) y+=2000; return y+'-'+String(mes+1).padStart(2,'0')+'-'+String(Number(m[1])).padStart(2,'0'); } }
+  return null;
+}
+const RX_TURNO=/^(?:turno\s+)?(C[0-3]\*?|S[12]|V)$/i;
+function horParsear(anioForzado){
+  const wb=H.wb; let res=null;
+  for(const nombre of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[nombre],{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>(r||[]).some(c=>typeof c==='string'&&/nombre/i.test(c))); if(hi<0) continue;
+    let anio=anioForzado; if(!anio){ for(const r of rows.slice(0,hi+1)){ for(const c of (r||[])){ if(typeof c==='string'){ const m=c.match(/(20\d{2})/)||c.match(/[-\/ ](\d{2})\s*$/); if(m){ anio=Number(m[1])<100?2000+Number(m[1]):Number(m[1]); break; } } } if(anio) break; } }
+    anio=anio||new Date().getFullYear();
+    const ncol=(rows[hi]||[]).findIndex(c=>typeof c==='string'&&/nombre/i.test(c));
+    const esFila=r=>{ const nm=String((r||[])[ncol]??'').trim(); return nm&&(r||[]).some((c,ix)=>ix>ncol&&typeof c==='string'&&RX_TURNO.test(c.trim())&&!/^turno$/i.test(c.trim())); };
+    let di=rows.findIndex((r,ix)=>ix>hi&&esFila(r)); if(di<0) di=rows.length;
+    const fechas=[]; rows.slice(0,di).forEach(r=>(r||[]).forEach((c,ix)=>{ if(ix<=ncol) return; const d=_fecha(c,anio); if(d) fechas.push(d); }));
+    const semanas=[...new Set(fechas.map(lunes))];
+    const filas=[], warns=[];
+    for(const r of rows.slice(hi+1)){
+      const nom=String((r||[])[ncol]??'').trim(); if(!nom) continue;
+      if(/^(turnos?|lunes a viernes|v$|vacaciones)/i.test(nom)) break;
+      const turnos=[]; (r||[]).forEach((c,ix)=>{ if(ix<=ncol||typeof c!=='string') return; const m=c.trim().match(RX_TURNO); if(m) turnos.push(m[1].toUpperCase()); });
+      if(!turnos.length) continue;
+      const cargo=(typeof r[ncol+1]==='string'&&!RX_TURNO.test(r[ncol+1].trim()))?r[ncol+1].trim():'';
+      if(turnos.length!==semanas.length) warns.push(`${nom}: ${turnos.length} turnos para ${semanas.length} semanas`);
+      filas.push({nombre:nom,cargo,turnos});
+    }
+    if(filas.length){ res={hoja:nombre,anio,semanas,filas,warns}; break; }
+  }
+  if(!res){ toast('No encontré la tabla de horarios (busco una columna «Nombre» y turnos C0, C1, C2, C3…)','error'); return; }
+  H.prev=res; horPrevia();
+}
+function horPrevia(){
+  const p=H.prev, conocidos=new Set(H.col.map(c=>_n(c.nombre_corto))), nuevos=p.filas.filter(f=>!conocidos.has(_n(f.nombre))&&!H.col.some(c=>_n(c.nombre_registro)===_n(f.nombre)));
+  openModal('📤 Vista previa del horario',`
+    <div style="font-size:12px;margin-bottom:8px">Archivo <b>${esc(H.archivo||'')}</b> · hoja «${esc(p.hoja)}» · <b>${p.filas.length}</b> colaboradores · <b>${p.semanas.length}</b> semanas.
+      <label style="margin-left:8px">Año <input type="number" id="hz-anio" value="${p.anio}" style="width:80px" onchange="horParsear(Number(this.value))"></label></div>
+    ${p.warns.length?`<div class="hz-warn">⚠️ ${p.warns.map(esc).join('<br>')}<br>Esas filas se cargan solo con los turnos que se encontraron, en orden.</div>`:''}
+    ${nuevos.length?`<div class="hz-warn">🆕 Personas que no estaban en la lista (se crearán): ${nuevos.map(f=>esc(f.nombre)).join(', ')}</div>`:''}
+    <div class="tbl-wrap" style="max-height:48vh;overflow:auto"><table class="data-tbl hz-prev" style="min-width:0"><thead><tr><th>Colaborador</th>${p.semanas.map(s=>`<th>${esc(fmtDate(s))}</th>`).join('')}</tr></thead><tbody>${p.filas.map(f=>`<tr><td><b>${esc(f.nombre)}</b> <span style="color:var(--muted)">${esc(f.cargo)}</span></td>${p.semanas.map((s,i)=>`<td>${f.turnos[i]?chip(f.turnos[i]):'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">Si una semana ya estaba cargada para esa persona, se reemplaza.</p>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="horGuardar()">💾 Guardar horario</button>`);
+}
+const _n=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+async function horGuardar(){
+  const p=H.prev; if(!p) return; const filas=[];
+  p.filas.forEach(f=>f.turnos.forEach((t,i)=>{ if(p.semanas[i]) filas.push({semana:p.semanas[i],nombre:f.nombre,cargo:f.cargo,turno:t}); }));
+  if(!filas.length){ toast('No hay turnos para guardar','warn'); return; }
+  showBusy();
+  try{ const r=await sb.rpc('plan_horario_cargar',{p_filas:filas}); closeModal(); await cargar(true); H.sem=p.semanas[0]; toast(`✅ Horario guardado: ${r.filas} turnos${(r.nuevos&&r.nuevos.length)?' · '+r.nuevos.length+' persona(s) nueva(s)':''}`); H.prev=null; if(MOD==='horario') horario(); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
+  finally{ hideBusy(); }
+}
+function horPlantilla(){
+  if(typeof XLSX==='undefined'){ toast('No cargó la librería de Excel','error'); return; }
+  const l=lunes(hoy()), sem=[0,1,2,3].map(i=>addD(l,i*7));
+  const fmt=s=>{ const d=new Date(s+'T00:00:00'); return d.getDate()+'-'+['ene','feb','mar','abr','may','jun','jul','ago','sept','oct','nov','dic'][d.getMonth()]; };
+  const cab=['No.','Nombre Colaborador','Cuadrante operativo']; sem.forEach(s=>{ cab.push(fmt(s),fmt(addD(s,5))); });
+  const act=H.col.filter(c=>c.activo!==false);
+  const aoa=[['HORARIOS '+String(['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][new Date(l+'T00:00:00').getMonth()])+'-'+String(new Date(l+'T00:00:00').getFullYear()).slice(2)],cab];
+  act.forEach((c,i)=>{ const r=[i+1,c.nombre_corto,c.cargo||'']; sem.forEach(()=>{ r.push('Turno','C0'); }); aoa.push(r); });
+  aoa.push([],['','V = VACACIONES · Turnos válidos: C0, C1, C2, C3, C1*, C2*, C3*, V']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa), wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Horario'); XLSX.writeFile(wb,'Plantilla_horario.xlsx');
+}
+
+/* ── Sugerencias al asignar operario a un paso de ruta ── */
+async function horSugerencias(ps){
+  if(!(window.chatOn&&chatOn('pla_horario'))) return;
+  try{ await cargar(false); }catch(e){ return; }
+  ps.forEach(s=>{ const el=document.getElementById('opr-sug'+s.i); if(!el) return; const b=s.b; if(!b||b==='externo'||!MAQ[b]){ el.innerHTML=''; return; }
+    const sg=sugeridos(b).slice(0,6);
+    el.innerHTML=sg.length?`<div style="width:100%;font-size:10.5px;color:var(--muted)">Sugeridos para ${esc(MAQ[b].l)} (hoy):</div>`+sg.map(x=>`<button type="button" class="sg ${x.s.k==='turno'?'on':'off'}" onclick="horPick(${s.i},'${esc(x.c.nombre_corto).replace(/'/g,"\\'")}')"><b>${esc(x.c.nombre_corto)}</b><small>${x.s.k==='turno'?(enTurnoAhora(x.c.nombre_registro)?'🟢 En turno · ':'Hoy ')+esc(x.s.txt):x.s.k==='vac'?'🏖 Vacaciones':x.s.k==='libre'?'Libre hoy':'Sin horario cargado'} · ⭐ ${hF(x.e.h)} h</small></button>`).join(''):`<span style="font-size:10.5px;color:var(--muted)">Nadie ha marcado ${esc(MAQ[b].l)} en los últimos 180 días.</span>`; });
+}
+function horPick(i,n){ const el=document.getElementById('opr-o'+i); if(el){ el.value=n; el.dispatchEvent(new Event('input')); } }
+function horNavSync(){ const on=!!(window.chatOn&&chatOn('pla_horario')); const n=document.getElementById('nav-horario'); if(n) n.style.display=on?'':'none'; }
+setInterval(horNavSync,1500); setTimeout(horNavSync,300);
+Object.assign(window,{horario,horSem,horColab,horSubir,horParsear,horPrevia,horGuardar,horPlantilla,horSugerencias,horPick});
 })();
 </script>
-<!-- /WEDM-INICIO -->
+<!-- /WEDM-HORARIO -->
+
 </body>
 </html>
