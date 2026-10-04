@@ -811,10 +811,11 @@ function _renderUserGrid(){
 }
 
 let _LOGIN_USER=null, _loginBusy=false;
-function _sesionIniciada(r){
+async function _sesionIniciada(r){
   _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token;
   try{ localStorage.setItem(SESS_KEY,JSON.stringify(_SESSION)); }catch(e){}
+  /*WEDM-MODGATE*/try{const _m=await sb.rpc('mis_modulos'); if(_m&&_m.restringido&&!(_m.modulos||[]).includes('calidad')){ endSession('Sin acceso a este módulo (definido por el administrador)'); return; }}catch(e){}
   document.getElementById('login-overlay')?.remove();
   iniciarApp();
 }
@@ -3024,7 +3025,7 @@ window.feHdr=hdr; window.feAbrir=feAbrir; window.feE=E;
 let S=null;
 const opsLista=()=>{ const m=new Map(); [...(DB.produccion||[]),...(DB.extra||[])].forEach(o=>{ if(o.op!=null&&!m.has(String(o.op))) m.set(String(o.op),o); }); return [...m.keys()].sort((a,b)=>b-a); };
 const itemsDeOp=op=>[...(DB.produccion||[]),...(DB.extra||[])].filter(o=>String(o.op)===String(op)&&!o.despachado&&o.estado!=='CANCELADO').sort((a,b)=>Number(a.item_num)-Number(b.item_num));
-function filaSol(d){ d=d||{}; return `<tr><td style="width:8%"><input class="s-c" style="text-align:center" value="${E(d.cantidad??'')}"></td><td style="width:30%"><input class="s-d" list="fe-dl-desc" value="${E(d.descripcion||'')}"></td><td style="width:22%"><input class="s-t" list="fe-dl-svc" style="text-align:center" value="${E(d.tipo_servicio||'')}"></td><td style="width:18%"><input class="s-m" style="text-align:center" value="${E(d.material||'')}"></td><td style="width:12%"><input class="s-u" style="text-align:center" value="${E(d.dureza||'')}"></td><td style="width:10%"><input class="s-p" inputmode="decimal" style="text-align:right;padding-right:18px" value="${E(d.precio??'')}"><button type="button" class="x" onclick="feSolQuitar(this)" title="Quitar fila">✕</button></td></tr>`; }
+function filaSol(d){ d=d||{}; return `<tr><td style="width:8%"><input class="s-c" style="text-align:center" value="${E(d.cantidad??'')}"></td><td style="width:27%"><input class="s-d" list="fe-dl-desc" value="${E(d.descripcion||'')}"></td><td style="width:22%"><input class="s-t" list="fe-dl-svc" style="text-align:center" value="${E(d.tipo_servicio||'')}"></td><td style="width:21%"><input class="s-m" list="fe-dl-mat" autocomplete="off" placeholder="Elegir material" style="text-align:center" value="${E(d.material||'')}"></td><td style="width:12%"><input class="s-u" style="text-align:center" value="${E(d.dureza||'')}"></td><td style="width:10%"><input class="s-p" inputmode="decimal" style="text-align:right;padding-right:18px" value="${E(d.precio??'')}"><button type="button" class="x" onclick="feSolQuitar(this)" title="Quitar fila">✕</button></td></tr>`; }
 window.feSolFila=function(d){ document.getElementById('fs-body').insertAdjacentHTML('beforeend',filaSol(d)); };
 window.feSolQuitar=function(b){ const tr=b.closest('tr'); if(document.querySelectorAll('#fs-body tr').length<=1){ tr.querySelectorAll('input').forEach(i=>i.value=''); return; } tr.remove(); };
 window.feSolOp=function(pref){
@@ -3034,8 +3035,41 @@ window.feSolOp=function(pref){
   document.getElementById('fe-dl-desc').innerHTML=its.map(o=>`<option value="ÍTEM ${o.item_num} - ${E(String(o.descripcion||'').slice(0,80))}">`).join('');
   feSolItem();
 };
-window.feSolItem=function(){ const id=document.getElementById('fs-item').value; const o=opDe(id); S.id=id; if(!o) return;
-  const first=document.querySelector('#fs-body tr'); if(first){ const c=first.querySelector('.s-c'), d=first.querySelector('.s-d'); if(!c.value&&!d.value){ c.value=o.unidades||''; d.value='ÍTEM '+(o.item_num??'')+' - '+String(o.descripcion||'').slice(0,80); } } };
+window.feSolItem=async function(){ const id=document.getElementById('fs-item').value; const o=opDe(id); S.id=id; if(!o) return;
+  const first=document.querySelector('#fs-body tr'); if(first){ const c=first.querySelector('.s-c'), d=first.querySelector('.s-d'); if(!c.value&&!d.value){ c.value=o.unidades||''; d.value='ÍTEM '+(o.item_num??'')+' - '+String(o.descripcion||'').slice(0,80); first.dataset.auto='1'; } }
+  // Material ya cotizado del ítem → se carga en la fila para que solo falte dureza, tipo de servicio, etc.
+  const info=document.getElementById('fs-matinfo'); if(info) info.style.display='none';
+  let mats=[]; try{ mats=await feMatsCotizados(id); }catch(e){}
+  if(S.id!==id||!mats.length) return;
+  const rows=[...document.querySelectorAll('#fs-body tr')];
+  const auto=rows.filter(r=>r.dataset.auto==='1'&&!r.querySelector('.s-m').value.trim());
+  if(auto.length){
+    const base={cantidad:auto[0].querySelector('.s-c').value,descripcion:auto[0].querySelector('.s-d').value};
+    auto[0].querySelector('.s-m').value=mats[0].nombre;
+    if(rows.length===1) mats.slice(1).forEach(m=>{ document.getElementById('fs-body').insertAdjacentHTML('beforeend',filaSol({cantidad:base.cantidad,descripcion:base.descripcion,material:m.nombre})); const tr=document.querySelector('#fs-body tr:last-child'); if(tr) tr.dataset.auto='1'; });
+  }
+  if(info){ info.style.display='block'; info.textContent='✅ Material cotizado cargado: '+mats.map(m=>m.nombre+(m.kg?' ('+m.kg+' kg)':'')).join(' · ')+'. Completa dureza y tipo de servicio.'; }
+};
+const _mcCache={};
+async function feMatsCotizados(idProd){
+  if(_mcCache[idProd]) return _mcCache[idProd];
+  const uniq=a=>{ const seen=new Set(); return a.filter(m=>{ const k=String(m.nombre||'').trim().toUpperCase(); if(!k||seen.has(k)) return false; seen.add(k); return true; }); };
+  let out=[];
+  try{ const pm=await GET('prod_materiales','select=material,cantidad_kg,costo_cotizado&id_prod=eq.'+encodeURIComponent(idProd)+'&tipo=eq.MATERIAL&order=created_at.asc'); out=uniq((pm||[]).map(m=>({nombre:String(m.material||'').trim(),kg:Number(m.cantidad_kg)||0}))); }catch(e){}
+  if(!out.length){
+    try{ const pr=await GET('produccion','select=id_item&id=eq.'+encodeURIComponent(idProd)); const iid=pr&&pr[0]&&pr[0].id_item;
+      if(iid){ const it=await GET('items','select=material,mats&id=eq.'+encodeURIComponent(iid)); const r=it&&it[0]; if(r){ let ms=r.mats; if(typeof ms==='string'){ try{ ms=JSON.parse(ms); }catch(e){ ms=[]; } }
+        out=uniq((Array.isArray(ms)?ms:[]).filter(m=>m&&m.nombre&&((Number(m.kg)||0)>0||(Number(m.costo)||0)>0)).map(m=>({nombre:String(m.nombre).trim(),kg:Number(m.kg)||0})));
+        if(!out.length&&r.material) out=[{nombre:String(r.material).trim(),kg:0}]; } } }catch(e){}
+  }
+  return (_mcCache[idProd]=out);
+}
+async function feCargarCatalogo(){
+  try{ if(!DB.matcat) DB.matcat=await GET('materiales','select=material,unidad,precio&activo=eq.true&order=material.asc'); }catch(e){ DB.matcat=[]; }
+  const dl=document.getElementById('fe-dl-mat'); if(!dl) return;
+  const money=v=>'$'+Math.round(Number(v)||0).toLocaleString('es-CO');
+  dl.innerHTML=(DB.matcat||[]).map(m=>`<option value="${E(m.material)}" label="${E(m.precio?money(m.precio)+'/'+(m.unidad||'kg'):'')}">`).join('');
+}
 function leeFilas(){ return [...document.querySelectorAll('#fs-body tr')].map(tr=>({cantidad:tr.querySelector('.s-c').value.trim(),descripcion:tr.querySelector('.s-d').value.trim(),tipo_servicio:tr.querySelector('.s-t').value.trim(),material:tr.querySelector('.s-m').value.trim(),dureza:tr.querySelector('.s-u').value.trim(),precio:tr.querySelector('.s-p').value.replace(/[^\d.,]/g,'').replace(',','.').trim()})).filter(l=>l.cantidad||l.descripcion||l.tipo_servicio||l.material||l.dureza||l.precio); }
 function leeCab(){ const g=id=>document.getElementById(id).value.trim(); return {proveedor:g('fs-prov'),dias:g('fs-dias'),observaciones:g('fs-obs'),fecha_envio:g('fs-env'),fecha_retorno:g('fs-ret'),solicitante:g('fs-colab'),area:g('fs-area')||'CALIDAD'}; }
 window.feSolImprimir=function(){ const o=opDe(S.id); if(!o){ toast('Elige una OP e ítem','error'); return; } docSolicitud({o,cab:leeCab(),lineas:leeFilas(),numero:S.numero||'—',fecha:hoyISO()}); };
@@ -3054,13 +3088,14 @@ window.modalSolicitud=function(id){
   const svcs=[...new Set((DB.servicios||[]).map(s=>s.servicio).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const provs=(typeof provsConocidos==='function')?provsConocidos():[];
   const html=`<div class="fe-sheet">
-   <datalist id="fe-dl-ops">${opsLista().map(x=>`<option value="${x}">`).join('')}</datalist><datalist id="fe-dl-svc">${svcs.map(s=>`<option value="${E(s)}">`).join('')}</datalist><datalist id="fe-dl-desc"></datalist><datalist id="fe-dl-prov">${provs.map(p=>`<option value="${E(p)}">`).join('')}</datalist>
+   <datalist id="fe-dl-ops">${opsLista().map(x=>`<option value="${x}">`).join('')}</datalist><datalist id="fe-dl-svc">${svcs.map(s=>`<option value="${E(s)}">`).join('')}</datalist><datalist id="fe-dl-desc"></datalist><datalist id="fe-dl-mat"></datalist><datalist id="fe-dl-prov">${provs.map(p=>`<option value="${E(p)}">`).join('')}</datalist>
    ${hdr('Formato de solicitud<br>de bienes y servicios externos',`<span>OP</span><div><input id="fs-op" list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(o?o.op:'')}" onchange="feSolOp()" oninput="if(this.value.length>=5)feSolOp()"></div>`,'<div><span>Fecha de elaboración</span>12/08/2019</div><div><span>Fecha de actualización</span>09/11/2022</div>')}
    <div class="fe-bar1"><span>Información general</span><span>COMPRAS - FO - 002 &nbsp; N° <b>Nueva</b></span></div>
    <table class="fe-info"><thead><tr><th>Nombre del colaborador</th><th>Área de trabajo</th><th style="width:60px">Mes</th><th style="width:60px">Día</th><th style="width:70px">Año</th><th>Cotización</th><th>Ítem</th></tr></thead>
     <tbody><tr><td><input id="fs-colab" style="text-align:center" value="${E(_SESSION&&_SESSION.nombre||'')}"></td><td><input id="fs-area" style="text-align:center" value="CALIDAD"></td><td>${hoy.getMonth()+1}</td><td>${hoy.getDate()}</td><td>${hoy.getFullYear()}</td><td><input id="fs-cot" style="text-align:center" value="${E(o?o.cot_num||'':'')}"></td><td><select id="fs-item" style="text-align:center" onchange="feSolItem()"></select></td></tr></tbody></table>
    <div class="fe-bar2" style="margin-top:0">Registro de bien o servicio solicitado <span id="fs-cli" style="font-weight:400;opacity:.8;margin-left:8px"></span></div>
    <table class="fe-rows"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Tipo de servicio</th><th>Material</th><th>Dureza</th><th>Precio</th></tr></thead><tbody id="fs-body">${filaSol()}</tbody></table>
+   <div id="fs-matinfo" style="display:none;margin:6px 8px 0;padding:6px 10px;border-radius:8px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600"></div>
    <button type="button" class="fe-add" onclick="feSolFila()">+ Agregar fila</button>
    <div class="fe-obs"><b>Observaciones:</b><textarea id="fs-obs" rows="2"></textarea></div>
    <div class="fe-ap-t">Aprobación y verificación final</div>
@@ -3069,6 +3104,7 @@ window.modalSolicitud=function(id){
     <div style="grid-column:1/-1;font-size:11px;color:#475569"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:12px;font-weight:600"><input type="checkbox" id="fs-ext" style="width:18px;height:18px" ${o&&enExterno(o)?'disabled':''}> Marcar también el ítem como <b>en servicio externo</b> (sale de las colas de calidad)</label><div style="margin-top:4px">Estos datos no se imprimen: sirven para que Compras contrate el servicio y para el seguimiento del regreso.</div></div></div>
   </div>`;
   feAbrir('📋 Nueva solicitud de bienes y servicios externos',html,`<button class="pr" onclick="feSolImprimir()">🖨️ Vista de impresión</button><button class="sv" onclick="feSolGuardar()">💾 Crear solicitud</button>`);
+  feCargarCatalogo();
   if(o){ feSolOp(o.id); } else { document.getElementById('fs-item').innerHTML='<option value="">— elige OP —</option>'; document.getElementById('fs-op').focus(); }
 };
 
