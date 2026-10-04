@@ -5321,6 +5321,9 @@ async function impFullPick(files){
       if(srcI&&(iId<0||iImg<0)){ img={error:'La hoja EXPORT_IMAGENES_OP no tiene las columnas idqr / imagen_drive_id'}; }
       else{
         const prods=await GETALL('produccion','select=id,op,item_num,id_item,imagen_drive_id&order=id.asc');
+        // Ítems que de verdad existen (o se están creando): un plano solo se liga a un ítem que exista, si no violaría la llave foránea
+        let itemsDb=new Set(); try{ (await GETALL('items','select=id&order=id.asc')).forEach(x=>itemsDb.add(String(x.id))); }catch(e){} itemOk.forEach(x=>itemsDb.add(String(x)));
+        const okIt=v=>(v!=null&&v!==''&&itemsDb.has(String(v)))?v:null;
         const pMap=new Map(prods.map(p=>[String(p.id),p]));
         const porOpItemImg=new Map(); prods.forEach(p=>{ if(p.op==null) return; const k=p.op+'|'+(p.item_num??''); if(!porOpItemImg.has(k)) porOpItemImg.set(k,[]); porOpItemImg.get(k).push(p); });
         const pn=plan.find(p=>p.table==='produccion'); if(pn) pn.nuevos.forEach(r=>{ if(!pMap.has(r.id)) pMap.set(r.id,{id:r.id,id_item:r.id_item||null,imagen_drive_id:null}); });
@@ -5345,12 +5348,12 @@ async function impFullPick(files){
         cand.forEach(({id,dp})=>{                      // planos de la OP (quedan también en su ítem)
           const p=pMap.get(id); if(!p) return;
           if(yaPlano.has('p:'+id+'|'+dp)||(p.id_item&&yaPlano.has('i:'+p.id_item+'|'+dp))) return;
-          planoNuevo.push(mkPlano(id,p.id_item||null,dp,nombres.get(dp)||'Plano.pdf'));
+          planoNuevo.push(mkPlano(id,okIt(p.id_item),dp,nombres.get(dp)||'Plano.pdf'));
           yaPlano.add('p:'+id+'|'+dp); if(p.id_item) yaPlano.add('i:'+p.id_item+'|'+dp);
         });
         let planosItem=0;
         planoItem.forEach((dp,itemId)=>{               // planos que solo existen en el ítem (hoja ELEMENTOS)
-          if(!itemOk.has(itemId)||yaPlano.has('i:'+itemId+'|'+dp)) return;
+          if(!itemsDb.has(String(itemId))||yaPlano.has('i:'+itemId+'|'+dp)) return;
           planoNuevo.push(mkPlano(null,itemId,dp,nombres.get(dp)||'Plano.pdf')); yaPlano.add('i:'+itemId+'|'+dp); planosItem++;
         });
         img={imgSet,planoNuevo,sinOp,igualesImg,enProd:imgIds.size,planosProd:planoProd.size,planosItem};
