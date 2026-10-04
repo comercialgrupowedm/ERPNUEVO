@@ -1,0 +1,32 @@
+{
+ "name": "ERP Diseño · Grupo WEDM",
+ "short_name": "Diseño",
+ "id": "diseno",
+ "start_url": "../DISENO.html",
+ "scope": "../",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#7e22ce",
+ "theme_color": "#7e22ce",
+ "lang": "es",
+ "icons": [
+  {
+   "src": "diseno-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "diseno-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "diseno-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

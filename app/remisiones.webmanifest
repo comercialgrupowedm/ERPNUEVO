@@ -1,0 +1,32 @@
+{
+ "name": "ERP Remisiones · Grupo WEDM",
+ "short_name": "Remisiones",
+ "id": "remisiones",
+ "start_url": "../REMISIONES.html",
+ "scope": "../",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#c2410c",
+ "theme_color": "#c2410c",
+ "lang": "es",
+ "icons": [
+  {
+   "src": "remisiones-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "remisiones-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "remisiones-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
