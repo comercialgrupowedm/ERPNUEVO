@@ -3766,6 +3766,7 @@ function asiPintar(){
       return `<div style="border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card)"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${esc(p.nombre||p.colaborador)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.cargo||'')}</div></div><span style="color:${e[1]};font-weight:800;font-size:12px;white-space:nowrap">${e[0]}</span></div>
        <div style="margin-top:6px;font-size:13.5px"><b>${esc(p.tipo)}</b>${_pgPill(p.tipo)} · ${d1===d2?asiDia(d1+'T12:00:00'):asiDia(d1+'T12:00:00')+' → '+asiDia(d2+'T12:00:00')}${p.hora_ini?' · '+esc(p.hora_ini)+(p.hora_fin?' – '+esc(p.hora_fin):''):''}</div>
        ${p.motivo?`<div style="margin-top:4px;font-size:13px;color:var(--muted)">${esc(p.motivo)}</div>`:''}
+       ${asiDocsHtml(p)}
        ${p.respuesta?`<div style="margin-top:4px;font-size:12.5px">💬 ${esc(p.respuesta)} <span style="color:var(--muted)">— ${esc(p.resuelto_por||'')}</span></div>`:''}
        ${p.estado==='pendiente'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="asiRes(${p.id},'aprobado')">✅ Aprobar</button><button class="btn btn-ghost btn-sm" onclick="asiRes(${p.id},'rechazado')">❌ Rechazar</button></div>`:''}</div>`; }).join('')
       :'<div style="padding:20px;text-align:center;color:var(--muted)">No hay solicitudes en este filtro.</div>';
@@ -3779,7 +3780,17 @@ function asiPintar(){
   }
   openModal('🕒 Asistencia y permisos',nav+h,'<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>');
 }
-async function asiRes(id,est){ const r=prompt(est==='aprobado'?'Comentario para el empleado (opcional):':'Motivo del rechazo (opcional):',''); if(r===null) return;
+function asiDocsHtml(p){
+  const L=p.docs||[], req=p.docs_req||[], have=new Set(L.map(d=>d.slot)), falta=req.filter(r=>!have.has(r));
+  if(!L.length&&!req.length) return '';
+  return `<div style="margin-top:6px;border-top:1px dashed var(--border);padding-top:6px">${falta.length?`<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:6px 9px;font-size:12.5px;margin-bottom:6px">⚠️ <b>Faltan documentos obligatorios:</b> ${falta.map(esc).join(' · ')}</div>`:(req.length?`<div style="font-size:12px;color:#166534;margin-bottom:4px">✅ Documentos completos</div>`:'')}
+   ${L.map(d=>`<button class="btn btn-ghost btn-sm" style="margin:2px 4px 2px 0" onclick="asiVerDoc(${d.id})">${/pdf/.test(d.mime||'')?'📄':'🖼'} ${esc(d.slot)}</button>`).join('')}</div>`; }
+async function asiVerDoc(id){
+  try{ const d=await sb.rpc('plan_permiso_doc_get',{p_id:id}); if(!d) return toast('Documento no encontrado','error'); const uri='data:'+d.mime+';base64,'+d.data;
+    document.getElementById('asi-doc')?.remove(); const o=document.createElement('div'); o.id='asi-doc'; o.style.cssText='position:fixed;inset:0;z-index:2147483200;background:rgba(8,9,16,.92);display:flex;flex-direction:column';
+    o.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:10px 14px;color:#fff"><div style="flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.slot)} · ${esc(d.nombre||'')}</div><a class="btn btn-ghost btn-sm" style="color:#fff;border-color:#fff6" href="${uri}" download="${esc(d.nombre||'documento')}">⬇ Descargar</a><button class="btn btn-primary btn-sm" onclick="document.getElementById('asi-doc').remove()">✕ Cerrar</button></div><div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 10px 14px;overflow:auto">${/pdf/.test(d.mime)?`<iframe src="${uri}" style="width:100%;height:100%;border:0;background:#fff;border-radius:8px"></iframe>`:`<img src="${uri}" style="max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:8px">`}</div>`;
+    document.body.appendChild(o); }catch(e){ toast(e.message,true); } }
+async function asiRes(id,est){ if(est==='aprobado'){ const pp=(ASI.per||[]).find(x=>x.id===id); const fl=pp?(pp.docs_req||[]).filter(r=>!(pp.docs||[]).some(d=>d.slot===r)):[]; if(fl.length&&!confirm('Faltan documentos obligatorios ('+fl.join(', ')+').\n¿Aprobar de todos modos?')) return; } const r=prompt(est==='aprobado'?'Comentario para el empleado (opcional):':'Motivo del rechazo (opcional):',''); if(r===null) return;
   try{ await sb.rpc('plan_permiso_resolver',{p_id:id,p_estado:est,p_respuesta:r.trim()||null}); toast(est==='aprobado'?'✅ Aprobado':'Rechazado'); asistencia('per'); }catch(e){ toast(e.message,true); } }
 function asiManual(i){ const x=ASI.hoy[i];
   openModal('Corregir marcación · '+x.nombre,`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Agrega una marcación que faltó. Queda registrada como manual con tu usuario.</div>
