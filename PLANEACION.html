@@ -3586,7 +3586,7 @@ async function horario(){
   const delDia=act.map(c=>({c,s:estadoDia(c.nombre_registro,f)}));
   const nTurno=delDia.filter(x=>x.s.k==='turno').length, nVac=delDia.filter(x=>x.s.k==='vac').length, nAhora=act.filter(c=>enTurnoAhora(c.nombre_registro)).length;
   const puedeCargar=puede('planeacion','administracion');
-  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
+  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}${(puedeCargar&&(chatOn('pla_permisos')||chatOn('pla_fichaje')))?`<button class="btn btn-ghost btn-sm" onclick="asistencia()">🕒 Asistencia y permisos<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
   const banner=moduleBanner('📅','Horario y disponibilidad 🆕',`${act.length} colaboradores activos · ${sems.length} semana(s) cargada(s)`,acciones);
   const wk=sems.length?`<div class="hz-wk"><button class="btn btn-ghost btn-sm" onclick="horSem(-1)">◀</button><select onchange="H_.sem=this.value;horario()">${sems.map(s=>`<option value="${s}" ${s===H.sem?'selected':''}>Semana del ${esc(fmtDate(s))} al ${esc(fmtDate(addD(s,5)))}${s===lunes(f)?' · esta semana':''}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="horSem(1)">▶</button></div>`
     :`<div class="callout" style="margin:12px 0">Aún no hay horario cargado. Sube el Excel del mes con el botón <b>📤 Subir horario</b>.</div>`;
@@ -3718,7 +3718,7 @@ function accPintar(msg){
   openModal('🔑 Accesos de planta',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada empleado entra a PLANTA con su <b>usuario</b> y su <b>código</b> (4 a 8 números) y ve su horario. Con ${act} de ${ACC.length} activos.<br>El código solo se muestra al crearlo o cambiarlo: anótalo y entrégaselo.</div>
    ${msg?`<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14px">${msg}</div>`:''}
    <div style="display:flex;flex-direction:column;gap:8px">${ACC.map((a,i)=>`<div style="border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--card)">
-     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--muted)">${esc(a.cargo||'')}</div></div>
+     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="display:flex;gap:10px;align-items:center;min-width:0">${a.foto?`<img src="${esc(a.foto)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:`<span style="width:38px;height:38px;border-radius:50%;background:var(--navy,#0f2a4a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">${esc((a.nombre||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase())}</span>`}<div style="min-width:0"><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--muted)">${esc(a.cargo||'')}</div></div></div>
        <div style="font-size:12px;text-align:right;white-space:nowrap">${a.bloqueado?'🔒 Bloqueado':a.activo&&a.tiene_pin?'✅ Activo':'⚪ Sin código'}${a.ultimo?`<div style="color:var(--muted);font-size:11px">Último: ${esc(new Date(a.ultimo).toLocaleDateString('es-CO'))}</div>`:''}</div></div>
      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--muted)">Usuario</span><input type="text" value="${esc(a.usuario)}" style="width:120px;padding:6px 8px" onchange="accUsuario(${i},this.value)">
        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="accCodigo(${i})">${a.tiene_pin?'Cambiar código':'Dar código'}</button>${a.activo&&a.tiene_pin?`<button class="btn btn-ghost btn-sm" onclick="accOff(${i})">Desactivar</button>`:''}</div></div>`).join('')}</div>`,
@@ -3730,6 +3730,61 @@ async function accCodigo(i){ const a=ACC[i]; const v=prompt('Código para '+a.no
   try{ const r=await sb.rpc('plan_acceso_reset',{p_colab:a.colaborador,p_pin:v.trim()||null}); a.activo=true; a.tiene_pin=true; a.bloqueado=false;
     accPintar(`Usuario <b>${esc(a.usuario)}</b> · código <b style="font-size:18px;letter-spacing:2px">${esc(r.pin)}</b> — ${esc(a.nombre)}`); }
   catch(e){ toast(e.message,true); } }
+
+// ── 🆕 NUEVO · Asistencia y permisos (Sesame WEDM) ──
+let ASI={tab:'per',hoy:null,per:null,his:null,fil:'pendiente',d1:null,d2:null};
+const _asiF=n=>chatOn&&chatOn(n);
+const asiHora=t=>t?new Date(t).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour:'2-digit',minute:'2-digit',hour12:true}):'—';
+const asiDia=t=>new Date(t).toLocaleDateString('es-CO',{timeZone:'America/Bogota',day:'2-digit',month:'2-digit'});
+const asiMin=m=>{ m=Math.round(m||0); return Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' m'; };
+function asiIso(d){ const x=new Date(Date.now()+(d||0)*864e5), p=n=>String(n).padStart(2,'0'); return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate()); }
+async function asistencia(tab){
+  ASI.tab=tab||(_asiF('pla_permisos')?'per':'hoy'); ASI.d1=ASI.d1||asiIso(-6); ASI.d2=ASI.d2||asiIso(0);
+  openModal('🕒 Asistencia y permisos','<div style="padding:20px;text-align:center;color:var(--muted)">Cargando…</div>','');
+  try{
+    if(ASI.tab==='per') ASI.per=await sb.rpc('plan_permisos_listar',{p_estado:ASI.fil==='todos'?null:ASI.fil})||[];
+    else if(ASI.tab==='hoy') ASI.hoy=await sb.rpc('plan_asistencia_hoy')||[];
+    else ASI.his=await sb.rpc('plan_asistencia_rango',{p_desde:ASI.d1,p_hasta:ASI.d2})||[];
+    asiPintar();
+  }catch(e){ toast(e.message,true); closeModal(); }
+}
+function asiPintar(){
+  const tabs=[['per','📝 Solicitudes',_asiF('pla_permisos')],['hoy','🟢 Hoy',_asiF('pla_fichaje')],['his','📊 Historial',_asiF('pla_fichaje')]].filter(t=>t[2]);
+  const nav=`<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${tabs.map(t=>`<button class="btn ${ASI.tab===t[0]?'btn-primary':'btn-ghost'} btn-sm" onclick="asistencia('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+  let h='';
+  if(ASI.tab==='per'){
+    const fl=['pendiente','aprobado','rechazado','todos'];
+    h=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${fl.map(f=>`<button class="btn ${ASI.fil===f?'btn-primary':'btn-ghost'} btn-sm" onclick="ASI.fil='${f}';asistencia('per')">${f[0].toUpperCase()+f.slice(1)}</button>`).join('')}</div>`;
+    const E={pendiente:['⏳ Pendiente','#d97706'],aprobado:['✅ Aprobado','#16a34a'],rechazado:['❌ Rechazado','#dc2626'],cancelado:['Cancelado','#64748b']};
+    h+=ASI.per.length?ASI.per.map(p=>{ const e=E[p.estado]||E.pendiente, d1=String(p.desde).slice(0,10), d2=String(p.hasta).slice(0,10);
+      return `<div style="border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card)"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${esc(p.nombre||p.colaborador)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.cargo||'')}</div></div><span style="color:${e[1]};font-weight:800;font-size:12px;white-space:nowrap">${e[0]}</span></div>
+       <div style="margin-top:6px;font-size:13.5px"><b>${esc(p.tipo)}</b> · ${d1===d2?asiDia(d1+'T12:00:00'):asiDia(d1+'T12:00:00')+' → '+asiDia(d2+'T12:00:00')}${p.hora_ini?' · '+esc(p.hora_ini)+(p.hora_fin?' – '+esc(p.hora_fin):''):''}</div>
+       ${p.motivo?`<div style="margin-top:4px;font-size:13px;color:var(--muted)">${esc(p.motivo)}</div>`:''}
+       ${p.respuesta?`<div style="margin-top:4px;font-size:12.5px">💬 ${esc(p.respuesta)} <span style="color:var(--muted)">— ${esc(p.resuelto_por||'')}</span></div>`:''}
+       ${p.estado==='pendiente'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="asiRes(${p.id},'aprobado')">✅ Aprobar</button><button class="btn btn-ghost btn-sm" onclick="asiRes(${p.id},'rechazado')">❌ Rechazar</button></div>`:''}</div>`; }).join('')
+      :'<div style="padding:20px;text-align:center;color:var(--muted)">No hay solicitudes en este filtro.</div>';
+  } else if(ASI.tab==='hoy'){
+    const L=ASI.hoy, n=k=>L.filter(x=>x.estado===k).length;
+    h=`<div style="display:flex;gap:8px;margin-bottom:10px;font-size:12.5px;flex-wrap:wrap"><span class="badge verde">🟢 Dentro ${n('dentro')}</span><span class="badge azul">☕ Pausa ${n('pausa')}</span><span class="badge gris">Fuera / sin marcar ${n('fuera')}</span></div>`+
+     L.map((x,i)=>`<div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:8px 0"><span style="font-size:18px">${x.estado==='dentro'?'🟢':x.estado==='pausa'?'☕':x.entrada&&x.salida?'✅':'⚪'}</span><div style="flex:1;min-width:0"><b>${esc(x.nombre)}</b><div style="font-size:11.5px;color:var(--muted)">${x.turno?'Turno '+esc(x.turno)+' · ':''}${x.entrada?'Entrada '+asiHora(x.entrada):'Sin entrada'}${x.salida?' · Salida '+asiHora(x.salida):''}${x.trab_min?' · '+asiMin(x.trab_min):''}</div></div><button class="btn btn-ghost btn-sm" onclick="asiManual(${i})">Corregir</button></div>`).join('');
+  } else {
+    h=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap"><input type="date" value="${ASI.d1}" onchange="ASI.d1=this.value"><input type="date" value="${ASI.d2}" onchange="ASI.d2=this.value"><button class="btn btn-primary btn-sm" onclick="asistencia('his')">Ver</button><button class="btn btn-ghost btn-sm" onclick="asiCsv()">⬇ CSV</button></div>`+
+     (ASI.his.length?`<div class="tbl-wrap"><table class="data-tbl" style="min-width:420px"><thead><tr><th>Día</th><th>Colaborador</th><th>Entrada</th><th>Salida</th><th>Pausa</th><th>Trabajado</th></tr></thead><tbody>${ASI.his.map(x=>`<tr><td>${asiDia(x.ini)}</td><td>${esc(x.nombre||x.colaborador)}</td><td>${asiHora(x.ini)}</td><td>${x.fin?asiHora(x.fin):(x.abierta?'en curso':'sin salida')}</td><td>${x.pausa_min?asiMin(x.pausa_min):'—'}</td><td><b>${x.fin||x.abierta?asiMin(x.trab_min):'—'}</b></td></tr>`).join('')}</tbody></table></div>`:'<div style="padding:20px;text-align:center;color:var(--muted)">Sin marcaciones en ese rango.</div>');
+  }
+  openModal('🕒 Asistencia y permisos',nav+h,'<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>');
+}
+async function asiRes(id,est){ const r=prompt(est==='aprobado'?'Comentario para el empleado (opcional):':'Motivo del rechazo (opcional):',''); if(r===null) return;
+  try{ await sb.rpc('plan_permiso_resolver',{p_id:id,p_estado:est,p_respuesta:r.trim()||null}); toast(est==='aprobado'?'✅ Aprobado':'Rechazado'); asistencia('per'); }catch(e){ toast(e.message,true); } }
+function asiManual(i){ const x=ASI.hoy[i];
+  openModal('Corregir marcación · '+x.nombre,`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Agrega una marcación que faltó. Queda registrada como manual con tu usuario.</div>
+   <label style="font-size:11px;font-weight:800">Tipo</label><select id="am-t"><option value="entrada">Entrada</option><option value="pausa_ini">Inicio de pausa</option><option value="pausa_fin">Fin de pausa</option><option value="salida">Salida</option></select>
+   <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><label style="font-size:11px;font-weight:800">Fecha</label><input type="date" id="am-d" value="${asiIso(0)}"></div><div style="flex:1"><label style="font-size:11px;font-weight:800">Hora</label><input type="time" id="am-h"></div></div>
+   <label style="font-size:11px;font-weight:800;margin-top:8px;display:block">Nota</label><input type="text" id="am-n" placeholder="Ej: olvidó marcar salida">`,
+   `<button class="btn btn-ghost" onclick="asistencia('hoy')">Volver</button><button class="btn btn-primary" onclick="asiGuardar(${i})">Guardar</button>`); }
+async function asiGuardar(i){ const x=ASI.hoy[i], d=document.getElementById('am-d').value, h=document.getElementById('am-h').value; if(!d||!h){ toast('Escribe fecha y hora',true); return; }
+  try{ await sb.rpc('plan_fichaje_manual',{p_colab:x.colaborador,p_tipo:document.getElementById('am-t').value,p_ts:new Date(d+'T'+h+':00-05:00').toISOString(),p_nota:document.getElementById('am-n').value.trim()||null}); toast('Marcación guardada'); asistencia('hoy'); }catch(e){ toast(e.message,true); } }
+function asiCsv(){ const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"'; const rows=[['Fecha','Colaborador','Entrada','Salida','Pausa (min)','Trabajado (min)']].concat(ASI.his.map(x=>[asiDia(x.ini),x.nombre||x.colaborador,asiHora(x.ini),x.fin?asiHora(x.fin):'',x.pausa_min,x.fin?x.trab_min:'']));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\n')],{type:'text/csv'})); a.download='asistencia_'+ASI.d1+'_'+ASI.d2+'.csv'; a.click(); }
 </script>
 <!-- /WEDM-HORARIO -->
 
