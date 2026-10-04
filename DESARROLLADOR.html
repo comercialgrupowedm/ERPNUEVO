@@ -6471,8 +6471,9 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 #tb-slot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;padding:4px 8px;background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0);min-height:36px}
 #tb-slot.vacio{display:none}
 #tb-slot>*,#tb-act>*{flex-shrink:0}
-#tb-act{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%}#tb-slot{max-width:100vw;overflow-x:hidden}#tb-act>*{max-width:100%}
+#tb-act{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%}#tb-slot{max-width:100vw;overflow-x:hidden}#tb-act>*{max-width:100%}#tb-slot{overflow:visible!important}#tb-ctl{max-width:100%;flex-wrap:wrap}#tb-ctl .chips{flex-wrap:wrap!important}
 #tb-act button,#tb-act .btn,#tb-act .pill,#tb-act>div,#tb-fb{font-size:11px!important;padding:3px 10px!important;height:28px!important;min-height:0!important;border-radius:8px!important;white-space:nowrap;line-height:1.2}
+#tb-act>div{height:auto!important;padding:0!important;flex-wrap:wrap!important;gap:5px 6px!important;white-space:normal!important}
 #tb-fb{display:none;align-items:center;gap:5px;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:inherit;font-weight:700}
 #tb-clr{display:none;align-items:center;cursor:pointer;border:1.5px solid #fca5a5;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:11px;height:28px;padding:3px 10px;border-radius:8px;white-space:nowrap}
 #tb-clr:hover{background:#fee2e2}
@@ -8179,17 +8180,18 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
 
 <!-- WEDM-COLAB (gestor de colaboradores: crear · editar · activar · eliminar) -->
 <script>
-let _CB={items:[],q:'',ver:'activos'};
+let _CLB={items:[],q:'',ver:'activos'};
 const _cbE=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const _cbArr=r=>Array.isArray(r)?r:[];
 function _cbMsg(e){ try{ return (typeof errMsg==='function')?errMsg(e):(e&&e.message)||String(e); }catch(x){ return 'Error'; } }
 async function colabAbrir(){
-  try{ if(typeof showBusy==='function') showBusy(); _CB.items=await sb.rpc('plan_colab_listar')||[]; if(typeof hideBusy==='function') hideBusy(); }
+  try{ if(typeof showBusy==='function') showBusy(); _CLB.items=_cbArr(await sb.rpc('plan_colab_listar')); if(typeof hideBusy==='function') hideBusy(); }
   catch(e){ if(typeof hideBusy==='function') hideBusy(); return toast('❌ '+_cbMsg(e),'error'); }
   _cbPintar();
 }
 function _cbLista(){
-  const q=_CB.q.trim().toLowerCase();
-  return _CB.items.filter(c=>(_CB.ver==='todos'||(_CB.ver==='activos')===!!c.activo)&&(!q||((c.nombre||'')+' '+(c.registro||'')+' '+(c.cargo||'')).toLowerCase().includes(q)));
+  const q=_CLB.q.trim().toLowerCase();
+  return _CLB.items.filter(c=>(_CLB.ver==='todos'||(_CLB.ver==='activos')===!!c.activo)&&(!q||((c.nombre||'')+' '+(c.registro||'')+' '+(c.cargo||'')).toLowerCase().includes(q)));
 }
 function _cbFila(c){
   const ini=(c.nombre||'?').trim().charAt(0).toUpperCase();
@@ -8199,16 +8201,16 @@ function _cbFila(c){
    <div style="text-align:right;font-size:10.5px">${c.activo?'<span style="color:#15803d;font-weight:700">Activo</span>':'<span style="color:#b91c1c;font-weight:700">Inactivo</span>'}<div style="color:var(--muted,#64748b)">${c.acceso?'🔑 con acceso':'sin acceso'}</div></div></div>`;
 }
 function _cbPintar(){
-  const l=_cbLista(), na=_CB.items.filter(c=>c.activo).length;
-  const chip=(k,t)=>`<button class="btn ${_CB.ver===k?'btn-primary':'btn-ghost'} btn-sm" onclick="_CB.ver='${k}';_cbPintar()">${t}</button>`;
-  openModal('👥 Colaboradores',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${chip('activos','Activos ('+na+')')}${chip('inactivos','Inactivos ('+(_CB.items.length-na)+')')}${chip('todos','Todos')}</div>
-   <input id="cb-q" placeholder="🔍 Buscar por nombre o cargo…" value="${_cbE(_CB.q)}" oninput="_CB.q=this.value;_cbRef()" style="width:100%;margin-bottom:6px;text-transform:none">
+  const l=_cbLista(), na=_CLB.items.filter(c=>c.activo).length;
+  const chip=(k,t)=>`<button class="btn ${_CLB.ver===k?'btn-primary':'btn-ghost'} btn-sm" onclick="_CLB.ver='${k}';_cbPintar()">${t}</button>`;
+  openModal('👥 Colaboradores',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${chip('activos','Activos ('+na+')')}${chip('inactivos','Inactivos ('+(_CLB.items.length-na)+')')}${chip('todos','Todos')}</div>
+   <input id="cb-q" placeholder="🔍 Buscar por nombre o cargo…" value="${_cbE(_CLB.q)}" oninput="_CLB.q=this.value;_cbRef()" style="width:100%;margin-bottom:6px;text-transform:none">
    <div id="cb-l">${l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'}</div>`,
    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="colabForm(null)">➕ Nuevo colaborador</button>`);
 }
 function _cbRef(){ const e=document.getElementById('cb-l'); if(!e) return; const l=_cbLista(); e.innerHTML=l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'; }
 function colabForm(reg){
-  const c=reg?_CB.items.find(x=>x.registro===reg):null; if(reg&&!c) return;
+  const c=reg?_CLB.items.find(x=>x.registro===reg):null; if(reg&&!c) return;
   openModal(c?'✏️ Editar colaborador':'➕ Nuevo colaborador',`<div class="form-grid">
    <div class="field span2"><label>Nombre completo (como en nómina / horario)</label><input id="cb-reg" value="${_cbE(c?c.registro:'')}" ${c?'disabled':''} style="text-transform:none" placeholder="Ej: PÉREZ GÓMEZ JUAN CARLOS">${c?'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">El nombre de registro no se cambia (amarra horarios, marcaciones y permisos).</div>':'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">Debe escribirse igual que en el Excel del horario.</div>'}</div>
    <div class="field"><label>Nombre corto</label><input id="cb-nc" value="${_cbE(c?c.nombre:'')}" style="text-transform:none" placeholder="Juan Pérez"></div>
@@ -8223,13 +8225,13 @@ async function colabGuardar(reg){
   if(!r) return toast('Escribe el nombre completo','error'); if(!nc) return toast('Escribe el nombre corto','error');
   const o=g('cb-or');
   try{ showBusy(); await sb.rpc('plan_colab_guardar',{p_registro:reg||null,p_nombre_registro:r,p_nombre_corto:nc,p_cargo:(g('cb-cg')||'').trim(),p_activo:g('cb-ac')==='1',p_orden:o===''||o==null?null:Number(o)});
-    _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy(); toast(reg?'✅ Colaborador actualizado':'✅ Colaborador creado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
+    _CLB.items=_cbArr(await sb.rpc('plan_colab_listar')); hideBusy(); toast(reg?'✅ Colaborador actualizado':'✅ Colaborador creado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
   catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
 }
 async function colabBorrar(reg){
-  const c=_CB.items.find(x=>x.registro===reg); if(!c) return;
+  const c=_CLB.items.find(x=>x.registro===reg); if(!c) return;
   if(!confirm('¿Eliminar a «'+c.nombre+'»?'+((c.usos||0)>0?'\n\nTiene '+c.usos+' registros (horarios, marcaciones o permisos): no se borra, se DESACTIVA y pierde el acceso.':'\n\nNo tiene historial: se elimina por completo.'))) return;
-  try{ showBusy(); const r=await sb.rpc('plan_colab_borrar',{p_registro:reg}); _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy();
+  try{ showBusy(); const r=await sb.rpc('plan_colab_borrar',{p_registro:reg}); _CLB.items=_cbArr(await sb.rpc('plan_colab_listar')); hideBusy();
     toast(r&&r.desactivado?'Se desactivó (tiene historial)':'🗑 Eliminado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
   catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
 }
