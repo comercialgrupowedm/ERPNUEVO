@@ -707,13 +707,14 @@ const _misNombres = () => [_SESSION?.nombre,_SESSION?.asesor].filter(Boolean).ma
 const esMia = p => { const d=_normNom(p.disenador); return !!d && _misNombres().includes(d); };
 
 let USUARIOS = [];
+/*WEDM-GRANT*/function _wedmGrant(u,roles,key){ if(u.modulos!=null&&!u.modulos.includes(key)) return 'no'; const ex=u.roles_extra||[]; const own={comercial:['comercial'],diseno:['diseno'],compras:['compras'],remisiones:['administracion'],planeacion:['planeacion'],calidad:['calidad']}[key]||[]; if(ex.some(r=>r==='admin'||own.includes(r))) return 'si'; if(u.modulos!=null&&[u.rol,...ex].some(r=>roles.includes(r))) return 'si'; return ''; }
 let USUARIOS_DIS = [];
 const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
 const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
   const ORDEN_REM=['Adriana Wallis','Cristian Posada','admin'];
-  USUARIOS_DIS = USUARIOS.filter(u=>ORDEN_REM.includes(u.nombre)).sort((a,b)=>ORDEN_REM.indexOf(a.nombre)-ORDEN_REM.indexOf(b.nombre)).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  USUARIOS_DIS = USUARIOS.filter(u=>{const g=_wedmGrant(u,ROLES_REM,'remisiones'); return g==='no'?false:(g==='si'||ORDEN_REM.includes(u.nombre));}).sort((a,b)=>(ORDEN_REM.indexOf(a.nombre)+1||999)-(ORDEN_REM.indexOf(b.nombre)+1||999)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){
@@ -724,10 +725,11 @@ function _renderUserGrid(){
 }
 
 let _LOGIN_USER=null, _loginBusy=false;
-function _sesionIniciada(r){
+async function _sesionIniciada(r){
   _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token;
   try{ localStorage.setItem(SESS_KEY,JSON.stringify(_SESSION)); }catch(e){}
+  /*WEDM-MODGATE*/try{const _m=await sb.rpc('mis_modulos'); if(_m&&_m.restringido&&!(_m.modulos||[]).includes('remisiones')){ endSession('Sin acceso a este módulo (definido por el administrador)'); return; }}catch(e){}
   document.getElementById('login-overlay')?.remove();
   iniciarApp();
 }

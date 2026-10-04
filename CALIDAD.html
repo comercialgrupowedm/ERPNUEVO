@@ -793,6 +793,7 @@ const _misNombres = () => [_SESSION?.nombre,_SESSION?.asesor].filter(Boolean).ma
 const esMia = p => { const d=_normNom(p.disenador); return !!d && _misNombres().includes(d); };
 
 let USUARIOS = [];
+/*WEDM-GRANT*/function _wedmGrant(u,roles,key){ if(u.modulos!=null&&!u.modulos.includes(key)) return 'no'; const ex=u.roles_extra||[]; const own={comercial:['comercial'],diseno:['diseno'],compras:['compras'],remisiones:['administracion'],planeacion:['planeacion'],calidad:['calidad']}[key]||[]; if(ex.some(r=>r==='admin'||own.includes(r))) return 'si'; if(u.modulos!=null&&[u.rol,...ex].some(r=>roles.includes(r))) return 'si'; return ''; }
 let USUARIOS_DIS = [];
 const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
 const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
@@ -800,7 +801,7 @@ async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
   // En la cuadrícula de ingreso se muestran los usuarios con rol calidad, administración o admin (primero calidad).
   const ORDEN_ROL=['calidad','administracion','admin'];
-  USUARIOS_DIS = USUARIOS.filter(u=>ORDEN_ROL.includes(u.rol)).sort((a,b)=>ORDEN_ROL.indexOf(a.rol)-ORDEN_ROL.indexOf(b.rol)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  USUARIOS_DIS = USUARIOS.filter(u=>{const g=_wedmGrant(u,ROLES_CAL,'calidad'); return g==='no'?false:(g==='si'||ORDEN_ROL.includes(u.rol));}).sort((a,b)=>(ORDEN_ROL.indexOf(a.rol)+1||999)-(ORDEN_ROL.indexOf(b.rol)+1||999)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){

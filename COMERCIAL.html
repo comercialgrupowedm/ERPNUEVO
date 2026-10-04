@@ -2145,6 +2145,7 @@ async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
 }
 function asesoresLista(){ return [...new Set(USUARIOS.filter(u=>u.asesor).map(u=>u.asesor))]; }
+/*WEDM-GRANT*/function _wedmGrant(u,roles,key){ if(u.modulos!=null&&!u.modulos.includes(key)) return 'no'; const ex=u.roles_extra||[]; const own={comercial:['comercial'],diseno:['diseno'],compras:['compras'],remisiones:['administracion'],planeacion:['planeacion'],calidad:['calidad']}[key]||[]; if(ex.some(r=>r==='admin'||own.includes(r))) return 'si'; if(u.modulos!=null&&[u.rol,...ex].some(r=>roles.includes(r))) return 'si'; return ''; }
 const ROLES_COMERCIAL=['comercial','produccion','calidad','administracion','admin','desarrollador'];
 const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
 const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
@@ -2164,7 +2165,7 @@ function mostrarLogin(){
     <div class="login-card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);color:#e8f0fe">
       <div class="login-step active" id="login-step-user">
         <div style="font-size:14px;font-weight:700;margin-bottom:14px;text-align:center">¿Quién eres?</div>
-        <div class="user-grid" id="login-user-grid">${USUARIOS.filter(u=>NOMBRES_VISIBLES_COM.includes(u.nombre)).sort((a,b)=>NOMBRES_VISIBLES_COM.indexOf(a.nombre)-NOMBRES_VISIBLES_COM.indexOf(b.nombre)).map(u=>`
+        <div class="user-grid" id="login-user-grid">${USUARIOS.filter(u=>{const g=_wedmGrant(u,ROLES_COMERCIAL,'comercial'); return g==='no'?false:(g==='si'||NOMBRES_VISIBLES_COM.includes(u.nombre));}).sort((a,b)=>(NOMBRES_VISIBLES_COM.indexOf(a.nombre)+1||999)-(NOMBRES_VISIBLES_COM.indexOf(b.nombre)+1||999)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>`
           <div class="user-btn" style="background:rgba(255,255,255,.06)" data-u="${esc(u.nombre)}" onclick="_loginSelectUser(this.dataset.u)">
             <div class="u-avatar">${u.rol==='lectura'?'👁️':'👤'}</div><div class="u-name" style="color:#e8f0fe">${esc(nombreLindo(u.nombre))}</div><div class="u-rol" style="color:#6b7db3">${esc(u.rol)}</div>
           </div>`).join('')}</div>
@@ -2212,9 +2213,10 @@ function _loginDevOpen(){
   document.getElementById('login-step-user')?.classList.remove('active'); document.getElementById('login-step-dev')?.classList.add('active');
   setTimeout(()=>document.getElementById('dev-user')?.focus(),150);
 }
-function _sesionIniciada(r){
+async function _sesionIniciada(r){
   _SESSION={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};
   sb.tok=r.token; try{ localStorage.setItem('_wedm_s',JSON.stringify(_SESSION)); }catch(e){}
+  /*WEDM-MODGATE*/try{const _m=await sb.rpc('mis_modulos'); if(_m&&_m.restringido&&!(_m.modulos||[]).includes('comercial')){ endSession('Sin acceso a este módulo (definido por el administrador)'); return; }}catch(e){}
   document.getElementById('login-overlay')?.remove(); iniciarApp();
 }
 async function doLoginDev(){

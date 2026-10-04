@@ -4660,16 +4660,22 @@ async function usrAccion(nombre,acc){
   try{ showBusy(); await sb.rpc('dev_usuario_accion',{p_nombre:nombre,p_accion:acc}); hideBusy(); toast('✅ Listo'); usuarios(); }
   catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
+const MOD_GATE={comercial:['comercial','produccion','calidad','administracion','admin'],diseno:['diseno','admin'],compras:['compras','admin'],remisiones:['administracion','admin'],planeacion:['administracion','admin','planeacion'],calidad:['calidad','admin','administracion']};
+const MOD_ROLNEC={comercial:'comercial',diseno:'diseno',compras:'compras',remisiones:'administracion',planeacion:'planeacion',calidad:'calidad'};
+function usrModRol(){ // al marcar un módulo, si el rol no alcanza se marca el acceso adicional necesario
+  if(document.querySelector('input[name=usm]:checked')?.value!=='sel') return; const rol=gv('us2');
+  document.querySelectorAll('.usm-c:checked').forEach(c=>{ const m=c.value, g=MOD_GATE[m]; if(!g||g.includes(rol)) return; const r=MOD_ROLNEC[m]; const x=document.querySelector('.us6[value="'+r+'"]'); if(x&&!x.checked) x.checked=true; });
+}
 function usrModSel(){ const c=document.querySelector('input[name=usm]:checked')?.value==='sel'; document.querySelectorAll('.usm-c').forEach(x=>{x.disabled=!c}); const b=document.getElementById('usm-box'); if(b) b.style.opacity=c?1:.45; }
 function formUsuario(nombre){
   const u=nombre?_USR.find(x=>x.nombre===nombre):null; const roles=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion','lectura']; const extras=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion'];
   const restr=!!(u&&u.modulos!=null);
   const modsHtml=_USR_V2?`<div class="field span2"><label>Módulos a los que puede entrar</label>
       <div style="display:flex;gap:16px;padding:4px 0;font-size:13px"><label style="display:flex;align-items:center;gap:5px"><input type="radio" name="usm" value="rol" ${restr?'':'checked'} onchange="usrModSel()"> Los que da su rol</label><label style="display:flex;align-items:center;gap:5px"><input type="radio" name="usm" value="sel" ${restr?'checked':''} onchange="usrModSel()"> Solo los que marque</label></div>
-      <div id="usm-box" style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${MOD_USR.map(m=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="usm-c" value="${m[0]}" ${restr&&u.modulos.includes(m[0])?'checked':''}> ${m[1]}</label>`).join('')}</div>
-      <div style="font-size:11.5px;color:#64748b">Al marcar “solo los que marque”, el usuario únicamente podrá entrar a esos módulos (además de lo que su rol permita). Al guardar se cierra su sesión.</div></div>`:'';
+      <div id="usm-box" style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${MOD_USR.map(m=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="usm-c" value="${m[0]}" onchange="usrModRol()" ${restr&&u.modulos.includes(m[0])?'checked':''}> ${m[1]}</label>`).join('')}</div>
+      <div style="font-size:11.5px;color:#64748b">Si marcas “solo los que marque”, el usuario verá y podrá entrar únicamente a esos módulos. Si su rol no alcanza para alguno, se marca solo el acceso adicional necesario (puedes revisarlo arriba). Al guardar se cierra su sesión.</div></div>`:'';
   openModal(u?'Editar usuario':'Nuevo usuario',`<div class="form-grid"><div class="field span2"><label>Nombre</label><input id="us1" value="${esc(u?.nombre||'')}" ${u?'readonly':''} placeholder="Nombre completo"></div>
-    <div class="field"><label>Rol</label><select id="us2">${roles.map(r=>`<option value="${r}" ${u?.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('')}</select></div>
+    <div class="field"><label>Rol</label><select id="us2" onchange="usrModRol()">${roles.map(r=>`<option value="${r}" ${u?.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('')}</select></div>
     <div class="field"><label>Asesor (solo comerciales)</label><input id="us3" value="${esc(u?.asesor||'')}" placeholder="Nombre como aparece en cotizaciones"></div>
     <div class="field"><label>Clave / PIN (4 dígitos)${u?' — vacío = no cambiar':''}</label><input id="us4" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••"></div>
     <div class="field"><label>Estado</label><select id="us5"><option value="1" ${u&&!u.activo?'':'selected'}>Activo</option><option value="0" ${u&&!u.activo?'selected':''}>Inactivo</option></select></div>
@@ -4681,6 +4687,7 @@ function formUsuario(nombre){
 async function guardarUsuario(){
   const nombre=gv('us1'); if(!nombre){ toast('Escribe el nombre','error'); return; }
   const pin=gv('us4'); if(pin&&!/^[0-9]{4}$/.test(pin)){ toast('El PIN debe tener 4 dígitos','error'); return; }
+  usrModRol();
   const sel=_USR_V2&&document.querySelector('input[name=usm]:checked')?.value==='sel';
   const mods=sel?[...document.querySelectorAll('.usm-c:checked')].map(x=>x.value):null;
   try{
