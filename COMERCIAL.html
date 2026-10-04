@@ -2418,8 +2418,10 @@ function dashboard(){
   const tagL=_dashP.lista?esc(rg.corto):'todos los meses';
   const sinProc=mes.filter(c=>_normEstado(c.estado)!=='APROBADA');   // v13: cotizado en el periodo que NO se aprobó (en espera, canceladas…)
   _dash.aprob=aprob; _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.esperaL=esperaL; _dash.recL=[...baseL].sort((a,b)=>b.cotizacion-a.cotizacion);
-  const topBase=_dashP.topMes?cotsAll.filter(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); return !isNaN(d)&&_usYMd(d)===_dashP.topMes; }):cotsAll;   // Top clientes: TODO por defecto; chips de mes opcionales
-  const topMeses=porMes(cotsAll).slice(0,6).map(x=>x.ym);
+  const _opN=new Set(), _opI=new Set(); (DB.produccion||[]).forEach(p=>{ if(p.op==null) return; if(p.cot_num!=null) _opN.add(Number(p.cot_num)); if(p.id_cotizacion) _opI.add(p.id_cotizacion); });
+  const cotsOp=cotsAll.filter(c=>_opN.has(Number(c.cotizacion))||(c.id&&_opI.has(c.id)));   // Top clientes: solo lo que ya pasó a producción (tiene OP)
+  const topBase=_dashP.topMes?cotsOp.filter(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); return !isNaN(d)&&_usYMd(d)===_dashP.topMes; }):cotsOp;   // Top clientes: TODO por defecto; chips de mes opcionales
+  const topMeses=porMes(cotsOp).slice(0,6).map(x=>x.ym);
   const cm={}; topBase.forEach(c=>{ const e=c.empresa||'Sin empresa'; if(!cm[e]) cm[e]={nombre:e,total:0,cots:0,aprobadas:0}; cm[e].total+=Number(c.precio_total||0); cm[e].cots++; if(_normEstado(c.estado)==='APROBADA') cm[e].aprobadas++; });
   const top=Object.values(cm).filter(x=>x.total>0).sort((a,b)=>b.total-a.total).slice(0,8); const maxC=top[0]?.total||1;
   _dash.topBase=topBase;
@@ -2466,14 +2468,14 @@ function dashboard(){
           <div style="font-size:11px;color:var(--muted);font-weight:600">${a.label}</div></div>`).join('')}
     </div>
     ${top.length?`<div style="background:var(--card2);border-radius:14px;padding:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🏆 Top clientes · ${_dashP.topMes?mesLbl(_dashP.topMes):'todos'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🏆 Top clientes · en producción · ${_dashP.topMes?mesLbl(_dashP.topMes):'todos'}</div>
       <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="nav('clientes')">Ver todos →</div></div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin:-4px 0 8px"><button class="btn btn-sm ${!_dashP.topMes?'btn-primary':'btn-ghost'}" onclick="dashSetTopMes('')">Todo</button>${topMeses.map(m=>`<button class="btn btn-sm ${_dashP.topMes===m?'btn-primary':'btn-ghost'}" onclick="dashSetTopMes('${m}')">${mesLbl(m)}</button>`).join('')}</div>
       ${top.map((cl,i)=>`<div onclick="dashTopCliente(${i})" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer">
         <div style="width:26px;height:26px;border-radius:8px;background:${['#1d4ed8','#059669','#d97706','#7c3aed','#0891b2'][i]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;flex-shrink:0">${i+1}</div>
         <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cl.nombre)}</div>
           <div style="margin-top:4px;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.round(cl.total/maxC*100)}%;background:${['#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'][i]};border-radius:2px"></div></div></div>
-        <div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:var(--gold);font-family:var(--mono)">${fmt(Math.round(cl.total))}</div><div style="font-size:10px;color:var(--muted)">${cl.cots} cots · ${cl.aprobadas} aprobadas</div></div></div>`).join('')}</div>`:`<div style="background:var(--card2);border-radius:14px;padding:14px;font-size:12px;color:var(--muted)">🏆 Top clientes · ${esc(rg.corto)}: sin cotizaciones en este periodo</div>`}
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:var(--gold);font-family:var(--mono)">${fmt(Math.round(cl.total))}</div><div style="font-size:10px;color:var(--muted)">${cl.cots} con OP</div></div></div>`).join('')}</div>`:`<div style="background:var(--card2);border-radius:14px;padding:14px;font-size:12px;color:var(--muted)">🏆 Top clientes · ${esc(rg.corto)}: sin cotizaciones con OP en este periodo</div>`}
     ${esperaL.length?`<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">🟡 Pendientes de respuesta · ${tagL} <span style="font-family:var(--mono)">(${esperaL.length})</span></div>
       <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('esperaL','🟡 En Espera','No hay cotizaciones pendientes')">Ver todas →</div></div>
@@ -2492,7 +2494,7 @@ function dashboard(){
   </div>`);
 }
 function dashTopCliente(i){
-  const n=window._dashTop[i]; _dash.top=(_dash.topBase||_dash.mes||[]).filter(c=>(c.empresa||'Sin empresa')===n); dashPanel('top','🏢 '+n,'Sin cotizaciones para este cliente');
+  const n=window._dashTop[i]; _dash.top=(_dash.topBase||_dash.mes||[]).filter(c=>(c.empresa||'Sin empresa')===n); dashPanel('top','🏢 '+n,'Sin cotizaciones con OP para este cliente');
 }
 
 // ══ ÍTEMS MÁS USADOS (histórico por descripción de ítem, sobre todas las cotizaciones) ═══════════
@@ -6241,6 +6243,5 @@ img[data-wl-zoom]{cursor:zoom-in}
 })();
 </script>
 <!-- /WEDM-INSTALAR -->
-
 </body>
 </html>
