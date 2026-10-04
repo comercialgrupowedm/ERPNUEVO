@@ -521,6 +521,9 @@ details.ay-det[open]{padding-bottom:10px}
 input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:none}
 </style>
 <!-- WEDM-FAVICON --><script>(function(){try{var t=setInterval(function(){if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){clearInterval(t);var l=document.querySelector('link[rel=icon]')||document.createElement('link');l.rel='icon';l.type='image/png';l.href=LOGO_B64_PNG;document.head.appendChild(l);}},100);setTimeout(function(){clearInterval(t)},8000);}catch(e){}})();</script><!-- /WEDM-FAVICON -->
+<link rel="manifest" href="app/diseno.webmanifest">
+<link rel="apple-touch-icon" href="app/diseno-180.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Diseño"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div id="prog-bar-top"><div id="prog-bar-top-fill"></div></div>
@@ -5277,5 +5280,42 @@ img[data-wl-zoom]{cursor:zoom-in}
 })();
 </script>
 <!-- /WEDM-VISOR -->
+<!-- WEDM-INSTALAR (instalar como app en el celular) -->
+<style>
+#erp-inst{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(148,163,184,.55);background:transparent;font-size:16px;cursor:pointer;flex-shrink:0;color:inherit;-webkit-tap-highlight-color:transparent}
+#erp-inst.fl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:auto;padding:0 16px;height:40px;background:#fff;color:#1e293b;border:0;box-shadow:0 4px 18px rgba(0,0,0,.28);border-radius:99px;font-weight:800;font-size:13.5px;gap:7px;z-index:100000}
+#erp-ov{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:100001;display:none;align-items:flex-end;justify-content:center}
+#erp-ov.open{display:flex}#erp-ov>div{background:#fff;color:#1e293b;width:min(480px,100%);border-radius:20px 20px 0 0;padding:20px 18px 24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+</style>
+<script>
+(function(){
+ var MAP={INDEX:['WEDM ERP','index'],COMERCIAL:['Comercial','comercial'],DISENO:['Diseño','diseno'],COMPRAS:['Compras','compras'],REMISIONES:['Remisiones','remisiones'],PLANEACION:['Planeación','planeacion'],CALIDAD:['Calidad','calidad']};
+ var f=(location.pathname.split('/').pop()||'index.html').replace(/\.html?$/i,'').toUpperCase(); var cfg=MAP[f]||MAP.INDEX, isIndex=!MAP[f]||f==='INDEX';
+ var dp=null, ua=navigator.userAgent||'', ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), android=/android/i.test(ua);
+ var std=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+ function boton(){ if(std) return null; var b=document.getElementById('erp-inst');
+  if(!b){ b=document.createElement('button'); b.id='erp-inst'; b.type='button'; b.title='Instalar '+cfg[0]+' en el celular'; b.setAttribute('aria-label',b.title); b.onclick=instalar; }
+  var h=document.getElementById('home-btn'), rf=document.getElementById('refresh-btn'), lo=!!document.getElementById('login-overlay'), ancla=(!lo&&h&&h.offsetParent)?h:null, antes=(!lo&&!ancla&&rf&&rf.offsetParent)?rf:null;
+  if(!isIndex&&ancla){ if(b.previousElementSibling!==ancla){ b.className=''; b.textContent='📲'; ancla.insertAdjacentElement('afterend',b); } }
+  else if(!isIndex&&antes){ if(b.nextElementSibling!==antes){ b.className=''; b.textContent='📲'; antes.insertAdjacentElement('beforebegin',b); } }
+  else if(b.className!=='fl'||b.parentNode!==document.body){ b.className='fl'; b.innerHTML='📲 Instalar '+(isIndex?'la app':cfg[0]); document.body.appendChild(b); }
+  return b; }
+ function ver(){ if(std||!(ios||android||dp)) return; var b=boton(); if(b) b.style.display='flex'; }
+ function init(){ ver(); setInterval(ver,1500); }
+ window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); dp=e; ver(); });
+ window.addEventListener('appinstalled',function(){ dp=null; var b=document.getElementById('erp-inst'); if(b) b.style.display='none'; });
+ function ov(h){ var o=document.getElementById('erp-ov'); if(!o){ o=document.createElement('div'); o.id='erp-ov'; o.onclick=function(e){ if(e.target===o) o.classList.remove('open'); }; document.body.appendChild(o); } o.innerHTML='<div>'+h+'<button type="button" style="width:100%;margin-top:14px;height:46px;border:0;border-radius:12px;background:#0f2443;color:#fff;font-size:15px;font-weight:800;cursor:pointer" onclick="document.getElementById(\'erp-ov\').classList.remove(\'open\')">Entendido</button></div>'; o.classList.add('open'); }
+ async function instalar(){
+  if(dp){ try{ dp.prompt(); var r=await dp.userChoice; if(r&&r.outcome==='accepted'){ var b=document.getElementById('erp-inst'); if(b) b.style.display='none'; } }catch(e){} dp=null; return; }
+  var sf=ios&&!/crios|fxios|edgios/i.test(ua);
+  var pasos=ios?'<li>Toca el botón <b>Compartir</b> ⬆️ '+(sf?'(barra de abajo de Safari)':'(arriba o abajo del navegador)')+'.</li><li>Desliza y elige <b>Añadir a pantalla de inicio</b> ➕.</li><li>Toca <b>Añadir</b>.</li>'
+   :'<li>Toca el menú <b>⋮</b> del navegador (arriba a la derecha).</li><li>Elige <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>).</li><li>Confirma con <b>Instalar</b>.</li>';
+  ov('<div style="text-align:center"><div style="font-size:34px">📲</div><div style="font-size:17px;font-weight:800">Instalar «'+cfg[0]+'» en tu celular</div><div style="font-size:12.5px;color:#64748b;margin-top:2px">Se abre como una app, a pantalla completa'+(isIndex?'. Desde el inicio entras a todos los módulos. Si solo necesitas uno, ábrelo y toca 📲 allí.':'. Solo este módulo.')+'</div></div><ol style="margin:12px 4px 0 22px;font-size:14px;line-height:1.7">'+pasos+'</ol>'); }
+ if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw-erp.js').catch(function(){}); }); }
+})();
+</script>
+<!-- /WEDM-INSTALAR -->
+
 </body>
 </html>
