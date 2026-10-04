@@ -430,6 +430,8 @@ td.mono{font-family:var(--mono);font-size:11px}
   -webkit-appearance:none;appearance:none;
 }
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field input[type=checkbox],.field input[type=radio]{-webkit-appearance:auto;appearance:auto;width:18px!important;height:18px;min-width:18px;padding:0!important;margin:0;flex:none;accent-color:#2563eb;cursor:pointer;background:none;border:initial;box-shadow:none}
+.field label:has(>input[type=checkbox]),.field label:has(>input[type=radio]){text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
 .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 .field select option{background:var(--surface);color:var(--text)}
 .field textarea{resize:vertical;min-height:68px}
