@@ -1053,6 +1053,9 @@ function miniSteps(p){
 const ESTADOS_SIN_DISENO=['CANCELADO','PAUSADO','TERMINADO'];
 const estSinDiseno=p=>ESTADOS_SIN_DISENO.includes(String(p.estado||'').trim().toUpperCase());
 const pendDis=p=>!p.diseno_ok&&!estSinDiseno(p);
+// OP que por ahora no se trabajan: se ocultan de Inicio, Carga por diseñador, Planta (activas) y bandejas. Para volver a mostrarlas, quítalas de esta lista.
+const OPS_OCULTAS=[10998];
+const enPlanta=p=>!p.despachado&&!['CANCELADO','PAUSADO'].includes(String(p.estado||'').trim().toUpperCase())&&!OPS_OCULTAS.includes(Number(p.op));
 const ST={
   disenar:   p=>!p.despachado&&pendDis(p),
   comprar:   p=>!p.despachado&&!p.mp_ok,
@@ -1074,14 +1077,14 @@ function esVieja(p){ const d=diasEnPlanta(p); return d!=null&&d>DIAS_VIEJA; }
 const esNueva=p=>pendDis(p)&&!!p.created_at&&(Date.now()-new Date(p.created_at))<DIAS_NUEVA*86400000;
 
 // Bandeja del diseñador: igual que el comercial (diseño sin terminar o materiales sin enviar a compras)
-const enBandejaDis=p=>!p.despachado&&!estSinDiseno(p)&&(!p.diseno_ok||matsPend(p).length>0);
+const enBandejaDis=p=>enPlanta(p)&&!estSinDiseno(p)&&(!p.diseno_ok||matsPend(p).length>0);
 const bandejaMia=()=>(DB.produccion||[]).filter(p=>esMia(p)&&enBandejaDis(p));
 
 // Diseñadores: usuarios con rol Diseño + cualquier nombre que ya figure en una OP
 function disenadoresLista(){
   const s=new Map();
   (USUARIOS||[]).filter(u=>u.rol==='diseno').forEach(u=>s.set(_normNom(u.nombre),u.nombre));
-  (DB.produccion||[]).forEach(p=>{ const n=String(p.disenador||'').trim(); if(n&&!s.has(_normNom(n))) s.set(_normNom(n),n); });
+  (DB.produccion||[]).filter(enPlanta).forEach(p=>{ const n=String(p.disenador||'').trim(); if(n&&!s.has(_normNom(n))) s.set(_normNom(n),n); });
   return [...s.values()].sort((a,b)=>a.localeCompare(b,'es'));
 }
 const DIS_PAL=['#7c3aed','#db2777','#0284c7','#0d9488','#d97706','#4f46e5','#059669','#e11d48'];
@@ -1217,7 +1220,7 @@ const kchip=(n,l,c,onclick,on)=>`<div class="kchip ${on?'on':''}" ${onclick?`onc
 
 // ══ INICIO ════════════════════════════════════════════════════════
 function dashboard(){
-  const all=DB.produccion||[]; const act=all.filter(p=>!p.despachado);
+  const all=DB.produccion||[]; const act=all.filter(enPlanta);
   const mias=bandejaMia();
   const urg=mias.filter(p=>{ const d=diasPactada(p); return d!=null&&d<=3; }).sort(cmpUrg);
   const nuevas=mias.filter(esNueva); const porEnviar=mias.filter(p=>matsPend(p).length);
@@ -1316,7 +1319,7 @@ function sortPl(rows){
 }
 function plFiltrar(){
   let r=DB.produccion||[];
-  if(_PL.scope==='activas') r=r.filter(p=>!p.despachado); else if(_PL.scope==='despachadas') r=r.filter(p=>p.despachado);
+  if(_PL.scope==='activas') r=r.filter(enPlanta); else if(_PL.scope==='despachadas') r=r.filter(p=>p.despachado);
   const base=r;
   if(_PL.mias) r=r.filter(esMia);
   const q=_norm(_PL.q); if(q) r=r.filter(p=>coincide(p,q));
@@ -1358,7 +1361,7 @@ function opCard(g){
     <div class="opg-items">${its.map(opItemRow).join('')}</div></div>`;
 }
 function planta(){
-  const all=DB.produccion||[]; const act=all.filter(p=>!p.despachado);
+  const all=DB.produccion||[]; const act=all.filter(enPlanta);
   const {base,rows}=plFiltrar(); const grupos=plGrupos(rows);
   const nOpsAct=new Set(act.map(p=>p.op)).size;
   const chips=chipsH([['activas','Activas',act.length],['despachadas','Despachadas',all.length-act.length],['todas','Todas',all.length]],_PL.scope,'plScope');
