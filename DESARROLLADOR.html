@@ -7886,6 +7886,7 @@ async function dcSeed(){
   background:linear-gradient(135deg,rgba(124,58,237,.95),rgba(79,70,229,.95));color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(79,70,229,.45);transition:transform .15s,box-shadow .15s}
 #wl-lb .lb-pill:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(79,70,229,.55)}
 #wl-lb .lb-pill svg{width:18px;height:18px}
+#wl-lb .lb-pill.det{background:rgba(255,255,255,.14);box-shadow:none;padding:0 16px}
 #wl-lb .lb-pill[disabled]{opacity:.6;cursor:wait}
 @media(max-width:640px){
   #wl-lb .lb-top{padding:10px 12px}#wl-lb .lb-t{font-size:15px}
@@ -7912,6 +7913,7 @@ img[data-wl-zoom]{cursor:zoom-in}
     <div class="lb-strip" id="lb-st"></div>
     <div class="lb-acts">
       <button class="lb-btn" id="lb-z" title="Ampliar / reducir" aria-label="Zoom">⤢</button>
+      <button class="lb-pill det" id="lb-dt" title="Abrir el detalle de este ítem" style="display:none">📋 <span>Ver detalle</span></button>
       <button class="lb-pill" id="lb-ed" title="Cambiar la imagen de este ítem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg><span>Cambiar imagen</span></button>
     </div>
   </div>
@@ -7924,7 +7926,7 @@ img[data-wl-zoom]{cursor:zoom-in}
   var $=function(i){return document.getElementById(i)};
   var S={list:[],i:0,z:1,tx:0,ty:0,dir:0};
   var _pm=null,_pmN=-1;
-  function prods(){ try{ return (typeof DB!=='undefined'&&DB&&DB.produccion)||[]; }catch(e){ return []; } }
+  function prods(){ try{ if(typeof DB==='undefined'||!DB) return []; if(DB.produccion) return DB.produccion; if(DB.prods&&typeof DB.prods.values==='function') return Array.from(DB.prods.values()); return []; }catch(e){ return []; } }
   function pmap(){ var a=prods(); if(_pm&&_pmN===a.length) return _pm; _pm=new Map(); a.forEach(function(p){ _pm.set(String(p.id),p); }); _pmN=a.length; return _pm; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function qualifies(im){
@@ -8000,6 +8002,7 @@ img[data-wl-zoom]{cursor:zoom-in}
     $('lb-n').textContent=(S.i+1)+' / '+L.length;
     $('lb-p').style.display=$('lb-nx').style.display=(L.length>1?'flex':'none');
     $('lb-ed').style.display=sl.p?'inline-flex':'none';
+    $('lb-dt').style.display=(sl.p&&typeof window.WEDM_DETALLE==='function')?'inline-flex':'none';
     var st=$('lb-st'); st.style.display=L.length>1?'flex':'none';
     if(L.length>1){
       var a=Math.max(0,S.i-6), b=Math.min(L.length,a+13); a=Math.max(0,b-13);
@@ -8086,6 +8089,7 @@ img[data-wl-zoom]{cursor:zoom-in}
     $('lb-z').onclick=function(){ zoomTo(S.z>1?1:2.2); };
     $('lb-st').onclick=function(e){ var k=e.target.dataset&&e.target.dataset.k; if(k!=null) jump(Number(k)); };
     $('lb-ed').onclick=function(){ $('lb-f').click(); };
+    $('lb-dt').onclick=function(){ var sl=S.list[S.i]; if(!sl||!sl.p) return; var p=sl.p; close(); setTimeout(function(){ try{ window.WEDM_DETALLE(p); }catch(e){ toastMsg('No se pudo abrir el detalle','error'); } },230); };
     $('lb-f').onchange=function(){ cambiar(this.files&&this.files[0]); };
     $('lb-stage').addEventListener('click',function(e){ if(e.target===this) close(); });
     var im=$('lb-img'), drag=null, sw=null;
@@ -8108,6 +8112,8 @@ img[data-wl-zoom]{cursor:zoom-in}
   window.wedmVisor={open:open,close:close};
 })();
 </script>
+<script>/* WEDM-DETALLE: botón «Ver detalle» del visor → abre el detalle del ítem en este módulo */
+window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
 <!-- /WEDM-VISOR -->
 <!-- WEDM-INSTALAR (instalar como app en el celular) -->
 <style>
