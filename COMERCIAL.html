@@ -6180,6 +6180,31 @@ img[data-wl-zoom]{cursor:zoom-in}
 })();
 </script>
 <!-- /WEDM-VISOR -->
+<!-- WEDM-ATRAS (el botón «atrás» del celular/navegador vuelve a la pantalla anterior dentro del módulo) -->
+<script>
+(function(){
+ function G(n){ try{ return (0,eval)(n); }catch(e){ return undefined; } }
+ function envolver(){
+  if(typeof window.nav!=='function'||window.nav._atras) return false;
+  var nav0=window.nav;
+  var nuevo=function(m){
+   try{ var prev=G('MOD'), pop=G('_navFromPopstate');
+     if(!pop&&m!==prev&&G('_SESSION')){ history.pushState({mod:m},'','#'+m); } }catch(e){}
+   return nav0.apply(this,arguments); };
+  nuevo._atras=true; window.nav=nuevo; try{ nav=nuevo; }catch(e){}
+  return true; }
+ window.addEventListener('popstate',function(e){
+  try{
+   var ov=document.getElementById('modal-overlay');
+   if(ov&&ov.classList.contains('open')){ ov.classList.remove('open'); try{ history.pushState({mod:G('MOD')},'','#'+G('MOD')); }catch(z){} return; }
+   if(G('_detailOpen')){ try{ _navFromPopstate=true; if(typeof closeDetail==='function') closeDetail(); }finally{ _navFromPopstate=false; } return; }
+   var t=e.state&&e.state.mod; if(t&&t!==G('MOD')&&G('_SESSION')&&typeof window.nav==='function'){ try{ _navFromPopstate=true; window.nav(t); }finally{ _navFromPopstate=false; } }
+  }catch(x){} });
+ var n=0, iv=setInterval(function(){ if(envolver()||++n>60) clearInterval(iv); },250);
+})();
+</script>
+<!-- /WEDM-ATRAS -->
+
 <!-- WEDM-INSTALAR (instalar como app en el celular) -->
 <style>
 #erp-inst{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(148,163,184,.55);background:transparent;font-size:16px;cursor:pointer;flex-shrink:0;color:inherit;-webkit-tap-highlight-color:transparent}
