@@ -1490,6 +1490,7 @@ body.mayus input[type=text],body.mayus input:not([type]),body.mayus input[type=s
     <div class="nav-section">Facturación y avances</div>
     <div class="nav-item" data-m="avances" onclick="qaGo('avances')"><span class="nav-icon">📈</span>Avances y entregables</div>
     <div class="nav-item" data-m="docs" onclick="qaGo('docs')"><span class="nav-icon">🗂</span>Documentos</div>
+    <div class="nav-item" data-m="colab" onclick="qaGo('colab')"><span class="nav-icon">👥</span>Colaboradores</div>
     <div class="nav-item" data-m="cobro" onclick="qaGo('cobro')"><span class="nav-icon">🧾</span>Cuenta de cobro</div>
     <div class="nav-section">Módulos</div>
     <div class="nav-item" onclick="location.href='COMERCIAL.html'"><span class="nav-icon">📋</span>Comercial</div>
@@ -1652,7 +1653,7 @@ const TITLES = {
   dashboard:'Dashboard Comercial', cotizaciones:'Cotizaciones', clientes:'Clientes',
   items:'Items / Elementos', usados:'Ítems más usados', analisis:'Análisis', procesos:'Procesos', materiales:'Materiales', servicios:'Servicios Externos',
   produccion:'Control Producción', remisiones:'Remisiones', usuarios:'Usuarios y roles',
-  importar:'🛠 Importar hojas de datos', funciones:'Funciones del sistema', cobro:'Cuenta de cobro', avances:'Avances y entregables', docs:'Documentos entregables', auditoria:'Auditoría', respaldos:'Respaldos', seguridad:'Seguridad',
+  importar:'🛠 Importar hojas de datos', funciones:'Funciones del sistema', cobro:'Cuenta de cobro', avances:'Avances y entregables', docs:'Documentos entregables', colab:'Colaboradores', auditoria:'Auditoría', respaldos:'Respaldos', seguridad:'Seguridad',
 };
 const FAB_ACTIONS = {
   cotizaciones:()=>formCot({}),
@@ -1964,7 +1965,7 @@ function cotEnRango(c){ return _normEstado(c.estado)==='EN ESPERA' || _dentroDeR
 // ══ NAVEGACIÓN ══════════════════════════════════════════════════
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
 function refreshCurrentView(){
-  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones,usuarios,importar,funciones,auditoria,respaldos,seguridad,cobro,avances:(typeof avances==='function'?avances:()=>{}),docs:(typeof docs==='function'?docs:()=>{})};
+  const mods={dashboard,cotizaciones,clientes,items,usados,analisis,procesos,materiales,servicios,produccion,remisiones,usuarios,importar,funciones,auditoria,respaldos,seguridad,cobro,avances:(typeof avances==='function'?avances:()=>{}),docs:(typeof docs==='function'?docs:()=>{}),colab:(typeof colaboradoresView==='function'?colaboradoresView:()=>{})};
   if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } }
 }
 function navigate(m){ const el=document.querySelector(`.nav-item[data-m="${m}"]`); if(el) el.click(); }
@@ -3893,7 +3894,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 // ══════════════════════════════════════════════════════════════════
 const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
 const MODS_ROL={
-  desarrollador:['funciones','auditoria','respaldos','seguridad','cobro','avances','docs','usuarios','importar'],
+  desarrollador:['funciones','auditoria','respaldos','seguridad','cobro','avances','docs','colab','usuarios','importar'],
   admin:['funciones','auditoria'],
 };
 const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
@@ -7767,7 +7768,7 @@ async function docs(){
   setContent(b+`<style>.dc-c{cursor:pointer;color:var(--accent,#2563eb);font-weight:600}.dc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}.dc-card{position:relative;border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:14px 8px 10px;text-align:center;background:var(--card,#fff);cursor:pointer}.dc-card:active,.dc-row:active{background:var(--card2,#f1f5f9)}.dc-ico{font-size:40px;line-height:1}.dc-nm{font-weight:700;font-size:12.5px;margin-top:6px;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.dc-sb{font-size:10.5px;color:var(--muted,#64748b);margin-top:2px}.dc-mn{position:absolute;top:4px;right:4px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--muted,#64748b);padding:2px 8px}.dc-row{display:flex;gap:10px;align-items:center;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:8px 10px;margin-bottom:6px;background:var(--card,#fff);cursor:pointer}</style>
   <div style="padding:12px 14px"><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
    ${_DC.cwd&&!q?`<button class="btn btn-ghost btn-sm" onclick="dcUp()">⬆ Subir</button>`:''}
-   <button class="btn btn-primary btn-sm" onclick="dcNuevo('carpeta')">📁 Carpeta</button><button class="btn btn-ghost btn-sm" onclick="dcNuevo('documento')">📝 Documento</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('dc-file').click()">⬆ Subir archivo</button><button class="btn btn-ghost btn-sm" onclick="dcNuevo('enlace')">🔗 Enlace</button>
+   <button class="btn btn-primary btn-sm" onclick="dcNuevo('carpeta')">📁 Carpeta</button><button class="btn btn-ghost btn-sm" onclick="dcNuevo('documento')">📝 Documento</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('dc-file').click()">⬆ Subir archivo</button><button class="btn btn-ghost btn-sm" onclick="dcNuevo('enlace')">🔗 Enlace</button><button class="btn btn-ghost btn-sm" onclick="dcSeedArch()">📥 Cargar manuales</button>
    <span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="_DC.view=_DC.view==='grid'?'list':'grid';docs()">${_DC.view==='grid'?'☰ Lista':'▦ Iconos'}</button></div>
    <input id="dc-file" type="file" multiple style="display:none" onchange="dcSubir(this.files)">
    <input id="dc-q" placeholder="🔍 Buscar en todos los documentos…" value="${_dcE(_DC.q)}" oninput="dcBuscar(this.value)" style="width:100%;margin-bottom:10px;text-transform:none">
@@ -7843,7 +7844,31 @@ async function dcSeed(){
   try{ showBusy('Creando carpetas…'); const ids={};
     const carp=async(arr)=>{ let par=null, key=''; for(const n of arr){ key+='/'+n; if(!ids[key]){ const r=await sb.rpc('dev_doc_guardar',{p_id:null,p_parent:par,p_kind:'carpeta',p_nombre:n,p_descripcion:'',p_mime:null,p_contenido:null,p_data:null,p_url:null}); ids[key]=r.id; } par=ids[key]; } return par; };
     for(const [path,nombre,desc,mime,cont] of _DC_SEED){ const par=await carp(path); await sb.rpc('dev_doc_guardar',{p_id:null,p_parent:par,p_kind:'documento',p_nombre:nombre,p_descripcion:desc,p_mime:mime,p_contenido:cont,p_data:null,p_url:null}); }
-    await _dcCargar(); hideBusy(); toast('✅ Contenido cargado'); docs(); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+    await _dcCargar(); hideBusy(); toast('✅ Contenido cargado'); await dcSeedArch(); docs(); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
+const _DC_ARCH=[
+ [['Manuales'],'manual_completo.pdf','Manual completo del ERP','Todos los módulos en un solo PDF'],
+ [['Manuales'],'manual_portal.pdf','Manual — Portal de inicio',''],[['Manuales'],'manual_comercial.pdf','Manual — Comercial',''],[['Manuales'],'manual_diseno.pdf','Manual — Diseño',''],
+ [['Manuales'],'manual_compras.pdf','Manual — Compras',''],[['Manuales'],'manual_remisiones.pdf','Manual — Remisiones',''],[['Manuales'],'manual_planeacion.pdf','Manual — Planeación',''],
+ [['Manuales'],'manual_calidad.pdf','Manual — Calidad',''],[['Manuales'],'manual_planta.pdf','Manual — PLANTA (trabajadores)',''],[['Manuales'],'manual_desarrollador.pdf','Manual — Desarrollador',''],
+ [['Normativa laboral'],'normativa_licencias.pdf','Licencias y permisos — normativa colombiana','Licencias remuneradas y no remuneradas'],
+ [['Normativa laboral'],'guia_permisos.pdf','Guía de Planeación — resolver permisos','Cómo aprobar o rechazar solicitudes'],
+ [['Base de datos y SQL'],'planta_sesame.sql','planta_sesame.sql','Ingreso y sesiones de PLANTA'],[['Base de datos y SQL'],'planta_mis_tareas.sql','planta_mis_tareas.sql',''],
+ [['Base de datos y SQL'],'planta_sesion_larga.sql','planta_sesion_larga.sql',''],[['Base de datos y SQL'],'prod_no_lleva_mp.sql','prod_no_lleva_mp.sql',''],
+ [['Base de datos y SQL'],'usuarios_modulos.sql','usuarios_modulos.sql',''],[['Base de datos y SQL'],'permisos_documentos.sql','permisos_documentos.sql','Documentos de licencias']];
+async function dcSeedArch(){
+  let ok=0, fail=0; try{ showBusy('Cargando manuales…'); await _dcCargar(); const ids={};
+    const carp=async(arr)=>{ let par=null,key=''; for(const n of arr){ key+='/'+n; if(!ids[key]){ const ex=_DC.items.find(x=>x.kind==='carpeta'&&x.nombre===n&&(x.parent||null)===par); if(ex) ids[key]=ex.id; else{ const r=await sb.rpc('dev_doc_guardar',{p_id:null,p_parent:par,p_kind:'carpeta',p_nombre:n,p_descripcion:'',p_mime:null,p_contenido:null,p_data:null,p_url:null}); ids[key]=r.id; } } par=ids[key]; } return par; };
+    for(const [path,file,nombre,desc] of _DC_ARCH){
+      try{ const par=await carp(path); const nm=/\.sql$/.test(file)?nombre:nombre+'.pdf';
+        if(_DC.items.some(x=>(x.parent||null)===par&&x.nombre===nm)) continue;
+        const r=await fetch('docs/'+file,{cache:'no-store'}); if(!r.ok) throw new Error(file+' '+r.status);
+        const bl=await r.blob();
+        if(/\.sql$/.test(file)) await sb.rpc('dev_doc_guardar',{p_id:null,p_parent:par,p_kind:'documento',p_nombre:nm,p_descripcion:desc,p_mime:'text/sql',p_contenido:await bl.text(),p_data:null,p_url:null});
+        else await sb.rpc('dev_doc_guardar',{p_id:null,p_parent:par,p_kind:'archivo',p_nombre:nm,p_descripcion:desc,p_mime:'application/pdf',p_contenido:null,p_data:await _dcLeer(bl,false),p_url:null});
+        ok++; }catch(e){ fail++; console.warn('dcSeedArch',file,e); } }
+    await _dcCargar(); hideBusy(); toast(fail?('⚠️ '+ok+' cargados, '+fail+' no se encontraron (¿subiste la carpeta docs/ a GitHub?)'):(ok?'✅ '+ok+' documentos cargados':'Ya estaba todo cargado'),fail?'error':undefined); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+  docs();
 }
 </script>
 <!-- /WEDM-DOCS -->
@@ -8152,5 +8177,70 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
 </script>
 <!-- /WEDM-INSTALAR -->
 
+<!-- WEDM-COLAB (gestor de colaboradores: crear · editar · activar · eliminar) -->
+<script>
+let _CB={items:[],q:'',ver:'activos'};
+const _cbE=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function _cbMsg(e){ try{ return (typeof errMsg==='function')?errMsg(e):(e&&e.message)||String(e); }catch(x){ return 'Error'; } }
+async function colabAbrir(){
+  try{ if(typeof showBusy==='function') showBusy(); _CB.items=await sb.rpc('plan_colab_listar')||[]; if(typeof hideBusy==='function') hideBusy(); }
+  catch(e){ if(typeof hideBusy==='function') hideBusy(); return toast('❌ '+_cbMsg(e),'error'); }
+  _cbPintar();
+}
+function _cbLista(){
+  const q=_CB.q.trim().toLowerCase();
+  return _CB.items.filter(c=>(_CB.ver==='todos'||(_CB.ver==='activos')===!!c.activo)&&(!q||((c.nombre||'')+' '+(c.registro||'')+' '+(c.cargo||'')).toLowerCase().includes(q)));
+}
+function _cbFila(c){
+  const ini=(c.nombre||'?').trim().charAt(0).toUpperCase();
+  const av=c.foto?`<img src="${_cbE(c.foto)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:`<div style="width:38px;height:38px;border-radius:50%;background:#e2e8f0;color:#334155;display:flex;align-items:center;justify-content:center;font-weight:700">${_cbE(ini)}</div>`;
+  return `<div data-r="${_cbE(c.registro)}" onclick="colabForm(this.dataset.r)" style="display:flex;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--border,#e2e8f0);cursor:pointer;${c.activo?'':'opacity:.55'}">${av}
+   <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${_cbE(c.nombre)}</div><div style="font-size:11.5px;color:var(--muted,#64748b);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_cbE(c.cargo||'Sin cargo')} · ${_cbE(c.registro)}</div></div>
+   <div style="text-align:right;font-size:10.5px">${c.activo?'<span style="color:#15803d;font-weight:700">Activo</span>':'<span style="color:#b91c1c;font-weight:700">Inactivo</span>'}<div style="color:var(--muted,#64748b)">${c.acceso?'🔑 con acceso':'sin acceso'}</div></div></div>`;
+}
+function _cbPintar(){
+  const l=_cbLista(), na=_CB.items.filter(c=>c.activo).length;
+  const chip=(k,t)=>`<button class="btn ${_CB.ver===k?'btn-primary':'btn-ghost'} btn-sm" onclick="_CB.ver='${k}';_cbPintar()">${t}</button>`;
+  openModal('👥 Colaboradores',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${chip('activos','Activos ('+na+')')}${chip('inactivos','Inactivos ('+(_CB.items.length-na)+')')}${chip('todos','Todos')}</div>
+   <input id="cb-q" placeholder="🔍 Buscar por nombre o cargo…" value="${_cbE(_CB.q)}" oninput="_CB.q=this.value;_cbRef()" style="width:100%;margin-bottom:6px;text-transform:none">
+   <div id="cb-l">${l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'}</div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="colabForm(null)">➕ Nuevo colaborador</button>`);
+}
+function _cbRef(){ const e=document.getElementById('cb-l'); if(!e) return; const l=_cbLista(); e.innerHTML=l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'; }
+function colabForm(reg){
+  const c=reg?_CB.items.find(x=>x.registro===reg):null; if(reg&&!c) return;
+  openModal(c?'✏️ Editar colaborador':'➕ Nuevo colaborador',`<div class="form-grid">
+   <div class="field span2"><label>Nombre completo (como en nómina / horario)</label><input id="cb-reg" value="${_cbE(c?c.registro:'')}" ${c?'disabled':''} style="text-transform:none" placeholder="Ej: PÉREZ GÓMEZ JUAN CARLOS">${c?'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">El nombre de registro no se cambia (amarra horarios, marcaciones y permisos).</div>':'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">Debe escribirse igual que en el Excel del horario.</div>'}</div>
+   <div class="field"><label>Nombre corto</label><input id="cb-nc" value="${_cbE(c?c.nombre:'')}" style="text-transform:none" placeholder="Juan Pérez"></div>
+   <div class="field"><label>Cargo</label><input id="cb-cg" value="${_cbE(c?c.cargo||'':'')}" style="text-transform:none"></div>
+   <div class="field"><label>Orden en listas</label><input id="cb-or" type="number" value="${c&&c.orden!=null?c.orden:''}" placeholder="opcional"></div>
+   <div class="field"><label>Estado</label><select id="cb-ac"><option value="1" ${!c||c.activo?'selected':''}>Activo</option><option value="0" ${c&&!c.activo?'selected':''}>Inactivo (sin acceso)</option></select></div></div>
+   ${c?`<div style="font-size:12px;color:var(--muted,#64748b);margin-top:8px">Usuario de PLANTA: <b>${_cbE(c.usuario||'—')}</b> · ${c.acceso?'acceso activo':'sin acceso'} · registros asociados: ${c.usos||0}</div>`:''}`,
+   `<button class="btn btn-ghost" onclick="_cbPintar()">Volver</button>${c?`<button class="btn btn-ghost" style="color:#b91c1c" data-r="${_cbE(c.registro)}" onclick="colabBorrar(this.dataset.r)">🗑 Eliminar</button>`:''}<button class="btn btn-primary" data-r="${c?_cbE(c.registro):''}" onclick="colabGuardar(this.dataset.r)">Guardar</button>`);
+}
+async function colabGuardar(reg){
+  const g=i=>(document.getElementById(i)||{}).value; const r=reg||(g('cb-reg')||'').trim(), nc=(g('cb-nc')||'').trim();
+  if(!r) return toast('Escribe el nombre completo','error'); if(!nc) return toast('Escribe el nombre corto','error');
+  const o=g('cb-or');
+  try{ showBusy(); await sb.rpc('plan_colab_guardar',{p_registro:reg||null,p_nombre_registro:r,p_nombre_corto:nc,p_cargo:(g('cb-cg')||'').trim(),p_activo:g('cb-ac')==='1',p_orden:o===''||o==null?null:Number(o)});
+    _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy(); toast(reg?'✅ Colaborador actualizado':'✅ Colaborador creado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
+  catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
+}
+async function colabBorrar(reg){
+  const c=_CB.items.find(x=>x.registro===reg); if(!c) return;
+  if(!confirm('¿Eliminar a «'+c.nombre+'»?'+((c.usos||0)>0?'\n\nTiene '+c.usos+' registros (horarios, marcaciones o permisos): no se borra, se DESACTIVA y pierde el acceso.':'\n\nNo tiene historial: se elimina por completo.'))) return;
+  try{ showBusy(); const r=await sb.rpc('plan_colab_borrar',{p_registro:reg}); _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy();
+    toast(r&&r.desactivado?'Se desactivó (tiene historial)':'🗑 Eliminado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
+  catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
+}
+</script>
+<!-- /WEDM-COLAB -->
+<script>
+async function colaboradoresView(){
+  if(!_esDev()){ setContent(errorView('Solo el desarrollador')); return; }
+  setContent(_dvBanner('👥','Colaboradores','Crear, editar, activar y eliminar personal de planta','linear-gradient(135deg,#14532d,#0e7490)')+`<div style="padding:14px"><div style="font-size:13px;color:var(--muted,#64748b);margin-bottom:12px">Es la misma lista que gestiona Planeación. Un colaborador con historial (horarios, marcaciones, permisos) no se borra: se desactiva y pierde el acceso.</div><button class="btn btn-primary" onclick="colabAbrir()">👥 Abrir gestor de colaboradores</button></div>`);
+  colabAbrir();
+}
+</script>
 </body>
 </html>

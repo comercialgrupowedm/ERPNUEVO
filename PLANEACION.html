@@ -3589,7 +3589,7 @@ async function horario(){
   const delDia=act.map(c=>({c,s:estadoDia(c.nombre_registro,f)}));
   const nTurno=delDia.filter(x=>x.s.k==='turno').length, nVac=delDia.filter(x=>x.s.k==='vac').length, nAhora=act.filter(c=>enTurnoAhora(c.nombre_registro)).length;
   const puedeCargar=puede('planeacion','administracion');
-  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}${(puedeCargar&&(chatOn('pla_permisos')||chatOn('pla_fichaje')))?`<button class="btn btn-ghost btn-sm" onclick="asistencia()">🕒 Asistencia y permisos<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
+  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="colabAbrir()">👥 Colaboradores</button>`:''}${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}${(puedeCargar&&(chatOn('pla_permisos')||chatOn('pla_fichaje')))?`<button class="btn btn-ghost btn-sm" onclick="asistencia()">🕒 Asistencia y permisos<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
   const banner=moduleBanner('📅','Horario y disponibilidad 🆕',`${act.length} colaboradores activos · ${sems.length} semana(s) cargada(s)`,acciones);
   const wk=sems.length?`<div class="hz-wk"><button class="btn btn-ghost btn-sm" onclick="horSem(-1)">◀</button><select onchange="H_.sem=this.value;horario()">${sems.map(s=>`<option value="${s}" ${s===H.sem?'selected':''}>Semana del ${esc(fmtDate(s))} al ${esc(fmtDate(addD(s,5)))}${s===lunes(f)?' · esta semana':''}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="horSem(1)">▶</button></div>`
     :`<div class="callout" style="margin:12px 0">Aún no hay horario cargado. Sube el Excel del mes con el botón <b>📤 Subir horario</b>.</div>`;
@@ -4134,5 +4134,64 @@ window.WEDM_DETALLE=function(p){ detailOP(p.id); };</script>
 </script>
 <!-- /WEDM-INSTALAR -->
 
+<!-- WEDM-COLAB (gestor de colaboradores: crear · editar · activar · eliminar) -->
+<script>
+let _CB={items:[],q:'',ver:'activos'};
+const _cbE=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function _cbMsg(e){ try{ return (typeof errMsg==='function')?errMsg(e):(e&&e.message)||String(e); }catch(x){ return 'Error'; } }
+async function colabAbrir(){
+  try{ if(typeof showBusy==='function') showBusy(); _CB.items=await sb.rpc('plan_colab_listar')||[]; if(typeof hideBusy==='function') hideBusy(); }
+  catch(e){ if(typeof hideBusy==='function') hideBusy(); return toast('❌ '+_cbMsg(e),'error'); }
+  _cbPintar();
+}
+function _cbLista(){
+  const q=_CB.q.trim().toLowerCase();
+  return _CB.items.filter(c=>(_CB.ver==='todos'||(_CB.ver==='activos')===!!c.activo)&&(!q||((c.nombre||'')+' '+(c.registro||'')+' '+(c.cargo||'')).toLowerCase().includes(q)));
+}
+function _cbFila(c){
+  const ini=(c.nombre||'?').trim().charAt(0).toUpperCase();
+  const av=c.foto?`<img src="${_cbE(c.foto)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover">`:`<div style="width:38px;height:38px;border-radius:50%;background:#e2e8f0;color:#334155;display:flex;align-items:center;justify-content:center;font-weight:700">${_cbE(ini)}</div>`;
+  return `<div data-r="${_cbE(c.registro)}" onclick="colabForm(this.dataset.r)" style="display:flex;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--border,#e2e8f0);cursor:pointer;${c.activo?'':'opacity:.55'}">${av}
+   <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${_cbE(c.nombre)}</div><div style="font-size:11.5px;color:var(--muted,#64748b);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_cbE(c.cargo||'Sin cargo')} · ${_cbE(c.registro)}</div></div>
+   <div style="text-align:right;font-size:10.5px">${c.activo?'<span style="color:#15803d;font-weight:700">Activo</span>':'<span style="color:#b91c1c;font-weight:700">Inactivo</span>'}<div style="color:var(--muted,#64748b)">${c.acceso?'🔑 con acceso':'sin acceso'}</div></div></div>`;
+}
+function _cbPintar(){
+  const l=_cbLista(), na=_CB.items.filter(c=>c.activo).length;
+  const chip=(k,t)=>`<button class="btn ${_CB.ver===k?'btn-primary':'btn-ghost'} btn-sm" onclick="_CB.ver='${k}';_cbPintar()">${t}</button>`;
+  openModal('👥 Colaboradores',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${chip('activos','Activos ('+na+')')}${chip('inactivos','Inactivos ('+(_CB.items.length-na)+')')}${chip('todos','Todos')}</div>
+   <input id="cb-q" placeholder="🔍 Buscar por nombre o cargo…" value="${_cbE(_CB.q)}" oninput="_CB.q=this.value;_cbRef()" style="width:100%;margin-bottom:6px;text-transform:none">
+   <div id="cb-l">${l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'}</div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="colabForm(null)">➕ Nuevo colaborador</button>`);
+}
+function _cbRef(){ const e=document.getElementById('cb-l'); if(!e) return; const l=_cbLista(); e.innerHTML=l.length?l.map(_cbFila).join(''):'<div style="text-align:center;color:var(--muted,#64748b);padding:24px;font-size:13px">Sin colaboradores</div>'; }
+function colabForm(reg){
+  const c=reg?_CB.items.find(x=>x.registro===reg):null; if(reg&&!c) return;
+  openModal(c?'✏️ Editar colaborador':'➕ Nuevo colaborador',`<div class="form-grid">
+   <div class="field span2"><label>Nombre completo (como en nómina / horario)</label><input id="cb-reg" value="${_cbE(c?c.registro:'')}" ${c?'disabled':''} style="text-transform:none" placeholder="Ej: PÉREZ GÓMEZ JUAN CARLOS">${c?'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">El nombre de registro no se cambia (amarra horarios, marcaciones y permisos).</div>':'<div style="font-size:11px;color:var(--muted,#64748b);margin-top:3px">Debe escribirse igual que en el Excel del horario.</div>'}</div>
+   <div class="field"><label>Nombre corto</label><input id="cb-nc" value="${_cbE(c?c.nombre:'')}" style="text-transform:none" placeholder="Juan Pérez"></div>
+   <div class="field"><label>Cargo</label><input id="cb-cg" value="${_cbE(c?c.cargo||'':'')}" style="text-transform:none"></div>
+   <div class="field"><label>Orden en listas</label><input id="cb-or" type="number" value="${c&&c.orden!=null?c.orden:''}" placeholder="opcional"></div>
+   <div class="field"><label>Estado</label><select id="cb-ac"><option value="1" ${!c||c.activo?'selected':''}>Activo</option><option value="0" ${c&&!c.activo?'selected':''}>Inactivo (sin acceso)</option></select></div></div>
+   ${c?`<div style="font-size:12px;color:var(--muted,#64748b);margin-top:8px">Usuario de PLANTA: <b>${_cbE(c.usuario||'—')}</b> · ${c.acceso?'acceso activo':'sin acceso'} · registros asociados: ${c.usos||0}</div>`:''}`,
+   `<button class="btn btn-ghost" onclick="_cbPintar()">Volver</button>${c?`<button class="btn btn-ghost" style="color:#b91c1c" data-r="${_cbE(c.registro)}" onclick="colabBorrar(this.dataset.r)">🗑 Eliminar</button>`:''}<button class="btn btn-primary" data-r="${c?_cbE(c.registro):''}" onclick="colabGuardar(this.dataset.r)">Guardar</button>`);
+}
+async function colabGuardar(reg){
+  const g=i=>(document.getElementById(i)||{}).value; const r=reg||(g('cb-reg')||'').trim(), nc=(g('cb-nc')||'').trim();
+  if(!r) return toast('Escribe el nombre completo','error'); if(!nc) return toast('Escribe el nombre corto','error');
+  const o=g('cb-or');
+  try{ showBusy(); await sb.rpc('plan_colab_guardar',{p_registro:reg||null,p_nombre_registro:r,p_nombre_corto:nc,p_cargo:(g('cb-cg')||'').trim(),p_activo:g('cb-ac')==='1',p_orden:o===''||o==null?null:Number(o)});
+    _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy(); toast(reg?'✅ Colaborador actualizado':'✅ Colaborador creado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
+  catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
+}
+async function colabBorrar(reg){
+  const c=_CB.items.find(x=>x.registro===reg); if(!c) return;
+  if(!confirm('¿Eliminar a «'+c.nombre+'»?'+((c.usos||0)>0?'\n\nTiene '+c.usos+' registros (horarios, marcaciones o permisos): no se borra, se DESACTIVA y pierde el acceso.':'\n\nNo tiene historial: se elimina por completo.'))) return;
+  try{ showBusy(); const r=await sb.rpc('plan_colab_borrar',{p_registro:reg}); _CB.items=await sb.rpc('plan_colab_listar')||[]; hideBusy();
+    toast(r&&r.desactivado?'Se desactivó (tiene historial)':'🗑 Eliminado'); _cbPintar(); if(typeof window.colabRefrescar==='function') window.colabRefrescar(); }
+  catch(e){ hideBusy(); toast('❌ '+_cbMsg(e),'error'); }
+}
+</script>
+<!-- /WEDM-COLAB -->
+<script>window.colabRefrescar=function(){ try{ H.ok=false; if(MOD==='horario') horario(); else cargar(true); }catch(e){} };</script>
 </body>
 </html>
