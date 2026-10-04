@@ -1260,24 +1260,29 @@ function tablaProd(rows){
 const kchip=(n,l,c,onclick,on)=>`<div class="kchip ${on?'on':''}" ${onclick?`onclick="${onclick}"`:'style="cursor:default"'}><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div></div>`;
 
 // ══ INICIO ════════════════════════════════════════════════════════
+// Vista del inicio: «Solo lo mío» (diseñador) o «Ver todo» (como el administrador: todo el equipo y la planta)
+let _DV=null;
+function dvTodo(){ if(_DV==null) return _esAdmin()&&!(DB.produccion||[]).some(esMia); return _DV==='todo'; }
+function dvToggle(){ _DV=dvTodo()?'mio':'todo'; refreshCurrentView(); }
 function dashboard(){
   const all=DB.produccion||[]; const act=all.filter(enPlanta);
-  const mias=bandejaMia();
+  const T=dvTodo();
+  const mias=T?all.filter(enBandejaDis):bandejaMia();
+  const actV=T?act:act.filter(esMia), pgM=T?'':',mias:true';
   const urg=mias.filter(p=>{ const d=diasPactada(p); return d!=null&&d<=3; }).sort(cmpUrg);
   const nuevas=mias.filter(esNueva); const porEnviar=mias.filter(p=>matsPend(p).length);
   const nOps=new Set(act.map(p=>p.op)).size;
-  const soloAdmin=_esAdmin()&&!all.some(esMia);
   const btnB=(f,l,fn)=>`<button class="btn btn-sm" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="${fn}">${l}</button>`;
-  const banner=moduleBanner('🎨','Hola, '+esc(_SESSION?.nombre||''),soloAdmin?'Vista de administrador · '+nOps+' OP activas en planta':`Tienes ${mias.length} ítem(s) en tu bandeja${urg.length?' · '+urg.length+' urgente(s)':''}`,
-    `<div style="display:flex;gap:8px;flex-wrap:wrap">${btnB(0,'🎨 Mi bandeja',"nav('bandeja')")}${btnB(0,'🏭 Ver toda la planta',"plantaGo({})")}</div>`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Mi bandeja','var(--purple)',"bdKpi('pend',1)")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas',1)")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg',1)")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio',1)")}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir',1)")}</div>`;
-  const tiles=ETAPAS.filter(e=>!['sindis','vieja','vencida'].includes(e.k)||act.some(ST[e.k])).map(e=>{
-    const n=act.filter(ST[e.k]).length;
-    return `<div class="kpi-card" onclick="plantaGo({etapa:'${e.k}'})" style="cursor:pointer;padding:12px"><div class="kpi-label">${e.l}</div><div class="kpi-value" style="color:${e.c};font-size:24px">${n}</div></div>`;
+  const banner=moduleBanner('🎨','Hola, '+esc(_SESSION?.nombre||''),T?'👥 Viendo todo el equipo · '+nOps+' OP activas en planta':`👤 Solo lo mío · ${mias.length} ítem(s) en tu bandeja${urg.length?' · '+urg.length+' urgente(s)':''}`,
+    `<div style="display:flex;gap:8px;flex-wrap:wrap">${btnB(0,T?'👤 Solo lo mío':'👥 Ver todo',"dvToggle()")}${btnB(0,T?'🎨 Bandeja del equipo':'🎨 Mi bandeja',"bdKpi('pend',1)")}${btnB(0,'🏭 Ver toda la planta',"plantaGo({})")}</div>`);
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,T?'🎨 Pendientes · equipo':'🎨 Mi bandeja','var(--purple)',"bdKpi('pend',1)")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas',1)")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg',1)")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio',1)")}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir',1)")}</div>`;
+  const tiles=ETAPAS.filter(e=>!['sindis','vieja','vencida'].includes(e.k)||actV.some(ST[e.k])).map(e=>{
+    const n=actV.filter(ST[e.k]).length;
+    return `<div class="kpi-card" onclick="plantaGo({etapa:'${e.k}'${pgM}})" style="cursor:pointer;padding:12px"><div class="kpi-label">${e.l}</div><div class="kpi-value" style="color:${e.c};font-size:24px">${n}</div></div>`;
   }).join('');
   const planta_=`<div class="dash-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="font-size:13px;font-weight:800">🏭 Planta ahora <span style="font-weight:600;color:var(--muted)">· ${nOps} OP · ${act.length} ítems activos</span></div>
-      <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="plantaGo({})">Ver todo →</button><button class="btn btn-ghost btn-sm" onclick="plantaGo({scope:'despachadas'})">🕘 Histórico</button></div></div>
+      <div style="font-size:13px;font-weight:800">${T?'🏭 Planta ahora':'🏭 Mis ítems en planta'} <span style="font-weight:600;color:var(--muted)">· ${new Set(actV.map(p=>p.op)).size} OP · ${actV.length} ítems activos</span></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="plantaGo({${pgM.slice(1)}})">Ver todo →</button><button class="btn btn-ghost btn-sm" onclick="plantaGo({scope:'despachadas'})">🕘 Histórico</button></div></div>
     <div class="kpi-grid" style="margin-bottom:0">${tiles}</div></div>`;
   const diseñadores=disenadoresLista(); const sinDis=act.filter(ST.sindis);
   const maxN=Math.max(1,...diseñadores.map(d=>act.filter(p=>_normNom(p.disenador)===_normNom(d)).length));
@@ -1291,9 +1296,9 @@ function dashboard(){
         <div class="dis-bar"><div class="dis-bar-fill" style="width:${Math.round(sus.length/maxN*100)}%;background:${c}"></div></div></div>`;
     }).join('')||mutedP('Sin diseñadores registrados')}
     ${sinDis.length?`<div class="dis-card" onclick="plantaGo({etapa:'sindis'})" style="border-left:4px solid var(--danger);padding:11px 14px"><div class="dis-card-header"><div><div class="dis-card-name" style="color:var(--danger)">🙋 Sin diseñador</div><div class="dis-card-meta">Nadie lo tiene asignado — cualquier diseñador puede tomarlo</div></div><div class="dis-card-count" style="color:var(--danger)">${sinDis.length}</div></div></div>`:''}</div>`;
-  const urgH=urg.length?`<div class="dash-card" style="border-color:var(--danger)"><div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px">🚨 Mis urgentes (≤3 días o vencidos)</div>
+  const urgH=urg.length?`<div class="dash-card" style="border-color:var(--danger)"><div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px">${T?'🚨 Urgentes del equipo':'🚨 Mis urgentes'} (≤3 días o vencidos)</div>
     <div class="card-list">${urg.slice(0,5).map(cardProd).join('')}</div>${urg.length>5?`<div style="text-align:center;margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="nav('bandeja')">Ver los ${urg.length} →</button></div>`:''}</div>`:'';
-  setContent(`<div style="padding-bottom:80px">${banner}${kp}<div style="height:12px"></div>${urgH}${planta_}${carga}</div>`);
+  setContent(`<div style="padding-bottom:80px">${banner}${kp}<div style="height:12px"></div>${urgH}${planta_}${T?carga:''}</div>`);
 }
 
 // ══ MI BANDEJA ════════════════════════════════════════════════════
@@ -1306,7 +1311,7 @@ const BD_KF={
   sinpedir:p=>mpNivel(p)>0,
 };
 // Tocar un indicador filtra la lista a esos ítems (de tu bandeja); tocarlo otra vez lo quita
-function bdKpi(k,fromDash){ if(!fromDash&&_BD.kf===k&&_BD.scope==='mia') _BD.kf=''; else{ _BD.kf=k; _BD.scope='mia'; } _BD.q=''; pgReset(); if(fromDash) nav('bandeja'); else bandeja(); }
+function bdKpi(k,fromDash){ if(!fromDash&&_BD.kf===k) _BD.kf=''; else{ _BD.kf=k; _BD.scope=fromDash?(dvTodo()?'equipo':'mia'):(_BD.scope==='equipo'?'equipo':'mia'); } _BD.q=''; pgReset(); if(fromDash) nav('bandeja'); else bandeja(); }
 function bdQuitar(){ _BD.kf=''; _BD.q=''; pgReset(); bandeja(); }
 function bdVista(k){ _BD.vista=k; bandeja(); }
 const BD_SCOPES={
@@ -1331,14 +1336,14 @@ function bandeja(){
   const base=all.filter(BD_SCOPES[_BD.scope][1]);
   const kfFn=_BD.kf?BD_KF[_BD.kf]:null;
   const rows=base.filter(p=>(!kfFn||kfFn(p))&&coincide(p,q)).sort(cmpUrg);
-  const mias=bandejaMia();
+  const mias=_BD.scope==='equipo'?all.filter(enBandejaDis):bandejaMia();
   const urg=mias.filter(p=>{ const d=diasPactada(p); return d!=null&&d<=3; }).length;
   const chips=chipsH(Object.keys(BD_SCOPES).map(k=>[k,BD_SCOPES[k][0],cnt[k]]),_BD.scope,'bdScope');
   const vctl=`<div class="chips" data-tbctl="1">${[['tabla','⊞ Tabla'],['tarjetas','▦ Tarjetas']].map(([k,l])=>`<button class="chip ${_BD.vista===k?'on':''}" onclick="bdVista('${k}')">${l}</button>`).join('')}</div>`;
   const banner=moduleBanner('🎨',TITLES.bandeja,'Lo que te asignó el comercial y sigue pendiente de diseño o de envío a compras',chips);
   const kpv=vctl;
-  const kfOn=k=>_BD.kf===k&&_BD.scope==='mia';
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)',"bdKpi('pend')",kfOn('pend'))}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas')",kfOn('nuevas'))}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg')",kfOn('urg'))}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio')",kfOn('envio'))}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir')",kfOn('sinpedir'))}${(_BD.kf||_BD.q)?`<div class="kchip" onclick="bdQuitar()" style="display:flex;align-items:center;gap:6px;border-style:dashed"><div class="l" style="margin:0;font-size:11px">✕ Quitar filtros</div></div>`:''}</div>`;
+  const kfOn=k=>_BD.kf===k;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,_BD.scope==='equipo'?'🎨 Pendientes · equipo':'🎨 Pendientes','var(--purple)',"bdKpi('pend')",kfOn('pend'))}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas')",kfOn('nuevas'))}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg')",kfOn('urg'))}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio')",kfOn('envio'))}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir')",kfOn('sinpedir'))}${(_BD.kf||_BD.q)?`<div class="kchip" onclick="bdQuitar()" style="display:flex;align-items:center;gap:6px;border-style:dashed"><div class="l" style="margin:0;font-size:11px">✕ Quitar filtros</div></div>`:''}</div>`;
   // Progreso de ingeniería (antes pestaña «Ingeniería»): de los ítems activos, cuántos ya tienen el diseño aprobado
   const ingBase=all.filter(p=>!p.despachado&&!estSinDiseno(p)&&(_BD.scope==='equipo'||_BD.scope==='sindis'?true:esMia(p)));
   const ingOk=ingBase.filter(p=>p.diseno_ok).length, ingPct=ingBase.length?Math.round(ingOk/ingBase.length*100):0;
