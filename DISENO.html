@@ -1270,7 +1270,7 @@ function dashboard(){
   const btnB=(f,l,fn)=>`<button class="btn btn-sm" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="${fn}">${l}</button>`;
   const banner=moduleBanner('🎨','Hola, '+esc(_SESSION?.nombre||''),soloAdmin?'Vista de administrador · '+nOps+' OP activas en planta':`Tienes ${mias.length} ítem(s) en tu bandeja${urg.length?' · '+urg.length+' urgente(s)':''}`,
     `<div style="display:flex;gap:8px;flex-wrap:wrap">${btnB(0,'🎨 Mi bandeja',"nav('bandeja')")}${btnB(0,'🏭 Ver toda la planta',"plantaGo({})")}</div>`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Mi bandeja','var(--purple)',"nav('bandeja')")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"nav('bandeja')")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"nav('bandeja')")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"nav('bandeja')")}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"nav('bandeja')")}</div>`;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Mi bandeja','var(--purple)',"bdKpi('pend',1)")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas',1)")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg',1)")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio',1)")}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir',1)")}</div>`;
   const tiles=ETAPAS.filter(e=>!['sindis','vieja','vencida'].includes(e.k)||act.some(ST[e.k])).map(e=>{
     const n=act.filter(ST[e.k]).length;
     return `<div class="kpi-card" onclick="plantaGo({etapa:'${e.k}'})" style="cursor:pointer;padding:12px"><div class="kpi-label">${e.l}</div><div class="kpi-value" style="color:${e.c};font-size:24px">${n}</div></div>`;
@@ -1297,7 +1297,17 @@ function dashboard(){
 }
 
 // ══ MI BANDEJA ════════════════════════════════════════════════════
-let _BD={scope:'mia',q:'',init:false,vista:'tabla'};
+let _BD={scope:'mia',q:'',init:false,vista:'tabla',kf:''};
+const BD_KF={
+  pend:p=>true,
+  nuevas:p=>esNueva(p),
+  urg:p=>{ const d=diasPactada(p); return d!=null&&d<=3; },
+  envio:p=>matsPend(p).length>0,
+  sinpedir:p=>mpNivel(p)>0,
+};
+// Tocar un indicador filtra la lista a esos ítems (de tu bandeja); tocarlo otra vez lo quita
+function bdKpi(k,fromDash){ if(!fromDash&&_BD.kf===k&&_BD.scope==='mia') _BD.kf=''; else{ _BD.kf=k; _BD.scope='mia'; } _BD.q=''; pgReset(); if(fromDash) nav('bandeja'); else bandeja(); }
+function bdQuitar(){ _BD.kf=''; _BD.q=''; pgReset(); bandeja(); }
 function bdVista(k){ _BD.vista=k; bandeja(); }
 const BD_SCOPES={
   mia:['Mi bandeja',p=>esMia(p)&&enBandejaDis(p)],
@@ -1305,7 +1315,7 @@ const BD_SCOPES={
   sindis:['Sin diseñador',p=>ST.sindis(p)],
   equipo:['Todo el equipo',p=>enBandejaDis(p)],
 };
-function bdScope(k){ _BD.scope=k; pgReset(); bandeja(); }
+function bdScope(k){ _BD.scope=k; _BD.kf=''; pgReset(); bandeja(); }
 let _bdT=null; function bdSetQ(v){ clearTimeout(_bdT); _bdT=setTimeout(()=>{ _BD.q=v; pgReset(); bandeja(); },220); }
 function tablaBk(rows){
   const fl=p=>[esNueva(p)?'<span class="badge morado">🆕 Nueva</span>':'',repAbierto(p)?'<span class="badge rojo">⚠️ Reproceso</span>':'',p.externo?'<span class="badge urg">🚚 Externo</span>':'',matsPend(p).length?`<span class="badge naranja">📨 ${matsPend(p).length}</span>`:''].join(' ');
@@ -1319,14 +1329,16 @@ function bandeja(){
   const cnt={}; for(const k in BD_SCOPES) cnt[k]=all.filter(BD_SCOPES[k][1]).length;
   const q=_norm(_BD.q);
   const base=all.filter(BD_SCOPES[_BD.scope][1]);
-  const rows=base.filter(p=>coincide(p,q)).sort(cmpUrg);
+  const kfFn=_BD.kf?BD_KF[_BD.kf]:null;
+  const rows=base.filter(p=>(!kfFn||kfFn(p))&&coincide(p,q)).sort(cmpUrg);
   const mias=bandejaMia();
   const urg=mias.filter(p=>{ const d=diasPactada(p); return d!=null&&d<=3; }).length;
   const chips=chipsH(Object.keys(BD_SCOPES).map(k=>[k,BD_SCOPES[k][0],cnt[k]]),_BD.scope,'bdScope');
   const vctl=`<div class="chips" data-tbctl="1">${[['tabla','⊞ Tabla'],['tarjetas','▦ Tarjetas']].map(([k,l])=>`<button class="chip ${_BD.vista===k?'on':''}" onclick="bdVista('${k}')">${l}</button>`).join('')}</div>`;
   const banner=moduleBanner('🎨',TITLES.bandeja,'Lo que te asignó el comercial y sigue pendiente de diseño o de envío a compras',chips);
   const kpv=vctl;
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)')}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)')}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)')}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)')}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)')}</div>`;
+  const kfOn=k=>_BD.kf===k&&_BD.scope==='mia';
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)',"bdKpi('pend')",kfOn('pend'))}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)',"bdKpi('nuevas')",kfOn('nuevas'))}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)',"bdKpi('urg')",kfOn('urg'))}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)',"bdKpi('envio')",kfOn('envio'))}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"bdKpi('sinpedir')",kfOn('sinpedir'))}${(_BD.kf||_BD.q)?`<div class="kchip" onclick="bdQuitar()" style="display:flex;align-items:center;gap:6px;border-style:dashed"><div class="l" style="margin:0;font-size:11px">✕ Quitar filtros</div></div>`:''}</div>`;
   // Progreso de ingeniería (antes pestaña «Ingeniería»): de los ítems activos, cuántos ya tienen el diseño aprobado
   const ingBase=all.filter(p=>!p.despachado&&!estSinDiseno(p)&&(_BD.scope==='equipo'||_BD.scope==='sindis'?true:esMia(p)));
   const ingOk=ingBase.filter(p=>p.diseno_ok).length, ingPct=ingBase.length?Math.round(ingOk/ingBase.length*100):0;
