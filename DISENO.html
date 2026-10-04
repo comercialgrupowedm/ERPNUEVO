@@ -938,7 +938,7 @@ let MOD = 'dashboard';
 const TITLES = {dashboard:'Inicio', bandeja:'Mi bandeja', planta:'Planta · todas las OP', pedidos:'Pedidos de material', produccion:'Producción · todos los ítems', planos:'Planos', itemscot:'Ítems cotizados'};
 
 // ══ CARGA / SINCRONIZACIÓN (mismo esquema que el ERP Comercial) ═══
-const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at,semana,notas_diseno,notas_diseno_por,notas_diseno_at';
+const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,no_lleva_mp,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at,semana,notas_diseno,notas_diseno_por,notas_diseno_at';
 const _fd=(a,b)=>String(b||'').localeCompare(String(a||''));
 const PSYNC=[
   {t:'produccion',k:'produccion',sel:PROD_COLS,ord:'op.desc,item_num.asc,id.asc',cmp:(a,b)=>(b.op-a.op)||(Number(a.item_num)-Number(b.item_num))||String(a.id).localeCompare(String(b.id))},
@@ -1020,6 +1020,45 @@ const repAbierto=p=>repsDe(p.id).some(r=>r.estado==='ABIERTO');
 const matsPend=p=>matsDe(p.id).filter(m=>m.estado==='PENDIENTE');
 
 const PROD_EST={'PENDIENTE MP Y DISEÑO':'naranja','PENDIENTE DISEÑO':'naranja','PENDIENTE MP':'naranja','EN PROCESO':'azul','TRABAJO EXTERNO':'urg','PENDIENTE DESPACHO':'azul','TERMINADO':'verde','CALIDAD APROBADA':'verde','REMISIÓN SOLICITADA':'urg','REMISIÓN GENERADA':'urg','REPROCESO':'rojo','DESPACHADO':'gris'};
+
+// ── Estado mostrado: misma fórmula que el sistema (_prod_recalc) para los estados "pendiente", así el nombre siempre coincide con lo chuleado
+function estadoDis(p){
+  const e=String(p.estado||'').trim().toUpperCase();
+  if(p.despachado||p.terminado) return p.estado;
+  if(!(e==='EN PROCESO'||(e.startsWith('PENDIENTE')&&e!=='PENDIENTE DESPACHO'))) return p.estado;
+  const d=!p.diseno_ok, m=!p.mp_ok;
+  return d&&m?'PENDIENTE MP Y DISEÑO':d?'PENDIENTE DISEÑO':m?'PENDIENTE MP':'EN PROCESO';
+}
+// ── Alerta de material sin pedir: días hábiles (lunes a sábado) completos desde que subió la OP.
+// Si la OP se sube desde las 12:00 (hora Colombia) el conteo arranca el siguiente día hábil. Domingos no cuentan.
+// ≥2 días: rojo · ≥5 días: alerta fuerte. Las OP importadas (creadas mucho después de su fecha de inicio) cuentan desde la fecha de inicio.
+const MP_DIAS_ROJO=2, MP_DIAS_ALERTA=5;
+function mpDiasHab(p){
+  const cr=p.created_at?new Date(p.created_at):null; const fi=p.fecha_inicio?new Date(String(p.fecha_inicio).slice(0,10)+'T00:00:00-05:00'):null;
+  let st=cr; if(fi&&(!cr||(cr-fi)/864e5>1.5)) st=fi; if(!st||isNaN(st)) return null;
+  const b=new Date(st.getTime()-5*36e5); let day=Date.UTC(b.getUTCFullYear(),b.getUTCMonth(),b.getUTCDate()); if(b.getUTCHours()>=12) day+=864e5;
+  while(new Date(day).getUTCDay()===0) day+=864e5;
+  const nw=new Date(Date.now()-5*36e5); const hoy=Date.UTC(nw.getUTCFullYear(),nw.getUTCMonth(),nw.getUTCDate());
+  let n=0; for(let t=day;t<hoy;t+=864e5){ if(new Date(t).getUTCDay()!==0) n++; } return n;
+}
+const mpSinPedir=p=>enPlanta(p)&&!p.mp_ok&&!p.no_lleva_mp&&!matsDe(p.id).some(m=>m.estado!=='PENDIENTE');
+function mpNivel(p){ if(!mpSinPedir(p)) return 0; const n=mpDiasHab(p); return n==null?0:n>=MP_DIAS_ALERTA?2:n>=MP_DIAS_ROJO?1:0; }
+function mpBadge(p){
+  const nv=mpNivel(p); if(!nv) return ''; const n=mpDiasHab(p);
+  const bt=`<button class="btn btn-ghost btn-sm" style="padding:1px 8px;font-size:11px" onclick="event.stopPropagation();mpNoLleva('${p.id}')">🚫 No lleva material</button>`;
+  return nv===2?`<span class="badge rojo" style="font-weight:800;animation:mpPulse 1.4s infinite" title="${n} días hábiles sin pedir material">🚨 ¡Ojo, pida el material! · ${n} d háb.</span>${bt}`
+    :`<span class="badge rojo" title="${n} días hábiles sin pedir material">🔴 No ha pedido material · ${n} d háb.</span>${bt}`;
+}
+async function mpNoLleva(id){
+  const p=prodDe(id); if(!p) return;
+  if(!confirm('¿Marcar OP-'+p.op+' · ítem '+(p.item_num??'')+' como "No lleva material"?\nQuedará con Compras completas y dejará de salir la alerta.')) return;
+  if(await rpcAct('prod_no_lleva_mp',{p_id:id,p_si:true},'🚫 Marcado: no lleva material')) afterAct(id);
+}
+async function mpSiLleva(id){
+  if(!confirm('¿Volver a marcar que este ítem sí lleva material?')) return;
+  if(await rpcAct('prod_no_lleva_mp',{p_id:id,p_si:false},'Vuelve a llevar material')) afterAct(id);
+}
+(function(){ const st=document.createElement('style'); st.textContent='@keyframes mpPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55)}50%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}'; document.head.appendChild(st); })();
 const bProd=e=>`<span class="badge ${PROD_EST[e]||'gris'}">${esc(e||'—')}</span>`;
 const gar=p=>p&&p.es_garantia?'<span class="badge naranja" style="margin-left:4px">🛡️ GARANTÍA</span>':'';
 const PRIOR_COL={Baja:'gris',Media:'azul',Alta:'naranja',Urgente:'rojo'};
@@ -1077,7 +1116,7 @@ function esVieja(p){ const d=diasEnPlanta(p); return d!=null&&d>DIAS_VIEJA; }
 const esNueva=p=>pendDis(p)&&!!p.created_at&&(Date.now()-new Date(p.created_at))<DIAS_NUEVA*86400000;
 
 // Bandeja del diseñador: igual que el comercial (diseño sin terminar o materiales sin enviar a compras)
-const enBandejaDis=p=>enPlanta(p)&&!estSinDiseno(p)&&(!p.diseno_ok||matsPend(p).length>0);
+const enBandejaDis=p=>enPlanta(p)&&!estSinDiseno(p)&&(!p.diseno_ok||matsPend(p).length>0||mpNivel(p)>0);
 const bandejaMia=()=>(DB.produccion||[]).filter(p=>esMia(p)&&enBandejaDis(p));
 
 // Diseñadores: usuarios con rol Diseño + cualquier nombre que ya figure en una OP
@@ -1201,6 +1240,8 @@ function cardProd(p){
   const pend=matsPend(p).length; const dp=diasEnPlanta(p);
   const flags=[
     esNueva(p)?'<span class="badge morado">🆕 Nueva</span>':'',
+    mpBadge(p),
+    p.no_lleva_mp?'<span class="badge gris">🚫 No lleva material</span>':'',
     esVieja(p)?`<span class="badge rosado" title="Lleva ${dp} días en planta">⏳ ${dp} d en planta</span>`:'',
     repAbierto(p)?'<span class="badge rojo">⚠️ Reproceso</span>':'',
     String(p.notas_diseno||'').trim()?'<span class="badge gris" title="Tiene notas del diseñador">📝 Notas</span>':'',
@@ -1209,11 +1250,11 @@ function cardProd(p){
   ].join('');
   return `<div class="list-card" onclick="detalleProd('${p.id}')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">×${p.unidades}</div></div></div>
     ${miniSteps(p)}
-    <div class="lc-meta">${bProd(p.estado)}${gar(p)}${flags}<span style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</span><span style="font-size:11px;color:var(--muted)">📅 ${pactadaTag(p)}</span>${disBadge(p)}</div></div>`;
+    <div class="lc-meta">${bProd(estadoDis(p))}${gar(p)}${flags}<span style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</span><span style="font-size:11px;color:var(--muted)">📅 ${pactadaTag(p)}</span>${disBadge(p)}</div></div>`;
 }
 function tablaProd(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Descripción</th><th>Empresa</th><th>Cant</th><th>Avance</th><th>Estado</th><th>Etapa</th><th>Pactada</th><th>Prior.</th><th>Diseñador</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td class="td-center">${p.unidades}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(p.estado)}${gar(p)}</td><td>${esc(etapaLabel(p))}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td class="td-center">${p.unidades}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${esc(etapaLabel(p))}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 const kchip=(n,l,c,onclick,on)=>`<div class="kchip ${on?'on':''}" ${onclick?`onclick="${onclick}"`:'style="cursor:default"'}><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div></div>`;
@@ -1229,7 +1270,7 @@ function dashboard(){
   const btnB=(f,l,fn)=>`<button class="btn btn-sm" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="${fn}">${l}</button>`;
   const banner=moduleBanner('🎨','Hola, '+esc(_SESSION?.nombre||''),soloAdmin?'Vista de administrador · '+nOps+' OP activas en planta':`Tienes ${mias.length} ítem(s) en tu bandeja${urg.length?' · '+urg.length+' urgente(s)':''}`,
     `<div style="display:flex;gap:8px;flex-wrap:wrap">${btnB(0,'🎨 Mi bandeja',"nav('bandeja')")}${btnB(0,'🏭 Ver toda la planta',"plantaGo({})")}</div>`);
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Mi bandeja','var(--purple)',"nav('bandeja')")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"nav('bandeja')")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"nav('bandeja')")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"nav('bandeja')")}</div>`;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Mi bandeja','var(--purple)',"nav('bandeja')")}${kchip(nuevas.length,'🆕 Nuevas','var(--info)',"nav('bandeja')")}${kchip(urg.length,'⏰ Urgentes ≤3d','var(--danger)',"nav('bandeja')")}${kchip(porEnviar.length,'📨 Mat. por enviar','var(--warn)',"nav('bandeja')")}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)',"nav('bandeja')")}</div>`;
   const tiles=ETAPAS.filter(e=>!['sindis','vieja','vencida'].includes(e.k)||act.some(ST[e.k])).map(e=>{
     const n=act.filter(ST[e.k]).length;
     return `<div class="kpi-card" onclick="plantaGo({etapa:'${e.k}'})" style="cursor:pointer;padding:12px"><div class="kpi-label">${e.l}</div><div class="kpi-value" style="color:${e.c};font-size:24px">${n}</div></div>`;
@@ -1269,7 +1310,7 @@ let _bdT=null; function bdSetQ(v){ clearTimeout(_bdT); _bdT=setTimeout(()=>{ _BD
 function tablaBk(rows){
   const fl=p=>[esNueva(p)?'<span class="badge morado">🆕 Nueva</span>':'',repAbierto(p)?'<span class="badge rojo">⚠️ Reproceso</span>':'',p.externo?'<span class="badge urg">🚚 Externo</span>':'',matsPend(p).length?`<span class="badge naranja">📨 ${matsPend(p).length}</span>`:''].join(' ');
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Empresa</th><th>Descripción</th><th>Cant</th><th>Etapa</th><th>Avance</th><th>Estado</th><th>Pactada</th><th>Prior.</th><th>Avisos</th><th>Diseñador</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${_BK.has(p.id)?'checked':''} onchange="bkToggle('${p.id}',this.checked)"></td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td class="td-center">${p.unidades}</td><td>${esc(etapaLabel(p))}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(p.estado)}${gar(p)}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${fl(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${_BK.has(p.id)?'checked':''} onchange="bkToggle('${p.id}',this.checked)"></td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td class="td-center">${p.unidades}</td><td>${esc(etapaLabel(p))}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${fl(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function bandeja(){
@@ -1285,7 +1326,7 @@ function bandeja(){
   const vctl=`<div class="chips" data-tbctl="1">${[['tabla','⊞ Tabla'],['tarjetas','▦ Tarjetas']].map(([k,l])=>`<button class="chip ${_BD.vista===k?'on':''}" onclick="bdVista('${k}')">${l}</button>`).join('')}</div>`;
   const banner=moduleBanner('🎨',TITLES.bandeja,'Lo que te asignó el comercial y sigue pendiente de diseño o de envío a compras',chips);
   const kpv=vctl;
-  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)')}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)')}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)')}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)')}</div>`;
+  const kp=`<div class="kstrip" style="margin-top:12px">${kchip(mias.length,'🎨 Pendientes','var(--purple)')}${kchip(mias.filter(esNueva).length,'🆕 Nuevas','var(--info)')}${kchip(urg,'⏰ Urgentes ≤3d','var(--danger)')}${kchip(mias.filter(p=>matsPend(p).length).length,'📨 Mat. por enviar','var(--warn)')}${kchip(mias.filter(p=>mpNivel(p)>0).length,'🔴 Sin pedir material','var(--danger)')}</div>`;
   // Progreso de ingeniería (antes pestaña «Ingeniería»): de los ítems activos, cuántos ya tienen el diseño aprobado
   const ingBase=all.filter(p=>!p.despachado&&!estSinDiseno(p)&&(_BD.scope==='equipo'||_BD.scope==='sindis'?true:esMia(p)));
   const ingOk=ingBase.filter(p=>p.diseno_ok).length, ingPct=ingBase.length?Math.round(ingOk/ingBase.length*100):0;
@@ -1340,7 +1381,7 @@ function plGrupos(rows){
 function opItemRow(p){
   return `<div class="opg-item" onclick="detalleProd('${p.id}')">${thumbProd(p,34)}<div style="flex:1;min-width:0"><div style="font-size:11px;font-family:var(--mono);color:var(--muted);font-weight:700">ÍTEM ${p.item_num??'—'} · ×${p.unidades}${p.es_garantia?' · 🛡️':''}</div>
     <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>${miniSteps(p)}</div>
-    <div style="text-align:right;flex-shrink:0">${bProd(p.estado)}<div style="font-size:10px;margin-top:4px">${pactadaTag(p)}</div></div></div>`;
+    <div style="text-align:right;flex-shrink:0">${bProd(estadoDis(p))}<div style="font-size:10px;margin-top:4px">${pactadaTag(p)}</div></div></div>`;
 }
 function opCard(g){
   const its=g.items; const act=its.filter(p=>!p.despachado); const desp=its.length-act.length;
@@ -1463,13 +1504,13 @@ function detalleProd(id,tab){
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">OP-${p.op} · ÍTEM ${p.item_num??'—'}</div>
     <div class="cot-hero-empresa">${esc(p.descripcion||'Sin descripción')}</div><div class="cot-hero-sub">COT-${p.cot_num||'—'} · ${esc(p.empresa||'—')}</div></div>
     <div class="cot-hero-right">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" alt="" loading="lazy" referrerpolicy="no-referrer" ${p.imagen_thumb?'':`data-did="${esc(p.imagen_drive_id||'')}" data-w="300" data-hide="1"`} onerror="imgErr(this)" style="width:72px;height:72px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,.4)">`:''}</div></div>
-    <div class="cot-hero-badges">${bProd(p.estado)}${gar(p)} ${bPrior(p.prioridad)}${p.tipo?bTipo(p.tipo):''}<span class="cot-hero-asesor">🎨 ${esc(p.disenador||'Sin diseñador')}</span>${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
+    <div class="cot-hero-badges">${bProd(estadoDis(p))}${gar(p)} ${bPrior(p.prioridad)}${p.tipo?bTipo(p.tipo):''}<span class="cot-hero-asesor">🎨 ${esc(p.disenador||'Sin diseñador')}</span>${p.asesor?`<span class="cot-hero-asesor">👤 ${esc(p.asesor)}</span>`:''}</div></div>`;
   const kpis=`<div class="cot-kpis"><div class="kpi-mini"><span class="ki">⚙️</span><div class="kv">${Number(p.avance||0).toFixed(0)}%</div><div class="kl">Avance general</div></div>
     <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${Number(p.cant_despachada||0)}/${p.unidades}</div><div class="kl">Despachado</div></div>
     <div class="kpi-mini ${d!=null&&d<0?'danger-kpi':d!=null&&d<5?'warn-kpi':''}"><span class="ki">📅</span><div class="kv" style="color:${colD}">${d==null?'—':Math.abs(d)+'d'}</div><div class="kl">${d==null?'Sin fecha':d<0?'Vencido hace':'Para entrega'}</div></div></div>${prog(p.avance)}`;
   const T=(k,l)=>`<div class="dp-tab ${tab===k?'active':''}" onclick="pdTab(this,'${k}')">${l}</div>`;
   const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
-  openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+accionesProd(p)+
+  openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+(mpNivel(p)?`<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:13px;font-weight:700">${mpNivel(p)===2?'🚨 ¡Ojo, pida el material!':'🔴 No ha pedido el material'} · ${mpDiasHab(p)} días hábiles sin pedido. Si este ítem no lleva material, usa el botón “No lleva material”.</div>`:'')+accionesProd(p)+
     `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${T('archivos','📎 Archivos')}${F('dis_parecidos')?T('parecidos','💡 Parecidos'):''}${T('historial','🕘 Historial')}</div>`+
     P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+(F('dis_parecidos')?P('parecidos','<div id="pd-sim">'+mutedP('Buscando parecidos…')+'</div>'):'')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
   if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
@@ -3588,6 +3629,7 @@ function accionesProd(p){
   else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver diseño',`prodDiseno('${id}',false)`));
   b.push(btn('🧱','#b45309',pend?'Pedido de material':'Pedir más material',`pedidoMaterial('${id}')`));
   b.push(btn('🧾','#92400e','Ver pedidos',`detalleProd('${id}','materiales')`));
+  if(p.no_lleva_mp) b.push(btn('↩️','#64748b','Sí lleva material',`mpSiLleva('${id}')`)); else if(!p.mp_ok&&!matsDe(id).some(m=>m.estado!=='PENDIENTE')) b.push(btn('🚫','#dc2626','No lleva material',`mpNoLleva('${id}')`));
   b.push(btn('📝','#7c3aed','Notas del diseñador',`prodNotasDis('${id}')`));
   b.push(btn('🗺️','#0d9488','Hoja de ruta',`prodHojaRutaEditor('${id}')`));
   if(p.hoja_ruta||p._hrSaved) b.push(btn('🖨️','#0f766e','Imprimir hoja de ruta',`prodHojaRutaImprimir('${id}')`));
@@ -3825,7 +3867,7 @@ function prDentro(p){
 const horasTot=p=>(p.procesos||[]).reduce((s,x)=>s+(Number(x&&x.horas)||0),0);
 function tablaProdAll(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Estado</th><th>Tipo</th><th>Prior.</th><th>Empresa</th><th>Descripción</th><th>Asesor</th><th>Diseñador</th><th>Avance</th><th>F. inicio</th><th>Pactada</th><th>Hrs</th><th>Sem</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td>${bProd(p.estado)}${gar(p)}</td><td>${bTipo(p.tipo)}</td><td>${bPrior(p.prioridad)}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td>${esc(p.asesor||'—')}</td><td>${esc(p.disenador||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${fmtDate(p.fecha_inicio)}</td><td>${pactadaTag(p)}</td><td class="td-center">${horasTot(p)?horasTot(p).toFixed(1)+'h':'—'}</td><td class="td-center">${p.semana??'—'}</td></tr>`).join('')}
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${bTipo(p.tipo)}</td><td>${bPrior(p.prioridad)}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td>${esc(p.asesor||'—')}</td><td>${esc(p.disenador||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${fmtDate(p.fecha_inicio)}</td><td>${pactadaTag(p)}</td><td class="td-center">${horasTot(p)?horasTot(p).toFixed(1)+'h':'—'}</td><td class="td-center">${p.semana??'—'}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function produccion(){
