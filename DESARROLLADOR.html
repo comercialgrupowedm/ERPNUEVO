@@ -5322,7 +5322,7 @@ async function impFullPick(files){
       else{
         const prods=await GETALL('produccion','select=id,op,item_num,id_item,imagen_drive_id&order=id.asc');
         // Ítems que de verdad existen (o se están creando): un plano solo se liga a un ítem que exista, si no violaría la llave foránea
-        let itemsDb=new Set(); try{ (await GETALL('items','select=id&order=id.asc')).forEach(x=>itemsDb.add(String(x.id))); }catch(e){} itemOk.forEach(x=>itemsDb.add(String(x)));
+        let itemsDb=new Set(); try{ (await GETALL('items','select=id&order=id.asc')).forEach(x=>itemsDb.add(String(x.id))); }catch(e){}
         const okIt=v=>(v!=null&&v!==''&&itemsDb.has(String(v)))?v:null;
         const pMap=new Map(prods.map(p=>[String(p.id),p]));
         const porOpItemImg=new Map(); prods.forEach(p=>{ if(p.op==null) return; const k=p.op+'|'+(p.item_num??''); if(!porOpItemImg.has(k)) porOpItemImg.set(k,[]); porOpItemImg.get(k).push(p); });
@@ -5342,7 +5342,7 @@ async function impFullPick(files){
           const dp=iPl>=0?_impStr(r[iPl]):''; if(dp){ cand.push({id,dp}); const nm=iPn>=0?String(r[iPn]||'').trim():''; if(nm) nombres.set(dp,nm); }
         });
         planoProd.forEach((dp,id)=>cand.unshift({id,dp}));
-        const mkPlano=(id_prod,id_item,dp,nombre)=>({id:(crypto.randomUUID?crypto.randomUUID():('pl-'+Date.now()+'-'+Math.random().toString(16).slice(2))),id_prod,id_item,tipo:'plano',nombre,
+        const mkPlano=(id_prod,id_item,dp,nombre)=>({id:'pl:'+(id_prod||'')+':'+(id_item||'')+':'+dp,id_prod,id_item,tipo:'plano',nombre,
           mime:/\.(png|jpe?g)$/i.test(nombre)?(/png$/i.test(nombre)?'image/png':'image/jpeg'):'application/pdf',
           data:'https://drive.google.com/file/d/'+dp+'/view',created_by:'Excel (importación)'});
         cand.forEach(({id,dp})=>{                      // planos de la OP (quedan también en su ítem)
@@ -5986,6 +5986,8 @@ function importBuildRecords(headers, rows, cfg){
     if(cfg.preprocessRow === 'produccion') {
       // Limpiar IDQR: quitar punto final y espacios (ej: "109981." → "109981")
       if(obj.id) obj.id = String(obj.id).trim().replace(/\.+$/, '');
+      // IDQR vacío (OP recién creada en la hoja): el código siempre es OP + n.º de ítem (13657 + 1 → "136571")
+      if(!obj.id){ const _o=parseInt(parseFloat(obj.op)), _i=parseInt(parseFloat(obj.item_num)); if(_o>0&&_i>0) obj.id=String(_o)+String(_i); }
       // Precio: viene como "$4,500,000.00" → número
       if(obj.precio_sin_iva && typeof obj.precio_sin_iva === 'string') {
         obj.precio_sin_iva = parseFloat(obj.precio_sin_iva.replace(/[$,]/g,''))||0;
