@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Llamar a la base de datos
-        run: curl -fsS -X POST "https://rarjcuoapvrfqrzuhsbi.supabase.co/rest/v1/rpc/keepalive" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcmpjdW9hcHZyZnFyenVoc2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3OTM4MDcsImV4cCI6MjEwNTM2OTgwN30.6ftoBVT9gPOOcuqUf8UY3aiIoyB3ZJFhpp_1Hyfu_js" -H "Content-Type: application/json" -d '{}' --retry 3 --retry-delay 10
+        run: 'curl -fsS -X POST "https://rarjcuoapvrfqrzuhsbi.supabase.co/rest/v1/rpc/keepalive" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcmpjdW9hcHZyZnFyenVoc2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3OTM4MDcsImV4cCI6MjEwNTM2OTgwN30.6ftoBVT9gPOOcuqUf8UY3aiIoyB3ZJFhpp_1Hyfu_js" -H "Content-Type: application/json" -d "{}" --retry 3 --retry-delay 10'
