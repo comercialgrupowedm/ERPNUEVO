@@ -3741,6 +3741,9 @@ const asiHora=t=>t?new Date(t).toLocaleTimeString('es-CO',{timeZone:'America/Bog
 const asiDia=t=>new Date(t).toLocaleDateString('es-CO',{timeZone:'America/Bogota',day:'2-digit',month:'2-digit'});
 const asiMin=m=>{ m=Math.round(m||0); return Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' m'; };
 function asiIso(d){ const x=new Date(Date.now()+(d||0)*864e5), p=n=>String(n).padStart(2,'0'); return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate()); }
+const _PGP={R:['💚 Remunerado','#166534','#dcfce7'],EPS:['💚 EPS/ARL','#166534','#dcfce7'],C:['🟡 Descontable/compensable','#92400e','#fef3c7'],NR:['⚪ No remunerado','#475569','#e2e8f0']};
+const _PGT={'Calamidad doméstica':'R','Licencia de luto':'R','Cita médica':'R','Citación judicial / legal':'R','Obligación escolar (acudiente)':'R','Votación / jurado de votación':'R','Día de la bicicleta':'R','Vacaciones':'R','Incapacidad médica':'EPS','Licencia de maternidad':'EPS','Licencia de paternidad':'EPS','Permiso personal':'C','Comisión sindical / entierro compañero':'C','Llegada tarde / salida temprana':'C','Licencia no remunerada':'NR'};
+const _pgPill=t=>{ const k=_PGT[t]; if(!k) return ''; const x=_PGP[k]; return ` <span style="background:${x[2]};color:${x[1]};border-radius:99px;padding:1px 8px;font-size:10.5px;font-weight:800;white-space:nowrap">${x[0]}</span>`; };
 async function asistencia(tab){
   ASI.tab=tab||(_asiF('pla_permisos')?'per':'hoy'); ASI.d1=ASI.d1||asiIso(-6); ASI.d2=ASI.d2||asiIso(0);
   openModal('🕒 Asistencia y permisos','<div style="padding:20px;text-align:center;color:var(--muted)">Cargando…</div>','');
@@ -3761,7 +3764,7 @@ function asiPintar(){
     const E={pendiente:['⏳ Pendiente','#d97706'],aprobado:['✅ Aprobado','#16a34a'],rechazado:['❌ Rechazado','#dc2626'],cancelado:['Cancelado','#64748b']};
     h+=ASI.per.length?ASI.per.map(p=>{ const e=E[p.estado]||E.pendiente, d1=String(p.desde).slice(0,10), d2=String(p.hasta).slice(0,10);
       return `<div style="border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--card)"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${esc(p.nombre||p.colaborador)}</b><div style="font-size:11px;color:var(--muted)">${esc(p.cargo||'')}</div></div><span style="color:${e[1]};font-weight:800;font-size:12px;white-space:nowrap">${e[0]}</span></div>
-       <div style="margin-top:6px;font-size:13.5px"><b>${esc(p.tipo)}</b> · ${d1===d2?asiDia(d1+'T12:00:00'):asiDia(d1+'T12:00:00')+' → '+asiDia(d2+'T12:00:00')}${p.hora_ini?' · '+esc(p.hora_ini)+(p.hora_fin?' – '+esc(p.hora_fin):''):''}</div>
+       <div style="margin-top:6px;font-size:13.5px"><b>${esc(p.tipo)}</b>${_pgPill(p.tipo)} · ${d1===d2?asiDia(d1+'T12:00:00'):asiDia(d1+'T12:00:00')+' → '+asiDia(d2+'T12:00:00')}${p.hora_ini?' · '+esc(p.hora_ini)+(p.hora_fin?' – '+esc(p.hora_fin):''):''}</div>
        ${p.motivo?`<div style="margin-top:4px;font-size:13px;color:var(--muted)">${esc(p.motivo)}</div>`:''}
        ${p.respuesta?`<div style="margin-top:4px;font-size:12.5px">💬 ${esc(p.respuesta)} <span style="color:var(--muted)">— ${esc(p.resuelto_por||'')}</span></div>`:''}
        ${p.estado==='pendiente'?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="asiRes(${p.id},'aprobado')">✅ Aprobar</button><button class="btn btn-ghost btn-sm" onclick="asiRes(${p.id},'rechazado')">❌ Rechazar</button></div>`:''}</div>`; }).join('')
