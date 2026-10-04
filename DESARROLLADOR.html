@@ -5409,7 +5409,9 @@ async function impFullSend(table,key,payload,log,B=25){
     catch(e){
       for(const rec of chunk){
         try{ await sb.rpc('dev_import_upsert',{p_table:table,p_rows:[rec],p_key:key}); ok++; }
-        catch(e2){ err++; if(err<=15) log(`❌ ${esc(table)} ${esc(rec[key])}: ${esc(errMsg(e2).slice(0,170))}`,'err'); }
+        catch(e2){
+          if(table==='prod_archivos'&&rec.id_item&&rec.id_prod&&/foreign key/i.test(errMsg(e2))){ try{ await sb.rpc('dev_import_upsert',{p_table:table,p_rows:[Object.assign({},rec,{id_item:null})],p_key:key}); ok++; continue; }catch(e3){ e2=e3; } }
+          err++; if(err<=15) log(`❌ ${esc(table)} ${esc(rec[key])}: ${esc(errMsg(e2).slice(0,170))}`,'err'); }
       }
     }
     if((i/B)%4===3||i+B>=payload.length) log(`… ${esc(table)}: ${Math.min(i+B,payload.length)} / ${payload.length} · ${ok} OK · ${err} errores`,err?'err':'inf');
