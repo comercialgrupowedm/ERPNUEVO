@@ -3717,10 +3717,11 @@ function accPintar(msg){
   const act=ACC.filter(a=>a.activo&&a.tiene_pin).length;
   openModal('🔑 Accesos de planta',`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada empleado entra a PLANTA con su <b>usuario</b> y su <b>código</b> (4 a 8 números) y ve su horario. Con ${act} de ${ACC.length} activos.<br>El código solo se muestra al crearlo o cambiarlo: anótalo y entrégaselo.</div>
    ${msg?`<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14px">${msg}</div>`:''}
-   <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th>Empleado</th><th>Usuario</th><th>Estado</th><th></th></tr></thead><tbody>${ACC.map((a,i)=>`<tr><td><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--muted)">${esc(a.cargo||'')}</div></td>
-     <td><input type="text" value="${esc(a.usuario)}" style="width:110px;padding:4px 6px" onchange="accUsuario(${i},this.value)"></td>
-     <td style="font-size:12px">${a.bloqueado?'🔒 Bloqueado':a.activo&&a.tiene_pin?'✅ Activo':'⚪ Sin código'}${a.ultimo?`<div style="color:var(--muted);font-size:11px">Último: ${esc(new Date(a.ultimo).toLocaleDateString('es-CO'))}</div>`:''}</td>
-     <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="accCodigo(${i})">${a.tiene_pin?'Cambiar código':'Dar código'}</button>${a.activo&&a.tiene_pin?` <button class="btn btn-ghost btn-sm" onclick="accOff(${i})">Desactivar</button>`:''}</td></tr>`).join('')}</tbody></table></div>`,
+   <div style="display:flex;flex-direction:column;gap:8px">${ACC.map((a,i)=>`<div style="border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--card)">
+     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><b>${esc(a.nombre)}</b><div style="font-size:11px;color:var(--muted)">${esc(a.cargo||'')}</div></div>
+       <div style="font-size:12px;text-align:right;white-space:nowrap">${a.bloqueado?'🔒 Bloqueado':a.activo&&a.tiene_pin?'✅ Activo':'⚪ Sin código'}${a.ultimo?`<div style="color:var(--muted);font-size:11px">Último: ${esc(new Date(a.ultimo).toLocaleDateString('es-CO'))}</div>`:''}</div></div>
+     <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--muted)">Usuario</span><input type="text" value="${esc(a.usuario)}" style="width:120px;padding:6px 8px" onchange="accUsuario(${i},this.value)">
+       <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="accCodigo(${i})">${a.tiene_pin?'Cambiar código':'Dar código'}</button>${a.activo&&a.tiene_pin?`<button class="btn btn-ghost btn-sm" onclick="accOff(${i})">Desactivar</button>`:''}</div></div>`).join('')}</div>`,
    `<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
 }
 async function accUsuario(i,v){ const a=ACC[i]; try{ await sb.rpc('plan_acceso_set',{p_colab:a.colaborador,p_usuario:v}); a.usuario=v.trim(); toast('Usuario guardado'); }catch(e){ toast(e.message,true); accPintar(); } }
