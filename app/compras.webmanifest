@@ -3,7 +3,7 @@
  "short_name": "Compras",
  "id": "compras",
  "start_url": "../COMPRAS.html",
- "scope": "../",
+ "scope": "../COMPRAS.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#0f766e",

@@ -3,7 +3,7 @@
  "short_name": "WEDM ERP",
  "id": "index",
  "start_url": "../index.html",
- "scope": "../",
+ "scope": "../index.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#2c5088",

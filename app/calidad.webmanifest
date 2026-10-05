@@ -3,7 +3,7 @@
  "short_name": "Calidad",
  "id": "calidad",
  "start_url": "../CALIDAD.html",
- "scope": "../",
+ "scope": "../CALIDAD.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#15803d",

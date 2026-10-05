@@ -3,7 +3,7 @@
  "short_name": "Comercial",
  "id": "comercial",
  "start_url": "../COMERCIAL.html",
- "scope": "../",
+ "scope": "../COMERCIAL.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#1d4ed8",

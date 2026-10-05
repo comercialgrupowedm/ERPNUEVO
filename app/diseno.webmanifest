@@ -3,7 +3,7 @@
  "short_name": "Diseño",
  "id": "diseno",
  "start_url": "../DISENO.html",
- "scope": "../",
+ "scope": "../DISENO.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#7e22ce",

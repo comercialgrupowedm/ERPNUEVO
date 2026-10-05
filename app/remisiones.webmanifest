@@ -3,7 +3,7 @@
  "short_name": "Remisiones",
  "id": "remisiones",
  "start_url": "../REMISIONES.html",
- "scope": "../",
+ "scope": "../REMISIONES.html",
  "display": "standalone",
  "orientation": "any",
  "background_color": "#c2410c",
