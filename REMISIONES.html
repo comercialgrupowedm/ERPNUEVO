@@ -2916,5 +2916,159 @@ window.WEDM_DETALLE=function(p){ _RM.q=String(p.op); _RM.f='todas'; _RM.per='tod
 </script>
 <!-- /WEDM-INSTALAR -->
 
+<!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
+<style>
+#off-pill{position:fixed;right:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
+#off-pill.sync{background:#1d4ed8}#off-pill.err{background:#b91c1c}#off-pill.ok{background:#15803d}
+@media(min-width:900px){#off-pill{bottom:16px}}
+</style>
+<script>
+(function(){
+ if(window.WEDM_OFF||typeof sb==='undefined') return;
+ var NS='wedm-off-'+(location.pathname.split('/')[1]||'root');
+ var Q=[], syncing=false, dbp=null;
+ var RPC_NOCACHE=/^(sesion_valida|login_usuario|logout_usuario|chat_|next_cot_num|respaldo_|dev_|funciones_set|plan_acceso_)/;
+ var RPC_QUEUE=/^(prod_set_|prod_item_tecnico|planeacion_guardar_ruta|planeacion_asignar_operario|plan_permiso_resolver|plan_fichaje_manual|plan_horario_cargar|plan_colab_guardar|plan_colab_borrar|compras_prov_guardar|calidad_servicio_externo|imagenes_drive_enlazar)/;
+ var NOCACHE_T=/archivos|chat|adjunt/i;
+ function U(){ try{ return (typeof _SESSION!=='undefined'&&_SESSION&&_SESSION.nombre)||''; }catch(e){ return ''; } }
+ function fake(){ try{ return typeof sb.tok==='string'&&sb.tok.indexOf('offline:')===0; }catch(e){ return false; } }
+ function offline(){ return navigator.onLine===false||fake(); }
+ function isNet(e){ return offline()||(e&&(e.name==='AbortError'||e instanceof TypeError||/failed to fetch|networkerror|load failed|network request|offline/i.test(e.message||''))); }
+ function rnd(){ return Math.random().toString(36).slice(2,8); }
+ // ── IndexedDB ──
+ function db(){ return dbp||(dbp=new Promise(function(ok,ko){ try{ var r=indexedDB.open(NS,1); r.onupgradeneeded=function(){ var d=r.result; d.createObjectStore('cache'); d.createObjectStore('queue',{keyPath:'n',autoIncrement:true}); }; r.onsuccess=function(){ ok(r.result); }; r.onerror=function(){ ko(r.error); }; }catch(e){ ko(e); } })); }
+ function tx(store,mode,fn){ return db().then(function(d){ return new Promise(function(ok,ko){ var t=d.transaction(store,mode), r=fn(t.objectStore(store)); t.oncomplete=function(){ ok(r&&r.result); }; t.onerror=t.onabort=function(){ ko(t.error); }; }); }); }
+ function cget(k){ return tx('cache','readonly',function(s){ return s.get(k); }).catch(function(){ return null; }); }
+ function cput(k,v){ tx('cache','readwrite',function(s){ return s.put({v:v,t:Date.now()},k); }).catch(function(){}); }
+ function cclear(){ tx('cache','readwrite',function(s){ var rq=s.openCursor(); rq.onsuccess=function(){ var c=rq.result; if(c){ if(!/^LOGIN\||^\|R\|listar_usuarios/.test(String(c.key))) c.delete(); c.continue(); } }; return rq; }).catch(function(){}); }
+ function qsave(it){ return tx('queue','readwrite',function(s){ return s.put(it); }).then(function(k){ if(it.n==null) it.n=k; return it; }); }
+ function qdel(n){ return tx('queue','readwrite',function(s){ return s.delete(n); }).catch(function(){}); }
+ function qload(){ return tx('queue','readonly',function(s){ return s.getAll(); }).then(function(a){ Q=a||[]; ui(); }).catch(function(){}); }
+ // ── Lectura con respaldo ──
+ function eqs(q){ var o={}; String(q||'').split('&').forEach(function(p){ var m=/^([a-z_0-9]+)=eq\.(.*)$/i.exec(p); if(m) o[m[1]]=decodeURIComponent(m[2]); }); return o; }
+ function match(row,q){ var c=eqs(q); for(var k in c){ if(String(row[k])!==c[k]) return false; } return true; }
+ function overlay(t,rows,q){ if(!Array.isArray(rows)) return rows; var out=rows.slice(); Q.forEach(function(it){ if(it.t!==t||it.err||it.user!==U()) return;
+   if(it.k==='post'){ if(!/(^|&)id=eq\./.test(q||'')){ (it.rows||[]).forEach(function(r){ out.push(r); }); } }
+   else if(it.k==='patch'){ out=out.map(function(r){ return match(r,it.q)?Object.assign({},r,it.body):r; }); }
+   else if(it.k==='del'){ out=out.filter(function(r){ return !match(r,it.q); }); } }); return out; }
+ var o={get:sb.get.bind(sb),rpc:sb.rpc.bind(sb),post:sb.post.bind(sb),patch:sb.patch.bind(sb),del:sb.del.bind(sb)};
+ sb.get=async function(t,q){
+  var k=U()+'|G|'+t+'?'+(q||'');
+  try{ if(offline()) throw new TypeError('offline'); var r=await o.get(t,q); if(!NOCACHE_T.test(t)) cput(k,r); return Q.length?overlay(t,r,q):r; }
+  catch(e){ if(!isNet(e)) throw e; var c=await cget(k); if(c){ ui(); return overlay(t,c.v,q); } throw new Error('Sin conexión y aún no hay datos guardados de «'+t+'». Abre esta pantalla una vez con internet.'); }
+ };
+ sb.rpc=async function(fn,p){ p=p||{};
+  if(fn==='login_usuario'){
+   try{ if(navigator.onLine!==false){ var lr=await o.rpc(fn,p); if(lr&&lr.ok&&lr.token) guardarLogin(p,lr); return lr; } }catch(e){ if(!isNet(e)) throw e; }
+   return loginOffline(p);
+  }
+  if(fake()&&RPC_NOCACHE.test(fn)&&fn!=='next_cot_num') throw new TypeError('offline');
+  if(fn==='next_cot_num'){ try{ if(!offline()) return await o.rpc(fn,p); }catch(e){ if(!isNet(e)) throw e; } return 'PEND-'+Date.now().toString(36).slice(-5)+rnd().slice(0,3); }
+  if(RPC_NOCACHE.test(fn)) return o.rpc(fn,p);
+  if(RPC_QUEUE.test(fn)){ try{ if(!offline()) return await o.rpc(fn,p); }catch(e){ if(!isNet(e)) throw e; } await enq({k:'rpc',fn:fn,params:p}); return {ok:true,pendiente:true,offline:true}; }
+  var k=U()+'|R|'+fn+'|'+JSON.stringify(p);
+  try{ if(offline()) throw new TypeError('offline'); var r=await o.rpc(fn,p); cput(k,r); return r; }
+  catch(e){ if(!isNet(e)) throw e; var c=await cget(k); if(c){ ui(); return c.v; } throw new Error('Sin conexión: esta pantalla necesita abrirse una vez con internet.'); }
+ };
+
+ // ── Ingreso sin internet: guarda en este equipo una huella de la clave (no la clave) después de un ingreso con internet ──
+ function b64(u){ var s=''; u=new Uint8Array(u); for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]); return btoa(s); }
+ async function huella(pin,salt){ var k=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(pin)),'PBKDF2',false,['deriveBits']); return b64(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:salt,iterations:120000},k,256)); }
+ function lkey(n){ return 'LOGIN|'+String(n||'').trim().toLowerCase(); }
+ async function guardarLogin(p,r){ try{ var salt=crypto.getRandomValues(new Uint8Array(16)), perfil=Object.assign({},r); delete perfil.token; cput(lkey(p.p_nombre),{salt:b64(salt),hash:await huella(p.p_pin,salt),perfil:perfil}); try{ localStorage.removeItem('wedm_off_try_'+lkey(p.p_nombre)); }catch(e){} }catch(e){} }
+ async function loginOffline(p){
+  var k=lkey(p.p_nombre), c=await cget(k);
+  if(!c) throw new Error('Sin conexión. Para entrar sin internet, esta persona debe haber iniciado sesión antes en este equipo con internet.');
+  if(Date.now()-c.t>14*86400000) throw new Error('Pasaron más de 14 días desde el último ingreso con internet. Conéctate para volver a entrar.');
+  var tk='wedm_off_try_'+k, n=0; try{ n=+localStorage.getItem(tk)||0; }catch(e){}
+  if(n>=5) throw new Error('Demasiados intentos sin internet. Conéctate para continuar.');
+  var salt=Uint8Array.from(atob(c.v.salt),function(ch){ return ch.charCodeAt(0); });
+  if(await huella(p.p_pin,salt)!==c.v.hash){ try{ localStorage.setItem(tk,String(n+1)); }catch(e){} return {ok:false,msg:'Clave incorrecta'+(n+1>=3?' ('+(5-n-1)+' intentos restantes sin internet)':'')}; }
+  try{ localStorage.removeItem(tk); }catch(e){}
+  return Object.assign({},c.v.perfil,{ok:true,token:'offline:'+rnd()+rnd(),offline:true});
+ }
+ var askedRe=false;
+ function pedirClave(){
+  var err=''; try{ openModal('🔑 Vuelve a ingresar tu clave','<div style="font-size:13px;color:#475569;margin-bottom:10px">Volvió el internet. Escribe tu clave para enviar los cambios que hiciste sin conexión y actualizar los datos.</div><div class="field"><label>Clave de '+esc(U())+'</label><input id="off-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="one-time-code" style="font-size:22px;letter-spacing:6px;text-align:center"></div><div id="off-pin-err" style="color:#b91c1c;font-size:12.5px;margin-top:6px;min-height:16px"></div>','<button class="btn btn-ghost" onclick="closeModal()">Ahora no</button><button class="btn btn-primary" onclick="WEDM_OFF.relogin()">Ingresar y sincronizar</button>'); setTimeout(function(){ var i=document.getElementById('off-pin'); if(i){ i.focus(); i.onkeydown=function(e){ if(e.key==='Enter') WEDM_OFF.relogin(); }; } },80); }catch(e){}
+ }
+ async function relogin(){
+  var i=document.getElementById('off-pin'), e=document.getElementById('off-pin-err'); var pin=i?i.value:''; if(!pin) return;
+  if(e) e.textContent='Verificando…'; var viejo=sb.tok; sb.tok=null;
+  try{ var r=await o.rpc('login_usuario',{p_nombre:U(),p_pin:pin});
+   if(!r||!r.ok){ sb.tok=viejo; if(e) e.textContent=String((r&&r.msg)||'Clave incorrecta').replace('PIN','clave'); if(i) i.value=''; return; }
+   sb.tok=r.token; try{ _SESSION.token=r.token; _SESSION.ts=Date.now(); }catch(x){}
+   try{ for(var j=0;j<localStorage.length;j++){ var lk=localStorage.key(j), ob=null; try{ ob=JSON.parse(localStorage.getItem(lk)); }catch(x){} if(ob&&ob.token===viejo){ ob.token=r.token; ob.ts=Date.now(); localStorage.setItem(lk,JSON.stringify(ob)); } } }catch(x){}
+   guardarLogin({p_nombre:U(),p_pin:pin},r); askedRe=false; try{ closeModal(); }catch(x){} ui(); await sync();
+  }catch(x){ sb.tok=viejo; if(e) e.textContent=isNet(x)?'Sin conexión todavía. Intenta en un momento.':String(x.message||x); }
+ }
+ // ── Escritura en cola ──
+ async function enq(it){ it.user=U(); it.ts=Date.now(); Q.push(it); await qsave(it); ui(); return it; }
+ sb.post=async function(t,d){
+  try{ if(!offline()) return await o.post(t,d); }catch(e){ if(!isNet(e)) throw e; }
+  var arr=Array.isArray(d)?d:[d], tmp=[], rows=arr.map(function(r){ var c=Object.assign({},r); if(c.id==null||c.id===''){ c.id='tmp_'+rnd()+rnd(); tmp.push(c.id); } else tmp.push(null); return c; });
+  await enq({k:'post',t:t,body:d,rows:rows,tmp:tmp}); return rows;
+ };
+ sb.patch=async function(t,q,d){
+  try{ if(!offline()) return await o.patch(t,q,d); }catch(e){ if(!isNet(e)) throw e; }
+  await enq({k:'patch',t:t,q:q,body:d}); var base=eqs(q); return [Object.assign({},base,d)];
+ };
+ sb.del=async function(t,q){
+  try{ if(!offline()) return await o.del(t,q); }catch(e){ if(!isNet(e)) throw e; }
+  await enq({k:'del',t:t,q:q}); return true;
+ };
+ // ── Sincronizar ──
+ async function sync(){
+  if(syncing||offline()||!sb.tok) return; var mine=Q.filter(function(x){ return !x.err&&x.user===U(); }); if(!mine.length) return;
+  syncing=true; ui(); var map={}, ph={}, hechos=0, fallos=0;
+  try{
+   for(var i=0;i<mine.length;i++){ var it=mine[i], s=JSON.stringify({q:it.q,body:it.body,params:it.params});
+    for(var tk in map) s=s.split(tk).join(map[tk]);
+    var m=s.match(/PEND-[0-9a-z]{4,10}/g)||[];
+    try{
+     for(var j=0;j<m.length;j++){ if(!ph[m[j]]) ph[m[j]]=await o.rpc('next_cot_num',{}); s=s.split(m[j]).join(ph[m[j]]); }
+     var x=JSON.parse(s), r;
+     if(it.k==='post'){ r=await o.post(it.t,x.body); var ra=Array.isArray(r)?r:[r]; (it.tmp||[]).forEach(function(id,ix){ if(id&&ra[ix]&&ra[ix].id!=null) map[id]=String(ra[ix].id); }); }
+     else if(it.k==='patch') await o.patch(it.t,x.q,x.body);
+     else if(it.k==='del') await o.del(it.t,x.q);
+     else if(it.k==='rpc') await o.rpc(it.fn,x.params);
+     Q=Q.filter(function(z){ return z!==it; }); await qdel(it.n); hechos++;
+    }catch(e){ if(isNet(e)){ break; } it.err=(e&&e.message)||'Error'; await qsave(it); fallos++; }
+   }
+  } finally{ syncing=false; ui(); }
+  if(hechos){ try{ toast('✅ Sincronizado: '+hechos+' cambio'+(hechos>1?'s':'')+(fallos?' · '+fallos+' con error':''),fallos?'error':undefined); }catch(e){} try{ if(typeof refreshCurrent==='function') refreshCurrent(); }catch(e){} }
+  else if(fallos){ try{ toast('⚠️ '+fallos+' cambio(s) no se pudieron enviar. Toca el aviso rojo.','error'); }catch(e){} }
+ }
+ // ── Aviso en pantalla ──
+ function pend(){ return Q.filter(function(x){ return !x.err; }).length; }
+ function errs(){ return Q.filter(function(x){ return x.err; }).length; }
+ function ui(){
+  var p=document.getElementById('off-pill'); if(!document.body) return;
+  if(!p){ p=document.createElement('div'); p.id='off-pill'; p.onclick=function(){ if(fake()&&navigator.onLine!==false) pedirClave(); else panel(); }; document.body.appendChild(p); }
+  var n=pend(), e=errs(), off=offline(), txt='', cls='';
+  if(fake()&&navigator.onLine!==false){ txt='🔑 Toca para ingresar tu clave y sincronizar'; cls='err'; if(!askedRe){ askedRe=true; setTimeout(pedirClave,600); } }
+  else if(syncing){ txt='🔄 Sincronizando…'; cls='sync'; }
+  else if(e){ txt='⚠️ '+e+' con error'+(n?' · '+n+' pendiente'+(n>1?'s':''):''); cls='err'; }
+  else if(off){ txt='📴 Sin conexión'+(n?' · '+n+' pendiente'+(n>1?'s':''):''); cls=''; }
+  else if(n){ txt='⏳ '+n+' pendiente'+(n>1?'s':''); cls='sync'; }
+  if(!txt){ p.style.display='none'; return; }
+  p.className=cls; p.textContent=txt; p.style.display='flex';
+ }
+ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+ function desc(it){ var hora=new Date(it.ts).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  var w={post:'Crear',patch:'Modificar',del:'Eliminar',rpc:'Acción'}[it.k]||it.k; return '<b>'+w+'</b> · '+esc(it.t||it.fn)+' <span style="color:#64748b">· '+hora+'</span>'+(it.err?'<div style="color:#b91c1c;font-size:11.5px;margin-top:2px">'+esc(it.err)+'</div>':''); }
+ function panel(){
+  var l=Q.filter(function(x){ return x.user===U(); }).map(function(it){ return '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 2px;border-bottom:1px solid #e2e8f0;font-size:13px"><div style="flex:1">'+desc(it)+'</div>'+(it.err?'<button class="btn btn-ghost btn-sm" data-n="'+it.n+'" onclick="WEDM_OFF.descartar(+this.dataset.n)">Descartar</button>':'')+'</div>'; }).join('');
+  var body='<div style="font-size:12.5px;color:#64748b;margin-bottom:8px">'+(offline()?'No hay conexión. Lo que hagas se guarda aquí y se envía solo cuando vuelva el internet.':'Estos cambios están esperando para enviarse al servidor.')+'</div>'+(l||'<div style="text-align:center;color:#64748b;padding:18px">Nada pendiente ✅</div>');
+  try{ openModal('📴 Cambios pendientes',body,'<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="if(confirm(\'¿Borrar los datos guardados para uso sin internet en este equipo? Los cambios pendientes no se borran.\')){WEDM_OFF.clear();closeModal();}">🗑 Borrar datos guardados</button><button class="btn btn-primary" onclick="closeModal();WEDM_OFF.sync()">🔄 Enviar ahora</button>'); }catch(e){}
+ }
+ window.WEDM_OFF={relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
+  descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
+ window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });
+ window.addEventListener('offline',ui);
+ setInterval(function(){ ui(); if(Q.length) sync(); },20000);
+ if(document.readyState!=='loading') qload().then(function(){ setTimeout(sync,2500); }); else document.addEventListener('DOMContentLoaded',function(){ qload().then(function(){ setTimeout(sync,2500); }); });
+})();
+</script>
+<!-- /WEDM-OFFLINE -->
 </body>
 </html>
