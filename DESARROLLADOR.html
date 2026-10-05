@@ -8319,13 +8319,21 @@ async function colaboradoresView(){
    doc.querySelectorAll('meta,title').forEach(function(x){ x.remove(); });
    proc(doc.body,datos);
    var body=sub(doc.body.innerHTML,datos);
-   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
+   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="pl-render" content="1"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
   }catch(e){ try{ console.error('Plantilla',e); }catch(_){} return null; }
  };
  PL.abrir=function(html,nombre){
   try{ if(typeof _abrirDocParaImprimir==='function'){ _abrirDocParaImprimir(html,nombre); return; } }catch(e){}
   var w=window.open('','_blank'); if(!w){ toast('Permite las ventanas emergentes para imprimir','error'); return; } w.document.write(html); w.document.close();
  };
+
+ /* Hojas horizontales: el iframe de impresión ignora @page, así que si la plantilla es horizontal se imprime en ventana propia */
+ (function(){ var o=window._abrirDocParaImprimir; if(typeof o!=='function'||o.__pl) return;
+  var w2=function(html,fn,c3){ if(typeof html==='string'&&html.indexOf('name="pl-render"')>=0&&/@page\s*\{[^}]*landscape/i.test(html)){
+    try{ if(typeof c3==='string'&&c3&&typeof _guardarPdfDrive==='function') _guardarPdfDrive(html,fn,c3); }catch(e){}
+    var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); try{ if(fn) w.document.title=String(fn).replace(/\.pdf$/i,''); }catch(e){} setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },900); return; } }
+   return o.apply(this,arguments); };
+  w2.__pl=1; window._abrirDocParaImprimir=w2; })();
  /* ── Formato QA («FORMATO PLANO 2026») y Hoja de ruta de Diseño ── */
  PL.dQA=function(op,qa){
   var h=qa.header||{}, r=qa.resultado||{}, mq=h.mq||[];
@@ -8347,26 +8355,74 @@ async function colaboradoresView(){
  };
  /* ══ Formatos propios: crear en Desarrollador → asignar a módulo/vista → llenar, guardar e imprimir ══ */
  var $=function(id){ return document.getElementById(id); };
- var campos=function(f){ var c=f&&f.campos; if(!c||Array.isArray(c)) c={}; return {campos:c.campos||[],filas:c.filas||[]}; };
- PL.fmtsAqui=function(){ var m=window.PL_MOD, v=(typeof MOD!=='undefined'?MOD:''); return (PL.F||[]).filter(function(f){ var a=f.modulos&&f.modulos[m]; return !!a&&(!a.length||a.indexOf(v)>=0); }); };
+ var campos=function(f){ var c=f&&f.campos; if(!c||Array.isArray(c)) c={}; return {campos:c.campos||[],filas:c.filas||[],origen:c.origen||null,boton:c.boton||'flotante'}; };
+
+ /* Fuentes de datos: de qué tabla del sistema sale la información del formato */
+ PL.FUENTES={
+  cotizaciones:{nombre:'Cotizaciones',mod:'Comercial',tabla:'cotizaciones',orden:'cotizacion.desc',sel:'id,cotizacion,empresa,descripcion_proyecto',et:function(r){ return 'COT-'+r.cotizacion+' · '+(r.empresa||''); },hija:{tabla:'items',fk:'id_cotizacion',orden:'item.asc',nombre:'Ítems de la cotización'}},
+  ordenes_compra:{nombre:'Órdenes de compra',mod:'Compras',tabla:'ordenes_compra',orden:'numero.desc',sel:'id,numero,prov_nombre,proyecto',et:function(r){ return 'OC '+r.numero+' · '+(r.prov_nombre||''); },hija:{tabla:'oc_lineas',fk:'id_oc',orden:'orden.asc',nombre:'Líneas de la orden'}},
+  remisiones:{nombre:'Remisiones',mod:'Remisiones',tabla:'remisiones',orden:'numero.desc',sel:'id,numero,empresa,proyecto',et:function(r){ return 'REM '+(r.numero||'s/n')+' · '+(r.empresa||''); },hija:{campo:'lineas',cols:['item','cantidad','descripcion'],nombre:'Líneas de la remisión'}},
+  produccion:{nombre:'Producción (OP e ítems)',mod:'Producción',tabla:'produccion',orden:'op.desc',sel:'id,op,item_num,empresa,descripcion',et:function(r){ return 'OP-'+r.op+' ítem '+(r.item_num==null?'':r.item_num)+' · '+(r.empresa||''); }},
+  certificados:{nombre:'Certificados de calidad',mod:'Calidad',tabla:'certificados_conformidad',orden:'numero.desc',sel:'id,numero,op,empresa',et:function(r){ return 'CERT '+r.numero+' · OP-'+(r.op==null?'':r.op)+' · '+(r.empresa||''); }},
+  clientes:{nombre:'Clientes',mod:'Comercial',tabla:'clientes',orden:'empresa.asc',sel:'id,empresa,nit',et:function(r){ return (r.empresa||'')+(r.nit?' · '+r.nit:''); }},
+  proveedores:{nombre:'Proveedores',mod:'Compras',tabla:'proveedores',orden:'nombre.asc',sel:'id,nombre,nit',et:function(r){ return (r.nombre||'')+(r.nit?' · '+r.nit:''); }},
+  materiales:{nombre:'Materiales',mod:'Comercial',tabla:'materiales',orden:'material.asc',sel:'id,material,descripcion',et:function(r){ return r.material||''; }}
+ };
+ var COLS={};
+ PL.cols=async function(t){ if(COLS[t]) return COLS[t]; try{ var r=await sb.rpc('tabla_columnas',{p_tabla:t}); if(Array.isArray(r)&&r.length){ COLS[t]=r; return r; } }catch(e){} return []; };
+ var sv=function(v){ if(v==null||typeof v==='object') return ''; v=String(v); if(/^\d{4}-\d{2}-\d{2}T/.test(v)) v=v.slice(0,10); return E2(v); };
+ function srcDatos(src){ var d={}; if(!src) return d; Object.keys(src.rec).forEach(function(k){ d['t.'+k]=sv(src.rec[k]); }); d.hijas=(src.hijas||[]).map(function(r){ var o={}; Object.keys(r).forEach(function(k){ o['h.'+k]=sv(r[k]); }); return o; }); return d; }
+ async function cargaSrc(f,id){
+  var fu=PL.FUENTES[campos(f).origen]; if(!fu||!id) return null;
+  var cols=await PL.cols(fu.tabla), r=await sb.get(fu.tabla,'select='+(cols.length?cols.join(','):'*')+'&id=eq.'+encodeURIComponent(id)+'&limit=1'), rec=r&&r[0]; if(!rec) return null;
+  var hijas=[], h=fu.hija;
+  if(h){ if(h.campo) hijas=Array.isArray(rec[h.campo])?rec[h.campo]:[]; else{ var hc=await PL.cols(h.tabla); hijas=(await sb.get(h.tabla,'select='+(hc.length?hc.join(','):'*')+'&'+h.fk+'=eq.'+encodeURIComponent(id)+'&order='+h.orden))||[]; } }
+  return {rec:rec,hijas:hijas};
+ }
+ var PK={id:null,l:[]};
+ PL.fElegir=async function(id){
+  var f=porId(id), fu=f&&PL.FUENTES[campos(f).origen]; if(!fu){ toast('La fuente de datos de este formato ya no existe','error'); return; }
+  var o=capa('plf-pk',9450); o.style.flexDirection='column'; o.style.background='#f1f5f9';
+  o.innerHTML='<div style="background:#0f766e;color:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center"><b style="flex:1;font-size:14px">'+E2(f.icono||'📝')+' '+E2(f.nombre)+' · elige '+E2(fu.nombre.toLowerCase())+'</b><button onclick="PL.fElegirCerrar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;cursor:pointer">✕</button></div><div style="padding:10px 12px;max-width:760px;width:100%;margin:0 auto"><input id="plf-q" placeholder="🔍 Buscar…" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px"></div><div id="plf-pl" style="flex:1;overflow:auto;padding:0 12px 14px;max-width:760px;width:100%;margin:0 auto">Cargando…</div>';
+  try{ PK={id:id,l:(await sb.get(fu.tabla,'select='+fu.sel+'&order='+fu.orden+'&limit=500'))||[]}; }catch(e){ var b=$('plf-pl'); if(b) b.textContent='❌ '+((e&&e.message)||e); return; }
+  var draw=function(q){ q=String(q||'').toLowerCase(); var b=$('plf-pl'); if(!b) return; var n=0, h='';
+   PK.l.forEach(function(r,i){ var t=fu.et(r); if(q&&t.toLowerCase().indexOf(q)<0||n>=150) return; n++; h+='<button onclick="PL.fUsar('+i+')" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:11px 12px;margin-bottom:6px;font-size:14px;font-weight:600;cursor:pointer">'+E2(t)+'</button>'; });
+   b.innerHTML=h||'<div style="text-align:center;color:#64748b;padding:26px">Sin resultados</div>'; };
+  draw(''); var q=$('plf-q'); if(q){ q.oninput=function(){ draw(q.value); }; q.focus(); }
+ };
+ PL.fElegirCerrar=function(){ var o=$('plf-pk'); if(o) o.remove(); };
+ PL.fUsar=async function(i){ var f=porId(PK.id), r=PK.l[i]; if(!f||!r) return; var src=null;
+  try{ src=await cargaSrc(f,r.id); }catch(e){ toast('❌ '+((e&&e.message)||e),'error'); return; } if(!src){ toast('No se encontró el registro','error'); return; }
+  PL.fElegirCerrar(); FL={f:f,id:null,num:null,datos:{filas:[],_src:r.id},nf:campos(f).filas.length?5:0,src:src}; overlay(); };
+ PL.fmtsAqui=function(boton){ var m=window.PL_MOD, v=(typeof MOD!=='undefined'?MOD:''); return (PL.F||[]).filter(function(f){ var a=f.modulos&&f.modulos[m]; return !!a&&(!a.length||a.indexOf(v)>=0)&&(!boton||campos(f).boton===boton); }); };
  function fab(){
-  var n=0; try{ n=(typeof _SESSION!=='undefined'&&_SESSION)?PL.fmtsAqui().length:0; }catch(e){}
+  var n=0; try{ n=(typeof _SESSION!=='undefined'&&_SESSION)?PL.fmtsAqui('flotante').length:0; }catch(e){} try{ barra(); }catch(e){}
   var b=$('pl-fab');
   if(!b){ if(!n||!document.body) return; b=document.createElement('button'); b.id='pl-fab'; b.type='button'; b.title='Formatos para llenar'; b.textContent='📝';
    b.style.cssText='position:fixed;right:20px;bottom:calc(var(--nav-h,70px) + 84px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;background:#0f766e;color:#fff;border:none;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:149;align-items:center;justify-content:center;cursor:pointer';
    b.onclick=function(){ PL.fabAbrir(); }; document.body.appendChild(b); }
   b.style.display=n?'flex':'none';
  }
+
+ function barra(){
+  var host=$('content'), l=(typeof _SESSION!=='undefined'&&_SESSION)?PL.fmtsAqui('barra'):[], b=$('pl-bar');
+  if(!l.length){ if(b) b.remove(); return; } if(!host||!host.parentNode) return;
+  if(!b){ b=document.createElement('div'); b.id='pl-bar'; b.style.cssText='display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px;background:#ecfdf5;border-bottom:1px solid #a7f3d0;align-items:center'; host.parentNode.insertBefore(b,host); }
+  var key=l.map(function(f){ return f.id+'|'+f.nombre; }).join('~');
+  if(b.getAttribute('data-k')!==key){ b.setAttribute('data-k',key);
+   b.innerHTML='<span style="font-size:11px;font-weight:700;color:#047857">📝 Formatos:</span>'+l.map(function(f){ return '<button type="button" data-id="'+f.id+'" style="border:1px solid #6ee7b7;background:#fff;border-radius:16px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;color:#065f46">'+E2(f.icono||'📝')+' '+E2(f.nombre)+'</button>'; }).join('');
+   [].forEach.call(b.querySelectorAll('button'),function(x){ x.onclick=function(){ var f=porId(x.getAttribute('data-id')); if(f) PL.fabAbrir([f]); }; }); }
+ }
  PL.fabRefresh=fab; setInterval(fab,800);
  function capa(id,z){ var o=$(id); if(!o){ o=document.createElement('div'); o.id=id; document.body.appendChild(o); } o.style.cssText='position:fixed;inset:0;z-index:'+z+';display:flex'; return o; }
- PL.fabAbrir=function(){
-  var l=PL.fmtsAqui(); if(!l.length){ toast('No hay formatos asignados a esta vista','error'); return; }
+ PL.fabAbrir=function(lista){
+  var l=Array.isArray(lista)?lista:PL.fmtsAqui('flotante'); if(!l.length){ toast('No hay formatos asignados a esta vista','error'); return; }
   var o=capa('plf-sh',9300); o.style.alignItems='flex-end'; o.style.background='rgba(15,23,42,.55)';
   o.innerHTML='<div style="background:#fff;width:100%;max-width:560px;margin:0 auto;border-radius:16px 16px 0 0;padding:14px 14px 22px;max-height:80vh;overflow:auto"><div style="display:flex;align-items:center;margin-bottom:10px"><b style="flex:1;font-size:15px">📝 Formatos para llenar</b><button onclick="PL.cerrarSh()" style="border:0;background:#e2e8f0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer">✕</button></div>'+
    l.map(function(f){ return '<div style="border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:24px">'+E2(f.icono||'📝')+'</div><div style="flex:1;min-width:120px;font-weight:700;color:#0f172a">'+E2(f.nombre)+'</div><button onclick="PL.cerrarSh();PL.fNuevo(\''+f.id+'\')" style="border:0;background:#0f766e;color:#fff;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer">＋ Nuevo</button><button onclick="PL.cerrarSh();PL.fLista(\''+f.id+'\')" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer">📂 Registros</button></div>'; }).join('')+'</div>';
  };
  PL.cerrarSh=function(){ var o=$('plf-sh'); if(o) o.remove(); };
- var FL={f:null,id:null,num:null,datos:{},nf:0};
+ var FL={f:null,id:null,num:null,datos:{},nf:0,src:null};
  var fdoc=function(){ var i=$('plf-if'); return i&&i.contentDocument; };
  var fmtF=function(v){ return /^\d{4}-\d{2}-\d{2}/.test(v||'')?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):(v||''); };
  function inp(c,v,r){
@@ -8377,26 +8433,27 @@ async function colaboradoresView(){
   return '<input type="'+(c.tipo==='numero'?'number':c.tipo==='fecha'?'date':'text')+'"'+a+' value="'+EQ(v)+'">';
  }
  function txt(c,v){ if(c.tipo==='check') return (v===true||v==='true')?'☑':'☐'; if(v==null) return ''; if(c.tipo==='fecha') return E2(fmtF(v)); var s=E2(v); return c.tipo==='largo'?s.replace(/\n/g,'<br>'):s; }
- function datosImp(f,datos,num){
-  var C=campos(f), d={numero:num!=null?String(num):'',titulo:f.nombre};
+ function datosImp(f,datos,num,src){
+  var C=campos(f), d=Object.assign({numero:num!=null?String(num):'',titulo:f.nombre},srcDatos(src));
   C.campos.forEach(function(c){ d['f.'+c.k]=txt(c,datos[c.k]); });
   d.filas=(datos.filas||[]).map(function(r){ var o={}; C.filas.forEach(function(c){ o['r.'+c.k]=txt(c,(r||{})[c.k]); }); return o; });
   return d;
  }
- PL.fImprimir=function(f,datos,num){
-  var o=PL.render(null,datosImp(f,datos,num),f.html||'<p></p>',f.nombre+(num?' N° '+num:''));
+ PL.fImprimir=async function(f,datos,num){
+  var src=null; try{ src=(FL.src&&FL.f===f&&FL.datos&&FL.datos._src===datos._src)?FL.src:await cargaSrc(f,datos._src); }catch(e){}
+  var o=PL.render(null,datosImp(f,datos,num,src),f.html||'<p></p>',f.nombre+(num?' N° '+num:''));
   if(!o){ toast('No se pudo armar el documento','error'); return; }
   PL.abrir(o,String(f.nombre).replace(/[^\w\-]+/g,'_')+(num?'_'+num:'')+'.pdf');
  };
  function collect(){
-  var d=fdoc(), datos={filas:[]}; if(!d) return FL.datos;
+  var d=fdoc(), datos={filas:[]}; if(!d) return FL.datos; if(FL.datos&&FL.datos._src) datos._src=FL.datos._src;
   [].forEach.call(d.querySelectorAll('.plf'),function(el){ var v=el.type==='checkbox'?el.checked:el.value, r=el.getAttribute('data-r'), k=el.getAttribute('data-k');
    if(r!=null){ var i=+r; datos.filas[i]=datos.filas[i]||{}; datos.filas[i][k]=v; } else datos[k]=v; });
   for(var i=0;i<datos.filas.length;i++) if(!datos.filas[i]) datos.filas[i]={};
   return datos;
  }
  function pintar(){
-  var f=FL.f, C=campos(f), d={numero:FL.num?String(FL.num):'(nuevo)',titulo:f.nombre};
+  var f=FL.f, C=campos(f), d=Object.assign({numero:FL.num?String(FL.num):'(nuevo)',titulo:f.nombre},srcDatos(FL.src));
   C.campos.forEach(function(c){ d['f.'+c.k]=inp(c,FL.datos[c.k]); });
   var n=C.filas.length?Math.max(FL.nf,1):0; d.filas=[];
   for(var i=0;i<n;i++){ var o={}, fr=(FL.datos.filas||[])[i]||{}; C.filas.forEach(function(c){ o['r.'+c.k]=inp(c,fr[c.k],i); }); d.filas.push(o); }
@@ -8409,9 +8466,9 @@ async function colaboradoresView(){
   o.innerHTML='<div style="background:#0f766e;color:#fff;padding:8px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b id="plf-t" style="flex:1;font-size:13px;min-width:120px"></b>'+(C.filas.length?'<button onclick="PL.fFila()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:12px">＋ Fila</button>':'')+'<button onclick="PL.fGuardar(false)" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#16a34a;color:#fff;cursor:pointer;font-size:12px">💾 Guardar</button><button onclick="PL.fGuardar(true)" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#0891b2;color:#fff;cursor:pointer;font-size:12px">🖨️ Guardar e imprimir</button><button onclick="PL.fCerrar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:12px">✕</button></div><iframe id="plf-if" style="flex:1;border:0;background:#fff;width:100%;max-width:900px;margin:8px auto;box-shadow:0 2px 14px rgba(0,0,0,.25)"></iframe>';
   titulo(); document.body.style.overflow='hidden'; pintar();
  }
- function titulo(){ var t=$('plf-t'); if(t) t.textContent=FL.f.icono+' '+FL.f.nombre+(FL.num?' · N° '+FL.num:' · nuevo'); }
+ function titulo(){ var t=$('plf-t'), fu=PL.FUENTES[campos(FL.f).origen]; if(t) t.textContent=FL.f.icono+' '+FL.f.nombre+(FL.num?' · N° '+FL.num:' · nuevo')+(fu&&FL.src?' · '+fu.et(FL.src.rec):''); }
  var porId=function(id){ return (PL.F||[]).filter(function(x){ return x.id===id; })[0]; };
- PL.fNuevo=function(id){ var f=porId(id); if(!f) return; FL={f:f,id:null,num:null,datos:{filas:[]},nf:campos(f).filas.length?5:0}; overlay(); };
+ PL.fNuevo=function(id){ var f=porId(id); if(!f) return; if(campos(f).origen){ PL.fElegir(id); return; } FL={f:f,id:null,num:null,datos:{filas:[]},nf:campos(f).filas.length?5:0,src:null}; overlay(); };
  PL.fFila=function(){ FL.datos=collect(); FL.nf=Math.max(FL.nf,(FL.datos.filas||[]).length)+1; pintar(); };
  PL.fCerrar=function(){ if(!confirm('¿Cerrar? Lo que no hayas guardado se pierde.')) return; PL.fSalir(); };
  PL.fSalir=function(){ var o=$('plf-ov'); if(o) o.remove(); document.body.style.overflow=''; };
@@ -8430,7 +8487,7 @@ async function colaboradoresView(){
    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;'+(an?'opacity:.55':'')+'"><div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="font-size:15px">N° '+r.numero+'</b>'+(an?'<span style="background:#fee2e2;color:#b91c1c;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700">ANULADO</span>':'')+'<span style="color:#64748b;font-size:12px">'+E2(String(r.created_at||'').slice(0,10))+' · '+E2(r.creado_por||'')+'</span></div>'+(res?'<div style="color:#334155;font-size:13px;margin-top:2px">'+E2(res.slice(0,90))+'</div>':'')+'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button onclick="PL.fAbrirReg('+i+')" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 11px;font-weight:700;cursor:pointer">✏️ Abrir</button><button onclick="PL.fImpReg('+i+')" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 11px;font-weight:700;cursor:pointer">🖨️ Imprimir</button><button onclick="PL.fAnular('+i+')" style="border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:8px;padding:7px 11px;font-weight:700;cursor:pointer">'+(an?'↺ Reactivar':'🚫 Anular')+'</button></div></div>'; }).join(''):'<div style="text-align:center;color:#64748b;padding:30px">Todavía no hay registros. Toca <b>＋ Nuevo</b>.</div>';
  };
  PL.fListaCerrar=function(){ var o=$('plf-ls'); if(o) o.remove(); };
- PL.fAbrirReg=function(i){ var r=PL.regs.l[i], f=porId(PL.regs.id); if(!r||!f) return; var d=r.datos||{}; FL={f:f,id:r.id,num:r.numero,datos:d,nf:(d.filas||[]).length||1}; overlay(); };
+ PL.fAbrirReg=async function(i){ var r=PL.regs.l[i], f=porId(PL.regs.id); if(!r||!f) return; var d=r.datos||{}, src=null; try{ src=await cargaSrc(f,d._src); }catch(e){} FL={f:f,id:r.id,num:r.numero,datos:d,nf:(d.filas||[]).length||1,src:src}; overlay(); };
  PL.fImpReg=function(i){ var r=PL.regs.l[i], f=porId(PL.regs.id); if(r&&f) PL.fImprimir(f,r.datos||{},r.numero); };
  PL.fAnular=async function(i){ var r=PL.regs.l[i]; if(!r) return; var an=r.estado==='ANULADO'; if(!confirm(an?'¿Reactivar este registro?':'¿Anular este registro? Queda marcado como ANULADO (no se borra).')) return;
   try{ await sb.rpc('registro_estado',{p_id:r.id,p_estado:an?'ACTIVO':'ANULADO'}); toast(an?'Registro reactivado':'Registro anulado'); PL.fLista(PL.regs.id); }catch(e){ toast('❌ '+((e&&e.message)||e),'error'); } };
@@ -8569,12 +8626,17 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
   DESARROLLADOR:{funciones:'Funciones del sistema',usuarios:'Usuarios y roles',importar:'Importar hojas',cobro:'Cuenta de cobro',avances:'Avances y entregables',docs:'Documentos entregables',plantillas:'Plantillas de documentos',colab:'Colaboradores',auditoria:'Auditoría',respaldos:'Respaldos',seguridad:'Seguridad'},
   DISENO:{dashboard:'Inicio',bandeja:'Mi bandeja',planta:'Planta · todas las OP',pedidos:'Pedidos de material',produccion:'Producción · todos los ítems',planos:'Planos',itemscot:'Ítems cotizados'}};
  const ICONOS=['📝','📋','📄','✅','📦','🛒','🔧','🏭','📐','🧾','📊','🗂','🧪','🚚','📌','✍️'];
- const cc=fm=>{ const c=fm&&fm.campos; return (c&&!Array.isArray(c))?{campos:c.campos||[],filas:c.filas||[]}:{campos:[],filas:[]}; };
+ const cc=fm=>{ const c=fm&&fm.campos; return (c&&!Array.isArray(c))?{campos:c.campos||[],filas:c.filas||[],origen:c.origen||null,boton:c.boton||'flotante'}:{campos:[],filas:[],origen:null,boton:'flotante'}; };
+ const ECOL={}, pretty=c=>{ const t=String(c).replace(/_/g,' '); return t.charAt(0).toUpperCase()+t.slice(1); };
+ async function prepCols(){ const C=cc(FM), fu=PL.FUENTES[C.origen]; if(!fu) return; ECOL[fu.tabla]=await PL.cols(fu.tabla); if(fu.hija&&fu.hija.tabla) ECOL[fu.hija.tabla]=await PL.cols(fu.hija.tabla); }
+ const colsFu=fu=>fu?(ECOL[fu.tabla]||[]):[], colsH=fu=>fu&&fu.hija?(fu.hija.cols||ECOL[fu.hija.tabla]||[]):[];
  const pFm=fm=>{ const C=cc(fm); return {nombre:fm.nombre,icono:fm.icono||'📝',html:fm.html||'',custom:true,
-   campos:[['Empresa y documento',COMUN.concat([['N° de registro','numero']])],['Campos para llenar',C.campos.map(c=>[c.label,'f.'+c.k])]],
-   rep:{key:'filas',nombre:'Filas de la tabla',campos:C.filas.map(c=>[c.label,'r.'+c.k])}}; };
+   campos:[['Empresa y documento',COMUN.concat([['N° de registro','numero']])],['Campos para llenar',C.campos.map(c=>[c.label,'f.'+c.k])]].concat(PL.FUENTES[C.origen]?[['📊 Datos de: '+PL.FUENTES[C.origen].nombre,colsFu(PL.FUENTES[C.origen]).map(c=>[pretty(c),'t.'+c])]]:[]),
+   rep:{key:'filas',nombre:'Filas de la tabla (campos para llenar)',campos:C.filas.map(c=>[c.label,'r.'+c.k])},
+   rep2:PL.FUENTES[C.origen]&&PL.FUENTES[C.origen].hija?{key:'hijas',nombre:PL.FUENTES[C.origen].hija.nombre,campos:colsH(PL.FUENTES[C.origen]).map(c=>[pretty(c),'h.'+c])}:null}; };
  const PX=()=>T==='fm'?pFm(FM):PLD[T];
  function ejFm(fm){ const C=cc(fm), d={numero:'0007',titulo:fm.nombre}; C.campos.forEach(c=>{ d['f.'+c.k]=c.tipo==='check'?'☑':c.tipo==='fecha'?'05/10/2026':c.tipo==='numero'?'123':c.tipo==='lista'?((c.opciones||[])[0]||'Opción'):'Ejemplo: '+c.label; });
+  const fu=PL.FUENTES[C.origen]; if(fu){ colsFu(fu).forEach(c=>{ d['t.'+c]=pretty(c)+' (ejemplo)'; }); d.hijas=[1,2,3].map(i=>{ const o={}; colsH(fu).forEach(c=>{ o['h.'+c]=pretty(c)+' '+i; }); return o; }); }
   d.filas=[1,2,3].map(i=>{ const o={}; C.filas.forEach(c=>{ o['r.'+c.k]=c.tipo==='check'?'☑':c.tipo==='fecha'?'05/10/2026':c.tipo==='numero'?String(i*10):c.tipo==='lista'?((c.opciones||[])[0]||'Opción'):c.label+' '+i; }); return o; }); return d; }
  function base(k){ const ej=k==='fm'?ejFm(FM):PLD[k].ejemplo; return Object.assign(PL.comunes(),ej); }
  window.plBase=base;
@@ -8585,7 +8647,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
   const cards=Object.keys(PLD).map(k=>{ const p=PLD[k], c=PL.has(k), info=c&&PL.T[k].por?` · editada por ${E(PL.T[k].por)}`:'';
    return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:12px;align-items:center;flex:1;min-width:0"><div style="font-size:30px">${p.icono}</div><div style="min-width:0"><div class="lc-title">${E(p.nombre)}</div><div style="font-size:11px;color:var(--muted)">${c?'<span class="badge verde">Personalizada</span>':'<span class="badge gris">Formato original</span>'}${info}</div></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="plEditar('${k}')">✏️ Editar plantilla</button><button class="btn btn-ghost btn-sm" onclick="plVerEjemplo('${k}')">👁 Ver con datos de ejemplo</button>${c?`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="plOriginal('${k}')">↺ Volver al formato original</button>`:''}</div></div>`; }).join('');
-  const fm=(PL.F||[]).map(f=>`<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:12px;align-items:center;flex:1;min-width:0"><div style="font-size:30px">${E(f.icono||'📝')}</div><div style="min-width:0"><div class="lc-title">${E(f.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${modsTxt(f.modulos)}</div></div></div></div>
+  const fm=(PL.F||[]).map(f=>`<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:12px;align-items:center;flex:1;min-width:0"><div style="font-size:30px">${E(f.icono||'📝')}</div><div style="min-width:0"><div class="lc-title">${E(f.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${modsTxt(f.modulos)}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${PL.FUENTES[cc(f).origen]?'📊 Datos de: <b>'+E(PL.FUENTES[cc(f).origen].nombre)+'</b>':'📝 Formato libre'} · ${cc(f).boton==='barra'?'▬ botón en barra superior':'🔘 botón flotante'}</div></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="plEditarFm('${f.id}')">✏️ Editar diseño</button><button class="btn btn-ghost btn-sm" onclick="plAsignar('${f.id}')">📌 Asignar a módulo / vista</button><button class="btn btn-ghost btn-sm" onclick="PL.fLista('${f.id}')">📂 Registros</button><button class="btn btn-ghost btn-sm" onclick="plDuplicar('${f.id}')">⧉ Duplicar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="plArchivar('${f.id}')">🗄 Archivar</button></div></div>`).join('');
   setContent(moduleBanner('📄','Plantillas y formatos','Personaliza los PDF del sistema y crea tus propios formatos para llenar',``,'linear-gradient(135deg,#1a3a6b,#2d5fa6)')+
    `<div style="padding:12px 14px"><div class="callout" style="white-space:normal;margin-bottom:12px">Edita la hoja como en Word: textos, letra, colores, <b>logo</b>, tablas y el orden de todo. Los datos que cambian se ponen con <b>＋ Campo</b> y aparecen así: <code>{{cliente}}</code>. Si algo sale mal, usa <b>Volver al formato original</b>.</div>
@@ -8611,11 +8673,28 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
 <table><tr><td style="width:30%;vertical-align:top"><img src="{{logo}}" alt="Logo" style="height:52px;width:auto"></td><td style="text-align:center;vertical-align:middle"><div style="font-size:16px;font-weight:900;color:#1a3a6b">TÍTULO DEL FORMATO</div></td><td style="width:30%;text-align:right;font-size:10px;line-height:1.7;vertical-align:top">N°: <b>{{numero}}</b><br>Fecha: {{fecha_hoy}}<br>Elaboró: {{usuario}}</td></tr></table>
 <hr style="border:0;border-top:2px solid #1a3a6b;margin:8px 0 12px">
 <p>Escribe aquí el contenido del formato. Usa <b>＋ Campo para llenar</b> para poner los espacios que se van a diligenciar.</p>`;
+
+ function cfgHtml(c){
+  const grupos={}; Object.keys(PL.FUENTES).forEach(k=>{ const fu=PL.FUENTES[k]; (grupos[fu.mod]=grupos[fu.mod]||[]).push(`<option value="${k}" ${c.origen===k?'selected':''}>${E(fu.nombre)}${fu.hija?' (con '+E(fu.hija.nombre.toLowerCase())+')':''}</option>`); });
+  return `<div style="margin-top:10px"><label style="font-size:12px;font-weight:700">📊 ¿De qué módulo / tabla sale la información?</label><select id="cf-o" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px"><option value="">Ninguna — formato libre para llenar a mano</option>${Object.keys(grupos).map(g=>`<optgroup label="${E(g)}">${grupos[g].join('')}</optgroup>`).join('')}</select><div style="font-size:11px;color:#64748b;margin-top:3px">Si eliges una tabla, al usar el formato se escoge el registro (por ejemplo una cotización) y sus columnas aparecen en <b>＋ Campo…</b> para ponerlas en el PDF.</div></div>
+  <div style="margin-top:10px"><label style="font-size:12px;font-weight:700">🔘 ¿Cómo aparece el botón en el módulo?</label>
+   <label style="display:flex;gap:8px;align-items:flex-start;margin-top:5px;font-size:13px"><input type="radio" name="cf-b" value="flotante" ${c.boton!=='barra'?'checked':''}> <span><b>Botón redondo 📝 flotante</b> — abajo a la derecha, encima del ＋</span></label>
+   <label style="display:flex;gap:8px;align-items:flex-start;margin-top:5px;font-size:13px"><input type="radio" name="cf-b" value="barra" ${c.boton==='barra'?'checked':''}> <span><b>Barra de botones</b> — franja verde con el nombre del formato, arriba del contenido</span></label></div>`; }
+ function cfgLeer(){ const o=$('cf-o'), r=document.querySelector('input[name="cf-b"]:checked'); return {origen:o&&o.value?o.value:null,boton:r?r.value:'flotante'}; }
+ window.plConfig=function(){
+  const o=capa('pl-cf',9650); o.style.background='rgba(15,23,42,.55)'; o.style.alignItems='center'; o.style.justifyContent='center';
+  const C=cc(FM);
+  o.innerHTML=`<div style="background:#fff;border-radius:14px;padding:16px;width:min(440px,94vw);max-height:90vh;overflow:auto"><b style="font-size:15px">⚙️ Configurar formato</b><div style="margin-top:10px"><label style="font-size:12px;font-weight:700">Nombre</label><input id="cf-n" value="${E(FM.nombre)}" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;font-size:14px"></div>${cfgHtml(C)}
+  <div style="display:flex;gap:8px;margin-top:14px;justify-content:space-between;flex-wrap:wrap"><button class="btn btn-ghost" onclick="plAsignarEd()">📌 ¿En qué módulos y vistas?</button><span style="display:flex;gap:8px"><button class="btn btn-ghost" onclick="document.getElementById('pl-cf').remove()">Cancelar</button><button class="btn btn-primary" onclick="plConfigOk()">Aceptar</button></span></div></div>`;
+ };
+ window.plConfigOk=async function(){ const n=($('cf-n').value||'').trim(); if(!n){ toast('Ponle un nombre','error'); return; } const cf=cfgLeer(); $('pl-cf').remove();
+  FM.nombre=n; FM.campos=cc(FM); FM.campos.origen=cf.origen; FM.campos.boton=cf.boton; await prepCols(); plRefSel(); const t=document.querySelector('#pl-ov b'); if(t) t.textContent=(FM.icono||'📝')+' Formato: '+n; toast('Configuración lista · toca 💾 Guardar'); };
  window.plNuevoFormato=function(){
   const o=capa('pl-nf',9600); o.style.background='rgba(15,23,42,.55)'; o.style.alignItems='center'; o.style.justifyContent='center';
   const cu=(PL.F||[]).map(f=>`<option value="${f.id}">Copia de: ${E(f.nombre)}</option>`).join('');
   o.innerHTML=`<div style="background:#fff;border-radius:14px;padding:16px;width:min(420px,92vw)"><b style="font-size:15px">🆕 Nuevo formato</b><div style="margin-top:12px"><label style="font-size:12px;font-weight:700">Nombre</label><input id="nf-n" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;font-size:14px" placeholder="Ej. Acta de entrega, Checklist de recibo…"></div>
    <div style="margin-top:10px"><label style="font-size:12px;font-weight:700">Icono</label><div id="nf-ic" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${ICONOS.map((x,i)=>`<button type="button" data-i="${x}" onclick="document.querySelectorAll('#nf-ic button').forEach(b=>b.style.background='#fff');this.style.background='#bfdbfe';" style="font-size:20px;border:1px solid #cbd5e1;border-radius:8px;padding:3px 8px;background:${i?'#fff':'#bfdbfe'}">${x}</button>`).join('')}</div></div>
+   ${cfgHtml({origen:null,boton:'flotante'})}
    <div style="margin-top:10px"><label style="font-size:12px;font-weight:700">Empezar desde</label><select id="nf-b" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px"><option value="">Hoja en blanco con encabezado (logo, título, N°, fecha)</option>${cu}</select></div>
    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn btn-ghost" onclick="document.getElementById('pl-nf').remove()">Cancelar</button><button class="btn btn-primary" onclick="plNuevoOk()">Crear y diseñar</button></div></div>`;
   setTimeout(()=>{ const i=$('nf-n'); if(i) i.focus(); },50);
@@ -8623,9 +8702,10 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
  function capa(id,z){ let o=$(id); if(!o){ o=document.createElement('div'); o.id=id; document.body.appendChild(o); } o.style.cssText='position:fixed;inset:0;z-index:'+z+';display:flex'; return o; }
  window.plNuevoOk=function(){
   const n=($('nf-n').value||'').trim(); if(!n){ toast('Ponle un nombre al formato','error'); return; }
+  const cf=cfgLeer();
   const ib=document.querySelector('#nf-ic button[style*="rgb(191, 219, 254)"],#nf-ic button[style*="#bfdbfe"]'); const ic=ib?ib.getAttribute('data-i'):'📝';
   const b=$('nf-b').value, src=b?pFmt(b):null; $('pl-nf').remove();
-  FM={id:'',nombre:n,icono:ic,modulos:{},html:src?src.html:BLANCO,campos:src?JSON.parse(JSON.stringify(cc(src))):{campos:[],filas:[]}}; abrirEd('fm');
+  FM={id:'',nombre:n,icono:ic,modulos:{},html:src?src.html:BLANCO,campos:src?JSON.parse(JSON.stringify(cc(src))):{campos:[],filas:[]}}; FM.campos.origen=cf.origen; FM.campos.boton=cf.boton; abrirEd('fm');
  };
  window.plEditarFm=function(id){ const f=pFmt(id); if(!f){ toast('Formato no encontrado','error'); return; } FM=JSON.parse(JSON.stringify(f)); FM.campos=cc(FM); abrirEd('fm'); };
  window.plDuplicar=async function(id){ const f=pFmt(id); if(!f) return; const n=prompt('Nombre de la copia:',f.nombre+' (copia)'); if(!n) return;
@@ -8655,7 +8735,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
  window.plEditar=function(k){ FM=null; abrirEd(k); };
  const selCampos=p=>{ const have=new Set(p.campos.map(g=>g[1]).flat().map(c=>c[1]));
   const com=p.custom?'':COMUN.filter(c=>!have.has(c[1]));
-  return p.campos.map(g=>`<optgroup label="${E(g[0])}">${g[1].map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`).join('')+(com.length?`<optgroup label="Comunes a todas las plantillas">${com.map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`:'')+(p.rep&&p.rep.campos.length?`<optgroup label="Dentro de la fila repetible (${E(p.rep.nombre)})">${p.rep.campos.map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`:''); };
+  return p.campos.map(g=>`<optgroup label="${E(g[0])}">${g[1].map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`).join('')+(com.length?`<optgroup label="Comunes a todas las plantillas">${com.map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`:'')+(p.rep&&p.rep.campos.length?`<optgroup label="Dentro de la fila repetible (${E(p.rep.nombre)})">${p.rep.campos.map(c=>`<option value="${c[1]}">${E(c[0])}  ·  {{${c[1]}}}</option>`).join('')}</optgroup>`:'')+(p.rep2&&p.rep2.campos.length?`<optgroup label="Dentro de la fila repetible (${E(p.rep2.nombre)})">${p.rep2.campos.map(c=>`<option value="${c[1]}">${E(c[0])}</option>`).join('')}</optgroup>`:''); };
  const selSi=p=>p.campos.map(g=>g[1]).flat().concat(p.rep?p.rep.campos:[]).map(c=>`<option value="${c[1]}">${E(c[0])}</option>`).join('');
  window.plRefSel=function(){ const p=PX(), a=$('pl-sel-campo'), b=$('pl-sel-si'); if(a) a.innerHTML='<option>＋ Campo…</option>'+selCampos(p); if(b) b.innerHTML='<option>👁 Mostrar solo si…</option><option value="">(quitar condición)</option>'+selSi(p); };
  const QT=[['🖼 Logo','plIns(\'logo\')'],['💧 Marca de agua','plIns(\'marca\')'],['🏢 Datos empresa','plIns(\'empresa\')'],['📌 Encabezado','plIns(\'encab\')'],['🔠 Título','plIns(\'titulo\')'],['📅 Fecha','plIns(\'fecha\')'],['👤 Usuario','plIns(\'usuario\')'],['☐ Casilla','plIns(\'casilla\')'],['➖ Línea','plIns(\'linea\')'],['📝 Observaciones','plIns(\'obs\')'],['✍️ Firmas','plIns(\'firmas\')']];
@@ -8668,13 +8748,13 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
   linea:'<hr style="border:0;border-top:1.5px solid #1a3a6b;margin:8px 0"><p></p>',
   obs:'<table style="width:100%;border-collapse:collapse"><tr><td style="border:1px solid #999;height:64px;vertical-align:top;padding:5px 8px;font-size:10px"><b>Observaciones:</b>&nbsp;</td></tr></table><p></p>',
   firmas:'<table style="width:100%;border-collapse:collapse;margin-top:26px"><tr><td style="width:33%;text-align:center;padding:0 10px"><div style="border-top:1.5px solid #1a3a6b;margin-bottom:4px"></div><div style="font-size:9px;font-weight:700;color:#1a3a6b">ELABORÓ</div></td><td style="width:33%;text-align:center;padding:0 10px"><div style="border-top:1.5px solid #1a3a6b;margin-bottom:4px"></div><div style="font-size:9px;font-weight:700;color:#1a3a6b">REVISÓ</div></td><td style="width:33%;text-align:center;padding:0 10px"><div style="border-top:1.5px solid #1a3a6b;margin-bottom:4px"></div><div style="font-size:9px;font-weight:700;color:#1a3a6b">APROBÓ</div></td></tr></table><p></p>'};
- function abrirEd(k){
-  T=k; const p=PX(); const src=(k==='fm')?FM.html:(PL.has(k)?PL.T[k].html:p.html);
+ async function abrirEd(k){
+  T=k; if(k==='fm') await prepCols(); const p=PX(); const src=(k==='fm')?FM.html:(PL.has(k)?PL.T[k].html:p.html);
   let o=$('pl-ov'); if(!o){ o=document.createElement('div'); o.id='pl-ov'; document.body.appendChild(o); }
   o.style.cssText='position:fixed;inset:0;z-index:9400;background:#cbd5e1;display:flex;flex-direction:column';
   const cu=k==='fm';
   o.innerHTML=`<style>#pl-ov button.tb,#pl-ov select.tb,#pl-ov label.tb{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 9px;font-size:12px;cursor:pointer;color:#0f172a;font-weight:600;white-space:nowrap;flex:0 0 auto}#pl-ov button.tb:active{background:#e2e8f0}#pl-ov .sep{width:1px;background:#cbd5e1;margin:0 3px;flex:0 0 auto}#pl-ov input[type=color]{width:30px;height:30px;padding:0;border:1px solid #cbd5e1;border-radius:6px;background:#fff;flex:0 0 auto}#pl-ov .qt{background:#ecfdf5!important;border-color:#6ee7b7!important}</style>
-   <div style="background:#1a3a6b;color:#fff;padding:8px 12px;display:flex;gap:8px;align-items:center"><b style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(p.icono)} ${cu?'Formato':'Plantilla'}: ${E(p.nombre)}</b>${cu?`<button onclick="plAsignarEd()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#7c3aed;color:#fff;cursor:pointer;font-size:12px">📌 Asignar</button>`:''}<button onclick="plVistaEd()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#0891b2;color:#fff;cursor:pointer;font-size:12px">👁 Vista previa</button><button onclick="plGuardar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#16a34a;color:#fff;cursor:pointer;font-size:12px">💾 Guardar</button><button onclick="plCerrar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:12px">✕</button></div>
+   <div style="background:#1a3a6b;color:#fff;padding:8px 12px;display:flex;gap:8px;align-items:center"><b style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(p.icono)} ${cu?'Formato':'Plantilla'}: ${E(p.nombre)}</b>${cu?`<button onclick="plConfig()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#7c3aed;color:#fff;cursor:pointer;font-size:12px">⚙️ Configurar</button>`:''}<button onclick="plVistaEd()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#0891b2;color:#fff;cursor:pointer;font-size:12px">👁 Vista previa</button><button onclick="plGuardar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:#16a34a;color:#fff;cursor:pointer;font-size:12px">💾 Guardar</button><button onclick="plCerrar()" style="border:0;border-radius:8px;padding:8px 12px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:12px">✕</button></div>
    <div id="pl-tb" style="background:#f1f5f9;border-bottom:1px solid #cbd5e1;padding:6px 8px;display:flex;gap:5px;overflow-x:auto;align-items:center" onmousedown="if(event.target.tagName!=='SELECT'&&event.target.tagName!=='INPUT')event.preventDefault()">
     <select class="tb" onchange="plFuente(this.value);this.selectedIndex=0"><option>Letra…</option>${FUENTES.map(f=>`<option style="font-family:'${f}'">${f}</option>`).join('')}</select>
     <select class="tb" onchange="plTam(this.value);this.selectedIndex=0"><option>Tamaño…</option>${TAM.map(t=>`<option>${t}</option>`).join('')}</select>
@@ -8684,7 +8764,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     <span class="sep"></span>
     <button class="tb" onclick="plC('justifyLeft')">⬅</button><button class="tb" onclick="plC('justifyCenter')">↔</button><button class="tb" onclick="plC('justifyRight')">➡</button><button class="tb" onclick="plC('insertUnorderedList')">• Lista</button>
     <span class="sep"></span>
-    <button class="tb" onclick="plTabla()">▦ Tabla</button><button class="tb" onclick="plFila(1)">＋Fila</button><button class="tb" onclick="plCol(1)">＋Col</button><button class="tb" onclick="plFila(0)">−Fila</button><button class="tb" onclick="plCol(0)">−Col</button>
+    <button class="tb" onclick="plTabla()">▦ Dibujar tabla</button>${cu?`<button class="tb" style="background:#fef3c7;border-color:#fcd34d" onclick="plTablaDatos()">▦ Tabla de datos</button>`:''}<button class="tb" onclick="plFila(1)">＋Fila</button><button class="tb" onclick="plCol(1)">＋Col</button><button class="tb" onclick="plFila(0)">−Fila</button><button class="tb" onclick="plCol(0)">−Col</button>
     <label class="tb" title="Color de fondo de la celda">🎨 Celda <input type="color" value="#dde6f0" onchange="plCelda(this.value)" style="vertical-align:middle"></label><button class="tb" onclick="plBordes()">▣ Bordes</button>
     <span class="sep"></span><button class="tb" onclick="plC('undo')">↶</button><button class="tb" onclick="plC('redo')">↷</button>
    </div>
@@ -8693,6 +8773,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     ${QT.map(q=>`<button class="tb qt" onclick="${q[1]}">${q[0]}</button>`).join('')}
     <label class="tb qt">🖼 Otra imagen <input type="file" accept="image/*" style="display:none" onchange="plImagen(this)"></label>
     <span class="sep"></span>
+    <select id="pl-orient" class="tb" style="background:#fef9c3;border-color:#fde047" onchange="plOrient(this.value)" title="Orientación de la hoja al imprimir"><option value="portrait">📄 Hoja vertical</option><option value="landscape">📄 Hoja horizontal</option></select>
     <select id="pl-sel-campo" class="tb" style="background:#dbeafe;border-color:#93c5fd" onchange="plCampo(this.value);this.selectedIndex=0"><option>＋ Campo…</option>${selCampos(p)}</select>
     ${cu?`<button class="tb" style="background:#fef3c7;border-color:#fcd34d" onclick="plNuevoCampo(0)">＋ Campo para llenar</button><button class="tb" style="background:#fef3c7;border-color:#fcd34d" onclick="plNuevoCampo(1)">＋ Campo de tabla</button>`:''}
     ${p.rep?`<button class="tb" style="background:#eff6ff" onclick="plRep()" title="Marca la fila donde está el cursor para que se repita por cada ítem">🔁 Fila repetible</button>`:''}
@@ -8701,7 +8782,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
    <div style="font-size:10.5px;color:#475569;padding:4px 10px;background:#fff7ed;border-bottom:1px solid #fed7aa">${cu?'Pon el cursor donde quieras un espacio para llenar y toca <b>＋ Campo para llenar</b>. Para una tabla que crece (ítems), arma la tabla, pon el cursor en una fila, toca <b>🔁 Fila repetible</b> y usa <b>＋ Campo de tabla</b> en cada celda. ':''}Cuadros <b style="color:#2563eb">azules punteados</b> = fila que se repite · <b style="color:#d97706">naranja punteados</b> = bloque condicional. Escribe encima de cualquier texto para cambiarlo.</div>
    <iframe id="pl-if" style="flex:1;border:0;background:#fff;width:100%;max-width:900px;margin:8px auto;box-shadow:0 2px 14px rgba(0,0,0,.25)"></iframe>`;
   const f=$('pl-if'); f.srcdoc='<!DOCTYPE html><html><head><meta charset="utf-8"><style id="ed-css">[data-rep]{outline:2px dashed #2563eb;outline-offset:-2px}[data-si]{outline:2px dashed #d97706;outline-offset:-2px}td,th{min-width:12px}img{max-width:100%}[style*="position:fixed"],[style*="position: fixed"]{position:static!important;transform:none!important;font-size:14px!important;opacity:1!important}</style></head><body>'+src+'</body></html>';
-  f.onload=()=>{ const d=F(); tokImgs(); d.designMode='on'; try{ d.execCommand('styleWithCSS',false,true); }catch(e){} ['keyup','mouseup','touchend'].forEach(ev=>d.addEventListener(ev,guardaSel)); d.addEventListener('selectionchange',guardaSel); };
+  f.onload=()=>{ const d=F(); tokImgs(); { const L=/@page\s*\{[^}]*landscape/i.test(d.body.innerHTML); const q=$('pl-orient'); if(q) q.value=L?'landscape':'portrait'; f.style.maxWidth=L?'1180px':'900px'; } d.designMode='on'; try{ d.execCommand('styleWithCSS',false,true); }catch(e){} ['keyup','mouseup','touchend'].forEach(ev=>d.addEventListener(ev,guardaSel)); d.addEventListener('selectionchange',guardaSel); };
   document.body.style.overflow='hidden';
  }
  function tokImgs(){ const d=F(); if(!d) return; const B=base(T); d.querySelectorAll('img').forEach(im=>{ const m=/^\{\{([\w.]+)\}\}$/.exec(im.getAttribute('src')||''); if(m){ im.setAttribute('data-tok',m[1]); if(B[m[1]]) im.src=B[m[1]]; } }); }
@@ -8713,6 +8794,9 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
  window.plTam=n=>{ const px=parseInt(n); if(!px) return; if(!rest()) return; const d=F(); d.execCommand('fontSize',false,'7');
   d.querySelectorAll('font[size="7"],[style*="xxx-large"],[style*="-webkit-xxx-large"]').forEach(el=>{ if(el.tagName==='FONT'){ const s=d.createElement('span'); s.innerHTML=el.innerHTML; s.style.fontSize=px+'px'; el.replaceWith(s); } else el.style.fontSize=px+'px'; }); guardaSel(); };
  window.plCampo=v=>{ if(!v||v==='Campo…'||v==='＋ Campo…') return; if(!rest()) return; const d=F(); if(v==='logo'||v==='marca') d.execCommand('insertHTML',false,'<img src="{{'+v+'}}" style="height:52px;width:auto">'); else d.execCommand('insertText',false,'{{'+v+'}}'); tokImgs(); guardaSel(); };
+ window.plOrient=function(v){ const d=F(); if(!d) return; d.querySelectorAll('#pl-orient-st').forEach(x=>x.remove());
+  const st=d.createElement('style'); st.id='pl-orient-st'; st.textContent=v==='landscape'?'@page{size:letter landscape;margin:8mm}':'@page{size:letter portrait;margin:10mm}'; d.body.appendChild(st);
+  const f=$('pl-if'); if(f) f.style.maxWidth=v==='landscape'?'1180px':'900px'; toast(v==='landscape'?'Hoja horizontal':'Hoja vertical'); };
  window.plIns=function(w){ if(!rest()) return; const d=F();
   if(w==='fecha') d.execCommand('insertText',false,'{{fecha_hoy}}'); else if(w==='usuario') d.execCommand('insertText',false,'{{usuario}}'); else if(w==='casilla') d.execCommand('insertText',false,'☐ ');
   else d.execCommand('insertHTML',false,QH[w]); tokImgs(); guardaSel(); };
@@ -8736,12 +8820,25 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
   arr.push({k,label:l,tipo:t,opciones:ops}); plRefSel(); if(esFila) plCampo('r.'+k); else if(rest()){ F().execCommand('insertHTML',false,'<b>'+E(l)+':</b>&nbsp;{{f.'+k+'}}'); guardaSel(); }
  };
  const celda=()=>{ const d=F(); const s=d&&d.getSelection(); let n=s&&s.anchorNode; if(!n&&saved) n=saved.startContainer; if(n&&n.nodeType===3) n=n.parentElement; return n&&n.closest?n.closest('td,th'):null; };
- window.plTabla=()=>{ const r=parseInt(prompt('¿Cuántas filas?','3')),c=parseInt(prompt('¿Cuántas columnas?','3')); if(!r||!c) return; if(!rest()) return; let h='<table style="border-collapse:collapse;width:100%">'; for(let i=0;i<r;i++){ h+='<tr>'; for(let j=0;j<c;j++) h+='<td style="border:1px solid #999;padding:5px 8px">&nbsp;</td>'; h+='</tr>'; } h+='</table><p></p>'; F().execCommand('insertHTML',false,h); };
+ window.plTabla=()=>{ saveSelNow(); const o=capa('pl-tn',9700); o.style.background='rgba(15,23,42,.55)'; o.style.alignItems='center'; o.style.justifyContent='center';
+  o.innerHTML=`<div style="background:#fff;border-radius:14px;padding:16px;width:min(380px,92vw)"><b style="font-size:15px">▦ Dibujar tabla</b><div style="display:flex;gap:10px;margin-top:10px"><div style="flex:1"><label style="font-size:12px;font-weight:700">Filas</label><input id="tn-f" type="number" min="1" max="40" value="4" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px"></div><div style="flex:1"><label style="font-size:12px;font-weight:700">Columnas</label><input id="tn-c" type="number" min="1" max="12" value="3" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px"></div></div>
+   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px"><input type="checkbox" id="tn-h" checked> Primera fila de encabezado (azul)</label><label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13px"><input type="checkbox" id="tn-b" checked> Con bordes</label>
+   <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn btn-ghost" onclick="document.getElementById('pl-tn').remove()">Cancelar</button><button class="btn btn-primary" onclick="plTablaOk()">Insertar</button></div></div>`; };
+ window.plTablaOk=()=>{ const r=Math.max(1,parseInt($('tn-f').value)||1), c=Math.max(1,parseInt($('tn-c').value)||1), hd=$('tn-h').checked, bd=$('tn-b').checked; $('pl-tn').remove(); if(!rest()) return;
+  const bs=bd?'border:1px solid #999;':''; let h='<table style="border-collapse:collapse;width:100%">'; for(let i=0;i<r;i++){ h+='<tr>'; for(let j=0;j<c;j++) h+='<td style="'+bs+'padding:5px 8px'+(hd&&i===0?';background:#1a3a6b;color:#fff;font-weight:700':'')+'">&nbsp;</td>'; h+='</tr>'; } h+='</table><p></p>'; F().execCommand('insertHTML',false,h); };
+ window.plTablaDatos=()=>{ saveSelNow(); const C=cc(FM), fu=PL.FUENTES[C.origen]; let cols=[], pref='r.', key='filas';
+  if(fu&&fu.hija){ cols=colsH(fu).map(c=>[pretty(c),c]); pref='h.'; key='hijas'; } else cols=C.filas.map(c=>[c.label,c.k]);
+  if(!cols.length){ toast(fu?'Esa tabla no tiene filas hijas':'Primero agrega campos con «＋ Campo de tabla» o elige una tabla en ⚙️ Configurar','error'); return; }
+  const o=capa('pl-td',9700); o.style.background='rgba(15,23,42,.55)'; o.style.alignItems='center'; o.style.justifyContent='center';
+  o.innerHTML=`<div style="background:#fff;border-radius:14px;padding:16px;width:min(420px,94vw);max-height:88vh;display:flex;flex-direction:column"><b style="font-size:15px">▦ Tabla de datos${fu&&fu.hija?': '+E(fu.hija.nombre):''}</b><div style="font-size:12px;color:#64748b;margin:4px 0 8px">Marca las columnas que quieres. Se crea una tabla con encabezado y una fila que se repite por cada registro.</div><div style="overflow:auto;flex:1">${cols.map(c=>`<label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px"><input type="checkbox" class="td-c" value="${c[1]}" data-l="${E(c[0])}"> ${E(c[0])}</label>`).join('')}</div><div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end"><button class="btn btn-ghost" onclick="document.getElementById('pl-td').remove()">Cancelar</button><button class="btn btn-primary" onclick="plTablaDatosOk('${pref}','${key}')">Insertar tabla</button></div></div>`; };
+ window.plTablaDatosOk=(pref,key)=>{ const sel=[].slice.call(document.querySelectorAll('#pl-td .td-c:checked')); if(!sel.length){ toast('Marca al menos una columna','error'); return; } $('pl-td').remove(); if(!rest()) return;
+  const bs='border:1px solid #999;padding:5px 8px'; let h='<table style="border-collapse:collapse;width:100%"><tr>'+sel.map(x=>'<td style="'+bs+';background:#1a3a6b;color:#fff;font-weight:700">'+E(x.getAttribute('data-l'))+'</td>').join('')+'</tr><tr data-rep="'+key+'">'+sel.map(x=>'<td style="'+bs+'">{{'+pref+x.value+'}}</td>').join('')+'</tr></table><p></p>';
+  F().execCommand('insertHTML',false,h); guardaSel(); };
  window.plFila=add=>{ const c=celda(); if(!c){ toast('Pon el cursor dentro de una celda de la tabla','error'); return; } const tr=c.parentElement; if(add){ const n=tr.cloneNode(true); n.removeAttribute('data-rep'); n.removeAttribute('data-si'); [].forEach.call(n.cells,x=>{ x.innerHTML='&nbsp;'; x.removeAttribute('rowspan'); }); tr.after(n); } else tr.remove(); };
  window.plCol=add=>{ const c=celda(); if(!c){ toast('Pon el cursor dentro de una celda de la tabla','error'); return; } const i=c.cellIndex, tb=c.closest('table'); [].forEach.call(tb.rows,r=>{ const x=r.cells[i]; if(!x) return; if(add){ const n=x.cloneNode(false); n.innerHTML='&nbsp;'; x.after(n); } else x.remove(); }); };
  window.plCelda=col=>{ const c=celda(); if(!c){ toast('Pon el cursor dentro de una celda','error'); return; } c.style.background=col; };
  window.plBordes=()=>{ const c=celda(); if(!c){ toast('Pon el cursor dentro de una tabla','error'); return; } const tb=c.closest('table'); const on=![].some.call(tb.querySelectorAll('td,th'),x=>/border:\s*1px/.test(x.getAttribute('style')||'')); [].forEach.call(tb.querySelectorAll('td,th'),x=>{ x.style.border=on?'1px solid #999':'none'; }); };
- window.plRep=()=>{ const c=celda(); if(!c){ toast('Pon el cursor en la fila que se repite (una celda de la tabla de ítems)','error'); return; } const tr=c.parentElement, k=PX().rep.key; if(tr.getAttribute('data-rep')) tr.removeAttribute('data-rep'); else{ [].forEach.call(F().querySelectorAll('[data-rep]'),x=>x.removeAttribute('data-rep')); tr.setAttribute('data-rep',k); } };
+ window.plRep=()=>{ const c=celda(); if(!c){ toast('Pon el cursor en la fila que se repite (una celda de la tabla de ítems)','error'); return; } const tr=c.parentElement; let k=PX().rep.key; if(T==='fm'&&/\{\{\s*h\./.test(tr.textContent)) k='hijas'; if(tr.getAttribute('data-rep')) tr.removeAttribute('data-rep'); else{ [].forEach.call(F().querySelectorAll('[data-rep="'+k+'"]'),x=>x.removeAttribute('data-rep')); tr.setAttribute('data-rep',k); } };
  window.plSi=v=>{ if(v==='＋ Campo…'||v==='👁 Mostrar solo si…'||v==='Mostrar solo si…'||v==null) return; if(!rest()) return; const d=F(); const s=d.getSelection(); let n=s.anchorNode; if(n&&n.nodeType===3) n=n.parentElement; const el=n&&n.closest?(n.closest('tr')||n.closest('p,div,li')||n):null; if(!el||el===d.body){ toast('Pon el cursor en el bloque que quieres condicionar','error'); return; } if(v==='') el.removeAttribute('data-si'); else el.setAttribute('data-si',v); };
  window.plImagen=inp=>{ const f=inp.files&&inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>{ const m=900, k=Math.min(1,m/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); const g=c.getContext('2d'); if(!/png/.test(f.type)){ g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); } g.drawImage(im,0,0,c.width,c.height); const url=c.toDataURL(/png/.test(f.type)?'image/png':'image/jpeg',.85); if(!rest()) return; F().execCommand('insertHTML',false,'<img src="'+url+'" style="height:52px;width:auto">'); }; im.src=r.result; }; r.readAsDataURL(f); inp.value=''; };
  function html(){ const b=F().body.cloneNode(true); b.querySelectorAll('img[data-tok]').forEach(im=>{ im.setAttribute('src','{{'+im.getAttribute('data-tok')+'}}'); im.removeAttribute('data-tok'); }); return b.innerHTML.replace(/<br\s*\/?>\s*$/,''); }
