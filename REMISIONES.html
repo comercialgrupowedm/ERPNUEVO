@@ -586,6 +586,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="porpedir" onclick="nav('porpedir')"><span class="nav-icon">📥</span>Por pedir<span class="nav-badge" id="b-pp" style="display:none">0</span></div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
+    <div class="nav-item" id="nav-inst" onclick="closeSidebar();erpInstalar()"><span class="nav-icon">📲</span>Instalar esta app</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px"></div>
@@ -2883,7 +2884,7 @@ window.WEDM_DETALLE=function(p){ _RM.q=String(p.op); _RM.f='todas'; _RM.per='tod
 </style>
 <script>
 (function(){
- var MAP={INDEX:['WEDM ERP','index'],COMERCIAL:['Comercial','comercial'],DISENO:['Diseño','diseno'],COMPRAS:['Compras','compras'],REMISIONES:['Remisiones','remisiones'],PLANEACION:['Planeación','planeacion'],CALIDAD:['Calidad','calidad']};
+ var MAP={INDEX:['WEDM ERP','index'],COMERCIAL:['Comercial','comercial'],DISENO:['Diseño','diseno'],COMPRAS:['Compras','compras'],REMISIONES:['Remisiones','remisiones'],PLANEACION:['Planeación','planeacion'],CALIDAD:['Calidad','calidad'],DESARROLLADOR:['Desarrollador','desarrollador']};
  var f=(location.pathname.split('/').pop()||'index.html').replace(/\.html?$/i,'').toUpperCase(); var cfg=MAP[f]||MAP.INDEX, isIndex=!MAP[f]||f==='INDEX';
  var dp=null, ua=navigator.userAgent||'', ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), android=/android/i.test(ua);
  var std=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
@@ -2902,10 +2903,14 @@ window.WEDM_DETALLE=function(p){ _RM.q=String(p.op); _RM.f='todas'; _RM.per='tod
  async function instalar(){
   if(dp){ try{ dp.prompt(); var r=await dp.userChoice; if(r&&r.outcome==='accepted'){ var b=document.getElementById('erp-inst'); if(b) b.style.display='none'; } }catch(e){} dp=null; return; }
   var sf=ios&&!/crios|fxios|edgios/i.test(ua);
-  var pasos=ios?'<li>Toca el botón <b>Compartir</b> ⬆️ '+(sf?'(barra de abajo de Safari)':'(arriba o abajo del navegador)')+'.</li><li>Desliza y elige <b>Añadir a pantalla de inicio</b> ➕.</li><li>Toca <b>Añadir</b>.</li>'
+  var desk=!ios&&!android;
+  var pasos=desk?'<li>Mira a la derecha de la barra de direcciones: si ves un ícono de <b>monitor con flecha</b> ⬇, tócalo y elige <b>Instalar</b>.</li><li>Si no lo ves, abre el menú <b>⋮</b> de Chrome o <b>…</b> de Edge → <b>Transmitir, guardar y compartir</b> → <b>Instalar página como aplicación…</b></li><li>Si en vez de instalar dice <b>Abrir</b>, es porque Chrome cree que ya la tienes: entra a <b>chrome://apps</b>, clic derecho en la app anterior → <b>Desinstalar</b>, cierra Chrome y vuelve a intentar.</li>':ios?'<li>Toca el botón <b>Compartir</b> ⬆️ '+(sf?'(barra de abajo de Safari)':'(arriba o abajo del navegador)')+'.</li><li>Desliza y elige <b>Añadir a pantalla de inicio</b> ➕.</li><li>Toca <b>Añadir</b>.</li>'
    :'<li>Toca el menú <b>⋮</b> del navegador (arriba a la derecha).</li><li>Elige <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>).</li><li>Confirma con <b>Instalar</b>.</li>';
-  ov('<div style="text-align:center"><div style="font-size:34px">📲</div><div style="font-size:17px;font-weight:800">Instalar «'+cfg[0]+'» en tu celular</div><div style="font-size:12.5px;color:#64748b;margin-top:2px">Se abre como una app, a pantalla completa'+(isIndex?'. Desde el inicio entras a todos los módulos. Si solo necesitas uno, ábrelo y toca 📲 allí.':'. Solo este módulo.')+'</div></div><ol style="margin:12px 4px 0 22px;font-size:14px;line-height:1.7">'+pasos+'</ol>'); }
- if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+  ov('<div style="text-align:center"><div style="font-size:34px">📲</div><div style="font-size:17px;font-weight:800">Instalar «'+cfg[0]+'»'+(desk?' en este computador':' en tu celular')+'</div><div style="font-size:12.5px;color:#64748b;margin-top:2px">Se abre como una app, a pantalla completa'+(isIndex?'. Desde el inicio entras a todos los módulos. Si solo necesitas uno, ábrelo y toca 📲 allí.':'. Solo este módulo.')+'</div></div><ol style="margin:12px 4px 0 22px;font-size:14px;line-height:1.7">'+pasos+'</ol>'); }
+ window.erpInstalar=instalar;
+ function ocultaNav(){ var n=document.getElementById('nav-inst'); if(n&&std) n.style.display='none'; }
+ window.addEventListener('appinstalled',function(){ var n=document.getElementById('nav-inst'); if(n) n.style.display='none'; });
+ if(document.readyState!=='loading'){ init(); ocultaNav(); } else document.addEventListener('DOMContentLoaded',function(){ init(); ocultaNav(); });
  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw-erp.js').catch(function(){}); }); }
 })();
 </script>
