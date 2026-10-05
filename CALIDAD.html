@@ -1754,7 +1754,7 @@ function externo(){
   }).sort((a,b)=>(diasDe(a.externo_hasta)??9999)-(diasDe(b.externo_hasta)??9999));
   const banner=moduleBanner('🚚','Servicio Externo','Ítems que están afuera con un proveedor (temple, anodizado, rectificado…)',
     chipsH([['todas','Todas',cnt.todas],['venc','Regreso vencido',cnt.venc],['sinf','Sin fecha de regreso',cnt.sinf],['sol','Con solicitud',cnt.sol]],_extF.chip,'extChip')
-    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="pickItem('🚚 Enviar a servicio externo',o=>vivo(o)&&!enExterno(o),'modalExterno')">➕ Enviar un ítem a externo</button> <button class="chip" onclick="pickItem('🔥 Hoja de temple',o=>vivo(o),'modalTemple')">🔥 Hoja de temple</button></div>`:''));
+    );
   const fb=filtroBusqueda('ext-q',_extF.q,"extSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+fb+empty('Sin ítems en servicio externo','🚚')); return; }
   const extA=o=>{ const j=idq(o); return puedeCal()?actBtn('📥 Recibir',`recibirExterno('${j}')`)+actBtn('✏️ Editar',`modalExterno('${j}')`)+actBtn('📝 Solicitud',`modalSolicitud('${j}')`):''; };
@@ -1856,7 +1856,7 @@ function solicitudes(){
   });
   const banner=moduleBanner('📋','Solicitudes Externas','Servicios externos pedidos a Compras (formato COMPRAS-FO-002)',
     chipsH([['abiertas','Abiertas',cnt.abiertas],['recibidas','Recibidas',cnt.recibidas],['rech','Rechazadas',cnt.rech],['mias','Mías',cnt.mias],['todas','Todas',cnt.todas]],_solF.chip,'solChip')
-    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="modalSolicitud()">➕ Nueva solicitud</button></div>`:''));
+    );
   const fb=filtroBusqueda('sol-q',_solF.q,"solSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar OP, servicio, proveedor, quién pidió…');
   if(!data.length){ setContent(banner+fb+empty('Sin solicitudes en esta vista','📋')); return; }
   const card=s=>{ const o=opDe(s.id_prod);
@@ -1989,7 +1989,7 @@ function certificados(){
   });
   const banner=moduleBanner('🏅','Certificados de conformidad','Resultados de medición por pieza y certificado para el cliente',
     chipsH([['emitidos','Emitidos',cnt.emitidos],['anulados','Anulados',cnt.anulados],['todos','Todos',cnt.todos]],_certF.chip,'certChip')
-    +(puedeCal()?`<div style="margin-top:10px"><button class="chip" onclick="editorCert(null,null)">➕ Nuevo certificado</button> <button class="chip" onclick="editorCert(null,null)">➕ Para una OP ya despachada</button></div>`:''));
+    );
   const fb=filtroBusqueda('cert-q',_certF.q,"certSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar N°, OP, cliente, referencia, OC…');
   if(!data.length){ setContent(banner+fb+empty(all.length?'Sin certificados en esta vista':'Aún no hay certificados. Emítelos desde Pendiente Despacho o con «Nuevo certificado».','🏅')); return; }
   const card=c=>{ const r=certResumen(c);
@@ -2176,7 +2176,7 @@ function remisiones(){
   const banner=moduleBanner('📄','Remisiones','Estado de las remisiones y despacho de las generadas',
     chipsH([['despachar','Generadas (por despachar)',cnt.despachar],['tramite','En trámite',cnt.tramite],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',cnt.todas],['libres','📝 Formulario libre',libres]],_remF.chip,'remChip'));
   const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se pide desde <b>📦 Pendiente Despacho</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}</div>`;
-  const nuevo=puedeCal()?`<div style="margin:8px 0"><button class="chip" onclick="feRemision()">➕ Nueva remisión (formulario)</button></div>`:'';
+  const nuevo='';
   const fb=nuevo+filtroBusqueda('rem-q',_remF.q,"remSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar REM, OP, cliente, proyecto, OC…');
   if(!data.length){ setContent(banner+nota+fb+empty('Sin remisiones en esta vista','📄')); return; }
   const card=m=>{ const ls=m.lineas||[]; const und=ls.reduce((a,l)=>a+(Number(l.cantidad)||0),0);
@@ -4125,9 +4125,57 @@ window.WEDM_DETALLE=function(p){ detailItem(p.id); };</script>
 </script>
 <!-- /WEDM-INSTALAR -->
 
+<!-- WEDM-FAB -->
+<style>
+#wfab{position:fixed;right:16px;bottom:calc(var(--nav-h,70px) + 14px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--accent2,#1d4ed8),#3b82f6);border:none;color:#fff;font-size:26px;cursor:pointer;box-shadow:0 6px 22px rgba(29,78,216,.45),0 2px 8px rgba(29,78,216,.25);z-index:150;display:none;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:transform .15s cubic-bezier(.34,1.56,.64,1)}
+#wfab:active{transform:scale(.9)}
+#wfab.op{transform:rotate(45deg)}
+#wfab-m{position:fixed;right:16px;bottom:calc(var(--nav-h,70px) + 78px + env(safe-area-inset-bottom,0px));z-index:151;display:none;flex-direction:column;gap:8px;align-items:flex-end}
+#wfab-m.op{display:flex}
+#wfab-m button{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:22px;padding:10px 16px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer}
+@media(min-width:900px){#wfab,#wfab-m{right:28px}}
+</style>
+<button id="wfab" type="button" aria-label="Agregar" title="Agregar">＋</button>
+<div id="wfab-m"></div>
+<script>
+(function(){
+  var CFG={externo:{ok:function(){return puedeCal()},a:[{l:'🚚 Enviar un ítem a externo',f:function(){pickItem('🚚 Enviar a servicio externo',function(o){return vivo(o)&&!enExterno(o)},'modalExterno')}},{l:'🔥 Hoja de temple',f:function(){pickItem('🔥 Hoja de temple',function(o){return vivo(o)},'modalTemple')}}]},solicitudes:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva solicitud',f:function(){modalSolicitud()}}]},certificados:{ok:function(){return puedeCal()},a:[{l:'➕ Nuevo certificado',f:function(){editorCert(null,null)}}]},remisiones:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva remisión',f:function(){feRemision()}}]}};
+  var b=document.getElementById('wfab'), m=document.getElementById('wfab-m'), cur=null;
+  function acts(){
+    try{
+      var mod=(typeof MOD!=='undefined')?MOD:''; var c=CFG[mod]; if(!c) return null;
+      if(c.ok&&!c.ok()) return null;
+      return c.a;
+    }catch(e){ return null; }
+  }
+  function ocupado(){
+    var o=document.getElementById('modal-overlay'); if(o&&o.classList.contains('open')) return true;
+    var f=document.getElementById('fe-ov'); if(f&&getComputedStyle(f).display!=='none') return true;
+    var s=document.getElementById('sel-bar'); if(s&&getComputedStyle(s).display!=='none') return true;
+    var lg=document.getElementById('login-overlay')||document.getElementById('login'); if(lg&&getComputedStyle(lg).display!=='none'&&lg.offsetHeight>0) return true;
+    return false;
+  }
+  function cerrar(){ m.classList.remove('op'); b.classList.remove('op'); }
+  function upd(){
+    var a=acts(); cur=a;
+    var show=!!(a&&a.length)&&!ocupado();
+    b.style.display=show?'flex':'none'; if(!show) cerrar();
+  }
+  b.onclick=function(){
+    if(!cur||!cur.length) return;
+    if(cur.length===1){ cerrar(); cur[0].f(); return; }
+    if(m.classList.contains('op')){ cerrar(); return; }
+    m.innerHTML=''; cur.forEach(function(x){ var e=document.createElement('button'); e.type='button'; e.textContent=x.l; e.onclick=function(){ cerrar(); x.f(); }; m.appendChild(e); });
+    m.classList.add('op'); b.classList.add('op');
+  };
+  document.addEventListener('click',function(e){ if(m.classList.contains('op')&&e.target!==b&&!m.contains(e.target)) cerrar(); },true);
+  setInterval(upd,350); upd();
+})();
+</script>
+<!-- /WEDM-FAB -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
-#off-pill{position:fixed;right:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
+#off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
 #off-pill.sync{background:#1d4ed8}#off-pill.err{background:#b91c1c}#off-pill.ok{background:#15803d}
 @media(min-width:900px){#off-pill{bottom:16px}}
 </style>

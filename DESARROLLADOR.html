@@ -1665,6 +1665,10 @@ const FAB_ACTIONS = {
   cotizaciones:()=>formCot({}),
   clientes:()=>formCliente({}),
   items:()=>toast('Abre una cotización y usa “Agregar Item”','err'),
+  materiales:()=>formMaterial({}),
+  servicios:()=>formServicio({}),
+  procesos:()=>formProceso({}),
+  usuarios:()=>formUsuario(),
 };
 let _navFromPopstate = false, _navFromNav = false, _detailOpen = false;
 const _F = {}, _VIEW = {}, _SORT = {cotizaciones:{col:'cotizacion',dir:'desc'},remisiones:{col:'numero',dir:'desc'},produccion:{col:'op',dir:'desc'}};   // orden inicial: número de mayor a menor
@@ -1985,6 +1989,8 @@ function qaGo(mod,preset){
 function _fabVisible(m){
   if(!FAB_ACTIONS[m]) return false;
   if(m==='items') return false;
+  if(m==='materiales'||m==='servicios'||m==='procesos') return _esDev();
+  if(m==='usuarios') return _esAdmin();
   return canEdit();
 }
 function nav(m){
@@ -3812,7 +3818,7 @@ async function deleteCliente(id){
 
 // ══ CATÁLOGO: MATERIALES · SERVICIOS · PROCESOS ═════════════════
 function _catActions(id,fn,del){ return _esDev()?`<td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="${fn}(DB.${fn==='formMaterial'?'materiales':fn==='formServicio'?'servicios':'procesos'}.find(x=>x.id==='${id}'))">✏️</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="${del}('${id}')">🗑</button></td>`:''; }
-function _catBanner(icon,title,sub,fn){ return moduleBanner(icon,title,sub,_esDev()?`<button class="btn btn-primary btn-sm" onclick="${fn}({})">＋ Nuevo</button>`:'','linear-gradient(135deg,#374151,#6b7280)'); }
+function _catBanner(icon,title,sub,fn){ return moduleBanner(icon,title,sub,'','linear-gradient(135deg,#374151,#6b7280)'); }
 function materiales(){
   const fb=filterBar('materiales',[{key:'__search__',label:'Buscar material...',type:'text'}]); const all=DB.materiales; const data=sortData('materiales',filterData('materiales',all));
   setContent(_catBanner('🧱','Materiales','Catálogo de materiales y precio por kg','formMaterial')+fb+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>${thSort('materiales','material','Material')}${thSort('materiales','descripcion','Descripción')}${thSort('materiales','densidad','Densidad g/mm³')}${thSort('materiales','precio','Precio/kg')}${_esDev()?'<th></th>':''}</tr></thead><tbody>
@@ -4668,7 +4674,7 @@ async function usuarios(){
   let r2=null; try{ r2=await sb.rpc('dev_listar_usuarios2'); }catch(e){ r2=null; }
   _USR_V2=Array.isArray(r2);
   try{ const r=_USR_V2?r2:await sb.rpc('dev_listar_usuarios'); _USR=Array.isArray(r)?r:[]; }catch(e){ setContent(errorView(errMsg(e))); return; }
-  const banner=moduleBanner('👥','Usuarios, claves y módulos','Quién entra al ERP, con qué clave y a qué módulos',`<button class="btn btn-sm" style="background:#fff;color:#0f2443;font-weight:800" onclick="formUsuario()">＋ Nuevo usuario</button> <a class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;text-decoration:none" href="PLANEACION.html" target="_blank">🔑 Accesos de planta</a>`,'linear-gradient(135deg,#0f2443,#475569)');
+  const banner=moduleBanner('👥','Usuarios, claves y módulos','Quién entra al ERP, con qué clave y a qué módulos',`<a class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;text-decoration:none" href="PLANEACION.html" target="_blank">🔑 Accesos de planta</a>`,'linear-gradient(135deg,#0f2443,#475569)');
   const aviso=_USR_V2?'':`<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:13px;font-weight:600">⚠️ Falta ejecutar <b>usuarios_modulos.sql</b> en Supabase para gestionar módulos, desbloqueo y visibilidad. Mientras tanto solo funcionan rol, PIN y estado.</div>`;
   const chips=u=>u.modulos==null?'<span style="color:#64748b;font-size:12px">Según su rol</span>':(u.modulos.length?u.modulos.map(m=>`<span style="display:inline-block;background:#e0e7ff;color:#3730a3;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;margin:1px">${esc((MOD_USR.find(x=>x[0]===m)||[0,m])[1])}</span>`).join(''):'<span style="color:#b91c1c;font-size:12px;font-weight:700">Ninguno</span>');
   setContent(banner+aviso+`<div class="tbl-wrap" style="margin-top:12px"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Rol</th><th>Adicionales</th><th>Módulos</th><th>Asesor</th><th>Clave</th><th>Estado</th><th>Visible</th><th></th></tr></thead><tbody>${_USR.map(u=>{const dev=u.rol==='desarrollador';const n=esc(u.nombre);
@@ -8256,7 +8262,7 @@ async function colaboradoresView(){
 </script>
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
-#off-pill{position:fixed;right:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
+#off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
 #off-pill.sync{background:#1d4ed8}#off-pill.err{background:#b91c1c}#off-pill.ok{background:#15803d}
 @media(min-width:900px){#off-pill{bottom:16px}}
 </style>
@@ -8409,9 +8415,12 @@ async function colaboradoresView(){
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
   location.reload();
  }
- function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ function navSync(){ try{
+  if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=function(){ syncCero(); }; r.parentNode.insertBefore(b,r.nextSibling); } }
+  if(!document.getElementById('nav-sync')){ var sc=document.querySelector('#sidebar .nav-scroll'); if(sc){ var d=document.createElement('div'); d.className='nav-item'; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; sc.appendChild(d); } }
+ }catch(e){} }
  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
- setTimeout(navSync,1500);
+ setTimeout(navSync,1500);setInterval(navSync,3000);
  window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });

@@ -1143,7 +1143,7 @@ function remisiones(){
   const rows=base.filter(m=>(!usaPer||perOk(m))&&(!_RM.emp||m.empresa===_RM.emp)&&(!q||_norm([m.numero,m.empresa,m.op,m.cot_num,m.proyecto,m.oc_cliente,m.asesor,m.estado].join(' ')).includes(q)));
   const chips=chipsH([['todas','Todas',all.length],...(_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))?[['pend','🔔 Para mí',cnt.pend]]:[]),['ped','⏳ Pedidas',cnt.ped],['curso','En curso',cnt.curso],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc]],f,'rmF');
   const perH='';
-  const acc=puedeLibre()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#c2410c;font-weight:800" onclick="nuevaRemModal()">➕ Nueva remisión</button></div>`:'';
+  const acc='';
   const banner=moduleBanner('🚚','Remisiones','Pedida → seleccionada → generada → despachada',chips+perH+acc);
   const empresas=[...new Set(all.map(m=>m.empresa).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const fb=`<div class="filter-bar" style="margin:12px 0 8px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar REM, OP, COT, empresa, proyecto…" value="${esc(_RM.q)}" autocomplete="off" data-fkey="rmq" oninput="rmSetQ(this.value)"></div>
@@ -3082,9 +3082,57 @@ window.feRemImprimir=()=>{
 </script>
 
 <!-- /FE-REM -->
+<!-- WEDM-FAB -->
+<style>
+#wfab{position:fixed;right:16px;bottom:calc(var(--nav-h,70px) + 14px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--accent2,#1d4ed8),#3b82f6);border:none;color:#fff;font-size:26px;cursor:pointer;box-shadow:0 6px 22px rgba(29,78,216,.45),0 2px 8px rgba(29,78,216,.25);z-index:150;display:none;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:transform .15s cubic-bezier(.34,1.56,.64,1)}
+#wfab:active{transform:scale(.9)}
+#wfab.op{transform:rotate(45deg)}
+#wfab-m{position:fixed;right:16px;bottom:calc(var(--nav-h,70px) + 78px + env(safe-area-inset-bottom,0px));z-index:151;display:none;flex-direction:column;gap:8px;align-items:flex-end}
+#wfab-m.op{display:flex}
+#wfab-m button{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:22px;padding:10px 16px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer}
+@media(min-width:900px){#wfab,#wfab-m{right:28px}}
+</style>
+<button id="wfab" type="button" aria-label="Agregar" title="Agregar">＋</button>
+<div id="wfab-m"></div>
+<script>
+(function(){
+  var CFG={remisiones:{ok:function(){return puedeLibre()},a:[{l:'➕ Nueva remisión',f:function(){nuevaRemModal()}}]},dashboard:{ok:function(){return puedeLibre()},a:[{l:'➕ Nueva remisión',f:function(){nuevaRemModal()}}]}};
+  var b=document.getElementById('wfab'), m=document.getElementById('wfab-m'), cur=null;
+  function acts(){
+    try{
+      var mod=(typeof MOD!=='undefined')?MOD:''; var c=CFG[mod]; if(!c) return null;
+      if(c.ok&&!c.ok()) return null;
+      return c.a;
+    }catch(e){ return null; }
+  }
+  function ocupado(){
+    var o=document.getElementById('modal-overlay'); if(o&&o.classList.contains('open')) return true;
+    var f=document.getElementById('fe-ov'); if(f&&getComputedStyle(f).display!=='none') return true;
+    var s=document.getElementById('sel-bar'); if(s&&getComputedStyle(s).display!=='none') return true;
+    var lg=document.getElementById('login-overlay')||document.getElementById('login'); if(lg&&getComputedStyle(lg).display!=='none'&&lg.offsetHeight>0) return true;
+    return false;
+  }
+  function cerrar(){ m.classList.remove('op'); b.classList.remove('op'); }
+  function upd(){
+    var a=acts(); cur=a;
+    var show=!!(a&&a.length)&&!ocupado();
+    b.style.display=show?'flex':'none'; if(!show) cerrar();
+  }
+  b.onclick=function(){
+    if(!cur||!cur.length) return;
+    if(cur.length===1){ cerrar(); cur[0].f(); return; }
+    if(m.classList.contains('op')){ cerrar(); return; }
+    m.innerHTML=''; cur.forEach(function(x){ var e=document.createElement('button'); e.type='button'; e.textContent=x.l; e.onclick=function(){ cerrar(); x.f(); }; m.appendChild(e); });
+    m.classList.add('op'); b.classList.add('op');
+  };
+  document.addEventListener('click',function(e){ if(m.classList.contains('op')&&e.target!==b&&!m.contains(e.target)) cerrar(); },true);
+  setInterval(upd,350); upd();
+})();
+</script>
+<!-- /WEDM-FAB -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
-#off-pill{position:fixed;right:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
+#off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
 #off-pill.sync{background:#1d4ed8}#off-pill.err{background:#b91c1c}#off-pill.ok{background:#15803d}
 @media(min-width:900px){#off-pill{bottom:16px}}
 </style>
