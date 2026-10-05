@@ -1600,7 +1600,7 @@ function imprimirOC(id){
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor)||{};
   _abrirDocParaImprimir(ocDocHtml({ops:ocOpsDe(o),tipo:ocTipo(ls),numero:ocNum(o),fecha:o.fecha,estado:o.estado,prov:{nombre:o.prov_nombre,nit:o.prov_nit,tel:o.prov_telefono,email:o.prov_email,ciudad:o.prov_ciudad,dir:o.prov_direccion,contacto:o.prov_contacto,logo:pv.logo||''},
     proyecto:o.proyecto,iva_pct:o.iva_pct,validez:o.validez_dias,forma_pago:o.forma_pago,solicito:o.solicito,autorizo:o.autorizo,obs:o.observaciones,
-    lineas:[...ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})),...(DB.ocLineas||[]).filter(x=>x.id_oc===id).map(x=>({desc:x.descripcion||'—',cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega}))],
+    lineas:[...ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})),...(DB.ocLineas||[]).filter(x=>x.id_oc===id).map(x=>({desc:(!o.historico&&x.op?'[OP-'+x.op+(x.item?' · ítem '+x.item:'')+'] ':'')+(x.descripcion||'—'),cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega}))],
     subtotal:o.subtotal,iva:o.iva,total:o.total}),`${ocNum(o)}.pdf`,'ordenes_compra');
 }
 
@@ -3401,7 +3401,7 @@ window.feHdr=(titulo,opHtml,fechas)=>`<div class="fe-hdr"><div class="fe-logo"><
 /* Orden de compra en vista de documento: se arma sobre la hoja, trae pedidos pendientes o ítems manuales, y el precio va con o sin IVA */
 (function(){
 const E=window.feE, $=id=>document.getElementById(id);
-let O=null;
+let O=null; const ITC={};
 const pct=()=>parseFloat(($('fo-iva')||{}).value)||0;
 const num=v=>{ const n=parseFloat(v); return isNaN(n)?0:n; };
 const r2=n=>Math.round(n*100)/100;
@@ -3416,7 +3416,7 @@ function lineasHtml(){
     const lock=O.edit&&l.k==='ped';
     return `<tr><td style="background:#dde6f0;text-align:center;font-weight:700;width:34px">${i+1}</td>
     <td style="width:78px;text-align:center">${l.k==='lib'||l.k==='oldlib'?`<input type="number" min="0" step="any" style="text-align:center" value="${E(l.qty)}" oninput="feOcQty(${i},this.value)">`:E(l.cant)}</td>
-    <td style="padding:2px">${l.k==='lib'?`<textarea rows="2" style="resize:vertical" placeholder="Describe el ítem" oninput="feOcDesc(${i},this.value)">${E(l.desc)}</textarea>`:`<div style="padding:3px 6px">${E(l.desc)}${l.sub?`<div style="font-size:9.5px;color:#64748b">${E(l.sub)}</div>`:''}</div>`}</td>
+    <td style="padding:2px">${l.k==='lib'?`<div style="display:flex;gap:4px;flex-wrap:wrap;padding:3px 3px 0"><input list="fo-ops" placeholder="🔎 OP (opcional)" value="${E(l.op||'')}" onchange="feOcOp(${i},this.value)" style="width:120px;border:1px solid #cbd5e1;background:#fff;border-radius:4px"><select onchange="feOcItem(${i},this.value)" style="flex:1;min-width:150px;border:1px solid #cbd5e1;background:#fff;border-radius:4px"><option value="">— ítem de la OP (opcional) —</option>${(ITC[l.op]||[]).map(x=>`<option value="${E(x.item_num)}" ${String(x.item_num)===String(l.item)?'selected':''}>Ítem ${E(x.item_num)} — ${E(String(x.descripcion||'').slice(0,45))}</option>`).join('')}</select></div>${l.cli?`<div style="font-size:9.5px;color:#64748b;padding:0 6px">Cliente: ${E(l.cli)}</div>`:''}<textarea rows="2" style="resize:vertical" placeholder="Describe lo que vas a comprar" oninput="feOcDesc(${i},this.value)">${E(l.desc)}</textarea>`:`<div style="padding:3px 6px">${E(l.desc)}${l.sub?`<div style="font-size:9.5px;color:#64748b">${E(l.sub)}</div>`:''}</div>`}</td>
     <td style="width:62px"><input type="number" min="0" style="text-align:center" placeholder="días" value="${E(l.dias)}" oninput="O_dias(${i},this.value)"></td>
     <td style="width:112px"><input id="fo-s-${i}" type="number" min="0" step="any" style="text-align:right;font-weight:700" placeholder="sin IVA" value="${l.base===''?'':E(l.base)}" oninput="feOcSin(${i},this.value)"></td>
     <td style="width:112px;background:#f1f5f9"><input id="fo-c-${i}" type="number" min="0" step="any" style="text-align:right" placeholder="con IVA" value="${con===''?'':con}" oninput="feOcCon(${i},this.value)"></td>
@@ -3433,7 +3433,7 @@ function pendHtml(){
   if(!ps.length) return '<div style="padding:10px;text-align:center;color:#64748b;font-size:11px">No hay pedidos pendientes'+(q?' con esa búsqueda':'')+'</div>';
   return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><tbody>${ps.slice(0,120).map(m=>{ const p=prodDe(m.id_prod)||{}; return `<tr><td style="width:34px;text-align:center"><input type="checkbox" style="width:auto" ${on.has(m.id)?'checked':''} onchange="feOcPed('${E(m.id)}',this.checked)"></td><td style="padding:3px 6px"><b>${E(m.material)}</b>${m.detalle?' — '+E(m.detalle):''}<div style="font-size:9.5px;color:#64748b">OP-${E(p.op??'—')} · ${E(p.empresa||'')}${cantTxt(m)?' · '+E(cantTxt(m)):''}${m.proveedor?' · sugerido: '+E(m.proveedor):''}${m.costo_cotizado>0?' · cotizado '+fmt(m.costo_cotizado):''}</div></td></tr>`; }).join('')}</tbody></table>${ps.length>120?'<div style="font-size:10px;color:#64748b;padding:4px">Mostrando 120; usa la búsqueda para acotar.</div>':''}`;
 }
-function repaint(){ const b=$('fo-body'); if(b) b.innerHTML=lineasHtml(); const p=$('fo-pend'); if(p) p.innerHTML=pendHtml(); totales(); }
+function repaint(){ proyAuto(); const b=$('fo-body'); if(b) b.innerHTML=lineasHtml(); const p=$('fo-pend'); if(p) p.innerHTML=pendHtml(); totales(); }
 window.O_dias=(i,v)=>{ O.lines[i].dias=v; };
 window.feOcQty=(i,v)=>{ O.lines[i].qty=num(v)||1; O.lines[i].cant=String(O.lines[i].qty); };
 window.feOcDesc=(i,v)=>{ O.lines[i].desc=v; };
@@ -3441,12 +3441,20 @@ window.feOcSin=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':num(v); const c=$('
 window.feOcCon=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':r2(num(v)/(1+pct()/100)); const s=$('fo-s-'+i); if(s) s.value=v===''?'':l.base; totales(); };
 window.feOcIva=()=>{ O.lines.forEach((l,i)=>{ const c=$('fo-c-'+i); if(c) c.value=l.base===''?'':Math.round(num(l.base)*(1+pct()/100)); }); totales(); };
 window.feOcQuitar=i=>{ O.lines.splice(i,1); repaint(); };
-window.feOcLib=()=>{ O.lines.push({k:'lib',desc:'',sub:'',cant:'1',qty:1,base:'',dias:''}); repaint(); const t=document.querySelectorAll('#fo-body textarea'); if(t.length) t[t.length-1].focus(); };
+async function cargaOps(){ try{ if(!DB.allOpsC) DB.allOpsC=await GETALL('produccion','select=op,cot_num,empresa&order=op.desc'); const dl=$('fo-ops'); if(dl){ const m=new Map(); DB.allOpsC.forEach(p=>{ if(p.op!=null&&!m.has(p.op)) m.set(p.op,p); }); dl.innerHTML=[...m.values()].map(p=>`<option value="${E(p.op)}" label="${E(p.empresa||'')}${p.cot_num!=null?' · COT-'+E(p.cot_num):''}">`).join(''); } }catch(e){} }
+async function cargaItems(op){ if(!op||ITC[op]) return; try{ ITC[op]=await GET('produccion','select=id,op,item_num,descripcion,empresa,cot_num&op=eq.'+encodeURIComponent(op)+'&order=item_num.asc'); }catch(e){ ITC[op]=[]; } }
+window.feOcOp=async(i,v)=>{ const l=O.lines[i]; v=String(v||'').trim(); l.op=v; l.item=''; l.cli=''; if(v){ await cargaItems(v); const its=ITC[v]||[]; if(its.length){ l.cli=its[0].empresa||''; if(its.length===1) l.item=String(its[0].item_num); } else toast('No encontré la OP '+v,'warn'); } repaint(); };
+window.feOcItem=(i,v)=>{ O.lines[i].item=v; };
+function opsDeLineas(){ const a=[]; O.lines.forEach(l=>{ let op=null; if(l.k==='lib') op=l.op||null; else if(l.k==='ped'||l.k==='old'){ const m=linDe(l.id), p=m&&prodDe(m.id_prod); op=p&&p.op!=null?p.op:null; } if(op!=null&&String(op).trim()!==''&&!a.includes(String(op))) a.push(String(op)); }); return a; }
+function proyAuto(){ if(O.proyManual) return; const pr=$('fo-proy'); if(pr) pr.value=opsDeLineas().join(' - '); }
+window.feOcProyManual=v=>{ O.proyManual=String(v).trim()!==''; if(!O.proyManual) proyAuto(); };
+window.feOcLib=()=>{ O.lines.push({k:'lib',desc:'',sub:'',cant:'1',qty:1,base:'',dias:'',op:'',item:'',cli:''}); repaint(); const t=document.querySelectorAll('#fo-body textarea'); if(t.length) t[t.length-1].focus(); };
 window.feOcPed=(id,ck)=>{ if(ck){ const m=linDe(id); if(m&&!O.lines.some(l=>l.k==='ped'&&l.id===id)){ O.lines.push(pedLine(m)); const mm=O.lines.filter(l=>l.k==='ped').length===1; if(mm&&m.proveedor&&!gv('fo-prov')){ $('fo-prov').value=m.proveedor; feOcProv(); } const pr=$('fo-proy'); if(pr&&!pr.value){ const p=prodDe(m.id_prod)||{}; pr.value=p.op!=null?String(p.op):''; } } } else O.lines=O.lines.filter(l=>!(l.k==='ped'&&l.id===id)); repaint(); };
 window.feOcBuscar=()=>{ clearTimeout(O._t); O._t=setTimeout(()=>{ const p=$('fo-pend'); if(p) p.innerHTML=pendHtml(); },180); };
 window.feOcProv=()=>{
   const n=_norm(gv('fo-prov')); const p=(DB.provs||[]).find(x=>_norm(x.nombre)===n);
   const w=$('fo-savep-w'); if(w) w.style.display=(n&&!p)?'flex':'none';
+  if(p&&p.plazo_pago&&!$('fo-fp').value) $('fo-fp').value=p.plazo_pago;
   if(p) [['fo-nit','nit'],['fo-tel','telefono'],['fo-email','email'],['fo-ciu','ciudad'],['fo-dir','direccion'],['fo-enc','contacto']].forEach(([id,k])=>{ const el=$(id); if(el&&!el.value) el.value=p[k]||''; });
   if(!O.edit){ const x=$('fo-pend'); if(x) x.innerHTML=pendHtml(); }
 };
@@ -3455,7 +3463,7 @@ window.feOcPrev=()=>{
   if(!gv('fo-prov')){ toast('Escribe el proveedor','error'); return; }
   const c=cab(); let lineas, sub; const ms=O.lines.filter(l=>l.k==='ped'||l.k==='old').map(l=>linDe(l.id)).filter(Boolean);
   if(O.hist){ lineas=(O.hist.lineas||[]).map(x=>({desc:x.descripcion||'—',cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega})); sub=subtotal(); }
-  else { lineas=O.lines.map(l=>({desc:l.desc,cant:String(l.cant),qty:l.qty||1,total:num(l.base),dias:l.dias})); sub=subtotal(); }
+  else { lineas=O.lines.map(l=>({desc:(l.k==='lib'&&l.op?'[OP-'+l.op+(l.item?' · ítem '+l.item:'')+'] ':'')+l.desc,cant:String(l.cant),qty:l.qty||1,total:num(l.base),dias:l.dias})); sub=subtotal(); }
   const iva=Math.round(sub*pct()/100); const pv=(DB.provs||[]).find(p=>_norm(p.nombre)===_norm(c.prov_nombre))||{};
   const d={prov:{nombre:c.prov_nombre,nit:c.prov_nit,tel:c.prov_telefono,email:c.prov_email,ciudad:c.prov_ciudad,dir:c.prov_direccion,contacto:c.prov_contacto,logo:pv.logo||''},proyecto:c.proyecto,iva_pct:c.iva_pct,validez:c.validez_dias,forma_pago:c.forma_pago,solicito:c.solicito,autorizo:c.autorizo,obs:c.observaciones,lineas,subtotal:sub,iva,total:sub+iva,numero:O.edit?ocNum(O.o):'BORRADOR',fecha:O.edit?O.o.fecha:hoyISO(),estado:O.edit?'EMITIDA':'BORRADOR',ops:ocOps(ms),tipo:ocTipo(ms)};
   _abrirDocParaImprimir(ocDocHtml(d),'OC_borrador.pdf');
@@ -3470,13 +3478,13 @@ window.feOcGuardar=async()=>{
   const data=cab();
   if(O.edit){
     const costos={}, dias={}, libres=[];
-    O.lines.forEach(l=>{ if(l.k==='ped'||l.k==='old'){ costos[l.id]=num(l.base); if(String(l.dias)!=='') dias[l.id]=parseInt(l.dias); } else if(l.k==='oldlib') libres.push({id:l.lid,desc:l.desc,cant:l.qty,total:num(l.base),dias:l.dias}); });
+    O.lines.forEach(l=>{ if(l.k==='ped'||l.k==='old'){ costos[l.id]=num(l.base); if(String(l.dias)!=='') dias[l.id]=parseInt(l.dias); } else if(l.k==='oldlib') libres.push({id:l.lid,desc:l.desc,cant:l.qty,total:num(l.base),dias:l.dias,op:l.op||'',item:l.item||''}); });
     if(await rpcC('compras_oc_editar',{p_id:O.edit,p_data:data,p_costos:costos,p_dias:dias,p_libres:libres},'✅ Orden actualizada')){ feCerrar(); afterC(); }
     return;
   }
-  if($('fo-savep')&&$('fo-savep').checked){ try{ await sb.rpc('compras_prov_guardar',{p_data:{nombre:data.prov_nombre,nit:data.prov_nit,telefono:data.prov_telefono,email:data.prov_email,ciudad:data.prov_ciudad,direccion:data.prov_direccion,contacto:data.prov_contacto}}); }catch(e){ toast('❌ '+errMsg(e),'error'); return; } }
+  if($('fo-savep')&&$('fo-savep').checked){ try{ await sb.rpc('compras_prov_guardar',{p_data:{nombre:data.prov_nombre,nit:data.prov_nit,telefono:data.prov_telefono,email:data.prov_email,ciudad:data.prov_ciudad,direccion:data.prov_direccion,contacto:data.prov_contacto,plazo_pago:data.forma_pago}}); }catch(e){ toast('❌ '+errMsg(e),'error'); return; } }
   const ids=[], costos={}, dias={}, libres=[];
-  O.lines.forEach(l=>{ if(l.k==='ped'){ ids.push(l.id); costos[l.id]=num(l.base); if(String(l.dias)!=='') dias[l.id]=parseInt(l.dias); } else libres.push({desc:String(l.desc).trim(),cant:l.qty||1,total:num(l.base),dias:l.dias}); });
+  O.lines.forEach(l=>{ if(l.k==='ped'){ ids.push(l.id); costos[l.id]=num(l.base); if(String(l.dias)!=='') dias[l.id]=parseInt(l.dias); } else libres.push({desc:String(l.desc).trim(),cant:l.qty||1,total:num(l.base),dias:l.dias,op:l.op||'',item:l.item||''}); });
   const r=await rpcC('compras_oc_crear',{p_data:data,p_ids:ids,p_costos:costos,p_dias:dias,p_libres:libres},'✅ Orden de compra creada');
   if(r&&r.id){ feCerrar(); try{ selLimpiar(); }catch(e){} afterC(); imprimirOC(r.id); }
 };
@@ -3484,19 +3492,19 @@ const f=(l,id,v,extra)=>`<div style="padding:2px 4px;border-right:1px solid #cbd
 window.feOC=function(opt){
   opt=opt||{}; if(!puedeCompras()){ toast('Tu rol no puede crear órdenes de compra','error'); return; }
   const o=opt.edit?(DB.ocs||[]).find(x=>x.id===opt.edit):null; if(opt.edit&&(!o||o.estado!=='EMITIDA')){ toast('Solo se puede editar una orden emitida','error'); return; }
-  O={edit:o?o.id:null,o,lines:[],hist:null};
+  O={edit:o?o.id:null,o,lines:[],hist:null,proyManual:!!o};
   if(o){
     (DB.lineas||[]).filter(m=>m.id_oc===o.id).forEach(m=>{ const l=pedLine(m,m.costo_real>0?Number(m.costo_real):''); l.k='old'; O.lines.push(l); });
     const hl=(DB.ocLineas||[]).filter(x=>x.id_oc===o.id);
     if(o.historico) O.hist={subtotal:o.subtotal,lineas:hl};
-    else hl.forEach(x=>O.lines.push({k:'oldlib',lid:x.id,id:x.id,desc:x.descripcion||'',sub:'',cant:String(Number(x.cantidad)||1),qty:Number(x.cantidad)||1,base:Number(x.valor_total)||'',dias:x.dias_entrega??''}));
+    else hl.forEach(x=>O.lines.push({k:'oldlib',lid:x.id,id:x.id,desc:x.descripcion||'',sub:'',cant:String(Number(x.cantidad)||1),qty:Number(x.cantidad)||1,base:Number(x.valor_total)||'',dias:x.dias_entrega??'',op:x.op||'',item:x.item||'',sub:x.op?'OP-'+x.op+(x.item?' · ítem '+x.item:''):''}));
   } else {
     (opt.ids||[]).map(linDe).filter(m=>m&&m.estado==='SOLICITADO').forEach(m=>O.lines.push(pedLine(m)));
   }
   const V=k=>o&&o[k]!=null?o[k]:'';
   const provs=[...new Set(O.lines.map(l=>(linDe(l.id)||{}).proveedor).filter(Boolean))];
   const ops=[...new Set(O.lines.map(l=>{ const m=linDe(l.id); const p=m&&prodDe(m.id_prod); return p&&p.op!=null?p.op:null; }).filter(x=>x!=null))];
-  const html=`<div class="fe-sheet">${dlProvs()}
+  const html=`<div class="fe-sheet">${dlProvs()}<datalist id="fo-ops"></datalist>
    ${feHdr(o?'ORDEN DE COMPRA<br><span style="font-size:10px;font-weight:600">Edición</span>':'ORDEN DE COMPRA',`<span>ORDEN N°</span><div><b style="color:#fff;width:100%;text-align:center;font-size:15px">${o?ocNum(o):'AUTO'}</b></div>`,`<div><span>Fecha</span>${E(fmtDate(o?o.fecha:hoyISO()))}</div><div><span>Estado</span>${o?'EMITIDA':'NUEVA'}</div>`)}
    <div class="fe-bar2">Proveedor — escribe el nombre y se completa solo</div>
    <div class="fe-gen" style="border-top:0">
@@ -3504,7 +3512,7 @@ window.feOC=function(opt){
     <div class="g" style="grid-template-columns:1fr 1fr 2fr 1fr">${f('Email','fo-email',V('prov_email'))}${f('Ciudad','fo-ciu',V('prov_ciudad'))}${f('Dirección','fo-dir',V('prov_direccion'))}${f('Encargado','fo-enc',V('prov_contacto'))}</div></div>
    <div class="fe-bar2" style="margin-top:10px">Condiciones</div>
    <div class="fe-gen" style="border-top:0">
-    <div class="g" style="grid-template-columns:2fr 2fr 1fr 1fr">${f('Proyecto / OP','fo-proy',o?V('proyecto'):ops.join(', '))}${f('Forma de pago','fo-fp',V('forma_pago'),'placeholder="Ej. 30 días"')}${f('Validez (días)','fo-val',o?V('validez_dias'):30,'type="number"')}${f('IVA %','fo-iva',o?(Number(o.iva_pct)||0):19,'type="number" step="any" oninput="feOcIva()"')}</div>
+    <div class="g" style="grid-template-columns:2fr 2fr 1fr 1fr">${f('Proyecto / OP','fo-proy',o?V('proyecto'):ops.join(' - '),'oninput="feOcProyManual(this.value)" placeholder="Se arma solo con las OP de las líneas"')}${f('Forma de pago','fo-fp',V('forma_pago'),'placeholder="Ej. 30 días"')}${f('Validez (días)','fo-val',o?V('validez_dias'):30,'type="number"')}${f('IVA %','fo-iva',o?(Number(o.iva_pct)||0):19,'type="number" step="any" oninput="feOcIva()"')}</div>
     <div class="g" style="grid-template-columns:1fr 1fr">${f('Solicitó','fo-sol',o?V('solicito'):(_SESSION&&_SESSION.nombre)||'')}${f('Autorizó','fo-aut',o?V('autorizo'):((O.lines.map(l=>linDe(l.id)).find(m=>m&&m.autorizado_por)||{}).autorizado_por||''))}</div></div>
    ${o?'':`<div class="fe-bar2" style="margin-top:10px">Pedidos pendientes por comprar — marca los que van en esta orden</div>
    <div style="border:2px solid #1a3a6b;border-top:0;padding:6px"><input id="fo-q" placeholder="🔎 Buscar material, OP, empresa o proveedor…" oninput="feOcBuscar()" style="border:1px solid #cbd5e1;background:#fff;border-radius:6px;margin-bottom:6px"><div id="fo-pend" style="max-height:230px;overflow:auto"></div></div>`}
@@ -3519,7 +3527,7 @@ window.feOC=function(opt){
   </div>
   <style>#fo-tot td{padding:5px 12px;border:1px solid #cbd5e1}#fo-tot td:last-child{text-align:right;font-weight:700}#fo-tot tr.t td{background:#1a3a6b;color:#fff;font-size:13px}</style>`;
   feAbrir(o?'✏️ Editar orden de compra '+ocNum(o):'📄 Nueva orden de compra',html,`<button class="pr" onclick="feOcPrev()">🖨️ Vista previa</button><button class="sv" onclick="feOcGuardar()">💾 ${o?'Guardar cambios':'Guardar y generar'}</button>`);
-  repaint(); feOcProv();
+  repaint(); feOcProv(); cargaOps(); O.lines.filter(l=>l.k==='lib'&&l.op).forEach(l=>cargaItems(l.op));
 };
 window.abrirOC=ids=>feOC({ids:ids||[]});
 window.ocNueva=()=>feOC({ids:[]});
