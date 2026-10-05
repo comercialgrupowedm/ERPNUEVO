@@ -1507,7 +1507,7 @@ let _RL=null;   // estado del formulario libre abierto
 function nuevaRemModal(){
   openModal('➕ Nueva remisión',`<div style="display:flex;flex-direction:column;gap:10px">
     <button class="btn btn-primary" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto" onclick="closeModal();nav('porpedir')"><div><b>📥 Paso a paso</b><div style="font-size:11.5px;font-weight:500;opacity:.85;margin-top:2px">Calidad pide la remisión de una OP; comercial elige qué se despacha y administración la genera.</div></div></button>
-    <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto;border-color:var(--purple)" onclick="closeModal();formLibreRem(null)"><div><b>✏️ Formulario libre</b><div style="font-size:11.5px;font-weight:500;color:var(--muted);margin-top:2px">Buscas la OP o cotización, completas todo tú mismo. La remisión se crea y queda despachada.</div></div></button></div>`,
+    <button class="btn btn-ghost" style="justify-content:flex-start;text-align:left;padding:14px 16px;height:auto;border-color:var(--purple)" onclick="closeModal();formLibreRem(null)"><div><b>✏️ Formulario libre (vista de documento)</b><div style="font-size:11.5px;font-weight:500;color:var(--muted);margin-top:2px">Buscas la OP o cotización, marcas los ítems y sus cantidades en una hoja igual al PDF. La remisión se crea y queda despachada.</div></div></button></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`);
 }
 function rlItemsHtml(){
@@ -2916,6 +2916,172 @@ window.WEDM_DETALLE=function(p){ _RM.q=String(p.op); _RM.f='todas'; _RM.per='tod
 </script>
 <!-- /WEDM-INSTALAR -->
 
+<!-- FE-REM (remisión en vista de documento) -->
+<style>
+#fe-ov{position:fixed;inset:0;z-index:9300;background:#eef2f7;display:none;overflow:auto;padding:58px 12px 40px}
+#fe-ov.open{display:block}
+.fe-bar{position:fixed;top:0;left:0;right:0;z-index:2;background:#1a3a6b;color:#fff;padding:9px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.fe-bar b{flex:1;font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fe-bar button{border:0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;white-space:nowrap}
+.fe-bar .pr{background:#0891b2}.fe-bar .sv{background:#16a34a}.fe-bar .cl{background:rgba(255,255,255,.18)}
+.fe-sheet{background:#fff;max-width:1150px;margin:0 auto;padding:14px;border-radius:8px;box-shadow:0 2px 14px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:11px;color:#000}
+.fe-sheet *{box-sizing:border-box}
+.fe-sheet input,.fe-sheet textarea,.fe-sheet select{font:inherit;color:inherit;border:0;background:transparent;width:100%;padding:3px 4px;border-radius:3px;text-transform:none}
+.fe-sheet input:hover,.fe-sheet textarea:hover{background:rgba(37,99,235,.06)}
+.fe-sheet input:focus,.fe-sheet textarea:focus,.fe-sheet select:focus{outline:0;background:#eaf1ff;box-shadow:0 0 0 2px #2563eb inset}
+.fe-sheet table{width:100%;border-collapse:collapse}
+.fe-hdr{display:grid;grid-template-columns:130px 1fr auto auto;border:2px solid #1a3a6b}
+.fe-hdr>div{border-right:1px solid #1a3a6b}.fe-hdr>div:last-child{border-right:0}
+.fe-logo{padding:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#1a3a6b;line-height:1.2;text-align:center}
+.fe-logo small{display:block;font-size:8px;font-weight:400}
+.fe-title{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:14px;color:#1a3a6b;text-transform:uppercase;line-height:1.3;padding:6px 10px}
+.fe-dates div{padding:4px 10px;font-size:9px;text-align:center;border-bottom:1px solid #1a3a6b}.fe-dates div:last-child{border:0}
+.fe-dates span{display:block;font-weight:700;color:#1a3a6b;font-size:8px;text-transform:uppercase}
+.fe-op{display:flex;flex-direction:column;min-width:130px;background:#1a3a6b;color:#fff}
+.fe-op span{font-size:9px;font-weight:700;text-align:center;padding:4px}
+.fe-op div{flex:1;display:flex;align-items:center;padding:0 6px}
+.fe-op input{color:#fff;font-weight:900;font-size:15px;text-align:center}.fe-op input::placeholder{color:#c7d4ea}
+.fe-op input:hover,.fe-op input:focus{background:rgba(255,255,255,.15);box-shadow:none}
+.fe-bar1{display:flex;justify-content:space-between;background:#1a3a6b;color:#fff;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;border-left:2px solid #1a3a6b;border-right:2px solid #1a3a6b}
+.fe-bar2{background:#1a3a6b;color:#fff;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;text-align:center;border:2px solid #1a3a6b;border-bottom:0}
+.fe-info{border-left:2px solid #1a3a6b;border-right:2px solid #1a3a6b;border-bottom:1px solid #1a3a6b}
+.fe-info th,.fe-aprob th{background:#d0d8e8;color:#1a3a6b;font-size:9px;font-weight:700;text-align:center;padding:4px 6px;border:1px solid #ccc;text-transform:uppercase}
+.fe-info td{border:1px solid #ccc;text-align:center;padding:1px 2px}
+.fe-rows{border:2px solid #1a3a6b;border-top:0}
+.fe-rows th{background:#1a3a6b;color:#fff;font-size:9px;text-align:center;padding:5px 4px;border:1px solid #2a4a7b;text-transform:uppercase}
+.fe-rows td{border:1px solid #ccc;padding:1px;position:relative}
+.fe-rows td .x{position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;border:0;border-radius:4px;width:16px;height:16px;font-size:9px;line-height:1;cursor:pointer;padding:0}
+.fe-add{width:100%;border:1.5px dashed #2563eb;background:#fff;color:#2563eb;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin:8px 0 12px}
+.fe-obs{display:grid;grid-template-columns:110px 1fr;border:2px solid #1a3a6b}
+.fe-obs>b{background:#d0d8e8;color:#1a3a6b;font-size:9px;text-transform:uppercase;padding:6px 8px;display:flex;align-items:center}
+.fe-ap-t{background:#1a3a6b;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:5px;text-transform:uppercase;border:2px solid #1a3a6b;border-bottom:0;margin-top:14px}
+.fe-aprob{border:2px solid #1a3a6b}.fe-aprob td{border:1px solid #ccc;padding:9px 6px;font-size:10px}
+.fe-extra{margin-top:12px;background:#f8fafc;border:1px dashed #94a3b8;border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.fe-extra label{display:block;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:2px}
+.fe-extra input{border:1px solid #cbd5e1;background:#fff;border-radius:6px}
+@media(max-width:700px){.fe-hdr{grid-template-columns:1fr}.fe-hdr>div{border-right:0;border-bottom:1px solid #1a3a6b}.fe-sheet{padding:6px;overflow-x:auto}.fe-rows,.fe-info{min-width:620px}}
+.fe-cert{border:2px solid #1a3a6b}
+.fe-cert th{font-size:9px;padding:5px 4px;border:1px solid #2a4a7b;text-transform:uppercase;color:#fff;text-align:center}
+.fe-cert td{border:1px solid #cbd5e1;padding:0;text-align:center}
+.fe-cert td input{text-align:center;padding:5px 3px}
+.fe-cert td.n{background:#dde6f0;font-weight:700;font-size:9px;width:28px}
+.fe-cert td.s{font-family:Consolas,monospace;font-size:10.5px;font-weight:700;padding:3px 6px}
+.fe-cert .okv{background:#dcfce7!important;color:#166534}.fe-cert .ncv{background:#fee2e2!important;color:#991b1b}
+.fe-cert tr.ncr td.res{color:#b91c1c}.fe-cert tr.okr td.res{color:#15803d}
+.fe-gen{border:2px solid #1a3a6b;border-top:0}
+.fe-gen .g{display:grid;border-bottom:1px solid #1a3a6b}.fe-gen .g>div{border-right:1px solid #cbd5e1;padding:2px 4px}.fe-gen .g>div:last-child{border-right:0}
+.fe-gen label{display:block;font-size:8px;font-weight:700;color:#1a3a6b;text-transform:uppercase;padding:2px 3px 0}
+.fe-gen .g.h{background:#dde6f0}
+@media(max-width:700px){.fe-gen .g{grid-template-columns:1fr!important}.fe-cert-w{overflow-x:auto}}
+</style>
+<div id="fe-ov"></div>
+<script>
+(function(){
+const E=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ov=()=>document.getElementById('fe-ov');
+window.feE=E;
+window.feCerrar=function(){ov().classList.remove('open');ov().innerHTML='';document.body.style.overflow='';};
+window.feAbrir=function(titulo,html,btns){ ov().innerHTML=`<div class="fe-bar"><b>${titulo}</b>${btns}<button class="cl" onclick="feCerrar()">✕ Cerrar</button></div>${html}`; ov().classList.add('open'); ov().scrollTop=0; document.body.style.overflow='hidden'; };
+window.feHdr=(titulo,opHtml,fechas)=>`<div class="fe-hdr"><div class="fe-logo"><img src="${LOGO_B64_PNG}" alt="GRUPO WEDM" style="max-width:100%;max-height:56px;width:auto;height:auto"></div><div class="fe-title">${titulo}</div><div class="fe-dates">${fechas}</div><div class="fe-op">${opHtml}</div></div>`;
+})();
+</script>
+<script>
+/* Remisión en vista de documento: busca la OP o la cotización, trae los ítems con saldo, marca cuáles y cuántos se remisionan */
+(function(){
+const E=window.feE, $=id=>document.getElementById(id);
+let R=null, tSel=null;
+const sumQ=()=>R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0);
+function lineasHtml(){
+  return R.lineas.map((l,i)=>{ const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null;
+    return `<tr><td class="n" style="width:34px;text-align:center;font-weight:700;background:#dde6f0">${i+1}</td><td style="width:84px"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:9px;text-align:center;color:#64748b">de ${E(it.unidades)} pendientes</div>`:''}</td><td><textarea rows="2" style="resize:vertical" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td><td style="width:36px;text-align:center"><button class="x" style="position:static;width:22px;height:22px" onclick="feRemQuitar(${i})">✕</button></td></tr>`; }).join('')
+   ||`<tr><td colspan="4" style="text-align:center;color:#64748b;padding:14px">Sin ítems todavía — busca una OP o cotización arriba, o agrega uno manual</td></tr>`;
+}
+function itemsHtml(){
+  const its=R.items||[];
+  if(!its.length) return `<div style="padding:12px;border:1.5px dashed #94a3b8;border-radius:8px;text-align:center;color:#64748b;font-size:11px">Escribe una OP o una cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
+  const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
+  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"><input type="checkbox" style="width:auto" title="Marcar todos" onchange="feRemTodos(this.checked)"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Pendiente</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El pendiente ya descuenta lo despachado y lo reservado en otras remisiones. Al marcar un ítem entra con todo su pendiente; ajusta la cantidad en la tabla de abajo.</div>`;
+}
+function refrescar(){ const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); tot(); }
+function tot(){ const t=$('fr-tot'); if(t) t.textContent=R.lineas.length+' ítem(s) · '+sumQ()+' und'; }
+window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
+window.feRemTodos=ck=>{ R.items.forEach(it=>{ const ya=R.lineas.some(l=>l.id_prod===it.id_prod); if(ck&&!ya) R.lineas.push({id_prod:it.id_prod,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); }); if(!ck) R.lineas=R.lineas.filter(l=>!l.id_prod); refrescar(); };
+window.feRemCant=(i,v)=>{ R.lineas[i].cantidad=Number(v)||0; tot(); };
+window.feRemDesc=(i,v)=>{ R.lineas[i].descripcion=v; };
+window.feRemQuitar=i=>{ R.lineas.splice(i,1); refrescar(); };
+window.feRemManual=()=>{ R.lineas.push({id_prod:null,descripcion:'',cantidad:1}); refrescar(); };
+function listas(){ const w=document.createElement('div'); w.innerHTML=rlListas(); R.mapOps=_RL&&_RL.mapOps; R.mapCots=_RL&&_RL.mapCots; return w.innerHTML.replace(/rl-ops/g,'fr-ops').replace(/rl-cots/g,'fr-cots'); }
+async function cargaIdx(){ try{ if(!DB.allOps) DB.allOps=await GETALL('produccion','select=op,cot_num,empresa&order=op.desc'); const el=$('fr-dl'); if(el&&R) el.innerHTML=listas(); }catch(e){} }
+window.feRemSel=(which,fin)=>{
+  const v=gv('fr-'+which), n=parseInt(v); if(!v||isNaN(n)) return;
+  const known=which==='op'?(R.mapOps&&R.mapOps.has(n)):(R.mapCots&&R.mapCots.has(n)); if(!known&&!fin) return;
+  if(which==='op'){ const x=R.mapOps&&R.mapOps.get(n); $('fr-cot').value=x&&x.cot!=null?x.cot:''; }
+  else{ const x=R.mapCots&&R.mapCots.get(n); $('fr-op').value=x&&x.ops.size===1?[...x.ops][0]:''; }
+  R.lineas=R.lineas.filter(l=>l.id_prod); clearTimeout(tSel); tSel=setTimeout(()=>feRemBuscar(true),150);
+};
+window.feRemBuscar=async force=>{
+  const op=gv('fr-op')?parseInt(gv('fr-op')):null, cot=gv('fr-cot')?parseInt(gv('fr-cot')):null; if(!op&&!cot) return;
+  try{
+    const r=await sb.rpc('remision_buscar_libre',{p_op:op||null,p_cot:cot||null,p_excluir_id:R.id||null});
+    R.items=(r&&r.items)||[];
+    if(r&&r.cliente){ const c=r.cliente; const set=(id,v)=>{ const el=$(id); if(el&&(force||!el.value)) el.value=v||''; };
+      set('fr-emp',c.empresa);set('fr-nit',c.nit);set('fr-dir',c.direccion);set('fr-ciu',c.ciudad);set('fr-con',c.contacto);set('fr-tel',c.telefono);set('fr-oc',c.oc_cliente);set('fr-pro',c.proyecto); }
+    refrescar(); toast(R.items.length+' ítem(s) con saldo pendiente');
+  }catch(e){ toast('❌ '+errMsg(e),'error'); }
+};
+function datos(){
+  return {op:gv('fr-op')||null,cot_num:gv('fr-cot')||null,empresa:gv('fr-emp'),nit:gv('fr-nit'),direccion:gv('fr-dir'),ciudad:gv('fr-ciu'),contacto:gv('fr-con'),telefono:gv('fr-tel'),oc_cliente:gv('fr-oc'),proyecto:gv('fr-pro'),observaciones:gv('fr-obs'),fecha:gv('fr-fec'),lineas:R.lineas.filter(l=>String(l.descripcion||'').trim()&&Number(l.cantidad)>0)};
+}
+const f=(l,id,v,extra)=>`<div style="padding:2px 4px;border-right:1px solid #cbd5e1"><label style="display:block;font-size:8px;font-weight:700;color:#1a3a6b;text-transform:uppercase;padding:2px 3px 0">${l}</label><input id="${id}" value="${E(v||'')}" ${extra||''}></div>`;
+window.formLibreRem=function(id){
+  if(!puedeLibre()){ toast('Tu rol no puede crear remisiones','error'); return; }
+  const m=id?remDe(id):null;
+  R={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
+  _RL={id:R.id,items:[],lineas:R.lineas};
+  const paso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado);
+  const html=`<div class="fe-sheet">
+   ${paso?`<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:#fef3c7;border:1px solid #f59e0b;font-size:12px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado: ${E((REM_EST[m.estado]||[m.estado])[0])}). Si la guardas aquí, pasa al formulario libre y deja de seguir esas aprobaciones.</div>`:''}
+   ${feHdr('REMISIÓN DE ENTREGA',`<span>REMISIÓN N°</span><div><b style="color:#fff;width:100%;text-align:center;font-size:15px">${m&&m.numero?m.numero:'AUTO'}</b></div>`,`<div><span>Fecha</span><input id="fr-fec" type="date" value="${E(m?(fFecha(m)||hoyISO()):hoyISO())}" style="text-align:center"></div><div><span>Tipo</span>Formulario libre</div>`)}
+   <div class="fe-bar2">Encabezado — busca la OP o la cotización y se completa solo</div>
+   <div class="fe-gen" style="border-top:0"><div class="g" style="grid-template-columns:1fr 1fr 2fr">
+     ${f('Orden de producción (OP)','fr-op',m&&m.op!=null?m.op:'','list="fr-ops" inputmode="numeric" placeholder="🔎 N° OP o cliente" autocomplete="off" oninput="feRemSel(\'op\',false)" onchange="feRemSel(\'op\',true)"')}
+     ${f('Cotización','fr-cot',m&&m.cot_num!=null?m.cot_num:'','list="fr-cots" inputmode="numeric" placeholder="🔎 N° cotización" autocomplete="off" oninput="feRemSel(\'cot\',false)" onchange="feRemSel(\'cot\',true)"')}
+     ${f('Proyecto','fr-pro',m&&m.proyecto)}</div></div>
+   <div id="fr-dl"><datalist id="fr-ops"></datalist><datalist id="fr-cots"></datalist></div>
+   <div class="fe-bar2" style="margin-top:10px">Destinatario</div>
+   <div class="fe-gen" style="border-top:0">
+    <div class="g" style="grid-template-columns:2fr 1fr 1fr">${f('Cliente / Señores','fr-emp',m&&m.empresa)}${f('NIT','fr-nit',m&&m.nit)}${f('Orden de compra del cliente','fr-oc',m&&m.oc_cliente)}</div>
+    <div class="g" style="grid-template-columns:2fr 1fr 1fr 1fr">${f('Dirección','fr-dir',m&&m.direccion)}${f('Ciudad','fr-ciu',m&&m.ciudad)}${f('Encargado','fr-con',m&&m.contacto)}${f('Teléfono','fr-tel',m&&m.telefono)}</div></div>
+   <div class="fe-bar2" style="margin-top:10px">Ítems con saldo pendiente — marca los que van en esta remisión</div>
+   <div id="fr-items" style="border:2px solid #1a3a6b;border-top:0;padding:6px"></div>
+   <div class="fe-bar1" style="margin-top:10px"><span>Ítems de la remisión — ajusta la cantidad de cada uno</span><span id="fr-tot"></span></div>
+   <table class="fe-rows"><thead><tr><th>#</th><th>Cant.</th><th>Descripción</th><th></th></tr></thead><tbody id="fr-body"></tbody></table>
+   <button class="fe-add" onclick="feRemManual()">＋ Agregar ítem manual</button>
+   <div class="fe-obs"><b>Observaciones</b><textarea id="fr-obs" rows="3">${E(m&&m.observaciones||'')}</textarea></div>
+   <div class="fe-ap-t">Recibido por</div>
+   <table class="fe-aprob"><thead><tr><th style="width:30%">Nombre</th><th style="width:30%">Firma</th><th>Fecha</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>
+  </div>`;
+  feAbrir(m?`📄 Editar remisión${m.numero?' N° '+m.numero:''}`:'📄 Nueva remisión',html,`<button class="pr" onclick="feRemImprimir()">🖨️ Imprimir / PDF</button><button class="sv" onclick="feRemGuardar()">💾 ${m?'Guardar cambios':'Crear remisión'}</button>`);
+  $('fr-dl').innerHTML=listas(); refrescar(); cargaIdx();
+  if(gv('fr-op')||gv('fr-cot')) feRemBuscar(false);
+};
+window.feRemGuardar=async()=>{
+  const d=datos(); if(!d.empresa){ toast('Escribe el cliente','error'); return; }
+  if(!d.lineas.length){ toast('Agrega al menos un ítem con cantidad','error'); return; }
+  const over=d.lineas.find(l=>{ const it=l.id_prod&&(R.items||[]).find(x=>x.id_prod===l.id_prod); return it&&Number(l.cantidad)>Number(it.unidades); });
+  if(over&&!confirm('Una cantidad supera lo pendiente por despachar. ¿Guardar de todos modos?')) return;
+  const r=await rpcR('remision_guardar_libre',{p_id:R.id,p_data:d},'✅ Remisión guardada');
+  if(r){ feCerrar(); _RM.f='todas'; nav('remisiones'); try{ detalleRem(r.id||R.id); }catch(e){} }
+};
+window.feRemImprimir=()=>{
+  const d=datos(); if(!d.empresa){ toast('Escribe el cliente para imprimir','error'); return; }
+  const m=R.id?remDe(R.id):{}; const prev={...m,...d,numero:m&&m.numero,manual:false};
+  docRemision.__preview=prev; _abrirDocParaImprimir(docHtmlRem(prev,'remision'),`REM-${prev.numero||'borrador'}.pdf`,'remisiones');
+};
+})();
+</script>
+
+<!-- /FE-REM -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
 #off-pill{position:fixed;right:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}

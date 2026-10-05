@@ -3596,7 +3596,7 @@ async function horario(){
   const delDia=act.map(c=>({c,s:estadoDia(c.nombre_registro,f)}));
   const nTurno=delDia.filter(x=>x.s.k==='turno').length, nVac=delDia.filter(x=>x.s.k==='vac').length, nAhora=act.filter(c=>enTurnoAhora(c.nombre_registro)).length;
   const puedeCargar=puede('planeacion','administracion');
-  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="colabAbrir()">👥 Colaboradores</button>`:''}${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}${(puedeCargar&&(chatOn('pla_permisos')||chatOn('pla_fichaje')))?`<button class="btn btn-ghost btn-sm" onclick="asistencia()">🕒 Asistencia y permisos<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
+  const acciones=`<div style="display:flex;gap:8px;flex-wrap:wrap">${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horMes()">📅 Crear horario mensual</button>`:''}${puedeCargar?`<button class="btn btn-primary btn-sm" onclick="horSubir()">📤 Subir horario (Excel)</button>`:''}<button class="btn btn-ghost btn-sm" onclick="horPlantilla()">⬇ Plantilla Excel</button>${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="colabAbrir()">👥 Colaboradores</button>`:''}${puedeCargar?`<button class="btn btn-ghost btn-sm" onclick="accesosPlanta()">🔑 Accesos de planta<span class="nuevo-b">NUEVO</span></button>`:''}${(puedeCargar&&(chatOn('pla_permisos')||chatOn('pla_fichaje')))?`<button class="btn btn-ghost btn-sm" onclick="asistencia()">🕒 Asistencia y permisos<span class="nuevo-b">NUEVO</span></button>`:''}</div>`;
   const banner=moduleBanner('📅','Horario y disponibilidad 🆕',`${act.length} colaboradores activos · ${sems.length} semana(s) cargada(s)`,acciones);
   const wk=sems.length?`<div class="hz-wk"><button class="btn btn-ghost btn-sm" onclick="horSem(-1)">◀</button><select onchange="H_.sem=this.value;horario()">${sems.map(s=>`<option value="${s}" ${s===H.sem?'selected':''}>Semana del ${esc(fmtDate(s))} al ${esc(fmtDate(addD(s,5)))}${s===lunes(f)?' · esta semana':''}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="horSem(1)">▶</button></div>`
     :`<div class="callout" style="margin:12px 0">Aún no hay horario cargado. Sube el Excel del mes con el botón <b>📤 Subir horario</b>.</div>`;
@@ -3714,6 +3714,111 @@ async function horSugerencias(ps){
 function horPick(i,n){ const el=document.getElementById('opr-o'+i); if(el){ el.value=n; el.dispatchEvent(new Event('input')); } }
 function horNavSync(){ const on=!!(window.chatOn&&chatOn('pla_horario')); const n=document.getElementById('nav-horario'); if(n) n.style.display=on?'':'none'; }
 setInterval(horNavSync,1500); setTimeout(horNavSync,300);
+/* ── Crear horario mensual: tabla tipo PDF con rotación automática ── */
+const PATS={fijo:{l:'Fijo',c:null},rota8:{l:'Rota C1→C2→C3',c:['C1','C2','C3']},alt12:{l:'Alterna C1*↔C3*',c:['C1*','C3*']},alt8:{l:'Alterna C1↔C2',c:['C1','C2']},man:{l:'Manual (sin rotación)',c:null}};
+const MESN=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'], MESC=['ene','feb','mar','abr','may','jun','jul','ago','sept','oct','nov','dic'];
+const HM={y:0,m:0,weeks:[],rows:[],undo:[],auto:true,nota:''};
+const _sinAc=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function gcol(cargo){ const c=_sinAc(cargo); if(/^(cnc|torno cnc)/.test(c)) return '#d6e4ea'; if(/^(fresa|edm|torno$|rectificado)/.test(c)) return '#fde9d9'; if(/^(soldadura|banco|ayudante)/.test(c)) return '#e2efda'; return '#ffffff'; }
+function isoWeek(s){ const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+3-((d.getDay()+6)%7)); const w1=new Date(d.getFullYear(),0,4); return 1+Math.round(((d-w1)/86400000-3+((w1.getDay()+6)%7))/7); }
+const dcorto=s=>{ const d=new Date(s+'T00:00:00'); return d.getDate()+'-'+MESC[d.getMonth()]; };
+function lunesDelMes(y,m){ const r=[]; const d=new Date(y,m,1); d.setDate(d.getDate()+((8-d.getDay())%7)); if(d.getDay()!==1) d.setDate(d.getDate()+((1-d.getDay()+7)%7)); while(d.getMonth()===m){ r.push(iso(d)); d.setDate(d.getDate()+7); } return r; }
+function stepT(t,pat,n){ const c=(PATS[pat]||{}).c; if(!c) return t; const i=c.indexOf(t); if(i<0) return t; return c[(((i+n)%c.length)+c.length)%c.length]; }
+function detectPat(nr){ const l=H.hor.filter(r=>r.colaborador===nr).sort((a,b)=>a.semana<b.semana?-1:1).slice(-4).map(r=>tn(r.turno)).filter(t=>t!=='V'); if(!l.length) return 'fijo'; const u=[...new Set(l)];
+  if(u.length===1) return 'fijo'; const sub=c=>u.every(t=>c.includes(t));
+  if(sub(['C1','C2','C3'])) return u.length===2&&sub(['C1','C2'])?'alt8':'rota8'; if(sub(['C1*','C3*'])) return 'alt12'; if(sub(['C1','C2'])) return 'alt8'; return 'man'; }
+function horMesInit(y,m){
+  HM.y=y; HM.m=m; HM.weeks=lunesDelMes(y,m); HM.undo=[]; HM.nota='';
+  const act=H.col.filter(c=>c.activo!==false), con=new Set(H.hor.map(r=>r.colaborador));
+  const base=act.filter(c=>con.has(c.nombre_registro)); let proy=0;
+  HM.rows=base.map(c=>{ const nr=c.nombre_registro, pat=detectPat(nr), cells={};
+    const mine=H.hor.filter(r=>r.colaborador===nr);
+    HM.weeks.forEach(w=>{ const x=mine.find(r=>r.semana===w); if(x){ cells[w]=tn(x.turno); return; }
+      const prev=mine.filter(r=>r.semana<w).sort((a,b)=>a.semana<b.semana?-1:1).pop();
+      if(prev){ const n=Math.round((new Date(w+'T00:00:00')-new Date(prev.semana+'T00:00:00'))/604800000); const t=tn(prev.turno); cells[w]=t==='V'?'':(pat==='man'?'':stepT(t,pat,n)); if(cells[w]) proy++; } else cells[w]=''; });
+    return {nr,nc:c.nombre_corto,cargo:c.cargo||'',pat,cells}; });
+  HM.nota=proy?`Propuse ${proy} casillas siguiendo la rotación del mes anterior. Revísalas y corrige lo que haga falta.`:'';
+}
+function horMesSnap(){ HM.undo.push(JSON.stringify(HM.rows.map(r=>[r.pat,r.cells]))); if(HM.undo.length>60) HM.undo.shift(); }
+function horMesDeshacer(){ const s=HM.undo.pop(); if(!s){ toast('Nada que deshacer','warn'); return; } JSON.parse(s).forEach((x,i)=>{ HM.rows[i].pat=x[0]; HM.rows[i].cells=x[1]; }); horMesPintar(); }
+function horMesSet(i,w,t){
+  horMesSnap(); const r=HM.rows[i], old=r.cells[w]||''; r.cells[w]=t; let n=0; const j0=HM.weeks.indexOf(w);
+  const c=(PATS[r.pat]||{}).c;
+  if(HM.auto&&t&&t!=='V'){
+    if(c&&c.includes(t)){
+      const mates=HM.rows.filter(x=>x!==r&&x.cargo===r.cargo&&x.pat===r.pat);
+      if(c.includes(old)){ const d=((c.indexOf(t)-c.indexOf(old))%c.length+c.length)%c.length;
+        if(d) mates.forEach(x=>{ const v=x.cells[w]; if(c.includes(v)){ x.cells[w]=stepT(v,r.pat,d); n++; } }); }
+      else { let k=0; mates.forEach(x=>{ if(!x.cells[w]){ k++; x.cells[w]=stepT(t,r.pat,k); n++; } }); }
+      [r,...mates].forEach(x=>{ const v=x.cells[w]; if(!c.includes(v)) return; for(let j=j0+1;j<HM.weeks.length;j++){ const wj=HM.weeks[j]; if(x.cells[wj]==='V') continue; const nv=stepT(v,r.pat,j-j0); if(x.cells[wj]!==nv){ x.cells[wj]=nv; n++; } } });
+    } else if(r.pat==='fijo'){ for(let j=j0+1;j<HM.weeks.length;j++){ const wj=HM.weeks[j]; if(HM.rows[i].cells[wj]!=='V'&&HM.rows[i].cells[wj]!==t){ HM.rows[i].cells[wj]=t; n++; } } }
+  }
+  horMesPintar(); if(n) toast(`🔄 Acomodé ${n} casilla(s) más con la rotación`);
+}
+function horMesPat(i,p){ horMesSnap(); HM.rows[i].pat=p; horMesPintar(); }
+function horMesCell(i,j){
+  const r=HM.rows[i], w=HM.weeks[j], cur=r.cells[w]||'';
+  const hrs=t=>{ const T=TURNOS[t]; return T&&T.lv?rango(T.lv):(t==='V'?'Vacaciones':''); };
+  openModal(`${esc(r.nc)} · semana del ${dcorto(w)}`,`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${esc(r.cargo)} · patrón: <b>${esc(PATS[r.pat].l)}</b>${HM.auto?'':' · (acomodo automático apagado)'}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">${Object.keys(TURNOS).map(t=>`<button type="button" class="btn" style="background:${TURNOS[t].c};color:#fff;justify-content:flex-start;flex-direction:column;align-items:flex-start;padding:8px 10px;${t===cur?'outline:3px solid #0f172a':''}" onclick="closeModal();horMesSet(${i},'${w}','${t}')"><b>${esc(t)}</b><small style="font-weight:600;opacity:.9">${esc(TURNOS[t].n)} · ${esc(hrs(t))}</small></button>`).join('')}
+    <button type="button" class="btn btn-ghost" onclick="closeModal();horMesSet(${i},'${w}','')" style="grid-column:1/-1">Dejar vacío</button></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`);
+}
+
+function horMesCob(){
+  const filas=HM.rows.filter(r=>/^cnc-hilo/i.test(_sinAc(r.cargo))); if(!filas.length) return '';
+  const fam=t=>({'C1':1,'C1*':1,'C2':2,'C2*':2,'C3':3,'C3*':3})[t]||0;
+  return `<tr><td colspan="2" style="font-size:11px;font-weight:800;padding:6px 8px;background:#f1f5f9">Cobertura CNC-Hilo (mañana · tarde · noche)</td>${HM.weeks.map(w=>{ const f=new Set(filas.map(r=>fam(r.cells[w]))); const falta=[1,2,3].filter(x=>!f.has(x)); return `<td style="font-size:11px;text-align:center;background:${falta.length?'#fee2e2':'#dcfce7'};color:${falta.length?'#b91c1c':'#166534'};font-weight:700">${falta.length?'⚠ falta '+falta.map(x=>['','mañana','tarde','noche'][x]).join(', '):'✓ completa'}</td>`; }).join('')}</tr>`;
+}
+function horMesPintar(){
+  const meses=MESN.map((n,k)=>`<option value="${k}" ${k===HM.m?'selected':''}>${n}</option>`).join('');
+  const resto=H.col.filter(c=>c.activo!==false&&!HM.rows.some(r=>r.nr===c.nombre_registro));
+  const hdr1=HM.weeks.map(w=>`<th style="background:#1f3a5f;color:#fff;font-size:11.5px;padding:6px 4px;text-align:center">Semana ${isoWeek(w)}<div style="font-weight:600;font-size:10.5px;opacity:.85">${dcorto(w)} – ${dcorto(addD(w,5))}</div></th>`).join('');
+  const filas=HM.rows.map((r,i)=>`<tr style="background:${gcol(r.cargo)}"><td style="position:sticky;left:0;background:${gcol(r.cargo)};z-index:1;padding:4px 8px;min-width:150px"><b style="font-size:12.5px">${i+1}. ${esc(r.nc)}</b><div style="font-size:10.5px;color:#475569">${esc(r.cargo)}</div></td>
+    <td style="padding:2px 4px"><select onchange="horMesPat(${i},this.value)" style="font-size:10.5px;max-width:118px;border:1px solid #cbd5e1;border-radius:6px;padding:3px;background:#fff">${Object.keys(PATS).map(k=>`<option value="${k}" ${k===r.pat?'selected':''}>${esc(PATS[k].l)}</option>`).join('')}</select></td>
+    ${HM.weeks.map((w,j)=>{ const t=r.cells[w]||''; const T=TURNOS[t]; return `<td onclick="horMesCell(${i},${j})" style="text-align:center;cursor:pointer;border:1px solid #fff;padding:6px 4px;min-width:84px;${t==='V'?'background:#fecaca;color:#b91c1c':''}">${t?(t==='V'?'<b>V</b>':`<span class="hz-chip" style="background:${T?T.c:'#64748b'}">${esc(t)}</span>`):'<span style="color:#94a3b8">＋</span>'}</td>`; }).join('')}</tr>`).join('');
+  setContent(`${moduleBanner('📅','Crear horario mensual','Toca una casilla para elegir el turno; el resto se acomoda solo',`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="horario()">← Volver</button><button class="btn btn-ghost btn-sm" onclick="horMesDeshacer()">↩ Deshacer</button><button class="btn btn-ghost btn-sm" onclick="horMesImprimir()">🖨️ Imprimir / PDF</button><button class="btn btn-primary btn-sm" onclick="horMesGuardar()">💾 Guardar horario</button></div>`)}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0;font-size:12.5px"><label>Mes <select onchange="horMesMes(+this.value,HM.y)">${meses}</select></label><label>Año <input type="number" value="${HM.y}" style="width:80px" onchange="horMesMes(HM.m,+this.value)"></label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${HM.auto?'checked':''} onchange="HM.auto=this.checked;horMesPintar()" style="width:18px;height:18px"> 🔄 Acomodar la rotación automáticamente</label>
+      ${resto.length?`<select onchange="if(this.value){horMesAdd(this.value);}" style="font-size:12px"><option value="">➕ Agregar persona…</option>${resto.map(c=>`<option value="${esc(c.nombre_registro)}">${esc(c.nombre_corto)}</option>`).join('')}</select>`:''}</div>
+    ${HM.nota?`<div class="callout" style="margin:8px 0;font-size:12px">💡 ${esc(HM.nota)}</div>`:''}
+    <div class="tbl-wrap" style="overflow:auto"><table style="border-collapse:collapse;width:100%"><thead><tr><th style="background:#1f3a5f;color:#fff;padding:6px 8px;text-align:left;position:sticky;left:0;z-index:2">Colaborador</th><th style="background:#1f3a5f;color:#fff;font-size:11px">Patrón</th>${hdr1}</tr></thead><tbody>${filas}${horMesCob()}</tbody></table></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">Al cambiar un turno de una persona con rotación, quienes comparten su cargo y su patrón se mueven igual para que todos los turnos queden cubiertos, y las semanas siguientes continúan la rotación (las que tienen V se respetan). Para que algo no se mueva solo, ponle <b>Manual</b> o apaga el acomodo. Nada se guarda hasta tocar <b>💾 Guardar horario</b>.</p>`);
+}
+function horMesMes(m,y){ if(m<0||m>11||!y) return; horMesInit(y,m); horMesPintar(); }
+function horMesAdd(nr){ const c=H.col.find(x=>x.nombre_registro===nr); if(!c) return; horMesSnap(); const cells={}; HM.weeks.forEach(w=>cells[w]=''); HM.rows.push({nr,nc:c.nombre_corto,cargo:c.cargo||'',pat:detectPat(nr),cells}); horMesPintar(); }
+async function horMes(){
+  if(!(window.chatOn&&chatOn('pla_horario'))) return;
+  setContent(moduleBanner('📅','Crear horario mensual','Cargando…')+'<div class="callout" style="margin:12px 0">⏳ Cargando…</div>');
+  await cargar(true);
+  const n=new Date(); let y=n.getFullYear(), m=n.getMonth(); if(n.getDate()>=20){ m++; if(m>11){ m=0; y++; } }
+  horMesInit(y,m); horMesPintar();
+}
+async function horMesGuardar(){
+  const filas=[]; HM.rows.forEach(r=>HM.weeks.forEach(w=>{ if(r.cells[w]) filas.push({semana:w,nombre:r.nc,cargo:r.cargo,turno:r.cells[w]}); }));
+  if(!filas.length){ toast('No hay turnos para guardar','warn'); return; }
+  const vacios=HM.rows.filter(r=>HM.weeks.some(w=>!r.cells[w])).map(r=>r.nc);
+  if(vacios.length&&!confirm('Hay casillas vacías ('+vacios.slice(0,6).join(', ')+(vacios.length>6?'…':'')+'). Esas semanas quedan sin horario. ¿Guardar de todos modos?')) return;
+  showBusy();
+  try{ const r=await sb.rpc('plan_horario_cargar',{p_filas:filas}); await cargar(true); H.sem=HM.weeks[0]; toast(`✅ Horario de ${MESN[HM.m]} guardado: ${r.filas} turnos`); horario(); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
+  finally{ hideBusy(); }
+}
+const TTAB=[['C0','8:30 a. m.','5:00 p. m.','12:00 p. m.','1:00 p. m.','NA','NA','3:00 p. m.','3:15 p. m.','8:00 a. m.','12:30 p. m.','42'],['C1','6:00 a. m.','2:00 p. m.','NA','NA','9:00 a. m.','9:20 a. m.','NA','NA','8:00 a. m.','12:00 p. m.','44'],['C2','2:00 p. m.','10:00 p. m.','NA','NA','6:00 p. m.','6:20 p. m.','NA','NA','12:00 p. m.','4:00 p. m.','44'],['C3','9:00 p. m.','6:00 a. m.','NA','NA','1:00 a. m.','1:30 a. m.','NA','NA','LIBRE','LIBRE','42,5'],['C1*','6:00 a. m.','6:00 p. m.','12:00 p. m.','1:00 p. m.','9:00 a. m.','9:10 a. m.','3:00 p. m.','3:15 p. m.','LIBRE','LIBRE','55'],['C3*','6:00 p. m.','6:00 a. m.','12:00 a. m.','1:00 a. m.','9:00 p. m.','9:10 p. m.','3:00 a. m.','3:15 a. m.','LIBRE','LIBRE','55'],['C2*','1:00 p. m.','9:00 p. m.','NA','NA','6:00 p. m.','6:20 p. m.','NA','NA','12:00 p. m.','4:00 p. m.','44']];
+function horMesImprimir(){
+  const e=esc; const th='background:#1f3a5f;color:#fff;border:1px solid #fff;padding:4px 6px;text-align:center;font-size:11px';
+  const w=HM.weeks;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>HORARIO MENSUAL - ${MESN[HM.m]} ${HM.y}</title><style>@page{size:landscape;margin:10mm}body{font-family:Calibri,Arial,sans-serif;color:#000;margin:0}table{border-collapse:collapse}td{border:1px solid #111;padding:3px 6px;font-size:11px}.c{text-align:center}.b{font-weight:800}</style></head><body onload="setTimeout(function(){print()},300)">
+  <table style="width:100%"><tr><td rowspan="2" class="c b" style="background:#5b9bd5;color:#fff;font-size:12px;width:170px">HORARIOS<br>${MESN[HM.m].toUpperCase()}-${String(HM.y).slice(2)}</td><td rowspan="2" class="c b" style="background:#2e75b6;color:#fff;width:110px">Cuadrante<br>operativo</td>${w.map(x=>`<td colspan="2" class="c b" style="background:#1f3a5f;color:#fff">Semana ${isoWeek(x)}</td>`).join('')}</tr>
+  <tr>${w.map(x=>`<td class="c b" style="background:#2f5597;color:#fff">${dcorto(x)}</td><td class="c b" style="background:#2f5597;color:#fff">${dcorto(addD(x,5))}</td>`).join('')}</tr>
+  ${HM.rows.map((r,i)=>`<tr style="background:${gcol(r.cargo)}"><td><b style="font-size:9px">${i+1}</b> ${e(r.nc)}</td><td class="c" style="font-size:10px">${e(r.cargo)}</td>${w.map(x=>{ const t=r.cells[x]||''; return `<td class="c" style="font-size:10px">Turno</td><td class="c b" style="${t==='V'?'background:#f4b6b6;color:#c00':''}">${e(t)}</td>`; }).join('')}</tr>`).join('')}</table>
+  <table style="margin:8px 0 12px 150px"><tr><td class="c b" style="background:#f4b6b6;color:#c00;width:90px">V</td><td class="b">VACACIONES</td></tr></table>
+  <table style="margin-left:40px"><tr><td rowspan="2" class="c b" style="background:#fff">Turnos</td><td colspan="2" class="c b" style="${th}">Lunes a viernes</td><td colspan="2" class="c b" style="${th}">Almuerzo</td><td colspan="2" class="c b" style="${th}">Descanso 1</td><td colspan="2" class="c b" style="${th}">Descanso 2</td><td colspan="2" class="c b" style="${th}">Sábado</td><td rowspan="2" class="c b" style="${th}">HORAS<br>semanales</td></tr>
+  <tr>${('<td class="c b" style="'+th+'">Inicio</td><td class="c b" style="'+th+'">Fin</td>').repeat(5)}</tr>
+  ${TTAB.map(t=>{ const par=(x,y)=>x==='NA'||x==='LIBRE'?`<td class="c" colspan="2">${x}</td>`:`<td class="c">${x}</td><td class="c">${y}</td>`; return `<tr><td class="c b">${e(t[0])}</td>${par(t[1],t[2])}${par(t[3],t[4])}${par(t[5],t[6])}${par(t[7],t[8])}${par(t[9],t[10])}<td class="c b">${t[11]}</td></tr>`; }).join('')}</table></body></html>`;
+  try{ const u=URL.createObjectURL(new Blob([html],{type:'text/html'})); const win=window.open(u,'_blank'); if(!win) toast('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir.','warn'); }catch(er){ toast('No se pudo abrir la vista de impresión','error'); }
+}
+
+Object.assign(window,{horMes,horMesCell,horMesSet,horMesPat,horMesDeshacer,horMesImprimir,horMesGuardar,horMesMes,horMesAdd,horMesPintar,HM});
 Object.assign(window,{horario,horSem,horColab,horSubir,horParsear,horPrevia,horGuardar,horPlantilla,horSugerencias,horPick});
 })();
 
