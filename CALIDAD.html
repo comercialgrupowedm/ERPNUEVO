@@ -2290,6 +2290,7 @@ function _abrirDocParaImprimir(html,filename,carpeta){
 // ── Remisión (PDF): función docHtmlRem copiada TAL CUAL del módulo Remisiones para que el documento sea idéntico ──
 const fFecha=m=>m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10);
 function docHtmlRem(m,tipo){
+  { const _k=tipo==='packing'?'packing':tipo==='despacho'?'despacho':'remision'; if(window.PL&&PL.has(_k)){ const _t=PL.render(_k,PL.dRem(m,tipo),null,(_k==='packing'?'Packing list ':'Remisión ')+(m.numero||'')); if(_t) return _t; } }
   const en=tipo==='packing', des=tipo==='despacho'; const E=EMPRESA_WEDM;
   const cl=v=>{ const s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):'—'; };
   const d=new Date((fFecha(m)||new Date().toISOString().slice(0,10))+'T12:00:00');
@@ -2398,6 +2399,7 @@ function docResumenMed(c){
 }
 function docCertificado(id){
   const c=(DB.certificados||[]).find(x=>x.id===id); if(!c) return; const r=certResumen(c);
+  if(window.PL&&PL.has('certificado')){ const _t=PL.render('certificado',PL.dCert(c,r),null,'Certificado '+certNum(c)); if(_t){ _abrirDocParaImprimir(_t,`CERTIFICADO-${certNum(c)}.pdf`); return; } }
   const body=(c.estado==='ANULADO'?'<div style="border:3px solid #dc2626;color:#dc2626;font-weight:900;font-size:18px;text-align:center;padding:6px;margin-bottom:8px">DOCUMENTO ANULADO</div>':'')+
     docCab('Certificado de conformidad','','CERTIFICADO N°',certNum(c),'#16a34a')+certDatosTabla(c)+
     `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:12px;font-size:10.5px;line-height:1.6;color:#166534"><b>${esc(EMPRESA_WEDM.nombre)}</b> certifica que los productos relacionados en el presente documento fueron fabricados bajo los estándares de calidad establecidos por la empresa, cumpliendo con las especificaciones técnicas requeridas por el cliente, los procesos internos de control y los criterios de aceptación definidos para la orden de producción <b>OP-${esc(String(c.op??''))}</b>.${c.observaciones?`<br><br><b>Observaciones:</b> ${esc(c.observaciones)}`:''}</div>
@@ -4173,6 +4175,71 @@ window.WEDM_DETALLE=function(p){ detailItem(p.id); };</script>
 })();
 </script>
 <!-- /WEDM-FAB -->
+<!-- WEDM-PLANT -->
+<script>
+/* Plantillas de documentos (PDF) personalizables desde el módulo Desarrollador.
+   Si hay una plantilla guardada para el tipo de documento se usa; si no, sale el formato original. */
+(function(){
+ var LS='wedm_pl_v1', PL=window.PL=window.PL||{T:{}};
+ try{ PL.T=JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(e){ PL.T={}; }
+ PL.load=async function(){ try{ var r=await sb.rpc('plantillas_listar',{}); if(r&&typeof r==='object'&&!Array.isArray(r)){ PL.T=r; try{ localStorage.setItem(LS,JSON.stringify(r)); }catch(e){} } }catch(e){} };
+ PL.has=function(t){ return !!(PL.T[t]&&PL.T[t].html); };
+ PL.guardarLocal=function(t,html){ if(html) PL.T[t]={html:html,at:new Date().toISOString()}; else delete PL.T[t]; try{ localStorage.setItem(LS,JSON.stringify(PL.T)); }catch(e){} };
+ var vacio=function(v){ return v==null||v===false||v===''||v===0; };
+ var sub=function(s,sc){ return String(s).replace(/\{\{\s*([\w.]+)\s*\}\}/g,function(_,k){ var v=sc[k]; return v==null?'':String(v); }); };
+ function proc(root,sc){
+  var reps=[].slice.call(root.querySelectorAll('[data-rep]')).filter(function(el){ return !(el.parentElement&&el.parentElement.closest('[data-rep]')&&root.contains(el.parentElement.closest('[data-rep]'))); });
+  reps.forEach(function(el){
+   var arr=sc[el.getAttribute('data-rep')]||[]; var par=el.parentNode;
+   arr.forEach(function(it,i){
+    var c=el.cloneNode(true); c.removeAttribute('data-rep');
+    var sc2=Object.assign({},sc,it,{n:i+1,zebra:i%2?'zebra':''});
+    var tmp=document.createElement('template'); tmp.innerHTML=sub(c.outerHTML,sc2);
+    var nuevo=tmp.content.firstElementChild; if(nuevo){ proc(nuevo,sc2); par.insertBefore(nuevo,el); }
+   });
+   par.removeChild(el);
+  });
+  [].slice.call(root.querySelectorAll('[data-si]')).forEach(function(el){ if(vacio(sc[el.getAttribute('data-si')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-si'); });
+  [].slice.call(root.querySelectorAll('[data-no]')).forEach(function(el){ if(!vacio(sc[el.getAttribute('data-no')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-no'); });
+  if(root.hasAttribute&&root.hasAttribute('data-si')){ if(vacio(sc[root.getAttribute('data-si')])&&root.parentNode) root.parentNode.removeChild(root); else root.removeAttribute('data-si'); }
+ }
+ /* Devuelve el HTML completo listo para imprimir, o null si no hay plantilla propia */
+ PL.render=function(tipo,datos,src,titulo){
+  src=src!=null?src:(PL.T[tipo]&&PL.T[tipo].html); if(!src) return null;
+  try{
+   var doc=new DOMParser().parseFromString('<!DOCTYPE html><html><body>'+src+'</body></html>','text/html');
+   proc(doc.body,datos);
+   var body=sub(doc.body.innerHTML,datos);
+   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
+  }catch(e){ try{ console.error('Plantilla',e); }catch(_){} return null; }
+ };
+PL.dRem=function(m,tipo){
+ var en=tipo==='packing', E=EMPRESA_WEDM;
+ var cl=function(v){ var s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):'—'; };
+ var f0=(typeof fFecha==='function')?fFecha(m):(m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10));
+ var d=new Date((f0||new Date().toISOString().slice(0,10))+'T12:00:00');
+ var fecha=en?d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}):d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+ var ls=m.lineas||[];
+ return {titulo:(en?'Packing list ':'Remisión ')+(m.numero||''),logo:(typeof LOGO_WEDM_URL!=='undefined'?LOGO_WEDM_URL:LOGO_B64_PNG),marca:(typeof MARCA_AGUA_COT!=='undefined'?MARCA_AGUA_COT:''),lema:esc(E.lema||''),dir:esc(E.dir||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),nit_emp:esc(E.nit||''),ciudad_emp:esc(E.ciudad||''),
+  fecha:fecha,cliente:cl(m.empresa),nit:cl(m.nit),direccion:cl(m.direccion),ciudad:cl(m.ciudad),encargado:cl(m.contacto),telefono:cl(m.telefono),proyecto:cl(m.proyecto),numero:esc(String(m.numero||'—')),
+  lineas:ls.map(function(l,i){ return {item:l.item!=null?l.item:i+1,cant:l.cantidad,desc:cl(l.descripcion)}; }),
+  observaciones:m.observaciones?esc(m.observaciones):'',op:m.op!=null?m.op:'—',cot:m.cot_num||'—',oc:m.oc_cliente?esc(m.oc_cliente):'',span:m.oc_cliente?3:2,
+  firma_nombre:en?'Mauricio Garcia':'Mauricio García',firma_cargo:en?'CEO — MOSAT Group Inc':'CEO — Grupo WEDM'};
+};
+PL.dCert=function(c,r){
+ var E=EMPRESA_WEDM, n=c.piezas_medidas||1;
+ return {titulo:'Certificado '+certNum(c),logo:LOGO_B64_PNG,lema:esc(E.lema||''),nit_emp:esc(E.nit||''),dir:esc(E.dir||''),ciudad_emp:esc(E.ciudad||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),empresa:esc(E.nombre||''),
+  pie:'Documento generado el '+new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})+' · '+esc((_SESSION&&_SESSION.nombre)||'')+' · '+esc(E.nombre)+' · NIT '+esc(E.nit),
+  numero:certNum(c),anulado:c.estado==='ANULADO'?'DOCUMENTO ANULADO':'',op:'OP-'+esc(String(c.op!=null?c.op:'—'))+(c.item_num!=null?' · Ítem '+c.item_num:''),cliente:esc(c.empresa||'—'),cotizacion:esc(String(c.cot_num!=null?c.cot_num:'—')),referencia:esc(c.referencia||'—'),cantidad:esc(String(c.cantidad!=null?c.cantidad:'—'))+' und',
+  oc:esc(c.orden_compra||'—'),pieza:esc(c.numero_pieza||'—'),f_fab:fmtDate(c.fecha_fabricacion),f_emi:fmtDate(c.fecha_emision),material:(c.material||c.tratamiento)?esc(c.material||'—'):'',tratamiento:esc(c.tratamiento||'—'),obs:c.observaciones?esc(c.observaciones):'',op_n:esc(String(c.op!=null?c.op:'')),
+  hay_cotas:((c.cotas||[]).length&&r.medidas)?'1':'',piezas:n+' PIEZA'+(n>1?'S':'')+' MEDIDA'+(n>1?'S':''),inspector:esc(c.inspector||''),
+  cotas:(c.cotas||[]).map(function(ct,i){ var s=r.st[i]; return {n:i+1,letra:esc(ct.letra||''),nominal:esc(ct.nominal||''),lmax:f3(s.lmax),lmin:f3(s.lmin),prom:f3(s.prom),min:f3(s.min),max:f3(s.max),dev:f3(s.dev),res:s.ok===true?'✓ OK':s.ok===false?'✗ NC':'—',bg:s.ok===true?'#f0fdf4':s.ok===false?'#fef2f2':'transparent',rc:s.ok===false?'#dc2626':'#166534'}; })};
+};
+
+ setTimeout(function(){ PL.load(); },1800); setTimeout(function(){ PL.load(); },9000); setInterval(function(){ PL.load(); },300000);
+})();
+</script>
+<!-- /WEDM-PLANT -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
 #off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
@@ -4328,9 +4395,12 @@ window.WEDM_DETALLE=function(p){ detailItem(p.id); };</script>
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
   location.reload();
  }
- function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ function navSync(){ try{
+  if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=function(){ syncCero(); }; r.parentNode.insertBefore(b,r.nextSibling); } }
+  if(!document.getElementById('nav-sync')){ var sc=document.querySelector('#sidebar .nav-scroll'); if(sc){ var d=document.createElement('div'); d.className='nav-item'; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; sc.appendChild(d); } }
+ }catch(e){} }
  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
- setTimeout(navSync,1500);
+ setTimeout(navSync,1500);setInterval(navSync,3000);
  window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });

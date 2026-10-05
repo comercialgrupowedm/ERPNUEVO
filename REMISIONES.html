@@ -1327,6 +1327,7 @@ function _abrirDocParaImprimir(html,filename,carpeta){
   w.document.write(html); w.document.close(); w.document.title=filename.replace('.pdf',''); esperar(w.document,()=>setTimeout(()=>w.print(),150));
 }
 function docHtmlRem(m,tipo){
+  { const _k=tipo==='packing'?'packing':tipo==='despacho'?'despacho':'remision'; if(window.PL&&PL.has(_k)){ const _t=PL.render(_k,PL.dRem(m,tipo),null,(_k==='packing'?'Packing list ':'Remisión ')+(m.numero||'')); if(_t) return _t; } }
   const en=tipo==='packing', des=tipo==='despacho'; const E=EMPRESA_WEDM;
   const cl=(v,f='—')=>{ const s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):f; };
   const d=new Date((fFecha(m)||new Date().toISOString().slice(0,10))+'T12:00:00');
@@ -2993,8 +2994,8 @@ let R=null, tSel=null;
 const sumQ=()=>R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0);
 function lineasHtml(){
   return R.lineas.map((l,i)=>{ const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null;
-    return `<tr><td class="n" style="width:34px;text-align:center;font-weight:700;background:#dde6f0">${i+1}</td><td style="width:84px"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:9px;text-align:center;color:#64748b">de ${E(it.unidades)} pendientes</div>`:''}</td><td><textarea rows="2" style="resize:vertical" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td><td style="width:36px;text-align:center"><button class="x" style="position:static;width:22px;height:22px" onclick="feRemQuitar(${i})">✕</button></td></tr>`; }).join('')
-   ||`<tr><td colspan="4" style="text-align:center;color:#64748b;padding:14px">Sin ítems todavía — busca una OP o cotización arriba, o agrega uno manual</td></tr>`;
+    return `<tr class="${i%2?'azul-row':''}"><td class="center borde" style="width:6%">${i+1}<div><button class="x nop" title="Quitar" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;font-size:9px;cursor:pointer;margin-top:3px" onclick="feRemQuitar(${i})">✕</button></div></td><td class="center borde" style="width:9%"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700;border-bottom:1px dotted #94a3b8" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:8px;text-align:center;color:#64748b">de ${E(it.unidades)} pend.</div>`:''}</td><td class="borde"><textarea rows="2" style="resize:vertical;border:1px dotted #94a3b8" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td></tr>`; }).join('')
+   ||`<tr><td class="borde center" colspan="3" style="padding:16px;color:#888">Sin ítems todavía — busca una OP o cotización arriba, o agrega uno manual</td></tr>`;
 }
 function itemsHtml(){
   const its=R.items||[];
@@ -3002,7 +3003,8 @@ function itemsHtml(){
   const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
   return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"><input type="checkbox" style="width:auto" title="Marcar todos" onchange="feRemTodos(this.checked)"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Pendiente</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El pendiente ya descuenta lo despachado y lo reservado en otras remisiones. Al marcar un ítem entra con todo su pendiente; ajusta la cantidad en la tabla de abajo.</div>`;
 }
-function refrescar(){ const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); tot(); }
+function espejo(){ const a=$('fr-op-v'),b=$('fr-cot-v'); if(a) a.textContent=gv('fr-op')||'—'; if(b) b.textContent=gv('fr-cot')||'—'; }
+function refrescar(){ espejo(); const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); tot(); }
 function tot(){ const t=$('fr-tot'); if(t) t.textContent=R.lineas.length+' ítem(s) · '+sumQ()+' und'; }
 window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
 window.feRemTodos=ck=>{ R.items.forEach(it=>{ const ya=R.lineas.some(l=>l.id_prod===it.id_prod); if(ck&&!ya) R.lineas.push({id_prod:it.id_prod,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); }); if(!ck) R.lineas=R.lineas.filter(l=>!l.id_prod); refrescar(); };
@@ -3012,7 +3014,7 @@ window.feRemQuitar=i=>{ R.lineas.splice(i,1); refrescar(); };
 window.feRemManual=()=>{ R.lineas.push({id_prod:null,descripcion:'',cantidad:1}); refrescar(); };
 function listas(){ const w=document.createElement('div'); w.innerHTML=rlListas(); R.mapOps=_RL&&_RL.mapOps; R.mapCots=_RL&&_RL.mapCots; return w.innerHTML.replace(/rl-ops/g,'fr-ops').replace(/rl-cots/g,'fr-cots'); }
 async function cargaIdx(){ try{ if(!DB.allOps) DB.allOps=await GETALL('produccion','select=op,cot_num,empresa&order=op.desc'); const el=$('fr-dl'); if(el&&R) el.innerHTML=listas(); }catch(e){} }
-window.feRemSel=(which,fin)=>{
+window.feRemSel=(which,fin)=>{ setTimeout(espejo,0);
   const v=gv('fr-'+which), n=parseInt(v); if(!v||isNaN(n)) return;
   const known=which==='op'?(R.mapOps&&R.mapOps.has(n)):(R.mapCots&&R.mapCots.has(n)); if(!known&&!fin) return;
   if(which==='op'){ const x=R.mapOps&&R.mapOps.get(n); $('fr-cot').value=x&&x.cot!=null?x.cot:''; }
@@ -3039,27 +3041,41 @@ window.formLibreRem=function(id){
   R={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
   _RL={id:R.id,items:[],lineas:R.lineas};
   const paso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado);
-  const html=`<div class="fe-sheet">
-   ${paso?`<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:#fef3c7;border:1px solid #f59e0b;font-size:12px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado: ${E((REM_EST[m.estado]||[m.estado])[0])}). Si la guardas aquí, pasa al formulario libre y deja de seguir esas aprobaciones.</div>`:''}
-   ${feHdr('REMISIÓN DE ENTREGA',`<span>REMISIÓN N°</span><div><b style="color:#fff;width:100%;text-align:center;font-size:15px">${m&&m.numero?m.numero:'AUTO'}</b></div>`,`<div><span>Fecha</span><input id="fr-fec" type="date" value="${E(m?(fFecha(m)||hoyISO()):hoyISO())}" style="text-align:center"></div><div><span>Tipo</span>Formulario libre</div>`)}
-   <div class="fe-bar2">Encabezado — busca la OP o la cotización y se completa solo</div>
-   <div class="fe-gen" style="border-top:0"><div class="g" style="grid-template-columns:1fr 1fr 2fr">
-     ${f('Orden de producción (OP)','fr-op',m&&m.op!=null?m.op:'','list="fr-ops" inputmode="numeric" placeholder="🔎 N° OP o cliente" autocomplete="off" oninput="feRemSel(\'op\',false)" onchange="feRemSel(\'op\',true)"')}
-     ${f('Cotización','fr-cot',m&&m.cot_num!=null?m.cot_num:'','list="fr-cots" inputmode="numeric" placeholder="🔎 N° cotización" autocomplete="off" oninput="feRemSel(\'cot\',false)" onchange="feRemSel(\'cot\',true)"')}
-     ${f('Proyecto','fr-pro',m&&m.proyecto)}</div></div>
-   <div id="fr-dl"><datalist id="fr-ops"></datalist><datalist id="fr-cots"></datalist></div>
-   <div class="fe-bar2" style="margin-top:10px">Destinatario</div>
-   <div class="fe-gen" style="border-top:0">
-    <div class="g" style="grid-template-columns:2fr 1fr 1fr">${f('Cliente / Señores','fr-emp',m&&m.empresa)}${f('NIT','fr-nit',m&&m.nit)}${f('Orden de compra del cliente','fr-oc',m&&m.oc_cliente)}</div>
-    <div class="g" style="grid-template-columns:2fr 1fr 1fr 1fr">${f('Dirección','fr-dir',m&&m.direccion)}${f('Ciudad','fr-ciu',m&&m.ciudad)}${f('Encargado','fr-con',m&&m.contacto)}${f('Teléfono','fr-tel',m&&m.telefono)}</div></div>
-   <div class="fe-bar2" style="margin-top:10px">Ítems con saldo pendiente — marca los que van en esta remisión</div>
-   <div id="fr-items" style="border:2px solid #1a3a6b;border-top:0;padding:6px"></div>
-   <div class="fe-bar1" style="margin-top:10px"><span>Ítems de la remisión — ajusta la cantidad de cada uno</span><span id="fr-tot"></span></div>
-   <table class="fe-rows"><thead><tr><th>#</th><th>Cant.</th><th>Descripción</th><th></th></tr></thead><tbody id="fr-body"></tbody></table>
-   <button class="fe-add" onclick="feRemManual()">＋ Agregar ítem manual</button>
-   <div class="fe-obs"><b>Observaciones</b><textarea id="fr-obs" rows="3">${E(m&&m.observaciones||'')}</textarea></div>
-   <div class="fe-ap-t">Recibido por</div>
-   <table class="fe-aprob"><thead><tr><th style="width:30%">Nombre</th><th style="width:30%">Firma</th><th>Fecha</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>
+  const EM=(typeof EMPRESA_WEDM!=='undefined'?EMPRESA_WEDM:{});
+  const fl=(lab,id,v,ex)=>`<div class="fl"><span class="lab">${lab}:</span><input id="${id}" value="${E(v==null?'':v)}" ${ex||''}></div>`;
+  const html=`<style>
+   .pd{max-width:800px!important;padding:26px 30px!important;font:10px Arial,Helvetica,sans-serif!important;color:#111!important}
+   .pd table{border-collapse:collapse;width:100%}.pd td,.pd th{padding:5px 8px;vertical-align:middle}
+   .pd .azul{background:#1a3a6b;color:#fff}.pd .azul-row{background:#dde6f0}.pd .borde{border:1px solid #999}.pd .borde-azul{border:1px solid #1a3a6b}.pd .center{text-align:center}
+   .pd .lab{color:#1a3a6b;white-space:nowrap}.pd .fl{display:flex;align-items:center;gap:6px;margin:2px 0}
+   .pd .fl input{flex:1;border-bottom:1px dotted #94a3b8;border-radius:0}.pd input,.pd textarea{font-size:10px}
+   .pdbox{max-width:800px;margin:0 auto 10px}
+   @media(max-width:700px){.pd{padding:10px 8px!important;overflow-x:auto}.pd table{min-width:560px}}
+  </style>
+  ${paso?`<div class="pdbox" style="padding:8px 12px;border-radius:8px;background:#fef3c7;border:1px solid #f59e0b;font-size:12px">⚠️ Esta remisión va por el <b>paso a paso</b> (estado: ${E((REM_EST[m.estado]||[m.estado])[0])}). Si la guardas aquí, pasa al formulario libre y deja de seguir ese flujo.</div>`:''}
+  <div class="pdbox"><div class="fe-bar2" style="border-radius:6px 6px 0 0">1 · Busca la OP o la cotización — se llenan el cliente y los ítems</div>
+   <div class="fe-gen" style="border-top:0;background:#fff"><div class="g" style="grid-template-columns:1fr 1fr 1fr">
+     <div><label>Orden de producción (OP)</label><input id="fr-op" value="${E(m&&m.op!=null?m.op:'')}" list="fr-ops" inputmode="numeric" placeholder="🔎 N° OP o cliente" autocomplete="off" oninput="feRemSel('op',false)" onchange="feRemSel('op',true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div>
+     <div><label>Cotización</label><input id="fr-cot" value="${E(m&&m.cot_num!=null?m.cot_num:'')}" list="fr-cots" inputmode="numeric" placeholder="🔎 N° cotización" autocomplete="off" oninput="feRemSel('cot',false)" onchange="feRemSel('cot',true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div>
+     <div><label>Fecha</label><input id="fr-fec" type="date" value="${E(m?(fFecha(m)||hoyISO()):hoyISO())}" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div></div></div></div>
+  <div id="fr-dl"><datalist id="fr-ops"></datalist><datalist id="fr-cots"></datalist></div>
+  <div class="pdbox"><div class="fe-bar2" style="border-radius:6px 6px 0 0">2 · Ítems con saldo pendiente — marca los que van en esta remisión</div>
+   <div id="fr-items" style="border:2px solid #1a3a6b;border-top:0;padding:6px;background:#fff"></div></div>
+  <div class="fe-sheet pd">
+   <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div><div style="color:#444;line-height:1.7"><i>${E(EM.lema||'')}</i><br>${E(EM.dir||'')}<br>Tel: ${E(EM.tel||'')} &nbsp; Cel: ${E(EM.cel||'')}<br>Email: ${E(EM.email||'')}<br>NIT: ${E(EM.nit||'')}<br>${E(EM.ciudad||'')}</div></td>
+    <td style="width:45%;vertical-align:top"><div style="line-height:1.75">
+     ${fl('CLIENTE','fr-emp',m&&m.empresa,'style="font-weight:700"')}${fl('NIT','fr-nit',m&&m.nit)}${fl('DIRECCIÓN','fr-dir',m&&m.direccion)}${fl('CIUDAD','fr-ciu',m&&m.ciudad)}${fl('ENCARGADO','fr-con',m&&m.contacto)}${fl('TELÉFONO','fr-tel',m&&m.telefono)}</div>
+     <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul" style="padding:5px 10px"><input id="fr-pro" value="${E(m&&m.proyecto||'')}"></td></tr></table></td></tr></table>
+   <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">REMISIÓN</td><td class="borde" style="width:50%;text-align:center;padding:8px">${m&&m.numero?E(m.numero):'<span style="color:#64748b">Se asigna al guardar</span>'}</td></tr></table>
+   <table style="margin-bottom:12px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:9%">CANT</th><th class="borde">DESCRIPCIÓN</th></tr></thead><tbody id="fr-body"></tbody></table>
+   <button class="fe-add nop" onclick="feRemManual()">＋ Agregar ítem manual</button><div id="fr-tot" style="text-align:right;color:#64748b;font-size:10px;margin:-4px 0 8px"></div>
+   <div style="margin-bottom:12px"><b>OBSERVACIONES:</b><textarea id="fr-obs" rows="2" style="border:1px dotted #94a3b8">${E(m&&m.observaciones||'')}</textarea></div>
+   <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="width:100%">
+    <tr><td class="azul borde" style="width:50%">ORDEN DE PRODUCCIÓN</td><td class="borde center" id="fr-op-v">—</td><td rowspan="3" class="azul borde center" style="font-size:10px">ATENTAMENTE</td></tr>
+    <tr><td class="azul borde">COTIZACIÓN</td><td class="borde center" id="fr-cot-v">—</td></tr>
+    <tr><td class="azul borde">ORDEN DE COMPRA</td><td class="borde center"><input id="fr-oc" value="${E(m&&m.oc_cliente||'')}" style="text-align:center" placeholder="(opcional)"></td></tr></table></td>
+    <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div>Mauricio García</div><div style="color:#555">CEO — Grupo WEDM</div></td></tr></table>
+   <table style="margin-top:26px"><tr>${['ENTREGADO POR|Grupo WEDM','RECIBIDO POR|Nombre y firma','FECHA RECIBIDO|&nbsp;'].map(x=>{ const [a,b]=x.split('|'); return `<td style="width:33%;text-align:center;padding:0 10px"><div style="border-top:1.5px solid #1a3a6b;margin-bottom:4px"></div><div style="font-size:9px;font-weight:700;color:#1a3a6b">${a}</div><div style="font-size:8.5px;color:#555;margin-top:2px">${b}</div></td>`; }).join('')}</tr></table>
   </div>`;
   feAbrir(m?`📄 Editar remisión${m.numero?' N° '+m.numero:''}`:'📄 Nueva remisión',html,`<button class="pr" onclick="feRemImprimir()">🖨️ Imprimir / PDF</button><button class="sv" onclick="feRemGuardar()">💾 ${m?'Guardar cambios':'Crear remisión'}</button>`);
   $('fr-dl').innerHTML=listas(); refrescar(); cargaIdx();
@@ -3130,6 +3146,62 @@ window.feRemImprimir=()=>{
 })();
 </script>
 <!-- /WEDM-FAB -->
+<!-- WEDM-PLANT -->
+<script>
+/* Plantillas de documentos (PDF) personalizables desde el módulo Desarrollador.
+   Si hay una plantilla guardada para el tipo de documento se usa; si no, sale el formato original. */
+(function(){
+ var LS='wedm_pl_v1', PL=window.PL=window.PL||{T:{}};
+ try{ PL.T=JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(e){ PL.T={}; }
+ PL.load=async function(){ try{ var r=await sb.rpc('plantillas_listar',{}); if(r&&typeof r==='object'&&!Array.isArray(r)){ PL.T=r; try{ localStorage.setItem(LS,JSON.stringify(r)); }catch(e){} } }catch(e){} };
+ PL.has=function(t){ return !!(PL.T[t]&&PL.T[t].html); };
+ PL.guardarLocal=function(t,html){ if(html) PL.T[t]={html:html,at:new Date().toISOString()}; else delete PL.T[t]; try{ localStorage.setItem(LS,JSON.stringify(PL.T)); }catch(e){} };
+ var vacio=function(v){ return v==null||v===false||v===''||v===0; };
+ var sub=function(s,sc){ return String(s).replace(/\{\{\s*([\w.]+)\s*\}\}/g,function(_,k){ var v=sc[k]; return v==null?'':String(v); }); };
+ function proc(root,sc){
+  var reps=[].slice.call(root.querySelectorAll('[data-rep]')).filter(function(el){ return !(el.parentElement&&el.parentElement.closest('[data-rep]')&&root.contains(el.parentElement.closest('[data-rep]'))); });
+  reps.forEach(function(el){
+   var arr=sc[el.getAttribute('data-rep')]||[]; var par=el.parentNode;
+   arr.forEach(function(it,i){
+    var c=el.cloneNode(true); c.removeAttribute('data-rep');
+    var sc2=Object.assign({},sc,it,{n:i+1,zebra:i%2?'zebra':''});
+    var tmp=document.createElement('template'); tmp.innerHTML=sub(c.outerHTML,sc2);
+    var nuevo=tmp.content.firstElementChild; if(nuevo){ proc(nuevo,sc2); par.insertBefore(nuevo,el); }
+   });
+   par.removeChild(el);
+  });
+  [].slice.call(root.querySelectorAll('[data-si]')).forEach(function(el){ if(vacio(sc[el.getAttribute('data-si')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-si'); });
+  [].slice.call(root.querySelectorAll('[data-no]')).forEach(function(el){ if(!vacio(sc[el.getAttribute('data-no')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-no'); });
+  if(root.hasAttribute&&root.hasAttribute('data-si')){ if(vacio(sc[root.getAttribute('data-si')])&&root.parentNode) root.parentNode.removeChild(root); else root.removeAttribute('data-si'); }
+ }
+ /* Devuelve el HTML completo listo para imprimir, o null si no hay plantilla propia */
+ PL.render=function(tipo,datos,src,titulo){
+  src=src!=null?src:(PL.T[tipo]&&PL.T[tipo].html); if(!src) return null;
+  try{
+   var doc=new DOMParser().parseFromString('<!DOCTYPE html><html><body>'+src+'</body></html>','text/html');
+   proc(doc.body,datos);
+   var body=sub(doc.body.innerHTML,datos);
+   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
+  }catch(e){ try{ console.error('Plantilla',e); }catch(_){} return null; }
+ };
+PL.dRem=function(m,tipo){
+ var en=tipo==='packing', E=EMPRESA_WEDM;
+ var cl=function(v){ var s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):'—'; };
+ var f0=(typeof fFecha==='function')?fFecha(m):(m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10));
+ var d=new Date((f0||new Date().toISOString().slice(0,10))+'T12:00:00');
+ var fecha=en?d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}):d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+ var ls=m.lineas||[];
+ return {titulo:(en?'Packing list ':'Remisión ')+(m.numero||''),logo:(typeof LOGO_WEDM_URL!=='undefined'?LOGO_WEDM_URL:LOGO_B64_PNG),marca:(typeof MARCA_AGUA_COT!=='undefined'?MARCA_AGUA_COT:''),lema:esc(E.lema||''),dir:esc(E.dir||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),nit_emp:esc(E.nit||''),ciudad_emp:esc(E.ciudad||''),
+  fecha:fecha,cliente:cl(m.empresa),nit:cl(m.nit),direccion:cl(m.direccion),ciudad:cl(m.ciudad),encargado:cl(m.contacto),telefono:cl(m.telefono),proyecto:cl(m.proyecto),numero:esc(String(m.numero||'—')),
+  lineas:ls.map(function(l,i){ return {item:l.item!=null?l.item:i+1,cant:l.cantidad,desc:cl(l.descripcion)}; }),
+  observaciones:m.observaciones?esc(m.observaciones):'',op:m.op!=null?m.op:'—',cot:m.cot_num||'—',oc:m.oc_cliente?esc(m.oc_cliente):'',span:m.oc_cliente?3:2,
+  firma_nombre:en?'Mauricio Garcia':'Mauricio García',firma_cargo:en?'CEO — MOSAT Group Inc':'CEO — Grupo WEDM'};
+};
+
+ setTimeout(function(){ PL.load(); },1800); setTimeout(function(){ PL.load(); },9000); setInterval(function(){ PL.load(); },300000);
+})();
+</script>
+<!-- /WEDM-PLANT -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
 #off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
@@ -3285,9 +3357,12 @@ window.feRemImprimir=()=>{
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
   location.reload();
  }
- function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ function navSync(){ try{
+  if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=function(){ syncCero(); }; r.parentNode.insertBefore(b,r.nextSibling); } }
+  if(!document.getElementById('nav-sync')){ var sc=document.querySelector('#sidebar .nav-scroll'); if(sc){ var d=document.createElement('div'); d.className='nav-item'; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; sc.appendChild(d); } }
+ }catch(e){} }
  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
- setTimeout(navSync,1500);
+ setTimeout(navSync,1500);setInterval(navSync,3000);
  window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });

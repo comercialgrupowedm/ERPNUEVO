@@ -3174,7 +3174,12 @@ function generarPDFCotizacion(id,soloGuardar){
     <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
-  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
+  let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
+    fecha:hoy,cliente:cl(c.empresa),nit:cl(c.nit||cli.nit),direccion:cl(c.direccion||cli.direccion),ciudad:cl(c.ciudad||cli.ciudad),encargado:cl(c.encargado||cli.contacto),telefono:cl(c.telefono||cli.telefono),proyecto:cl(c.descripcion_proyecto),numero:c.cotizacion,
+    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:cl(it.descripcion),unit:money(it.precio_unit),total:money(totalItem(it))})),
+    letras:esc(numeroALetras(total)),subtotal:money(sub),iva:money(iva),descuento:descVal>0?'-'+money(descVal):'',desc_lbl:'DESCUENTO'+(descPct?' ('+descPct+'%)':''),total:money(total),rs:descVal>0?5:4,
+    observaciones:c.observaciones_especiales?esc(c.observaciones_especiales):'',validez:c.validez_dias||30,forma_pago:esc(pago),entrega:c.lead_time_dias??'—',asesor:esc(c.asesor||'Asesor Comercial'),cargo:esc(CARGOS[c.asesor]||'Asesor Comercial')},null,'COT-'+c.cotizacion); } }catch(e){ console.error(e); }
+  const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
     table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-light{background:#2d5fa6!important;color:#fff!important}
     .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
@@ -4668,7 +4673,8 @@ function docRemision(id,modo){
   const des=modo==='despacho'; const ls=m.lineas||[];
   const fecha=new Date(m.generada_fecha||m.pedida_fecha||Date.now()).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const rows=ls.map((l,i)=>`<tr class="${i%2?'azul-row':''}"><td class="center borde">${l.item??i+1}</td><td class="borde" style="white-space:pre-wrap">${cl(l.descripcion)}</td><td class="center borde negrita">${l.cantidad}</td>${des?'<td class="center borde" style="width:60px">☐</td>':''}</tr>`).join('');
-  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${des?'Formato de despacho':'Remisión'} ${m.numero||''}</title><style>
+  const _rk=des?'despacho':'remision'; const _plh=(window.PL&&PL.has(_rk))?PL.render(_rk,PL.dRem(m,_rk),null,'Remisión '+(m.numero||'')):null;
+  const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${des?'Formato de despacho':'Remisión'} ${m.numero||''}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.negrita{}.center{text-align:center}
     @page{size:letter portrait;margin:10mm 16mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
@@ -6260,6 +6266,62 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
 })();
 </script>
 <!-- /WEDM-INSTALAR -->
+<!-- WEDM-PLANT -->
+<script>
+/* Plantillas de documentos (PDF) personalizables desde el módulo Desarrollador.
+   Si hay una plantilla guardada para el tipo de documento se usa; si no, sale el formato original. */
+(function(){
+ var LS='wedm_pl_v1', PL=window.PL=window.PL||{T:{}};
+ try{ PL.T=JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(e){ PL.T={}; }
+ PL.load=async function(){ try{ var r=await sb.rpc('plantillas_listar',{}); if(r&&typeof r==='object'&&!Array.isArray(r)){ PL.T=r; try{ localStorage.setItem(LS,JSON.stringify(r)); }catch(e){} } }catch(e){} };
+ PL.has=function(t){ return !!(PL.T[t]&&PL.T[t].html); };
+ PL.guardarLocal=function(t,html){ if(html) PL.T[t]={html:html,at:new Date().toISOString()}; else delete PL.T[t]; try{ localStorage.setItem(LS,JSON.stringify(PL.T)); }catch(e){} };
+ var vacio=function(v){ return v==null||v===false||v===''||v===0; };
+ var sub=function(s,sc){ return String(s).replace(/\{\{\s*([\w.]+)\s*\}\}/g,function(_,k){ var v=sc[k]; return v==null?'':String(v); }); };
+ function proc(root,sc){
+  var reps=[].slice.call(root.querySelectorAll('[data-rep]')).filter(function(el){ return !(el.parentElement&&el.parentElement.closest('[data-rep]')&&root.contains(el.parentElement.closest('[data-rep]'))); });
+  reps.forEach(function(el){
+   var arr=sc[el.getAttribute('data-rep')]||[]; var par=el.parentNode;
+   arr.forEach(function(it,i){
+    var c=el.cloneNode(true); c.removeAttribute('data-rep');
+    var sc2=Object.assign({},sc,it,{n:i+1,zebra:i%2?'zebra':''});
+    var tmp=document.createElement('template'); tmp.innerHTML=sub(c.outerHTML,sc2);
+    var nuevo=tmp.content.firstElementChild; if(nuevo){ proc(nuevo,sc2); par.insertBefore(nuevo,el); }
+   });
+   par.removeChild(el);
+  });
+  [].slice.call(root.querySelectorAll('[data-si]')).forEach(function(el){ if(vacio(sc[el.getAttribute('data-si')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-si'); });
+  [].slice.call(root.querySelectorAll('[data-no]')).forEach(function(el){ if(!vacio(sc[el.getAttribute('data-no')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-no'); });
+  if(root.hasAttribute&&root.hasAttribute('data-si')){ if(vacio(sc[root.getAttribute('data-si')])&&root.parentNode) root.parentNode.removeChild(root); else root.removeAttribute('data-si'); }
+ }
+ /* Devuelve el HTML completo listo para imprimir, o null si no hay plantilla propia */
+ PL.render=function(tipo,datos,src,titulo){
+  src=src!=null?src:(PL.T[tipo]&&PL.T[tipo].html); if(!src) return null;
+  try{
+   var doc=new DOMParser().parseFromString('<!DOCTYPE html><html><body>'+src+'</body></html>','text/html');
+   proc(doc.body,datos);
+   var body=sub(doc.body.innerHTML,datos);
+   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
+  }catch(e){ try{ console.error('Plantilla',e); }catch(_){} return null; }
+ };
+PL.dRem=function(m,tipo){
+ var en=tipo==='packing', E=EMPRESA_WEDM;
+ var cl=function(v){ var s=String(v==null?'':v).trim(); return s&&s!=='null'?esc(s):'—'; };
+ var f0=(typeof fFecha==='function')?fFecha(m):(m.fecha||String(m.despachada_fecha||m.generada_fecha||m.pedida_fecha||'').slice(0,10));
+ var d=new Date((f0||new Date().toISOString().slice(0,10))+'T12:00:00');
+ var fecha=en?d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}):d.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+ var ls=m.lineas||[];
+ return {titulo:(en?'Packing list ':'Remisión ')+(m.numero||''),logo:(typeof LOGO_WEDM_URL!=='undefined'?LOGO_WEDM_URL:LOGO_B64_PNG),marca:(typeof MARCA_AGUA_COT!=='undefined'?MARCA_AGUA_COT:''),lema:esc(E.lema||''),dir:esc(E.dir||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),nit_emp:esc(E.nit||''),ciudad_emp:esc(E.ciudad||''),
+  fecha:fecha,cliente:cl(m.empresa),nit:cl(m.nit),direccion:cl(m.direccion),ciudad:cl(m.ciudad),encargado:cl(m.contacto),telefono:cl(m.telefono),proyecto:cl(m.proyecto),numero:esc(String(m.numero||'—')),
+  lineas:ls.map(function(l,i){ return {item:l.item!=null?l.item:i+1,cant:l.cantidad,desc:cl(l.descripcion)}; }),
+  observaciones:m.observaciones?esc(m.observaciones):'',op:m.op!=null?m.op:'—',cot:m.cot_num||'—',oc:m.oc_cliente?esc(m.oc_cliente):'',span:m.oc_cliente?3:2,
+  firma_nombre:en?'Mauricio Garcia':'Mauricio García',firma_cargo:en?'CEO — MOSAT Group Inc':'CEO — Grupo WEDM'};
+};
+
+ setTimeout(function(){ PL.load(); },1800); setTimeout(function(){ PL.load(); },9000); setInterval(function(){ PL.load(); },300000);
+})();
+</script>
+<!-- /WEDM-PLANT -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
 #off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}

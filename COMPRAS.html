@@ -1524,6 +1524,7 @@ function ocOpsDe(o){
 }
 const ocTipo=ls=>[...new Set((ls||[]).map(m=>m.tipo==='SERVICIO EXTERNO'?'Servicio':(m.tipo==='MATERIAL'?'Material':m.tipo)).filter(Boolean))].join(' / ');
 function ocDocHtml(d){
+  { const _t=(window.PL&&PL.has('oc'))?PL.render('oc',PL.dOC(d),null,'Orden de compra '+d.numero):null; if(_t) return _t; }
   const E=EMPRESA_WEDM; const P=d.prov||{}; const $=n=>'$'+Math.round(Number(n)||0).toLocaleString('en-US'); const B='#355f94';
   const cl=v=>{ const t=String(v==null?'':v).trim(); return t&&t!=='null'?esc(t):'—'; };
   const rows=(d.lineas||[]).map((l,i)=>{ const unit=(l.unit!=null&&l.unit!=='')?l.unit:(l.qty>0?l.total/l.qty:l.total); return `<tr class="${i%2?'':'g'}"><td class="c b">${i+1}</td><td class="c b">${esc(l.cant)}</td><td class="b" style="white-space:pre-wrap">${esc(l.desc)}${l.dias?`<div style="font-size:8.5px;color:#666;margin-top:2px">Entrega: ${esc(l.dias)} días</div>`:''}</td><td class="c b">${$(unit)}</td><td class="c b">${$(l.total)}</td></tr>`; }).join('');
@@ -3408,20 +3409,22 @@ const r2=n=>Math.round(n*100)/100;
 const qtyDe=m=>(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1);
 function pedLine(m,base){ const p=prodDe(m.id_prod)||{}; return {k:'ped',id:m.id,desc:m.material+(m.detalle?' — '+m.detalle:''),sub:'OP-'+(p.op??'—')+(p.empresa?' · '+p.empresa:''),cant:cantTxt(m)||'1',qty:qtyDe(m)||1,base:base!=null?base:(m.costo_cotizado>0?Number(m.costo_cotizado):''),dias:m.dias_entrega??''}; }
 const subtotal=()=>O.hist?Number(O.hist.subtotal)||0:O.lines.reduce((s,l)=>s+num(l.base),0);
-function totales(){ const sub=subtotal(), iva=Math.round(sub*pct()/100); const el=$('fo-tot'); if(el) el.innerHTML=`<tr><td>Subtotal</td><td>${fmt(sub)}</td></tr><tr><td>IVA ${pct()}%</td><td>${fmt(iva)}</td></tr><tr class="t"><td>TOTAL</td><td>${fmt(sub+iva)}</td></tr>`; const c=$('fo-cnt'); if(c) c.textContent=O.lines.length+' línea(s)'; }
+function totales(){ const sub=subtotal(), iva=Math.round(sub*pct()/100); const el=$('fo-tot'); const nb='<td colspan="3" style="border:none"></td>'; if(el) el.innerHTML=`<tr>${nb}<td class="az b">Subtotal</td><td class="b c" style="font-weight:700">${fmt(sub)}</td></tr><tr>${nb}<td class="az b">I.V.A${pct()?' '+pct()+'%':''}</td><td class="b c" style="font-weight:700">${fmt(iva)}</td></tr><tr>${nb}<td class="az b">Total</td><td class="b c" style="font-weight:700">${fmt(sub+iva)}</td></tr>`; }
+function updU(i){ const l=O.lines[i], u=$('fo-u-'+i); if(u&&l) u.textContent=l.base===''?'':fmt(l.qty>0?num(l.base)/l.qty:num(l.base)); }
 function lineasHtml(){
   const r=pct()/100;
-  if(O.hist) return (O.hist.lineas||[]).map((x,i)=>`<tr><td style="background:#dde6f0;text-align:center;font-weight:700;width:34px">${i+1}</td><td style="text-align:center;width:70px">${E(x.cantidad!=null?Number(x.cantidad):'')}</td><td style="padding:4px 6px">${E(x.descripcion||'')}${x.op?` <small style="color:#64748b">OP-${E(x.op)}</small>`:''}</td><td></td><td style="text-align:right;padding:4px 8px" colspan="2">${fmt(x.valor_total)}</td><td></td></tr>`).join('');
+  if(O.hist) return (O.hist.lineas||[]).map((x,i)=>`<tr class="${i%2?'':'g'}"><td class="c b">${i+1}</td><td class="c b">${E(x.cantidad!=null?Number(x.cantidad):'')}</td><td class="b">${E(x.descripcion||'')}${x.op?` <small style="color:#64748b">OP-${E(x.op)}</small>`:''}</td><td class="c b"></td><td class="c b">${fmt(x.valor_total)}</td></tr>`).join('');
   return O.lines.map((l,i)=>{ const con=l.base===''?'':Math.round(num(l.base)*(1+r));
     const lock=O.edit&&l.k==='ped';
-    return `<tr><td style="background:#dde6f0;text-align:center;font-weight:700;width:34px">${i+1}</td>
-    <td style="width:78px;text-align:center">${l.k==='lib'||l.k==='oldlib'?`<input type="number" min="0" step="any" style="text-align:center" value="${E(l.qty)}" oninput="feOcQty(${i},this.value)">`:E(l.cant)}</td>
-    <td style="padding:2px">${l.k==='lib'?`<div style="display:flex;gap:4px;flex-wrap:wrap;padding:3px 3px 0"><input list="fo-ops" placeholder="🔎 OP (opcional)" value="${E(l.op||'')}" onchange="feOcOp(${i},this.value)" style="width:120px;border:1px solid #cbd5e1;background:#fff;border-radius:4px"><select onchange="feOcItem(${i},this.value)" style="flex:1;min-width:150px;border:1px solid #cbd5e1;background:#fff;border-radius:4px"><option value="">— ítem de la OP (opcional) —</option>${(ITC[l.op]||[]).map(x=>`<option value="${E(x.item_num)}" ${String(x.item_num)===String(l.item)?'selected':''}>Ítem ${E(x.item_num)} — ${E(String(x.descripcion||'').slice(0,45))}</option>`).join('')}</select></div>${l.cli?`<div style="font-size:9.5px;color:#64748b;padding:0 6px">Cliente: ${E(l.cli)}</div>`:''}<textarea rows="2" style="resize:vertical" placeholder="Describe lo que vas a comprar" oninput="feOcDesc(${i},this.value)">${E(l.desc)}</textarea>`:`<div style="padding:3px 6px">${E(l.desc)}${l.sub?`<div style="font-size:9.5px;color:#64748b">${E(l.sub)}</div>`:''}</div>`}</td>
-    <td style="width:62px"><input type="number" min="0" style="text-align:center" placeholder="días" value="${E(l.dias)}" oninput="O_dias(${i},this.value)"></td>
-    <td style="width:112px"><input id="fo-s-${i}" type="number" min="0" step="any" style="text-align:right;font-weight:700" placeholder="sin IVA" value="${l.base===''?'':E(l.base)}" oninput="feOcSin(${i},this.value)"></td>
-    <td style="width:112px;background:#f1f5f9"><input id="fo-c-${i}" type="number" min="0" step="any" style="text-align:right" placeholder="con IVA" value="${con===''?'':con}" oninput="feOcCon(${i},this.value)"></td>
-    <td style="width:34px;text-align:center">${lock?'':`<button class="x" style="position:static;width:22px;height:22px" onclick="feOcQuitar(${i})">✕</button>`}</td></tr>`; }).join('')
-   ||`<tr><td colspan="7" style="text-align:center;color:#64748b;padding:14px">Sin líneas — marca pedidos pendientes arriba o agrega un ítem manual</td></tr>`;
+    const desc=l.k==='lib'?`<div class="nop" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:3px"><input list="fo-ops" placeholder="🔎 OP (opcional)" value="${E(l.op||'')}" onchange="feOcOp(${i},this.value)" style="width:120px;border:1px solid #cbd5e1;background:#fff"><select onchange="feOcItem(${i},this.value)" style="flex:1;min-width:150px;border:1px solid #cbd5e1;background:#fff;border-radius:4px"><option value="">— ítem de la OP (opcional) —</option>${(ITC[l.op]||[]).map(x=>`<option value="${E(x.item_num)}" ${String(x.item_num)===String(l.item)?'selected':''}>Ítem ${E(x.item_num)} — ${E(String(x.descripcion||'').slice(0,45))}</option>`).join('')}</select></div>${l.cli?`<div style="font-size:9px;color:#64748b">Cliente: ${E(l.cli)}</div>`:''}<textarea rows="2" style="resize:vertical;border:1px dotted #94a3b8" placeholder="Describe lo que vas a comprar" oninput="feOcDesc(${i},this.value)">${E(l.desc)}</textarea>`
+      :`<div style="white-space:pre-wrap">${E(l.desc)}</div>${l.sub?`<div style="font-size:8.5px;color:#666">${E(l.sub)}</div>`:''}`;
+    const und=l.base===''?'':fmt(l.qty>0?num(l.base)/l.qty:num(l.base));
+    return `<tr class="${i%2?'':'g'}"><td class="c b">${i+1}${lock?'':`<div><button class="x nop" style="position:static;width:20px;height:20px;margin-top:3px" title="Quitar" onclick="feOcQuitar(${i})">✕</button></div>`}</td>
+    <td class="c b" style="width:9%">${l.k==='lib'||l.k==='oldlib'?`<input type="number" min="0" step="any" style="text-align:center;border-bottom:1px dotted #94a3b8" value="${E(l.qty)}" oninput="feOcQty(${i},this.value)">`:E(l.cant)}</td>
+    <td class="b">${desc}<div style="font-size:8.5px;color:#666;margin-top:2px;display:flex;align-items:center;gap:4px">Entrega: <input type="number" min="0" style="width:46px;text-align:center;border-bottom:1px dotted #94a3b8" placeholder="—" value="${E(l.dias)}" oninput="O_dias(${i},this.value)"> días</div></td>
+    <td class="c b" id="fo-u-${i}" style="width:16%">${und}</td>
+    <td class="b c" style="width:16%"><div class="lt">Sin IVA</div><input id="fo-s-${i}" type="number" min="0" step="any" style="text-align:right;font-weight:700;border-bottom:1px dotted #94a3b8" placeholder="0" value="${l.base===''?'':E(l.base)}" oninput="feOcSin(${i},this.value)"><div class="lt">Con IVA</div><input id="fo-c-${i}" type="number" min="0" step="any" style="text-align:right;background:#eef2f7" placeholder="0" value="${con===''?'':con}" oninput="feOcCon(${i},this.value)"></td></tr>`; }).join('')
+   ||`<tr><td class="b c" colspan="5" style="padding:16px;color:#888">Sin ítems — marca pedidos pendientes arriba o agrega un ítem manual</td></tr>`;
 }
 function pendHtml(){
   const q=_norm((($('fo-q')||{}).value)||''), prov=_norm(gv('fo-prov'));
@@ -3435,10 +3438,10 @@ function pendHtml(){
 }
 function repaint(){ proyAuto(); const b=$('fo-body'); if(b) b.innerHTML=lineasHtml(); const p=$('fo-pend'); if(p) p.innerHTML=pendHtml(); totales(); }
 window.O_dias=(i,v)=>{ O.lines[i].dias=v; };
-window.feOcQty=(i,v)=>{ O.lines[i].qty=num(v)||1; O.lines[i].cant=String(O.lines[i].qty); };
+window.feOcQty=(i,v)=>{ O.lines[i].qty=num(v)||1; O.lines[i].cant=String(O.lines[i].qty); updU(i); };
 window.feOcDesc=(i,v)=>{ O.lines[i].desc=v; };
-window.feOcSin=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':num(v); const c=$('fo-c-'+i); if(c) c.value=v===''?'':Math.round(num(v)*(1+pct()/100)); totales(); };
-window.feOcCon=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':r2(num(v)/(1+pct()/100)); const s=$('fo-s-'+i); if(s) s.value=v===''?'':l.base; totales(); };
+window.feOcSin=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':num(v); const c=$('fo-c-'+i); if(c) c.value=v===''?'':Math.round(num(v)*(1+pct()/100)); updU(i); totales(); };
+window.feOcCon=(i,v)=>{ const l=O.lines[i]; l.base=v===''?'':r2(num(v)/(1+pct()/100)); const s=$('fo-s-'+i); if(s) s.value=v===''?'':l.base; updU(i); totales(); };
 window.feOcIva=()=>{ O.lines.forEach((l,i)=>{ const c=$('fo-c-'+i); if(c) c.value=l.base===''?'':Math.round(num(l.base)*(1+pct()/100)); }); totales(); };
 window.feOcQuitar=i=>{ O.lines.splice(i,1); repaint(); };
 async function cargaOps(){ try{ if(!DB.allOpsC) DB.allOpsC=await GETALL('produccion','select=op,cot_num,empresa&order=op.desc'); const dl=$('fo-ops'); if(dl){ const m=new Map(); DB.allOpsC.forEach(p=>{ if(p.op!=null&&!m.has(p.op)) m.set(p.op,p); }); dl.innerHTML=[...m.values()].map(p=>`<option value="${E(p.op)}" label="${E(p.empresa||'')}${p.cot_num!=null?' · COT-'+E(p.cot_num):''}">`).join(''); } }catch(e){} }
@@ -3504,28 +3507,40 @@ window.feOC=function(opt){
   const V=k=>o&&o[k]!=null?o[k]:'';
   const provs=[...new Set(O.lines.map(l=>(linDe(l.id)||{}).proveedor).filter(Boolean))];
   const ops=[...new Set(O.lines.map(l=>{ const m=linDe(l.id); const p=m&&prodDe(m.id_prod); return p&&p.op!=null?p.op:null; }).filter(x=>x!=null))];
-  const html=`<div class="fe-sheet">${dlProvs()}<datalist id="fo-ops"></datalist>
-   ${feHdr(o?'ORDEN DE COMPRA<br><span style="font-size:10px;font-weight:600">Edición</span>':'ORDEN DE COMPRA',`<span>ORDEN N°</span><div><b style="color:#fff;width:100%;text-align:center;font-size:15px">${o?ocNum(o):'AUTO'}</b></div>`,`<div><span>Fecha</span>${E(fmtDate(o?o.fecha:hoyISO()))}</div><div><span>Estado</span>${o?'EMITIDA':'NUEVA'}</div>`)}
-   <div class="fe-bar2">Proveedor — escribe el nombre y se completa solo</div>
-   <div class="fe-gen" style="border-top:0">
-    <div class="g" style="grid-template-columns:2fr 1fr 1fr">${f('Proveedor (razón social)','fo-prov',o?V('prov_nombre'):(provs.length===1?provs[0]:''),'list="dl-provs" autocomplete="off" oninput="feOcProv()" onchange="feOcProv()" placeholder="🔎 Buscar o escribir proveedor"')}${f('NIT','fo-nit',V('prov_nit'))}${f('Teléfono','fo-tel',V('prov_telefono'))}</div>
-    <div class="g" style="grid-template-columns:1fr 1fr 2fr 1fr">${f('Email','fo-email',V('prov_email'))}${f('Ciudad','fo-ciu',V('prov_ciudad'))}${f('Dirección','fo-dir',V('prov_direccion'))}${f('Encargado','fo-enc',V('prov_contacto'))}</div></div>
-   <div class="fe-bar2" style="margin-top:10px">Condiciones</div>
-   <div class="fe-gen" style="border-top:0">
-    <div class="g" style="grid-template-columns:2fr 2fr 1fr 1fr">${f('Proyecto / OP','fo-proy',o?V('proyecto'):ops.join(' - '),'oninput="feOcProyManual(this.value)" placeholder="Se arma solo con las OP de las líneas"')}${f('Forma de pago','fo-fp',V('forma_pago'),'placeholder="Ej. 30 días"')}${f('Validez (días)','fo-val',o?V('validez_dias'):30,'type="number"')}${f('IVA %','fo-iva',o?(Number(o.iva_pct)||0):19,'type="number" step="any" oninput="feOcIva()"')}</div>
-    <div class="g" style="grid-template-columns:1fr 1fr">${f('Solicitó','fo-sol',o?V('solicito'):(_SESSION&&_SESSION.nombre)||'')}${f('Autorizó','fo-aut',o?V('autorizo'):((O.lines.map(l=>linDe(l.id)).find(m=>m&&m.autorizado_por)||{}).autorizado_por||''))}</div></div>
-   ${o?'':`<div class="fe-bar2" style="margin-top:10px">Pedidos pendientes por comprar — marca los que van en esta orden</div>
-   <div style="border:2px solid #1a3a6b;border-top:0;padding:6px"><input id="fo-q" placeholder="🔎 Buscar material, OP, empresa o proveedor…" oninput="feOcBuscar()" style="border:1px solid #cbd5e1;background:#fff;border-radius:6px;margin-bottom:6px"><div id="fo-pend" style="max-height:230px;overflow:auto"></div></div>`}
-   <div class="fe-bar1" style="margin-top:10px"><span>Líneas de la orden — el valor puedes escribirlo sin IVA o con IVA</span><span id="fo-cnt"></span></div>
-   <table class="fe-rows"><thead><tr><th>#</th><th>Cant.</th><th>Descripción</th><th>Días</th><th>Valor sin IVA</th><th>Valor con IVA</th><th></th></tr></thead><tbody id="fo-body"></tbody></table>
-   ${o?'':'<button class="fe-add" onclick="feOcLib()">＋ Agregar ítem manual</button>'}
-   <div style="display:flex;justify-content:flex-end;margin:8px 0"><table id="fo-tot" style="width:auto;min-width:260px;border:2px solid #1a3a6b;font-size:12px"></table></div>
-   <div class="fe-obs"><b>Observaciones / condiciones</b><textarea id="fo-obs" rows="3">${E(V('observaciones'))}</textarea></div>
-   ${o?'':`<label style="display:none;gap:10px;align-items:center;margin-top:10px;font-size:12px" id="fo-savep-w"><input type="checkbox" id="fo-savep" style="width:18px;height:18px"> Guardar este proveedor en el directorio</label>`}
-   <div class="fe-ap-t">Autorización</div>
-   <table class="fe-aprob"><thead><tr><th style="width:30%">Elaboró</th><th style="width:30%">Autorizó</th><th>Proveedor (recibido)</th></tr></thead><tbody><tr><td style="height:46px"></td><td></td><td></td></tr></tbody></table>
+  const EM=(typeof EMPRESA_WEDM!=='undefined'?EMPRESA_WEDM:{});
+  const fl=(lab,id,v,ex)=>`<div class="fl"><span class="lab">${lab}:</span><input id="${id}" value="${E(v==null?'':v)}" ${ex||''}></div>`;
+  const penBox=o?'':`<div class="pdbox"><div class="fe-bar2" style="border-radius:6px 6px 0 0">Pedidos pendientes por comprar — marca los que van en esta orden</div>
+   <div style="border:2px solid #1a3a6b;border-top:0;padding:6px;background:#fff"><input id="fo-q" placeholder="🔎 Buscar material, OP, empresa o proveedor…" oninput="feOcBuscar()" style="border:1px solid #cbd5e1;background:#fff;border-radius:6px;margin-bottom:6px"><div id="fo-pend" style="max-height:200px;overflow:auto"></div></div></div>`;
+  const html=`<style>
+   .pd{max-width:800px!important;padding:26px 30px!important;font:10px Arial,Helvetica,sans-serif!important;color:#111!important}
+   .pd table{border-collapse:collapse;width:100%}.pd td,.pd th{padding:5px 8px;vertical-align:middle}
+   .pd .az{background:#355f94;color:#fff;font-weight:700;text-align:center;text-transform:uppercase}.pd .b{border:1px solid #999}.pd .c{text-align:center}.pd .g{background:#f1f1f1}
+   .pd .lab{color:#355f94;font-weight:700;text-transform:uppercase;white-space:nowrap}.pd .fl{display:flex;align-items:center;gap:6px;margin:2px 0}
+   .pd .fl input{flex:1;border-bottom:1px dotted #94a3b8;border-radius:0}.pd .lt{font-size:7.5px;color:#355f94;font-weight:700;text-transform:uppercase;margin-top:2px}
+   .pd input,.pd textarea{font-size:10px}.pd td .x{background:#dc2626;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:9px}
+   .pdbox{max-width:800px;margin:0 auto 10px}.pdtools{max-width:800px;margin:0 auto 8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#e8eef7;border:1px solid #c5d3ea;border-radius:8px;padding:6px 10px;font-size:11px;color:#1a3a6b;font-weight:700}
+   .pdtools input{width:62px;border:1px solid #94a3b8;background:#fff;border-radius:5px;text-align:center;padding:3px}
+   @media(max-width:700px){.pd{padding:10px 8px!important;overflow-x:auto}.pd table{min-width:560px}}
+  </style>${dlProvs()}<datalist id="fo-ops"></datalist>
+  ${penBox}
+  <div class="pdtools"><span>IVA %</span><input id="fo-iva" type="number" step="any" value="${o?(Number(o.iva_pct)||0):19}" oninput="feOcIva()"><span style="font-weight:500;color:#475569">Cada línea se puede escribir <b>sin IVA</b> o <b>con IVA</b>: el otro se calcula al instante.</span></div>
+  <div class="fe-sheet pd">
+   <table style="margin-bottom:14px"><tr><td style="width:50%;vertical-align:middle;text-align:center;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_B64_PNG}" alt="GRUPO WEDM" style="height:52px;width:auto"></div><div style="color:#444;line-height:1.55">${E(EM.dir||'')}<br><b>Tel:</b> ${E(EM.tel||'')} &nbsp; <b>Cel:</b> ${E(EM.cel||'')}<br><b>Email:</b> ${E(EM.email||'')}<br><b>NIT:</b> ${E(EM.nit||'')}<br>${E(EM.ciudad||'')}</div></td>
+    <td style="width:50%;vertical-align:top"><div style="line-height:1.6">
+     <div class="fl"><span class="lab">Fecha:</span><span>${E(String(o?o.fecha:hoyISO()).slice(0,10).split('-').reverse().join('/'))}</span></div>
+     ${fl('Señores','fo-prov',o?V('prov_nombre'):(provs.length===1?provs[0]:''),'list="dl-provs" autocomplete="off" oninput="feOcProv()" onchange="feOcProv()" placeholder="🔎 Buscar o escribir proveedor" style="font-weight:700"')}
+     ${fl('NIT','fo-nit',V('prov_nit'))}${fl('Dirección','fo-dir',V('prov_direccion'))}${fl('Ciudad','fo-ciu',V('prov_ciudad'))}${fl('Encargado','fo-enc',V('prov_contacto'))}${fl('Teléfono','fo-tel',V('prov_telefono'))}</div></td></tr></table>
+   <table style="margin-bottom:14px"><tr><td style="border:none;width:50%"></td><td style="border:1px solid #999;background:#f4f4f4;padding:7px 12px;width:50%">${fl('OP / Proyecto','fo-proy',o?V('proyecto'):ops.join(' - '),'oninput="feOcProyManual(this.value)" placeholder="Se arma solo con las OP de las líneas" style="font-weight:700"')}</td></tr></table>
+   <table style="margin-bottom:14px"><tr><td class="az b" style="width:50%;padding:8px">Orden de compra</td><td class="b c" style="width:50%;padding:8px;background:#f4f4f4;font-size:14px;font-weight:700">${o?E(ocNum(o)):'<span style="font-size:11px;color:#64748b">Se asigna al guardar</span>'}</td></tr></table>
+   <table><thead><tr class="az"><th class="b" style="width:7%">Ítem</th><th class="b" style="width:9%">Cant</th><th class="b">Descripción</th><th class="b" style="width:16%">Valor und</th><th class="b" style="width:16%">Valor total</th></tr></thead><tbody id="fo-body"></tbody><tfoot id="fo-tot"></tfoot></table>
+   ${o?'':'<button class="fe-add nop" onclick="feOcLib()">＋ Agregar ítem manual (cualquier OP o sin OP)</button>'}
+   <div style="margin:14px 0 8px;font-weight:700;color:#222">OBSERVACIONES: <span style="font-weight:400;color:#555"> &nbsp;Validez: <input id="fo-val" type="number" value="${o?V('validez_dias'):30}" style="width:48px;display:inline;text-align:center;border-bottom:1px dotted #94a3b8"> días.</span></div>
+   <textarea id="fo-obs" rows="3" style="border:1px dotted #94a3b8;margin-bottom:10px">${E(V('observaciones'))}</textarea>
+   <table style="margin-top:6px"><tr><td class="az b" style="width:25%">Forma de pago</td><td class="b c" style="width:25%"><input id="fo-fp" value="${E(V('forma_pago'))}" placeholder="Ej. 30 días" style="text-align:center"></td><td class="az b" style="width:50%">Atentamente</td></tr>
+    <tr><td class="az b">Autorizó</td><td class="b c"><input id="fo-aut" value="${E(o?V('autorizo'):((O.lines.map(l=>linDe(l.id)).find(m=>m&&m.autorizado_por)||{}).autorizado_por||''))}" style="text-align:center"></td><td class="b c" style="background:#f4f4f4"><input id="fo-sol" value="${E(o?V('solicito'):(_SESSION&&_SESSION.nombre)||'')}" style="text-align:center;font-weight:700;font-size:11px"></td></tr></table>
   </div>
-  <style>#fo-tot td{padding:5px 12px;border:1px solid #cbd5e1}#fo-tot td:last-child{text-align:right;font-weight:700}#fo-tot tr.t td{background:#1a3a6b;color:#fff;font-size:13px}</style>`;
+  <div class="pdbox" style="margin-top:10px;background:#fff;border:1px dashed #94a3b8;border-radius:8px;padding:8px 12px;font-size:11px"><label style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase">Email del proveedor (no se imprime)</label><input id="fo-email" value="${E(V('prov_email'))}" style="border:1px solid #cbd5e1;border-radius:6px;background:#fff">
+   ${o?'':`<label style="display:none;gap:10px;align-items:center;margin-top:8px" id="fo-savep-w"><input type="checkbox" id="fo-savep" style="width:18px;height:18px"> Guardar este proveedor en el directorio</label>`}</div>`;
   feAbrir(o?'✏️ Editar orden de compra '+ocNum(o):'📄 Nueva orden de compra',html,`<button class="pr" onclick="feOcPrev()">🖨️ Vista previa</button><button class="sv" onclick="feOcGuardar()">💾 ${o?'Guardar cambios':'Guardar y generar'}</button>`);
   repaint(); feOcProv(); cargaOps(); O.lines.filter(l=>l.k==='lib'&&l.op).forEach(l=>cargaItems(l.op));
 };
@@ -3584,6 +3599,59 @@ window.ocEditar=id=>feOC({edit:id});
 })();
 </script>
 <!-- /WEDM-FAB -->
+<!-- WEDM-PLANT -->
+<script>
+/* Plantillas de documentos (PDF) personalizables desde el módulo Desarrollador.
+   Si hay una plantilla guardada para el tipo de documento se usa; si no, sale el formato original. */
+(function(){
+ var LS='wedm_pl_v1', PL=window.PL=window.PL||{T:{}};
+ try{ PL.T=JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(e){ PL.T={}; }
+ PL.load=async function(){ try{ var r=await sb.rpc('plantillas_listar',{}); if(r&&typeof r==='object'&&!Array.isArray(r)){ PL.T=r; try{ localStorage.setItem(LS,JSON.stringify(r)); }catch(e){} } }catch(e){} };
+ PL.has=function(t){ return !!(PL.T[t]&&PL.T[t].html); };
+ PL.guardarLocal=function(t,html){ if(html) PL.T[t]={html:html,at:new Date().toISOString()}; else delete PL.T[t]; try{ localStorage.setItem(LS,JSON.stringify(PL.T)); }catch(e){} };
+ var vacio=function(v){ return v==null||v===false||v===''||v===0; };
+ var sub=function(s,sc){ return String(s).replace(/\{\{\s*([\w.]+)\s*\}\}/g,function(_,k){ var v=sc[k]; return v==null?'':String(v); }); };
+ function proc(root,sc){
+  var reps=[].slice.call(root.querySelectorAll('[data-rep]')).filter(function(el){ return !(el.parentElement&&el.parentElement.closest('[data-rep]')&&root.contains(el.parentElement.closest('[data-rep]'))); });
+  reps.forEach(function(el){
+   var arr=sc[el.getAttribute('data-rep')]||[]; var par=el.parentNode;
+   arr.forEach(function(it,i){
+    var c=el.cloneNode(true); c.removeAttribute('data-rep');
+    var sc2=Object.assign({},sc,it,{n:i+1,zebra:i%2?'zebra':''});
+    var tmp=document.createElement('template'); tmp.innerHTML=sub(c.outerHTML,sc2);
+    var nuevo=tmp.content.firstElementChild; if(nuevo){ proc(nuevo,sc2); par.insertBefore(nuevo,el); }
+   });
+   par.removeChild(el);
+  });
+  [].slice.call(root.querySelectorAll('[data-si]')).forEach(function(el){ if(vacio(sc[el.getAttribute('data-si')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-si'); });
+  [].slice.call(root.querySelectorAll('[data-no]')).forEach(function(el){ if(!vacio(sc[el.getAttribute('data-no')])&&el.parentNode) el.parentNode.removeChild(el); else el.removeAttribute('data-no'); });
+  if(root.hasAttribute&&root.hasAttribute('data-si')){ if(vacio(sc[root.getAttribute('data-si')])&&root.parentNode) root.parentNode.removeChild(root); else root.removeAttribute('data-si'); }
+ }
+ /* Devuelve el HTML completo listo para imprimir, o null si no hay plantilla propia */
+ PL.render=function(tipo,datos,src,titulo){
+  src=src!=null?src:(PL.T[tipo]&&PL.T[tipo].html); if(!src) return null;
+  try{
+   var doc=new DOMParser().parseFromString('<!DOCTYPE html><html><body>'+src+'</body></html>','text/html');
+   proc(doc.body,datos);
+   var body=sub(doc.body.innerHTML,datos);
+   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+String(titulo||datos.titulo||'Documento').replace(/</g,'&lt;')+'</title><style>@media print{.no-print{display:none!important}}</style></head><body><div class="no-print" style="text-align:right;margin:10px 14px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>'+body+'</body></html>';
+  }catch(e){ try{ console.error('Plantilla',e); }catch(_){} return null; }
+ };
+PL.dOC=function(d){
+ var E=EMPRESA_WEDM, P=d.prov||{}; var $=function(n){ return '$'+Math.round(Number(n)||0).toLocaleString('en-US'); };
+ var cl=function(v){ var t=String(v==null?'':v).trim(); return t&&t!=='null'?esc(t):'—'; };
+ return {titulo:'Orden de compra '+d.numero,logo:LOGO_B64_PNG,logo_prov:P.logo?'<img src="'+esc(P.logo)+'" alt="" style="max-height:62px;max-width:190px;object-fit:contain">':'',
+  dir:esc(E.dir||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),nit_emp:esc(E.nit||''),ciudad_emp:esc(E.ciudad||''),
+  fecha:String(d.fecha||'').slice(0,10).split('-').reverse().join('/')||'—',prov_nombre:cl(P.nombre),prov_nit:cl(P.nit),prov_dir:cl(P.dir),prov_ciudad:cl(P.ciudad),prov_contacto:cl(P.contacto),prov_tel:cl(P.tel),
+  ops:cl(d.ops),proyecto:(d.proyecto&&String(d.proyecto).trim()!==String(d.ops||'').trim()&&!/^[0\s\-,\/y&]+$/i.test(String(d.proyecto)))?esc(d.proyecto):'',numero:esc(d.numero),
+  lineas:(d.lineas||[]).map(function(l,i){ var unit=(l.unit!=null&&l.unit!=='')?l.unit:(l.qty>0?l.total/l.qty:l.total); return {n:i+1,cant:esc(l.cant),desc:esc(l.desc),dias:l.dias?esc(l.dias):'',unit:$(unit),total:$(l.total)}; }),
+  subtotal:$(d.subtotal),iva_pct:Number(d.iva_pct)?' '+Number(d.iva_pct)+'%':'',iva:$(d.iva),total:$(d.total),validez:d.validez?esc(d.validez):'',obs:d.obs?esc(d.obs):'',forma_pago:cl(d.forma_pago),autorizo:esc(d.autorizo||''),solicito:esc(d.solicito||''),estado:(d.estado==='ANULADA'||d.estado==='BORRADOR')?d.estado:''};
+};
+
+ setTimeout(function(){ PL.load(); },1800); setTimeout(function(){ PL.load(); },9000); setInterval(function(){ PL.load(); },300000);
+})();
+</script>
+<!-- /WEDM-PLANT -->
 <!-- WEDM-OFFLINE (modo sin internet: guarda lo último descargado y deja en cola lo que se cree o edite, para enviarlo al volver la conexión) -->
 <style>
 #off-pill{position:fixed;left:10px;bottom:76px;z-index:99990;display:none;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:700 12px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#fff;background:#b45309;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:calc(100vw - 20px)}
@@ -3739,9 +3807,12 @@ window.ocEditar=id=>feOC({edit:id});
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
   location.reload();
  }
- function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ function navSync(){ try{
+  if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=function(){ syncCero(); }; r.parentNode.insertBefore(b,r.nextSibling); } }
+  if(!document.getElementById('nav-sync')){ var sc=document.querySelector('#sidebar .nav-scroll'); if(sc){ var d=document.createElement('div'); d.className='nav-item'; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; sc.appendChild(d); } }
+ }catch(e){} }
  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
- setTimeout(navSync,1500);
+ setTimeout(navSync,1500);setInterval(navSync,3000);
  window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });
