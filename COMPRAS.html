@@ -1223,7 +1223,7 @@ function _pedidosTabla(rows){
 function _ordenesTabla(rows){
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th class="sk sk1 skl0"></th><th class="sk sk2 skl1">OC</th><th>Fecha</th><th>Proveedor</th><th>Acciones</th><th>OP</th><th>Proyecto</th><th>Líneas</th><th>Total</th><th>Estado</th></tr></thead><tbody>
   ${rows.map(o=>{
-    const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=ls.length?[]:(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const n=ls.length||hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
+    const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const n=ls.length+hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
     const pv=(DB.provs||[]).find(x=>x.id===o.id_proveedor); const open=_OCX.has(o.id);
     const logo=pv&&pv.logo?`<img src="${esc(pv.logo)}" class="lc-thumb" style="width:34px;height:34px;object-fit:contain;background:#fff" alt="">`:'';
     const det=open?`<tr><td></td><td colspan="9" style="white-space:normal;background:var(--card2,#f8fafc)"><div style="padding:6px 4px">${ocInfoH(o)}${hl.map(x=>`<div class="cm-line"><div class="cm-t">${esc(x.descripcion||'—')}<small>${x.cantidad!=null?esc(String(Number(x.cantidad)))+' und':''}${x.op?' · OP-'+esc(x.op):''}</small></div><b style="font-size:12px">${fmt(x.valor_total)}</b></div>`).join('')}${ls.map(m=>`<div class="cm-line">${linDesc(m)}<span style="font-size:11px">${m.dias_entrega?'⏱ '+m.dias_entrega+' d · ':''}<b>${fmt(m.costo_real)}</b> <span class="badge ${(EST[m.estado]||[0,'gris'])[1]}">${(EST[m.estado]||[m.estado])[0]}</span></span></div>`).join('')}<div style="text-align:right;font-size:11px;color:var(--muted)">Subtotal ${fmt(o.subtotal)} · IVA ${Number(o.iva_pct)||0}% ${fmt(o.iva)}</div></div></td></tr>`:'';
@@ -1417,10 +1417,25 @@ async function guardarNueva(conOC){
 
 // — Orden de compra —
 let _OCM=null;
-function abrirOC(ids){
-  const ms=ids.map(linDe).filter(Boolean); if(!ms.length||ms.some(m=>m.estado!=='SOLICITADO')){ toast('Elige líneas por comprar','error'); return; }
+let _OLN=0;
+function ocLibreAdd(v){ v=v||{}; _OLN++; const n=_OLN, box=document.getElementById('oc-libres'); if(!box) return;
+  const d=document.createElement('div'); d.className='cm-line'; d.dataset.n=n; d.style.cssText='align-items:flex-start;flex-wrap:wrap;gap:6px'; if(v.id) d.dataset.id=v.id;
+  d.innerHTML=`<div style="flex:1;min-width:150px"><input id="ol-d-${n}" placeholder="Descripción del ítem" value="${esc(v.desc||'')}" style="width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><div style="display:flex;gap:4px;margin-top:4px"><input type="number" inputmode="decimal" id="ol-q-${n}" placeholder="Cant." value="${v.cant??1}" oninput="ocCalc()" style="width:70px;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><input type="number" inputmode="numeric" id="ol-e-${n}" placeholder="Días entrega" value="${v.dias??''}" style="flex:1;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div><div style="width:150px;flex-shrink:0">${money('ol-c-'+n,v.total||'','Total línea','ocCalc()')}${v.id?'':`<button class="btn btn-sm btn-ghost" style="color:var(--danger);margin-top:4px" onclick="this.closest('.cm-line').remove();ocCalc()">✖ Quitar</button>`}</div>`;
+  box.appendChild(d); ocCalc(); }
+function ocLibres(){ return [...document.querySelectorAll('#oc-libres .cm-line')].map(d=>{ const n=d.dataset.n; return {id:d.dataset.id||undefined,desc:gv('ol-d-'+n),cant:gv('ol-q-'+n)||'1',total:gn('ol-c-'+n),dias:gv('ol-e-'+n)}; }).filter(l=>l.desc||l.total>0); }
+function ocNueva(){
+  const pend=(DB.lineas||[]).filter(m=>m.estado==='SOLICITADO');
+  openModal('➕ Nueva orden de compra',`${ayudaForm('Marca los pedidos **pendientes por comprar** que van en esta orden. En el siguiente paso también podrás **agregar ítems nuevos** escribiéndolos a mano (sin pedido).')}
+    <input id="on-q" placeholder="Buscar material, OP, empresa…" oninput="ocNuevaFiltro()" style="width:100%;height:38px;border:1px solid var(--border);border-radius:10px;padding:0 10px;margin-bottom:8px">
+    <div id="on-list" style="max-height:48vh;overflow:auto">${pend.length?pend.map(m=>{ const p=prodDe(m.id_prod)||{}; return `<label class="cm-line on-it" data-t="${esc(_norm([m.material,m.detalle,p.op,p.empresa,m.proveedor].join(' ')))}" style="align-items:center;gap:10px;cursor:pointer"><input type="checkbox" class="on-ck" value="${m.id}" style="width:20px;height:20px;flex-shrink:0">${linDesc(m)}</label>`; }).join(''):mutedP('No hay pedidos pendientes por comprar. Puedes continuar y escribir los ítems a mano.')}</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="ocNuevaSig()">Continuar ▸</button>`);
+}
+function ocNuevaFiltro(){ const q=_norm(gv('on-q')); document.querySelectorAll('#on-list .on-it').forEach(e=>{ e.style.display=(!q||e.dataset.t.includes(q))?'':'none'; }); }
+function ocNuevaSig(){ const ids=[...document.querySelectorAll('#on-list .on-ck:checked')].map(c=>c.value); closeModal(); abrirOC(ids,true); }
+function abrirOC(ids,manual){
+  const ms=ids.map(linDe).filter(Boolean); if((!ms.length&&!manual)||ms.some(m=>m.estado!=='SOLICITADO')){ toast('Elige líneas por comprar','error'); return; }
   const ops=[...new Set(ms.map(m=>{ const p=prodDe(m.id_prod)||{}; return 'OP-'+p.op; }))];
-  const provs=[...new Set(ms.map(m=>m.proveedor).filter(Boolean))]; _OCM={ids};
+  const provs=[...new Set(ms.map(m=>m.proveedor).filter(Boolean))]; _OCM={ids,manual:!!manual};
   openModal('📄 Generar orden de compra',`${dlProvs()}${ayudaForm(`Si escribes un proveedor que ya existe, sus datos se llenan solos. Pon el **costo de cada línea**: abajo se calculan el subtotal, el IVA y el total. Revisa con **🖨️ Vista previa** antes de guardar, porque al guardar el número de la orden queda asignado.`)}<div class="form-grid">
     <div class="field span2"><label>Proveedor (razón social) *</label><input id="oc-prov" list="dl-provs" value="${esc(provs.length===1?provs[0]:'')}" placeholder="Nombre del proveedor" oninput="ocProvChange()" onchange="ocProvChange()" autocomplete="off"></div>
     ${fld('NIT','oc-nit')}${fld('Teléfono','oc-tel')}${fld('Email','oc-email')}${fld('Ciudad','oc-ciudad')}${fld('Dirección','oc-dir','','',true)}${fld('Encargado','oc-enc','','',true)}
@@ -1429,10 +1444,11 @@ function abrirOC(ids){
     ${fld('Forma de pago','oc-fp','','placeholder="Ej. 30 días"',true)}${fld('Solicitó','oc-sol',_SESSION?.nombre||'')}${fld('Autorizó','oc-aut',ms.find(m=>m.autorizado_por)?.autorizado_por||'')}
     <div class="field span2"><label>Observaciones / condiciones</label><textarea id="oc-obs"></textarea></div></div>
     <div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ms.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${money('oc-c-'+m.id,m.costo_cotizado>0?m.costo_cotizado:'','Total línea','ocCalc()')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>
+    ${manual?`<div class="cm-lines"><div class="cm-h">Ítems nuevos (sin pedido)</div><div id="oc-libres"></div><button class="btn btn-sm btn-ghost" style="margin-top:6px" onclick="ocLibreAdd()">➕ Agregar ítem</button></div>`:''}
     <div id="oc-tot" class="oc-tot"></div>
     <label style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12.5px" id="oc-savep-wrap"><input type="checkbox" id="oc-savep" style="width:18px;height:18px"> Guardar este proveedor en el directorio</label>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ghost" onclick="ocPreview()">🖨️ Vista previa</button><button class="btn btn-primary" onclick="ocGuardar()">💾 Guardar y generar</button>`);
-  ocProvChange(); ocCalc();
+  ocProvChange(); if(manual&&!ms.length) ocLibreAdd(); ocCalc();
 }
 function ocProvChange(){
   const n=_norm(gv('oc-prov')); const p=(DB.provs||[]).find(x=>_norm(x.nombre)===n);
@@ -1446,12 +1462,13 @@ function ocProvChange(){
 // pantalla nunca las llenaba y el total nunca las usaba. oc_lineas / prod_materiales solo guardan el valor total de la línea,
 // así que aquí se pide un único costo por línea: simplificación deliberada por el esquema, sin cambio en el resultado.
 function ocCalc(){
-  const ms=(_OCM?_OCM.ids:[]).map(linDe).filter(Boolean); const sub=ms.reduce((s,m)=>s+gn('oc-c-'+m.id),0); const iva=Math.round(sub*gn('oc-iva')/100);
+  const ms=(_OCM?_OCM.ids:[]).map(linDe).filter(Boolean); const sub=ms.reduce((s,m)=>s+gn('oc-c-'+m.id),0)+ocLibres().reduce((s,l)=>s+l.total,0); const iva=Math.round(sub*gn('oc-iva')/100);
   const el=document.getElementById('oc-tot'); if(el) el.innerHTML=`<div><span>Subtotal</span><b>${fmt(sub)}</b></div><div><span>IVA ${gn('oc-iva')}%</span><b>${fmt(iva)}</b></div><div class="t"><span>TOTAL</span><b>${fmt(sub+iva)}</b></div>`;
 }
 function ocDatosForm(){
   const ms=_OCM.ids.map(linDe).filter(Boolean);
   const lineas=ms.map(m=>{ const c=gn('oc-c-'+m.id); const q=(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1); return {desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:q||1,total:c,dias:gv('oc-d-'+m.id)}; });
+  ocLibres().forEach(l=>lineas.push({desc:l.desc,cant:String(l.cant),qty:Number(l.cant)||1,total:l.total,dias:l.dias}));
   const sub=lineas.reduce((s,l)=>s+l.total,0), iva=Math.round(sub*gn('oc-iva')/100);
   return {prov:{nombre:gv('oc-prov'),nit:gv('oc-nit'),tel:gv('oc-tel'),email:gv('oc-email'),ciudad:gv('oc-ciudad'),dir:gv('oc-dir'),contacto:gv('oc-enc'),logo:((DB.provs||[]).find(p=>_norm(p.nombre)===_norm(gv('oc-prov')))||{}).logo||''},
     proyecto:gv('oc-proy'),iva_pct:gn('oc-iva'),validez:gv('oc-val'),forma_pago:gv('oc-fp'),solicito:gv('oc-sol'),autorizo:gv('oc-aut'),obs:gv('oc-obs'),lineas,subtotal:sub,iva,total:sub+iva};
@@ -1470,7 +1487,9 @@ async function ocGuardar(){
     try{ await sb.rpc('compras_prov_guardar',{p_data:{nombre:prov,nit:gv('oc-nit'),telefono:gv('oc-tel'),email:gv('oc-email'),ciudad:gv('oc-ciudad'),direccion:gv('oc-dir'),contacto:gv('oc-enc')}}); }catch(e){ toast('❌ '+errMsg(e),'error'); return; }
   }
   const data={prov_nombre:prov,prov_nit:gv('oc-nit'),prov_telefono:gv('oc-tel'),prov_email:gv('oc-email'),prov_ciudad:gv('oc-ciudad'),prov_direccion:gv('oc-dir'),prov_contacto:gv('oc-enc'),proyecto:gv('oc-proy'),iva_pct:gn('oc-iva'),validez_dias:gv('oc-val'),forma_pago:gv('oc-fp'),solicito:gv('oc-sol'),autorizo:gv('oc-aut'),observaciones:gv('oc-obs')};
-  const r=await rpcC('compras_oc_crear',{p_data:data,p_ids:_OCM.ids,p_costos:costos,p_dias:dias},'✅ Orden de compra creada');
+  const libres=ocLibres(); if(!_OCM.ids.length&&!libres.length){ toast('Agrega al menos un ítem','error'); return; }
+  if(libres.some(l=>!l.desc||!(l.total>0))){ toast('Cada ítem nuevo necesita descripción y valor','error'); return; }
+  const r=await rpcC('compras_oc_crear',{p_data:data,p_ids:_OCM.ids,p_costos:costos,p_dias:dias,p_libres:libres},'✅ Orden de compra creada');
   if(r&&r.id){ closeModal(); selLimpiar(); afterC(); imprimirOC(r.id); }
 }
 
@@ -1561,7 +1580,7 @@ function imprimirOC(id){
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor)||{};
   _abrirDocParaImprimir(ocDocHtml({ops:ocOpsDe(o),tipo:ocTipo(ls),numero:ocNum(o),fecha:o.fecha,estado:o.estado,prov:{nombre:o.prov_nombre,nit:o.prov_nit,tel:o.prov_telefono,email:o.prov_email,ciudad:o.prov_ciudad,dir:o.prov_direccion,contacto:o.prov_contacto,logo:pv.logo||''},
     proyecto:o.proyecto,iva_pct:o.iva_pct,validez:o.validez_dias,forma_pago:o.forma_pago,solicito:o.solicito,autorizo:o.autorizo,obs:o.observaciones,
-    lineas:ls.length?ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})):(DB.ocLineas||[]).filter(x=>x.id_oc===id).map(x=>({desc:x.descripcion||'—',cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega})),
+    lineas:[...ls.map(m=>({desc:m.material+(m.detalle?' — '+m.detalle:''),cant:cantTxt(m)||'1',qty:(m.tipo==='MATERIAL'&&Number(m.cantidad_kg)>0)?Number(m.cantidad_kg):(m.cantidad!=null?Number(m.cantidad):1)||1,total:Number(m.costo_real)||0,dias:m.dias_entrega})),...(DB.ocLineas||[]).filter(x=>x.id_oc===id).map(x=>({desc:x.descripcion||'—',cant:x.cantidad!=null?String(Number(x.cantidad)):'1',qty:Number(x.cantidad)||1,unit:x.valor_unit,total:Number(x.valor_total)||0,dias:x.dias_entrega}))],
     subtotal:o.subtotal,iva:o.iva,total:o.total}),`${ocNum(o)}.pdf`,'ordenes_compra');
 }
 
@@ -1579,7 +1598,7 @@ function ocInfoH(o){
   return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">${f.map(([l,v])=>`<div style="min-width:0"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700">${l}</div><div style="font-size:12px;word-break:break-word">${esc(v)}</div></div>`).join('')}${o.observaciones?`<div style="grid-column:1/-1"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700">Observaciones</div><div style="font-size:12px;white-space:pre-wrap">${esc(o.observaciones)}</div></div>`:''}</div>`;
 }
 function ocCard(o){
-  const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=ls.length?[]:(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const nLin=ls.length||hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
+  const ls=(DB.lineas||[]).filter(m=>m.id_oc===o.id); const hl=(DB.ocLineas||[]).filter(x=>x.id_oc===o.id); const nLin=ls.length+hl.length; const cls={EMITIDA:'azul',RECIBIDA:'verde',ANULADA:'rojo'}[o.estado]||'gris';
   const pv=(DB.provs||[]).find(p=>p.id===o.id_proveedor); const open=_OCX.has(o.id);
   return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${pv&&pv.logo?`<img src="${esc(pv.logo)}" class="lc-thumb" style="object-fit:contain;background:#fff" alt="">`:'<div class="lc-thumb ph">🏭</div>'}<div style="min-width:0"><div class="lc-id">${ocNum(o)} · ${fmtDate(o.fecha)}</div><div class="lc-title">${esc(o.prov_nombre)}</div><div class="lc-sub">${nLin} línea${nLin!==1?'s':''}${o.proyecto?' · '+esc(o.proyecto):''}</div></div></div>
     <div style="text-align:right;flex-shrink:0"><span class="badge ${cls}">${o.estado}</span><div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:4px">${fmt(o.total)}</div></div></div>
@@ -1593,7 +1612,7 @@ function ordenes(){
   const all=DB.ocs||[]; const cnt=e=>all.filter(o=>o.estado===e).length; const q=_norm(_OC.q);
   const rows=all.filter(o=>(_OC.est==='TODAS'||o.estado===_OC.est)&&(!q||_norm([ocNum(o),o.prov_nombre,o.proyecto,ocOpsDe(o),o.forma_pago,o.solicito].join(' ')).includes(q)));
   const chips=chipsH([['EMITIDA','Emitidas',cnt('EMITIDA')],['RECIBIDA','Recibidas',cnt('RECIBIDA')],['ANULADA','Anuladas',cnt('ANULADA')],['TODAS','Todas',all.length]],_OC.est,'ocEst');
-  const banner=moduleBanner('📄','Órdenes de compra','Órdenes emitidas a proveedores',chips+(puedeImportar()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="impSel('oc');nav('subir')">⬆️ Subir órdenes anteriores</button></div>`:''));
+  const banner=moduleBanner('📄','Órdenes de compra','Órdenes emitidas a proveedores',chips+(puedeCompras()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="ocNueva()">➕ Nueva orden de compra</button></div>`:'')+(puedeImportar()?`<div style="margin-top:8px"><button class="btn btn-sm" style="background:#fff;color:#0f766e;font-weight:800" onclick="impSel('oc');nav('subir')">⬆️ Subir órdenes anteriores</button></div>`:''));
   const emit=all.filter(o=>o.estado==='EMITIDA');
   const kp=`<div class="kstrip" style="margin-top:12px">${kchip(emit.length,'📄 Por recibir','#0f766e')}${kchip(fmt(emit.reduce((s,o)=>s+Number(o.total||0),0)),'💲 Valor por recibir','var(--gold)')}</div>`;
   const fb=`<div class="filter-bar" style="margin:6px 0 10px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OC, proveedor, proyecto…" value="${esc(_OC.q)}" autocomplete="off" data-fkey="ocq" oninput="ocSetQ(this.value)"></div><span class="filter-count">${rows.length}/${all.length}</span></div></div>`;
@@ -1621,9 +1640,11 @@ function ocEditar(id){
     <div class="field"><label>IVA %</label><input type="number" inputmode="decimal" id="oc-iva" value="${Number(o.iva_pct)||0}" oninput="ocCalc()"></div><div class="field"><label>Validez (días)</label><input type="number" inputmode="numeric" id="oc-val" value="${V('validez_dias')}"></div>
     ${fld('Forma de pago','oc-fp',V('forma_pago'),'',true)}${fld('Solicitó','oc-sol',V('solicito'))}${fld('Autorizó','oc-aut',V('autorizo'))}
     <div class="field span2"><label>Observaciones / condiciones</label><textarea id="oc-obs">${esc(V('observaciones'))}</textarea></div></div>
+    ${(!o.historico&&(DB.ocLineas||[]).some(x=>x.id_oc===id))?`<div class="cm-lines"><div class="cm-h">Ítems escritos a mano</div><div id="oc-libres"></div></div>`:''}
     ${ls.length?`<div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ls.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${money('oc-c-'+m.id,m.costo_real>0?m.costo_real:'','Total línea','ocCalc()')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>`:mutedP('Orden del sistema anterior: se editan los datos del encabezado; las líneas y el subtotal no cambian.')}
     <div id="oc-tot" class="oc-tot"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="ocEditarGuardar('${id}')">💾 Guardar cambios</button>`);
+  if(!o.historico) (DB.ocLineas||[]).filter(x=>x.id_oc===id).forEach(x=>ocLibreAdd({id:x.id,desc:x.descripcion,cant:Number(x.cantidad)||1,total:Number(x.valor_total)||0,dias:x.dias_entrega}));
   ocCalc();
 }
 async function ocEditarGuardar(id){
@@ -1631,7 +1652,7 @@ async function ocEditarGuardar(id){
   const costos={}, dias={};
   for(const mid of _OCM.ids){ const c=gn('oc-c-'+mid); if(!(c>0)){ toast('Escribe el costo de todas las líneas','error'); return; } costos[mid]=c; if(gv('oc-d-'+mid)) dias[mid]=parseInt(gv('oc-d-'+mid)); }
   const data={prov_nombre:gv('oc-prov'),prov_nit:gv('oc-nit'),prov_telefono:gv('oc-tel'),prov_email:gv('oc-email'),prov_ciudad:gv('oc-ciudad'),prov_direccion:gv('oc-dir'),prov_contacto:gv('oc-enc'),proyecto:gv('oc-proy'),iva_pct:gn('oc-iva'),validez_dias:gv('oc-val'),forma_pago:gv('oc-fp'),solicito:gv('oc-sol'),autorizo:gv('oc-aut'),observaciones:gv('oc-obs')};
-  if(await rpcC('compras_oc_editar',{p_id:id,p_data:data,p_costos:costos,p_dias:dias},'✅ Orden actualizada')){ closeModal(); afterC(); }
+  if(await rpcC('compras_oc_editar',{p_id:id,p_data:data,p_costos:costos,p_dias:dias,p_libres:ocLibres()},'✅ Orden actualizada')){ closeModal(); afterC(); }
 }
 async function ocAnular(id){
   const o=(DB.ocs||[]).find(x=>x.id===id); if(!o||!confirm(`¿Anular la orden ${ocNum(o)}? Sus líneas vuelven a "Por comprar".`)) return;
@@ -1985,6 +2006,7 @@ ordenes:{icono:'📄',titulo:'Órdenes de compra',
   pasos:[
    {t:'Consultar una orden',items:['Elige **Emitidas** (por recibir), **Recibidas**, **Anuladas** o **Todas** y usa la búsqueda.','Toca **Ver líneas ▾** para ver los datos del proveedor (NIT, teléfono, correo, dirección, encargado), las condiciones (forma de pago, validez, quién solicitó y autorizó, observaciones) y qué incluye y cuánto cuesta cada línea.','**🖨️ Imprimir** abre el PDF de la orden (con logo, NIT de la empresa, proveedor, líneas, IVA, total, nota de condiciones y firmas).']},
    {t:'Recibir una orden',items:['En una orden **Emitida** toca **✅ Recibida**.','Escribe la **fecha** y la **factura**. Todas sus líneas pasan a **Recibido**.']},
+   {t:'Crear una orden desde Órdenes de compra',items:['Toca **➕ Nueva orden de compra**, marca los pedidos pendientes que van y toca **Continuar**.','En el formulario puedes **➕ Agregar ítem** para escribir a mano cosas que no tienen pedido (descripción, cantidad y valor total).','El número de la orden es el consecutivo siguiente al más alto: si eliminas la última, ese número se vuelve a usar; si eliminas una intermedia queda el hueco.']},
    {t:'Editar o eliminar una orden',items:['**✏️ Editar** (solo órdenes emitidas): cambia proveedor, IVA, forma de pago, observaciones y el costo o días de cada línea.','**🗑️ Eliminar** (órdenes emitidas o anuladas): la borra del todo y no se puede deshacer. Si estaba emitida, sus pedidos vuelven a **Por comprar**. Una orden **recibida** no se puede eliminar.']},
    {t:'Anular una orden',items:['Toca **✖ Anular** y confirma. La orden queda **Anulada** y sus pedidos vuelven a **Por comprar**.']}],
   reglas:['Una orden **ya recibida** no se puede anular.','Al **anular**, sus pedidos vuelven a **Por comprar** (en el sistema anterior quedaban marcados como comprados).','Las órdenes nuevas se numeran automáticamente: siguen la numeración del sistema anterior.','En las órdenes **Históricas** el PDF que se imprime se arma de nuevo con los datos guardados; el PDF original del sistema anterior quedó en AppSheet y no se puede abrir desde aquí.'],
