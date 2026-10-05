@@ -1288,6 +1288,25 @@ function pedidos(){
 // ── Formularios (modales) ──────────────────────────────────────────
 const dlProvs=()=>`<datalist id="dl-provs">${[...new Set([...(DB.provs||[]).filter(p=>p.activo).map(p=>p.nombre),...(DB.lineas||[]).map(m=>m.proveedor).filter(Boolean)])].sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`;
 const fld=(lbl,id,val='',extra='',span=false)=>`<div class="field${span?' span2':''}"><label>${lbl}</label><input id="${id}" value="${esc(val)}" ${extra} autocomplete="off"></div>`;
+const _inpS='width:100%;box-sizing:border-box';
+function ivaPrecio(bid,val){
+  const v=(val===''||val==null)?'':val;
+  return `<div class="iva-wrap" data-bid="${bid}" data-mode="sin"><div style="display:flex;gap:0;margin-bottom:4px;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:11px;font-weight:800"><button type="button" class="iva-b iva-sin" onclick="ivaModo('${bid}','sin')" style="flex:1;border:0;padding:5px 2px;background:#0f766e;color:#fff;cursor:pointer">Sin IVA</button><button type="button" class="iva-b iva-con" onclick="ivaModo('${bid}','con')" style="flex:1;border:0;padding:5px 2px;background:#fff;color:#334155;cursor:pointer">Con IVA</button></div>
+    <div class="iva-i-sin">${money(bid,v,'Total línea','ocCalc()')}</div><div class="iva-i-con" style="display:none">${money(bid+'-v','','Total con IVA','ocCalc()')}</div>
+    <div class="iva-note" style="font-size:11px;color:var(--muted);margin-top:3px;text-align:right"></div></div>`;
+}
+function ivaModo(bid,m){ const w=document.querySelector('.iva-wrap[data-bid="'+bid+'"]'); if(!w) return; w.dataset.mode=m;
+  w.querySelector('.iva-i-sin').style.display=m==='sin'?'':'none'; w.querySelector('.iva-i-con').style.display=m==='con'?'':'none';
+  const on=['#0f766e','#fff'], off=['#fff','#334155']; const a=w.querySelector('.iva-sin'), b=w.querySelector('.iva-con');
+  [a.style.background,a.style.color]=m==='sin'?on:off; [b.style.background,b.style.color]=m==='con'?on:off;
+  ocCalc(); const i=document.getElementById(m==='sin'?bid:bid+'-v'); if(i) i.focus(); }
+function ivaSync(){
+  const r=(parseFloat((document.getElementById('oc-iva')||{}).value)||0)/100, f=n=>'$'+Math.round(n).toLocaleString('es-CO');
+  document.querySelectorAll('.iva-wrap').forEach(w=>{ const bid=w.dataset.bid, b=document.getElementById(bid), c=document.getElementById(bid+'-v'); if(!b||!c) return;
+    const note=w.querySelector('.iva-note');
+    if(w.dataset.mode==='con'){ const t=parseFloat(c.value); b.value=isNaN(t)?'':String(Math.round(t/(1+r)*100)/100); note.textContent=isNaN(t)?'':'Sin IVA: '+f(t/(1+r)); }
+    else { const t=parseFloat(b.value); c.value=isNaN(t)?'':String(Math.round(t*(1+r))); note.textContent=isNaN(t)?'':'Con IVA: '+f(t*(1+r)); } });
+}
 const money=(id,val='',ph='0',oninput='')=>`<div class="money-row"><span class="money-sign">$</span><input type="number" inputmode="numeric" id="${id}" value="${val===''||val==null?'':val}" placeholder="${ph}" ${oninput?`oninput="${oninput}"`:''}></div>`;
 const linDesc=m=>{ const p=prodDe(m.id_prod)||{}; return `<div class="cm-t">${esc(m.material)}<small>OP-${p.op??'—'} · ${esc(p.empresa||'')}${cantTxt(m)?' · '+esc(cantTxt(m)):''}</small></div>`; };
 
@@ -1420,7 +1439,7 @@ let _OCM=null;
 let _OLN=0;
 function ocLibreAdd(v){ v=v||{}; _OLN++; const n=_OLN, box=document.getElementById('oc-libres'); if(!box) return;
   const d=document.createElement('div'); d.className='cm-line'; d.dataset.n=n; d.style.cssText='align-items:flex-start;flex-wrap:wrap;gap:6px'; if(v.id) d.dataset.id=v.id;
-  d.innerHTML=`<div style="flex:1;min-width:150px"><input id="ol-d-${n}" placeholder="Descripción del ítem" value="${esc(v.desc||'')}" style="width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><div style="display:flex;gap:4px;margin-top:4px"><input type="number" inputmode="decimal" id="ol-q-${n}" placeholder="Cant." value="${v.cant??1}" oninput="ocCalc()" style="width:70px;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><input type="number" inputmode="numeric" id="ol-e-${n}" placeholder="Días entrega" value="${v.dias??''}" style="flex:1;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div><div style="width:150px;flex-shrink:0">${money('ol-c-'+n,v.total||'','Total línea','ocCalc()')}${v.id?'':`<button class="btn btn-sm btn-ghost" style="color:var(--danger);margin-top:4px" onclick="this.closest('.cm-line').remove();ocCalc()">✖ Quitar</button>`}</div>`;
+  d.innerHTML=`<div style="flex:1;min-width:150px"><input id="ol-d-${n}" placeholder="Descripción del ítem" value="${esc(v.desc||'')}" style="width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><div style="display:flex;gap:4px;margin-top:4px"><input type="number" inputmode="decimal" id="ol-q-${n}" placeholder="Cant." value="${v.cant??1}" oninput="ocCalc()" style="width:70px;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"><input type="number" inputmode="numeric" id="ol-e-${n}" placeholder="Días entrega" value="${v.dias??''}" style="flex:1;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div><div style="width:150px;flex-shrink:0">${ivaPrecio('ol-c-'+n,v.total||'')}${v.id?'':`<button class="btn btn-sm btn-ghost" style="color:var(--danger);margin-top:4px" onclick="this.closest('.cm-line').remove();ocCalc()">✖ Quitar</button>`}</div>`;
   box.appendChild(d); ocCalc(); }
 function ocLibres(){ return [...document.querySelectorAll('#oc-libres .cm-line')].map(d=>{ const n=d.dataset.n; return {id:d.dataset.id||undefined,desc:gv('ol-d-'+n),cant:gv('ol-q-'+n)||'1',total:gn('ol-c-'+n),dias:gv('ol-e-'+n)}; }).filter(l=>l.desc||l.total>0); }
 function ocNueva(){
@@ -1443,7 +1462,7 @@ function abrirOC(ids,manual){
     <div class="field"><label>IVA %</label><input type="number" inputmode="decimal" id="oc-iva" value="19" oninput="ocCalc()"></div><div class="field"><label>Validez (días)</label><input type="number" inputmode="numeric" id="oc-val" value="30"></div>
     ${fld('Forma de pago','oc-fp','','placeholder="Ej. 30 días"',true)}${fld('Solicitó','oc-sol',_SESSION?.nombre||'')}${fld('Autorizó','oc-aut',ms.find(m=>m.autorizado_por)?.autorizado_por||'')}
     <div class="field span2"><label>Observaciones / condiciones</label><textarea id="oc-obs"></textarea></div></div>
-    <div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ms.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${money('oc-c-'+m.id,m.costo_cotizado>0?m.costo_cotizado:'','Total línea','ocCalc()')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>
+    <div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ms.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${ivaPrecio('oc-c-'+m.id,m.costo_cotizado>0?m.costo_cotizado:'')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>
     ${manual?`<div class="cm-lines"><div class="cm-h">Ítems nuevos (sin pedido)</div><div id="oc-libres"></div><button class="btn btn-sm btn-ghost" style="margin-top:6px" onclick="ocLibreAdd()">➕ Agregar ítem</button></div>`:''}
     <div id="oc-tot" class="oc-tot"></div>
     <label style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12.5px" id="oc-savep-wrap"><input type="checkbox" id="oc-savep" style="width:18px;height:18px"> Guardar este proveedor en el directorio</label>`,
@@ -1462,6 +1481,7 @@ function ocProvChange(){
 // pantalla nunca las llenaba y el total nunca las usaba. oc_lineas / prod_materiales solo guardan el valor total de la línea,
 // así que aquí se pide un único costo por línea: simplificación deliberada por el esquema, sin cambio en el resultado.
 function ocCalc(){
+  ivaSync();
   const ms=(_OCM?_OCM.ids:[]).map(linDe).filter(Boolean); const sub=ms.reduce((s,m)=>s+gn('oc-c-'+m.id),0)+ocLibres().reduce((s,l)=>s+l.total,0); const iva=Math.round(sub*gn('oc-iva')/100);
   const el=document.getElementById('oc-tot'); if(el) el.innerHTML=`<div><span>Subtotal</span><b>${fmt(sub)}</b></div><div><span>IVA ${gn('oc-iva')}%</span><b>${fmt(iva)}</b></div><div class="t"><span>TOTAL</span><b>${fmt(sub+iva)}</b></div>`;
 }
@@ -1641,7 +1661,7 @@ function ocEditar(id){
     ${fld('Forma de pago','oc-fp',V('forma_pago'),'',true)}${fld('Solicitó','oc-sol',V('solicito'))}${fld('Autorizó','oc-aut',V('autorizo'))}
     <div class="field span2"><label>Observaciones / condiciones</label><textarea id="oc-obs">${esc(V('observaciones'))}</textarea></div></div>
     ${(!o.historico&&(DB.ocLineas||[]).some(x=>x.id_oc===id))?`<div class="cm-lines"><div class="cm-h">Ítems escritos a mano</div><div id="oc-libres"></div></div>`:''}
-    ${ls.length?`<div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ls.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${money('oc-c-'+m.id,m.costo_real>0?m.costo_real:'','Total línea','ocCalc()')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>`:mutedP('Orden del sistema anterior: se editan los datos del encabezado; las líneas y el subtotal no cambian.')}
+    ${ls.length?`<div class="cm-lines"><div class="cm-h">Líneas de la orden</div>${ls.map(m=>`<div class="cm-line" style="align-items:flex-start">${linDesc(m)}<div style="width:150px;flex-shrink:0">${ivaPrecio('oc-c-'+m.id,m.costo_real>0?m.costo_real:'')}<input type="number" inputmode="numeric" id="oc-d-${m.id}" placeholder="Días entrega" value="${m.dias_entrega??''}" style="margin-top:4px;width:100%;height:34px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px"></div></div>`).join('')}</div>`:mutedP('Orden del sistema anterior: se editan los datos del encabezado; las líneas y el subtotal no cambian.')}
     <div id="oc-tot" class="oc-tot"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="ocEditarGuardar('${id}')">💾 Guardar cambios</button>`);
   if(!o.historico) (DB.ocLineas||[]).filter(x=>x.id_oc===id).forEach(x=>ocLibreAdd({id:x.id,desc:x.descripcion,cant:Number(x.cantidad)||1,total:Number(x.valor_total)||0,dias:x.dias_entrega}));
@@ -2006,6 +2026,7 @@ ordenes:{icono:'📄',titulo:'Órdenes de compra',
   pasos:[
    {t:'Consultar una orden',items:['Elige **Emitidas** (por recibir), **Recibidas**, **Anuladas** o **Todas** y usa la búsqueda.','Toca **Ver líneas ▾** para ver los datos del proveedor (NIT, teléfono, correo, dirección, encargado), las condiciones (forma de pago, validez, quién solicitó y autorizó, observaciones) y qué incluye y cuánto cuesta cada línea.','**🖨️ Imprimir** abre el PDF de la orden (con logo, NIT de la empresa, proveedor, líneas, IVA, total, nota de condiciones y firmas).']},
    {t:'Recibir una orden',items:['En una orden **Emitida** toca **✅ Recibida**.','Escribe la **fecha** y la **factura**. Todas sus líneas pasan a **Recibido**.']},
+   {t:'Precio con IVA o sin IVA',items:['En cada línea de la orden hay un interruptor **Sin IVA / Con IVA**. Elige en cuál de los dos vas a escribir el precio: abajo ves al instante el otro valor (según el **IVA %** de la orden). La orden siempre se guarda y suma sin IVA.']},
    {t:'Crear una orden desde Órdenes de compra',items:['Toca **➕ Nueva orden de compra**, marca los pedidos pendientes que van y toca **Continuar**.','En el formulario puedes **➕ Agregar ítem** para escribir a mano cosas que no tienen pedido (descripción, cantidad y valor total).','El número de la orden es el consecutivo siguiente al más alto: si eliminas la última, ese número se vuelve a usar; si eliminas una intermedia queda el hueco.']},
    {t:'Editar o eliminar una orden',items:['**✏️ Editar** (solo órdenes emitidas): cambia proveedor, IVA, forma de pago, observaciones y el costo o días de cada línea.','**🗑️ Eliminar** (órdenes emitidas o anuladas): la borra del todo y no se puede deshacer. Si estaba emitida, sus pedidos vuelven a **Por comprar**. Una orden **recibida** no se puede eliminar.']},
    {t:'Anular una orden',items:['Toca **✖ Anular** y confirma. La orden queda **Anulada** y sus pedidos vuelven a **Por comprar**.']}],
@@ -3331,7 +3352,7 @@ window.WEDM_DETALLE=function(p){ _PD.q=String(p.op); _PD.est='TODOS'; var g=docu
  function tx(store,mode,fn){ return db().then(function(d){ return new Promise(function(ok,ko){ var t=d.transaction(store,mode), r=fn(t.objectStore(store)); t.oncomplete=function(){ ok(r&&r.result); }; t.onerror=t.onabort=function(){ ko(t.error); }; }); }); }
  function cget(k){ return tx('cache','readonly',function(s){ return s.get(k); }).catch(function(){ return null; }); }
  function cput(k,v){ tx('cache','readwrite',function(s){ return s.put({v:v,t:Date.now()},k); }).catch(function(){}); }
- function cclear(){ tx('cache','readwrite',function(s){ var rq=s.openCursor(); rq.onsuccess=function(){ var c=rq.result; if(c){ if(!/^LOGIN\||^\|R\|listar_usuarios/.test(String(c.key))) c.delete(); c.continue(); } }; return rq; }).catch(function(){}); }
+ function cclear(){ return tx('cache','readwrite',function(s){ var rq=s.openCursor(); rq.onsuccess=function(){ var c=rq.result; if(c){ if(!/^LOGIN\||^\|R\|listar_usuarios/.test(String(c.key))) c.delete(); c.continue(); } }; return rq; }).catch(function(){}); }
  function qsave(it){ return tx('queue','readwrite',function(s){ return s.put(it); }).then(function(k){ if(it.n==null) it.n=k; return it; }); }
  function qdel(n){ return tx('queue','readwrite',function(s){ return s.delete(n); }).catch(function(){}); }
  function qload(){ return tx('queue','readonly',function(s){ return s.getAll(); }).then(function(a){ Q=a||[]; ui(); }).catch(function(){}); }
@@ -3452,7 +3473,20 @@ window.WEDM_DETALLE=function(p){ _PD.q=String(p.op); _PD.est='TODOS'; var g=docu
   var body='<div style="font-size:12.5px;color:#64748b;margin-bottom:8px">'+(offline()?'No hay conexión. Lo que hagas se guarda aquí y se envía solo cuando vuelva el internet.':'Estos cambios están esperando para enviarse al servidor.')+'</div>'+(l||'<div style="text-align:center;color:#64748b;padding:18px">Nada pendiente ✅</div>');
   try{ openModal('📴 Cambios pendientes',body,'<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="if(confirm(\'¿Borrar los datos guardados para uso sin internet en este equipo? Los cambios pendientes no se borran.\')){WEDM_OFF.clear();closeModal();}">🗑 Borrar datos guardados</button><button class="btn btn-primary" onclick="closeModal();WEDM_OFF.sync()">🔄 Enviar ahora</button>'); }catch(e){}
  }
- window.WEDM_OFF={relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
+ // ── Sincronizar desde cero (vuelve a descargar todo, como al abrir la app) ──
+ async function syncCero(){
+  if(offline()){ if(fake()&&navigator.onLine!==false){ pedirClave(); return; } try{ alert('Sin internet no se puede sincronizar desde cero.'); }catch(e){} return; }
+  if(!confirm('¿Sincronizar desde cero?\nSe envían los cambios pendientes, se vuelve a descargar todo y la pantalla se reinicia.')) return;
+  var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,.85);color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px system-ui,sans-serif;text-align:center;padding:20px'; ov.innerHTML='🔄 Sincronizando desde cero…'; document.body.appendChild(ov);
+  try{ await sync(); }catch(e){}
+  try{ await cclear(); }catch(e){}
+  try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+  location.reload();
+ }
+ function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
+ setTimeout(navSync,1500);
+ window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });
  window.addEventListener('offline',ui);

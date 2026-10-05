@@ -6284,7 +6284,7 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
  function tx(store,mode,fn){ return db().then(function(d){ return new Promise(function(ok,ko){ var t=d.transaction(store,mode), r=fn(t.objectStore(store)); t.oncomplete=function(){ ok(r&&r.result); }; t.onerror=t.onabort=function(){ ko(t.error); }; }); }); }
  function cget(k){ return tx('cache','readonly',function(s){ return s.get(k); }).catch(function(){ return null; }); }
  function cput(k,v){ tx('cache','readwrite',function(s){ return s.put({v:v,t:Date.now()},k); }).catch(function(){}); }
- function cclear(){ tx('cache','readwrite',function(s){ var rq=s.openCursor(); rq.onsuccess=function(){ var c=rq.result; if(c){ if(!/^LOGIN\||^\|R\|listar_usuarios/.test(String(c.key))) c.delete(); c.continue(); } }; return rq; }).catch(function(){}); }
+ function cclear(){ return tx('cache','readwrite',function(s){ var rq=s.openCursor(); rq.onsuccess=function(){ var c=rq.result; if(c){ if(!/^LOGIN\||^\|R\|listar_usuarios/.test(String(c.key))) c.delete(); c.continue(); } }; return rq; }).catch(function(){}); }
  function qsave(it){ return tx('queue','readwrite',function(s){ return s.put(it); }).then(function(k){ if(it.n==null) it.n=k; return it; }); }
  function qdel(n){ return tx('queue','readwrite',function(s){ return s.delete(n); }).catch(function(){}); }
  function qload(){ return tx('queue','readonly',function(s){ return s.getAll(); }).then(function(a){ Q=a||[]; ui(); }).catch(function(){}); }
@@ -6405,7 +6405,20 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
   var body='<div style="font-size:12.5px;color:#64748b;margin-bottom:8px">'+(offline()?'No hay conexión. Lo que hagas se guarda aquí y se envía solo cuando vuelva el internet.':'Estos cambios están esperando para enviarse al servidor.')+'</div>'+(l||'<div style="text-align:center;color:#64748b;padding:18px">Nada pendiente ✅</div>');
   try{ openModal('📴 Cambios pendientes',body,'<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="if(confirm(\'¿Borrar los datos guardados para uso sin internet en este equipo? Los cambios pendientes no se borran.\')){WEDM_OFF.clear();closeModal();}">🗑 Borrar datos guardados</button><button class="btn btn-primary" onclick="closeModal();WEDM_OFF.sync()">🔄 Enviar ahora</button>'); }catch(e){}
  }
- window.WEDM_OFF={relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
+ // ── Sincronizar desde cero (vuelve a descargar todo, como al abrir la app) ──
+ async function syncCero(){
+  if(offline()){ if(fake()&&navigator.onLine!==false){ pedirClave(); return; } try{ alert('Sin internet no se puede sincronizar desde cero.'); }catch(e){} return; }
+  if(!confirm('¿Sincronizar desde cero?\nSe envían los cambios pendientes, se vuelve a descargar todo y la pantalla se reinicia.')) return;
+  var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,.85);color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px system-ui,sans-serif;text-align:center;padding:20px'; ov.innerHTML='🔄 Sincronizando desde cero…'; document.body.appendChild(ov);
+  try{ await sync(); }catch(e){}
+  try{ await cclear(); }catch(e){}
+  try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+  location.reload();
+ }
+ function navSync(){ try{ if(document.getElementById('nav-sync')) return; var n=document.getElementById('nav-inst'); if(!n||!n.parentNode) return; var d=document.createElement('div'); d.className=n.className; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; n.parentNode.insertBefore(d,n); }catch(e){} }
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
+ setTimeout(navSync,1500);
+ window.WEDM_OFF={syncCero:syncCero,relogin:relogin,sync:sync,ui:ui,clear:cclear,pendientes:function(){ return Q.slice(); },
   descartar:async function(n){ var it=Q.find(function(x){ return x.n===n; }); Q=Q.filter(function(x){ return x.n!==n; }); await qdel(n); ui(); panel(); } };
  window.addEventListener('online',function(){ ui(); setTimeout(sync,1500); });
  window.addEventListener('offline',ui);
