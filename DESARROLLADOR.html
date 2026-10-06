@@ -4534,7 +4534,8 @@ function formCrearOP(cotId){
   const disActual=(DB.produccion||[]).find(p=>p.id_cotizacion===cotId&&p.disenador)?.disenador||'';
   const hoy=_isoLocal(new Date());
   const fpEx=(DB.produccion||[]).find(p=>p.id_cotizacion===cotId&&p.fecha_pactada)?.fecha_pactada||'';
-  const fpCalc=fpEx||addDias(hoy,Number(c.lead_time_dias||0));
+  const plazo=(c.fecha_entrega_pactada&&c.fecha_emision)?Math.round((new Date(c.fecha_entrega_pactada+'T00:00:00')-new Date(String(c.fecha_emision).slice(0,10)+'T00:00:00'))/86400000):Number(c.lead_time_dias||0);
+  const fpCalc=fpEx||addDias(hoy,Math.max(0,plazo));
   window._opFpCalc=fpCalc;
   const opInfo=opEx?`Esta cotización ya tiene la <b>OP-${opEx}</b> — se agregarán a esa misma OP los ítems que marques abajo.`:`Se creará una nueva OP (el número lo asigna el sistema al guardar) con los ítems que marques abajo.`;
   openModal(opEx?`Agregar ítems a OP-${opEx}`:'Crear orden de producción',`${ayudaForm(`Revisa el **Nº OP** y elige el **Diseñador**, la **Prioridad** y la **Entrega pactada**. Marca en la lista los **ítems** que entran a producción y toca **Crear orden de producción**. Solo puedes crear la OP si la cotización está **APROBADA**.`)}<div style="font-size:12.5px;margin-bottom:10px"><b>COT-${c.cotizacion}</b> · ${esc(c.empresa||'')} ${c.tipo?`<span class="badge azul" style="margin-left:4px">${esc(c.tipo)}</span>`:''}</div>
@@ -4547,14 +4548,14 @@ function formCrearOP(cotId){
     <div class="form-grid" style="margin-top:10px">
     <div class="field"><label>Nº OP</label><input value="${opEx?'OP-'+opEx:'Se asigna al guardar'}" readonly style="opacity:.7"></div>
     <div class="field span2"><label>Diseñador</label>${disChips('op1',dis,disActual)}</div>
-    <div class="field"><label>Prioridad (según score)</label><input id="op2" value="Media" readonly style="opacity:.85;font-weight:700"><span id="op2h" style="font-size:10px;color:var(--muted)"></span></div>
+    <input type="hidden" id="op2" value="Media">
     <div class="field span2"><label>Entrega pactada</label><input id="op3" type="date" value="${esc(fpCalc)}" readonly style="opacity:.75">
-      <span style="font-size:10px;color:var(--muted)">${fpEx?'Fecha de la OP existente.':`Hoy (${fmtDate(hoy)}) + ${c.lead_time_dias||0} día(s) de lead time.`}</span>
+      <span style="font-size:10px;color:var(--muted)">${fpEx?'Fecha de la OP existente.':`La cotización se emitió el ${fmtDate(c.fecha_emision)} con entrega ${fmtDate(c.fecha_entrega_pactada)} (${plazo} día(s)). Se corre desde hoy (${fmtDate(hoy)}).`}</span>
 <span style="font-size:10px;color:var(--muted);display:block">No se puede editar aquí; si hay que cambiarla, se cambia en la cotización (lead time).</span></div>
     <div class="field span2"><label>Tipo</label><select id="op5" style="font-weight:700" onchange="opCalcPrio()">${tiposElegibles(c.tipo).map(t=>`<option value="${esc(t)}" ${c.tipo===t?'selected':''}>${esc(t)}</option>`).join('')}</select><span style="font-size:10px;color:var(--muted)">Por defecto el de la cotización. Puedes cambiarlo solo para esta OP.</span></div>
     <div class="field span2"><label>Observaciones</label><div class="rte-wrap"><div class="rte-bar"><button type="button" onmousedown="event.preventDefault();rteCmd('bold')"><b>B</b></button><button type="button" onmousedown="event.preventDefault();rteCmd('italic')"><i>I</i></button><button type="button" onmousedown="event.preventDefault();rteCmd('underline')"><u>U</u></button><button type="button" onmousedown="event.preventDefault();rteCmd('insertUnorderedList')">• Lista</button><button type="button" onclick="rteAddImg()">🖼️ Imagen</button></div><div id="op4" class="rte-ed" contenteditable="true" data-ph="Notas para diseño / producción… (puedes pegar imágenes)"></div></div></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="crearOP('${cotId}')" style="background:#1565c0">🏭 ${opEx?'Agregar a la OP':'Crear OP'}</button>`);
-  rteInit(); window._opLead=Number(c.lead_time_dias||0); window._opEmp=c.empresa||''; opCalcPrio();
+  rteInit(); window._opLead=plazo; window._opEmp=c.empresa||''; opCalcPrio();
 }
 function opCalcPrio(){
   const t=String(document.getElementById('op5')?.value||'').toUpperCase(), d=window._opLead;
@@ -4568,7 +4569,7 @@ function opCalcPrio(){
 async function crearOP(cotId){
   const ids=[...document.querySelectorAll('.cop-chk:checked')].map(x=>x.value); if(!ids.length){ toast('Selecciona al menos un ítem','error'); return; }
   const btn=document.querySelector('#modal-foot .btn-primary'); if(btn){ btn.disabled=true; btn.textContent='⏳ Creando…'; }
-  const fp=null, cambio=false, motivo='';
+  const fp=gv('op3'), cambio=!!fp&&fp!==(DB.cotizaciones.find(x=>x.id===cotId)||{}).fecha_entrega_pactada, motivo='Fecha calculada automáticamente: hoy + plazo de la cotización';
   
   if(cambio&&motivo.length<5){ toast('Escribe el motivo del cambio de fecha','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
   const obs=rteValue();
