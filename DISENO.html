@@ -1130,11 +1130,9 @@ const bandejaMia=()=>(DB.produccion||[]).filter(p=>esMia(p)&&enBandejaDis(p));
 
 // Diseñadores: usuarios con rol Diseño + cualquier nombre que ya figure en una OP
 function esDisenador(u){ return [u&&u.rol].concat((u&&u.roles_extra)||[],(u&&u.roles)||[]).includes('diseno'); }
-function disNombres(){ const m=new Map(); (USUARIOS||[]).filter(esDisenador).forEach(u=>m.set(String(u.nombre).trim().toLowerCase(),u.nombre));
-  ((typeof DB!=='undefined'&&DB.produccion)||[]).filter(p=>!p.despachado).forEach(p=>{ const n=String(p.disenador||'').trim(); if(n&&!m.has(n.toLowerCase())) m.set(n.toLowerCase(),n); });
-  return [...m.values()].sort((a,b)=>a.localeCompare(b,'es')); }
-function disChips(id,nombres,actual){ const cur=String(actual||'').trim().toLowerCase(); const lista=nombres.slice(); if(actual&&!lista.some(n=>n.toLowerCase()===cur)) lista.unshift(actual);
-  return `<style>.dis-btn{border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:inherit;border-radius:22px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}.dis-btn.on{background:#1565c0;color:#fff;border-color:#1565c0}</style><div class="dis-wrap"><input type="hidden" id="${id}" value="${esc(actual||'')}"><div style="display:flex;flex-wrap:wrap;gap:8px">${lista.length?lista.map(n=>`<button type="button" class="dis-btn${n.toLowerCase()===cur?' on':''}" data-n="${esc(n)}" onclick="disPick(this)">${esc(n)}</button>`).join(''):'<span style="font-size:11px;color:#b5650a">No hay diseñadores. Dales el rol Diseño en Usuarios y roles.</span>'}</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Toca un nombre para elegirlo; vuelve a tocarlo para dejarlo sin asignar.</div></div>`; }
+function disNombres(){ return ['A. MEZA','M. GÓMEZ','F. GIRALDO']; }   // diseñadores activos (Andrés Meza, Michael Gómez, Francisco Giraldo)
+function disChips(id,nombres,actual){ const nk=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,''); const cur=nk(actual); const lista=nombres.slice();
+  return `<style>.dis-btn{border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:inherit;border-radius:22px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}.dis-btn.on{background:#1565c0;color:#fff;border-color:#1565c0}</style><div class="dis-wrap"><input type="hidden" id="${id}" value="${esc(actual||'')}"><div style="display:flex;flex-wrap:wrap;gap:8px">${lista.length?lista.map(n=>`<button type="button" class="dis-btn${nk(n)===cur?' on':''}" data-n="${esc(n)}" onclick="disPick(this)">${esc(n)}</button>`).join(''):'<span style="font-size:11px;color:#b5650a">No hay diseñadores. Dales el rol Diseño en Usuarios y roles.</span>'}</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Toca un nombre para elegirlo; vuelve a tocarlo para dejarlo sin asignar.</div></div>`; }
 function disPick(b){ const w=b.closest('.dis-wrap'), inp=w.querySelector('input[type=hidden]'), on=b.classList.contains('on'); w.querySelectorAll('.dis-btn').forEach(x=>x.classList.remove('on')); if(on) inp.value=''; else{ b.classList.add('on'); inp.value=b.getAttribute('data-n'); } }
 function disenadoresLista(){
   const s=new Map();
@@ -3648,7 +3646,7 @@ function qaVerComprasOP(id){ try{ _qaFmtClose(); }catch(e){} detalleProd(id,'mat
 // ── Asignar / cambiar diseñador ─────────────────────────────────
 function prodAsignarDis(id){
   const p=prodDe(id); if(!p) return;
-  const nombres=disenadoresLista();
+  const nombres=disNombres();
   const cur=_normNom(p.disenador);
   const nOp=(DB.produccion||[]).filter(x=>x.op===p.op&&!x.despachado).length;
   openModal('Diseñador · OP-'+p.op+' ítem '+(p.item_num??''),`${ayudaForm(`Elige la persona o **«sin asignar»**. Si marcas **aplicar a toda la OP**, el cambio se hace en todos sus ítems, no solo en este.`)}<div class="field"><label>Diseñador</label>
@@ -3792,7 +3790,7 @@ async function bkDiseno(){
   hideBusy(); _BK.clear(); bkBar(); await prodRefreshAll(); toast(`✅ ${ok} actualizado(s)${fail?' · ⚠ '+fail+' con error':''}`,fail?'error':'ok'); refreshCurrentView(); updateBadges();
 }
 function bkAsignar(){
-  const nombres=disenadoresLista();
+  const nombres=disNombres();
   openModal(`Asignar diseñador · ${_BK.size} ítem(s)`,`<div class="field"><label>Diseñador</label>${disChips('bka1',nombres,'')}</div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="bkAsignarGuardar()">✓ Asignar</button>`);
 }
