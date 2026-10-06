@@ -4517,13 +4517,20 @@ function rteValue(){
   if(!ed.textContent.trim()&&!ed.querySelector('img')) return null;
   return h;
 }
+function esDisenador(u){ return [u&&u.rol].concat((u&&u.roles_extra)||[],(u&&u.roles)||[]).includes('diseno'); }
+function disNombres(){ const m=new Map(); (USUARIOS||[]).filter(esDisenador).forEach(u=>m.set(String(u.nombre).trim().toLowerCase(),u.nombre));
+  ((typeof DB!=='undefined'&&DB.produccion)||[]).filter(p=>!p.despachado).forEach(p=>{ const n=String(p.disenador||'').trim(); if(n&&!m.has(n.toLowerCase())) m.set(n.toLowerCase(),n); });
+  return [...m.values()].sort((a,b)=>a.localeCompare(b,'es')); }
+function disChips(id,nombres,actual){ const cur=String(actual||'').trim().toLowerCase(); const lista=nombres.slice(); if(actual&&!lista.some(n=>n.toLowerCase()===cur)) lista.unshift(actual);
+  return `<style>.dis-btn{border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:inherit;border-radius:22px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}.dis-btn.on{background:#1565c0;color:#fff;border-color:#1565c0}</style><div class="dis-wrap"><input type="hidden" id="${id}" value="${esc(actual||'')}"><div style="display:flex;flex-wrap:wrap;gap:8px">${lista.length?lista.map(n=>`<button type="button" class="dis-btn${n.toLowerCase()===cur?' on':''}" data-n="${esc(n)}" onclick="disPick(this)">${esc(n)}</button>`).join(''):'<span style="font-size:11px;color:#b5650a">No hay diseñadores. Dales el rol Diseño en Usuarios y roles.</span>'}</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Toca un nombre para elegirlo; vuelve a tocarlo para dejarlo sin asignar.</div></div>`; }
+function disPick(b){ const w=b.closest('.dis-wrap'), inp=w.querySelector('input[type=hidden]'), on=b.classList.contains('on'); w.querySelectorAll('.dis-btn').forEach(x=>x.classList.remove('on')); if(on) inp.value=''; else{ b.classList.add('on'); inp.value=b.getAttribute('data-n'); } }
 function formCrearOP(cotId){
   const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c) return;
   if(_normEstado(c.estado)!=='APROBADA'){ toast('La cotización debe estar APROBADA para crear la OP','error'); return; }
   const its=itemsDe(cotId); const enProd=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
   const libres=its.filter(it=>!enProd.has(it.id)); if(!libres.length){ toast('Todos los ítems de esta cotización ya están en producción','error'); return; }
   const pct=Number(c.descuento_pct)||(Number(c.precio_total)>0?Number(c.descuento||0)/Number(c.precio_total)*100:0);
-  const dis=USUARIOS.filter(u=>u.rol==='diseno').map(u=>u.nombre);
+  const dis=disNombres();
   const opEx=opDeCot(cotId);
   // Diseñador por defecto: el que ya tenga asignada la OP existente (todos los ítems de una OP comparten diseñador)
   const disActual=(DB.produccion||[]).find(p=>p.id_cotizacion===cotId&&p.disenador)?.disenador||'';
@@ -4541,7 +4548,7 @@ function formCrearOP(cotId){
       return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);${ya?'opacity:.5':'cursor:pointer'}"><input type="checkbox" class="cop-chk" value="${it.id}" ${ya?'disabled':'checked'} onchange="_opUpdateItemCount()" style="margin-top:3px"><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Ítem ${it.item??'—'} · ×${it.unidades||1}${ya?' <span class="badge gris">ya en OP</span>':''}</div><div style="font-size:12px;color:var(--muted)">${esc((it.descripcion||'—').slice(0,140))}</div><div style="font-size:11px;font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px"><span>${fmt(pu)} c/u${pct>0?' (con desc.)':''}</span>${hrs>0?`<span>⏱ ${hrs.toFixed(1)} h</span>`:''}</div><div style="font-size:10px;color:var(--muted)">${esc(rutaItem(it))}</div></div></label>`; }).join('')}</div>
     <div class="form-grid" style="margin-top:10px">
     <div class="field"><label>Nº OP</label><input value="${opEx?'OP-'+opEx:'Se asigna al guardar'}" readonly style="opacity:.7"></div>
-    <div class="field"><label>Diseñador</label><input id="op1" list="op1-list" value="${esc(disActual)}" placeholder="${dis.length?'Escribe para buscar…':'Sin diseñadores creados'}" autocomplete="off"><datalist id="op1-list">${dis.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>${dis.length?'':'<span style="font-size:10px;color:#b5650a">No hay usuarios con rol Diseño. Créalos en Usuarios y roles (desarrollador).</span>'}</div>
+    <div class="field span2"><label>Diseñador</label>${disChips('op1',dis,disActual)}</div>
     <div class="field"><label>Prioridad</label><select id="op2"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Urgente</option></select></div>
     <div class="field span2"><label>Entrega pactada</label><input id="op3" type="date" value="${esc(fpCalc)}" readonly style="opacity:.75">
       <span style="font-size:10px;color:var(--muted)">${fpEx?'Fecha de la OP existente.':`Hoy (${fmtDate(hoy)}) + ${c.lead_time_dias||0} día(s) de lead time.`}</span>
@@ -4556,8 +4563,7 @@ async function crearOP(cotId){
   const ids=[...document.querySelectorAll('.cop-chk:checked')].map(x=>x.value); if(!ids.length){ toast('Selecciona al menos un ítem','error'); return; }
   const btn=document.querySelector('#modal-foot .btn-primary'); if(btn){ btn.disabled=true; btn.textContent='⏳ Creando…'; }
   const fp=gv('op3'), cambio=!!(document.getElementById('op3c')?.checked)&&fp&&fp!==window._opFpCalc, motivo=gv('op3m');
-  const dList=[...document.querySelectorAll('#op1-list option')].map(o=>o.value); const dSel=gv('op1');
-  if(dSel&&!dList.includes(dSel)){ toast('Elige un diseñador de la lista','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
+  
   if(cambio&&motivo.length<5){ toast('Escribe el motivo del cambio de fecha','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
   const obs=rteValue();
   if(obs&&obs.length>1500000){ toast('Las observaciones pesan demasiado (muchas imágenes). Reduce o quita alguna.','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
