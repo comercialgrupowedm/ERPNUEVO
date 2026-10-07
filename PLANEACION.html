@@ -1136,7 +1136,7 @@ const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despa
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
   +',hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_rectificadora,hrs_cnc_real,hrs_torno_real,hrs_fresadora_real,hrs_banco_real,hrs_rect_real,hrs_edm,hrs_hilo,hrs_soldadura,hrs_ingenieria,horas_total_real'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,terminado_por,calidad_ok,calidad_estado,calidad_fecha,calidad_por,despacho_fecha'
-  +',externo,externo_desde,externo_hasta,externo_detalle,ruta_operarios,tiene_imagen,imagen_drive_id';
+  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,ruta_operarios,tiene_imagen,imagen_drive_id';
 
 // ══ MÁQUINAS: el texto libre de ruta_mq1..5 se agrupa en las máquinas que tienen columnas avance_<m> / hrs_<m> ══
 // IMPORTANTE: debe coincidir con la función public._plan_bucket() de la base de datos (el servidor hace el mismo cálculo).
@@ -1629,7 +1629,7 @@ function barList(rows,fmtV,max){
   const mx=max||Math.max(...rows.map(r=>Number(r[1])||0),0)||1;
   return rows.map(([l,v,c])=>`<div class="bar-row"><div class="bar-l" title="${esc(l)}">${esc(l)}</div><div class="bar-t"><div class="bar-f" style="width:${v>0?Math.max(2,Math.round(v/mx*100)):0}%;background:${c||'var(--accent)'}"></div></div><div class="bar-v">${fmtV(v)}</div></div>`).join('');
 }
-const rutaTieneExterno=op=>pasosDe(op).some(s=>s.b==='externo');
+const rutaTieneExterno=op=>pasosDe(op).some(s=>s.b==='externo')||!!op.lleva_externo;
 function externoAviso(op){
   if(!op.externo&&!rutaTieneExterno(op)) return '';
   const pe=puede('planeacion','administracion'), j=idq(op);
@@ -1703,12 +1703,12 @@ function trasGuardar(id){
 const ETAPAS_BASE=[
   {k:'diseno',l:'Diseño / Planeación',ic:'📐',ok:o=>!!o.diseno_ok,f:o=>o.diseno_fecha,por:o=>o.diseno_por},
   {k:'mp',l:'MP / Insumos',ic:'📦',ok:o=>!!o.mp_ok,f:o=>o.mp_fecha,por:o=>o.mp_por},
-  {k:'servicio',l:'Servicio Externo',ic:'🚚',ok:()=>false,f:o=>o.externo_desde,por:()=>''},
+    {k:'servicio',l:'Servicio Externo',ic:'🚚',ok:o=>!o.externo&&(!!o.externo_ok_fecha||!!o.terminado),f:o=>o.externo_ok_fecha||o.externo_desde,por:o=>o.externo_ok_por||''},
   {k:'entrega',l:'Entrega Prod.',ic:'🏭',ok:o=>!!o.terminado,f:o=>o.entrega_prod_fecha||o.fecha_entrega_prod,por:o=>o.terminado_por},
   {k:'calidad',l:'Calidad',ic:'✅',ok:o=>!!o.calidad_ok||o.calidad_estado==='APROBADA',f:o=>o.calidad_fecha,por:o=>o.calidad_por},
   {k:'liberacion',l:'Liberación',ic:'🚀',ok:o=>!!o.despachado,f:o=>o.despacho_fecha,por:()=>''}
 ];
-function etapasDe(op){ return ETAPAS_BASE.filter(e=>e.k!=='servicio'||!!(op&&op.externo)); }
+function etapasDe(op){ return ETAPAS_BASE.filter(e=>e.k!=='servicio'||!!(op&&(op.externo||op.lleva_externo||op.externo_ok_fecha))); }
 const etapaSig=op=>etapasDe(op).find(e=>!e.ok(op))||null;
 function timelineEtapas(op){
   const ET=etapasDe(op); const sig=etapaSig(op);
@@ -1717,7 +1717,8 @@ function timelineEtapas(op){
 }
 function etapaNota(k,op){
   if(k==='entrega'&&pctOp(op)<100) return `<div style="font-size:12px;margin-top:6px">⚠️ Para marcarla, el avance global debe estar en 100% (va en ${pctOp(op)}%). Usa <b>Actualizar avance</b> primero.</div>`;
-  if(k==='servicio') return `<div style="font-size:12px;margin-top:6px">ℹ️ Marca el <b>regreso</b> de servicio externo (equivale a usar «Servicio Ext.» y desmarcar «Actualmente afuera»). No queda un registro de que esta etapa ya se cumplió: si la OP vuelve a salir a externo, esta etapa reaparecerá.</div>`;
+  if(k==='servicio'&&!op.externo) return `<div style="font-size:12px;margin-top:6px">🚚 Esta OP lleva servicio externo${op.servicio_externo?' ('+esc(op.servicio_externo)+')':''}. Se completa al <b>enviarla</b> (Servicio Ext.) y luego <b>recibirla</b> (Recibir externo).</div>`;
+  if(k==='servicio') return `<div style="font-size:12px;margin-top:6px">ℹ️ Marca el <b>regreso</b> de servicio externo (equivale a usar «Servicio Ext.» y desmarcar «Actualmente afuera»). Queda registrado quién y cuándo la recibió.</div>`;
   if(k==='calidad') return `<div style="font-size:12px;margin-top:6px">ℹ️ Aquí solo se marca la etapa. La aprobación formal (con rechazos y reprocesos) se hace en el módulo de Calidad.</div>`;
   if(k==='liberacion') return `<div style="font-size:12px;margin-top:6px">⚠️ Marca la OP como <b>despachada</b> y la pasa a TERMINADO. No genera remisión: la OP deja de aparecer en Remisiones como pendiente.</div>`;
   return '';
@@ -1732,7 +1733,7 @@ function modalEtapas(id){
     ${sig?`<div class="callout">⏭ <b>Siguiente etapa a completar:</b> ${sig.ic} ${sig.l}${etapaNota(sig.k,op)}</div>`
          :`<div class="callout" style="background:#e6f6ea;border-color:#a8ddb5;color:#1e7d32">✅ Todas las etapas están completas.</div>`}
     ${raro?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Nota: hay etapas marcadas sin que las anteriores lo estén (datos del sistema anterior). La «siguiente» es la primera que falta.</div>`:''}`;
-  const puedeMarcar=sig&&puede('planeacion','administracion');
+  const puedeMarcar=sig&&puede('planeacion','administracion')&&!(sig.k==='servicio'&&!op.externo);
   openModal('🗓️ Etapas',body,`<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${puedeMarcar?`<button class="btn btn-primary" onclick="marcarEtapa('${idq(op)}','${sig.k}')">Marcar '${sig.l}'</button>`:''}`);
 }
 

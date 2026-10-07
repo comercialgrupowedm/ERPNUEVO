@@ -3934,7 +3934,7 @@ const fmtDTs=d=>{ if(!d) return ''; const t=new Date(d); if(isNaN(t)) return '';
 const mutedP=t=>`<p style="font-size:12px;color:var(--muted);padding:6px 0">${t}</p>`;
 
 // ── Carga / refresco de datos de producción ─────────────────────
-const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,precio_unit,precio_total,descuento_pct,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at';
+const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,precio_unit,precio_total,descuento_pct,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at';
 const _fd=(a,b)=>String(b||'').localeCompare(String(a||''));
 const PSYNC=[
   {t:'produccion',k:'produccion',sel:PROD_COLS,ord:'op.desc,item_num.asc,id.asc',cmp:(a,b)=>(b.op-a.op)||(Number(a.item_num)-Number(b.item_num))||String(a.id).localeCompare(String(b.id))},
@@ -4285,6 +4285,9 @@ function accionesProd(p){
     if(!p.mp_ok&&mats.every(m=>m.estado==='COMPRADO')) b.push(btn('🛒','#059669','Compras completas',`prodCompras('${id}',true)`));
     else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver compras',`prodCompras('${id}',false)`));
   }
+  if(puede('comercial','compras','calidad','planeacion')&&!puede('produccion')&&p.diseno_ok&&p.mp_ok&&!p.terminado){
+      b.push(p.externo?btn('🏠','#0d9c94','Regresó de trabajo externo',`prodExterno('${id}',false)`):btn('🚚','#9c27b0','Enviar a trabajo externo',`prodExterno('${id}',true)`));
+  }
   if(puede('produccion')){
     if(p.diseno_ok&&p.mp_ok&&!p.terminado){
       b.push(p.externo?btn('🏠','#0d9c94','Regresó de trabajo externo',`prodExterno('${id}',false)`):btn('🚚','#9c27b0','Enviar a trabajo externo',`prodExterno('${id}',true)`));
@@ -4321,6 +4324,7 @@ function pdResumen(p){
   const pr=verPrecios(); const reps=repsDe(p.id); const rems=remsDeOp(p.op).filter(m=>(m.lineas||[]).some(l=>l.id_prod===p.id)||['PEDIDA'].includes(m.estado));
   const abiertos=reps.filter(r=>r.estado==='ABIERTO');
   return `${abiertos.length?`<div class="dp-section"><div style="background:#fdeaea;border:1px solid #f3b3b3;color:#c62828;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">⚠️ Reproceso abierto: ${abiertos.map(r=>r.cantidad+' und').join(' · ')} — ${esc(abiertos[0].motivo||'')}</div></div>`:''}
+    ${p.lleva_externo&&!p.externo?`<div class="dp-section"><div style="background:#f7e6fb;border:1px solid #e6b8ef;color:#7b1fa2;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">🚚 Esta OP lleva servicio externo${p.servicio_externo?': '+esc(p.servicio_externo):''}.${p.externo_ok_fecha?' Ya fue recibida ('+fmtDT(p.externo_ok_fecha)+(p.externo_ok_por?' · '+esc(p.externo_ok_por):'')+').':' Aún no se ha enviado.'}</div></div>`:''}
     ${p.externo?`<div class="dp-section"><div style="background:#f7e6fb;border:1px solid #e6b8ef;color:#7b1fa2;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">🚚 En trabajo externo desde ${fmtDT(p.externo_desde)}${p.externo_detalle?' — '+esc(p.externo_detalle):''}</div></div>`:''}
     <div class="dp-section"><h4>📌 Orden</h4>${dr('OP','<strong>OP-'+p.op+'</strong>')}${dr('Cotización','COT-'+(p.cot_num||'—'))}${dr('Ítem',p.item_num)}${dr('Empresa',esc(p.empresa||'—'))}${p.tipo?dr('Tipo',bTipo(p.tipo)):''}${dr('Asesor',esc(p.asesor||'—'))}${dr('Diseñador',esc(p.disenador||'Sin asignar'))}
       ${dr('Cantidad',p.unidades)}${dr('Prioridad',bPrior(p.prioridad))}${dr('Inicio',fmtDate(p.fecha_inicio))}${dr('Entrega pactada',pactadaTag(p))}${p.entrega_prod_fecha?dr('Entregado por producción',fmtDT(p.entrega_prod_fecha)+(p.terminado_por?' · '+esc(p.terminado_por):'')):''}

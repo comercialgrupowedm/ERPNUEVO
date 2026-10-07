@@ -1145,7 +1145,7 @@ function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar
 const PROD_SEL_C='id,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,fecha_entrega_prod,terminado_por'
   +',calidad_ok,calidad_estado,calidad_fecha,calidad_por,despachado,despacho_fecha'
-  +',externo,externo_desde,externo_hasta,externo_detalle,es_garantia,id_prod_origen,garantia_motivo'
+  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,es_garantia,id_prod_origen,garantia_motivo'
   +',ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,procesos,tiene_imagen,imagen_drive_id,updated_at'
   +',qa_res:formato_qa->resultado,qa_insp:formato_qa->inspeccion,qa_tiene:formato_qa->numPiezas';
 const REM_SEL='id,numero,op,cot_num,empresa,asesor,estado,lineas,pedida_por,pedida_fecha,seleccion_por,seleccion_fecha,generada_por,generada_fecha,despachada_por,despachada_fecha,observaciones,proyecto,oc_cliente,nit,direccion,ciudad,contacto,telefono,fecha,manual,libre';
@@ -1381,12 +1381,12 @@ function pendiente(){
 const ETAPAS_BASE=[
   {k:'diseno',l:'Diseño / Planeación',ic:'📐',ok:o=>!!o.diseno_ok,f:o=>o.diseno_fecha,por:o=>o.diseno_por},
   {k:'mp',l:'MP / Insumos',ic:'📦',ok:o=>!!o.mp_ok,f:o=>o.mp_fecha,por:o=>o.mp_por},
-  {k:'servicio',l:'Servicio Externo',ic:'🚚',ok:()=>false,f:o=>o.externo_desde,por:()=>''},
+    {k:'servicio',l:'Servicio Externo',ic:'🚚',ok:o=>!o.externo&&(!!o.externo_ok_fecha||!!o.terminado),f:o=>o.externo_ok_fecha||o.externo_desde,por:o=>o.externo_ok_por||''},
   {k:'entrega',l:'Entrega Prod.',ic:'🏭',ok:o=>!!o.terminado,f:o=>o.entrega_prod_fecha||o.fecha_entrega_prod,por:o=>o.terminado_por},
   {k:'calidad',l:'Calidad',ic:'✅',ok:o=>!!o.calidad_ok||o.calidad_estado==='APROBADA',f:o=>o.calidad_fecha,por:o=>o.calidad_por},
   {k:'liberacion',l:'Liberación',ic:'🚀',ok:o=>!!o.despachado,f:o=>o.despacho_fecha,por:()=>''}
 ];
-function etapasDe(o){ return ETAPAS_BASE.filter(e=>e.k!=='servicio'||!!(o&&o.externo)); }
+function etapasDe(o){ return ETAPAS_BASE.filter(e=>e.k!=='servicio'||!!(o&&(o.externo||o.lleva_externo||o.externo_ok_fecha))); }
 function timelineEtapas(o){
   const ET=etapasDe(o); const sig=ET.find(e=>!e.ok(o))||null;
   return `<div class="timeline-wrap"><div class="timeline">${ET.map((e,i)=>{ const ok=e.ok(o), now=!!sig&&sig.k===e.k;
