@@ -3025,14 +3025,22 @@ function opmSet(k){ _OPM.f=k; pgReset(); opmp(); }
 function opmOrd(c){ if(!c){ delete _CS.om; } else _CS.om={c,d:(_CS.om&&_CS.om.c===c&&_CS.om.d==='asc')?'desc':'asc'}; opmp(); }
 function opmTog(id){ if(_OPM.abiertos.has(id)) _OPM.abiertos.delete(id); else _OPM.abiertos.add(id); opmp(); }
 function opmTogD(id,o){ if(o) _OPM.abiertos.add(id); else _OPM.abiertos.delete(id); }
+
+// ── Devolver etapa con motivo obligatorio (queda en el historial) ──
+function devolverMotivo(id,etapa,nom,run){
+  window._devRun=run;
+  openModal('↩ Devolver · '+nom,`<div style="font-size:13px;margin-bottom:8px">Escribe <b>por qué</b> se devuelve. Queda registrado en el historial de la OP (con tu nombre, fecha y hora).</div><textarea id="dev-mot" rows="4" style="width:100%;box-sizing:border-box" placeholder="Motivo (obligatorio)"></textarea><div id="dev-err" style="color:#c62828;font-size:12px;margin-top:6px"></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="devolverOk()">↩ Devolver</button>`);
+}
+async function devolverOk(){ const m=(document.getElementById('dev-mot').value||'').trim(); if(m.length<5){ document.getElementById('dev-err').textContent='Escribe el motivo (mínimo 5 caracteres).'; return; } closeModal(); await window._devRun(m); }
 async function opmOk(id,ok){
   const x=(window._opmAll||[]).find(r=>r.p.id===id); if(!x) return;
   if(ok){
     if(!x.listo){ toast('Aún faltan compras por registrar para esta OP','error'); return; }
     const msg=`¿Dar Compras OK a OP-${x.p.op} · ítem ${x.p.item_num}?\n\nSe registra la fecha y hora de hoy y tu nombre.`+(x.sinValor.length?`\n\n⚠ ${x.sinValor.length} compra(s) no tienen valor. Ajustar el valor del precio del material.`:'');
     if(!confirm(msg)) return;
-  } else if(!confirm('¿Devolver esta OP a pendiente de MP?')) return;
-  if(await rpcC('prod_set_compras',{p_id:id,p_ok:ok},ok?'✅ Compras OK registrado':'↩ OP devuelta a pendiente de MP')) opmp(true);
+  } else return devolverMotivo(id,'mp','Compras / MP (pendiente MP)',async m=>{ if(await rpcC('prod_devolver',{p_id:id,p_etapa:'mp',p_motivo:m},'↩ OP devuelta a pendiente de MP')) opmp(true); });
+  if(await rpcC('prod_set_compras',{p_id:id,p_ok:ok},'✅ Compras OK registrado')) opmp(true);
 }
 function opmValor(lid){
   const m=linDe(lid); if(!m) return;

@@ -4354,9 +4354,17 @@ function pdMateriales(p){
 }
 
 // ── Acciones sobre la OP ────────────────────────────────────────
-async function prodDiseno(id,ok){ if(!ok&&!confirm('¿Devolver el diseño a “no terminado”?')) return; if(ok&&!await askConfirm('✅ Diseño terminado','¿Confirmas que el <b>diseño de este ítem está terminado</b>?','Sí, terminado')) return; if(await rpcAct('prod_set_diseno',{p_id:id,p_ok:ok},ok?'✅ Diseño terminado':'Diseño devuelto')) afterAct(id); }
-async function prodCompras(id,ok){ if(!ok&&!confirm('¿Devolver compras (faltan materiales)?')) return; if(ok&&!await askConfirm('✅ Compras completas','¿Confirmas que <b>ya llegaron todos los materiales</b> de este ítem? Si el diseño también está terminado, pasa a producción.','Sí, completas')) return; if(await rpcAct('prod_set_compras',{p_id:id,p_ok:ok},ok?'✅ Compras completas — la OP pasa a producción':'Compras devuelto')) afterAct(id); }
-async function prodTerminar(id,ok){ if(!ok&&!confirm('¿Devolver este ítem a producción?')) return; if(!ok||confirm('¿Confirmas que producción terminó este ítem y lo entrega a calidad?')){ if(await rpcAct('prod_terminar',{p_id:id,p_ok:ok},ok?'✅ Entregado a calidad':'Devuelto a producción')) afterAct(id); } }
+
+// ── Devolver etapa con motivo obligatorio (queda en el historial) ──
+function devolverMotivo(id,etapa,nom,run){
+  window._devRun=run;
+  openModal('↩ Devolver · '+nom,`<div style="font-size:13px;margin-bottom:8px">Escribe <b>por qué</b> se devuelve. Queda registrado en el historial de la OP (con tu nombre, fecha y hora).</div><textarea id="dev-mot" rows="4" style="width:100%;box-sizing:border-box" placeholder="Motivo (obligatorio)"></textarea><div id="dev-err" style="color:#c62828;font-size:12px;margin-top:6px"></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="devolverOk()">↩ Devolver</button>`);
+}
+async function devolverOk(){ const m=(document.getElementById('dev-mot').value||'').trim(); if(m.length<5){ document.getElementById('dev-err').textContent='Escribe el motivo (mínimo 5 caracteres).'; return; } closeModal(); await window._devRun(m); }
+async function prodDiseno(id,ok){ if(!ok) return devolverMotivo(id,'diseno','Diseño',async m=>{ if(await rpcAct('prod_devolver',{p_id:id,p_etapa:'diseno',p_motivo:m},'↩ Diseño devuelto')) afterAct(id); }); if(ok&&!await askConfirm('✅ Diseño terminado','¿Confirmas que el <b>diseño de este ítem está terminado</b>?','Sí, terminado')) return; if(await rpcAct('prod_set_diseno',{p_id:id,p_ok:ok},ok?'✅ Diseño terminado':'Diseño devuelto')) afterAct(id); }
+async function prodCompras(id,ok){ if(!ok) return devolverMotivo(id,'mp','Compras / MP',async m=>{ if(await rpcAct('prod_devolver',{p_id:id,p_etapa:'mp',p_motivo:m},'↩ Devuelto a pendiente de MP')) afterAct(id); }); if(ok&&!await askConfirm('✅ Compras completas','¿Confirmas que <b>ya llegaron todos los materiales</b> de este ítem? Si el diseño también está terminado, pasa a producción.','Sí, completas')) return; if(await rpcAct('prod_set_compras',{p_id:id,p_ok:ok},ok?'✅ Compras completas — la OP pasa a producción':'Compras devuelto')) afterAct(id); }
+async function prodTerminar(id,ok){ if(!ok) return devolverMotivo(id,'entrega','Producción',async m=>{ if(await rpcAct('prod_devolver',{p_id:id,p_etapa:'entrega',p_motivo:m},'↩ Devuelto a producción')) afterAct(id); }); if(!ok||confirm('¿Confirmas que producción terminó este ítem y lo entrega a calidad?')){ if(await rpcAct('prod_terminar',{p_id:id,p_ok:ok},ok?'✅ Entregado a calidad':'Devuelto a producción')) afterAct(id); } }
 async function prodAvance(id,idx,val){ const v=Number(val); if(isNaN(v)||v<0||v>100){ toast('El avance debe estar entre 0 y 100','error'); return; } if(await rpcAct('prod_set_avance',{p_id:id,p_idx:idx,p_pct:v})) afterAct(id); }
 function prodExterno(id,ok){
   if(ok) openModal('Enviar a trabajo externo',`<div class="field"><label>¿A dónde / qué proceso? (opcional)</label><textarea id="ex1" placeholder="Ej: Torno CNC — Taller X"></textarea></div>`,`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="prodExternoOk('${id}')">Enviar</button>`);
@@ -4365,7 +4373,7 @@ function prodExterno(id,ok){
 async function prodExternoOk(id){ const d=gv('ex1'); closeModal(); if(await rpcAct('prod_set_externo',{p_id:id,p_ok:true,p_detalle:d||null},'🚚 Ítem enviado a trabajo externo')) afterAct(id); }
 async function prodExternoRet(id){ if(!await askConfirm('🏠 Regresó de trabajo externo','¿Confirmas que <b>el ítem ya regresó</b> del trabajo externo? Vuelve a “En proceso”.','Sí, regresó')) return; if(await rpcAct('prod_set_externo',{p_id:id,p_ok:false,p_detalle:null},'🏠 Regresó de trabajo externo — vuelve a “En proceso”')) afterAct(id); }
 async function prodCalidadOk(id){ if(!confirm('¿Aprobar la calidad de este ítem?')) return; if(await rpcAct('prod_calidad',{p_id:id,p_ok:true,p_cantidad:null,p_motivo:null,p_evidencia:null},'✅ Calidad aprobada')) afterAct(id); }
-async function prodCalidadRev(id){ if(!confirm('¿Devolver la aprobación de calidad?')) return; if(await rpcAct('prod_calidad_revertir',{p_id:id},'Aprobación devuelta')) afterAct(id); }
+async function prodCalidadRev(id){ devolverMotivo(id,'calidad','Calidad',async m=>{ if(await rpcAct('prod_devolver',{p_id:id,p_etapa:'calidad',p_motivo:m},'↩ Aprobación de calidad devuelta')) afterAct(id); }); }
 let _evidTmp=null;
 function formCalidadRechazo(id){
   const p=prodDe(id); if(!p) return; _evidTmp=null;

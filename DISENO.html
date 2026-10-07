@@ -1586,9 +1586,17 @@ function pdMateriales(p){
 }
 
 // ── Acciones de diseño sobre la OP ──────────────────────────────
+
+// ── Devolver etapa con motivo obligatorio (queda en el historial) ──
+function devolverMotivo(id,etapa,nom,run){
+  window._devRun=run;
+  openModal('↩ Devolver · '+nom,`<div style="font-size:13px;margin-bottom:8px">Escribe <b>por qué</b> se devuelve. Queda registrado en el historial de la OP (con tu nombre, fecha y hora).</div><textarea id="dev-mot" rows="4" style="width:100%;box-sizing:border-box" placeholder="Motivo (obligatorio)"></textarea><div id="dev-err" style="color:#c62828;font-size:12px;margin-top:6px"></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="devolverOk()">↩ Devolver</button>`);
+}
+async function devolverOk(){ const m=(document.getElementById('dev-mot').value||'').trim(); if(m.length<5){ document.getElementById('dev-err').textContent='Escribe el motivo (mínimo 5 caracteres).'; return; } closeModal(); await window._devRun(m); }
 async function prodDiseno(id,ok){
   const p=prodDe(id); if(!okAjena(p)) return;
-  if(!ok&&!confirm('¿Devolver el diseño a “no terminado”?')) return;
+  if(!ok) return devolverMotivo(id,'diseno','Diseño',async m=>{ if(await rpcAct('prod_devolver',{p_id:id,p_etapa:'diseno',p_motivo:m},'↩ Diseño devuelto')) afterAct(id); });
   const n=matsPend(p).length;
   if(ok&&n&&!confirm(`Tienes ${n} material(es) sin enviar a compras. ¿Marcar el diseño como terminado de todos modos?`)) return;
   if(await rpcAct('prod_set_diseno',{p_id:id,p_ok:ok},ok?'✅ Diseño terminado':'Diseño devuelto')){ if(ok) wedmAvisar({para:'planeacion',id_prod:id,op:p.op,ref:'OP-'+p.op+'-'+p.item_num,texto:'✅ Diseño terminado · OP-'+p.op+' · COT-'+(p.cot_num||'—')+' · ítem '+(p.item_num??'—')+' · '+(p.empresa||'')+(p.disenador?' · por '+p.disenador:'')+'. Listo para planeación.'}); afterAct(id); }
