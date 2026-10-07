@@ -4280,11 +4280,13 @@ function detalleProd(id,tab){
   const T=(k,l)=>`<div class="dp-tab ${tab===k?'active':''}" onclick="pdTab(this,'${k}')">${l}</div>`;
   const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
   openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+accionesProd(p)+
-    `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${p.lleva_externo?T('servicios','🚚 Servicios'):''}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
-    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(p.lleva_externo?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
+    `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${tieneSvc(p)?T('servicios','🚚 Servicios'):''}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
+    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(tieneSvc(p)?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
   if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
   cargarArchivosProd(id); cargarHistorialProd(id);
 }
+function svcsDe(p){ let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } } sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}]; return sv; }
+function tieneSvc(p){ return !!(p.lleva_externo||p.externo||p.externo_ok_fecha||svcsDe(p).length); }
 function pdServicios(p){
   let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } }
   sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}];

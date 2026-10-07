@@ -1136,7 +1136,7 @@ const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despa
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
   +',hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_rectificadora,hrs_cnc_real,hrs_torno_real,hrs_fresadora_real,hrs_banco_real,hrs_rect_real,hrs_edm,hrs_hilo,hrs_soldadura,hrs_ingenieria,horas_total_real'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,terminado_por,calidad_ok,calidad_estado,calidad_fecha,calidad_por,despacho_fecha'
-  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,ruta_operarios,tiene_imagen,imagen_drive_id';
+  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,servicios_cot,externo_ok_fecha,externo_ok_por,ruta_operarios,tiene_imagen,imagen_drive_id';
 
 // ══ MÁQUINAS: el texto libre de ruta_mq1..5 se agrupa en las máquinas que tienen columnas avance_<m> / hrs_<m> ══
 // IMPORTANTE: debe coincidir con la función public._plan_bucket() de la base de datos (el servidor hace el mismo cálculo).
@@ -1630,6 +1630,15 @@ function barList(rows,fmtV,max){
   return rows.map(([l,v,c])=>`<div class="bar-row"><div class="bar-l" title="${esc(l)}">${esc(l)}</div><div class="bar-t"><div class="bar-f" style="width:${v>0?Math.max(2,Math.round(v/mx*100)):0}%;background:${c||'var(--accent)'}"></div></div><div class="bar-v">${fmtV(v)}</div></div>`).join('');
 }
 const rutaTieneExterno=op=>pasosDe(op).some(s=>s.b==='externo')||!!op.lleva_externo;
+function svcsDe(p){ let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } } sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}]; return sv; }
+function tieneSvc(p){ return !!(p.lleva_externo||p.externo||p.externo_ok_fecha||svcsDe(p).length); }
+function pdServicios(p){
+  const sv=svcsDe(p);
+  if(!sv.length) return mutedP('Este ítem no tiene servicios externos en la cotización.');
+  const est=p.externo?`<span class="badge morado">🚚 Afuera desde ${fmtDT(p.externo_desde)}</span>`:(p.externo_ok_fecha?`<span class="badge verde">📥 Recibido ${fmtDT(p.externo_ok_fecha)}${p.externo_ok_por?' · '+esc(p.externo_ok_por):''}</span>`:'<span class="badge gris">Pendiente de enviar</span>');
+  return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.proveedor?'🏭 '+esc(x.proveedor)+'<br>':''}${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
+    <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
+}
 function externoAviso(op){
   if(!op.externo&&!rutaTieneExterno(op)) return '';
   const pe=puede('planeacion','administracion'), j=idq(op);
@@ -2021,7 +2030,7 @@ function detailOP(id){
   const ruta=`<div class="dp-section"><h4>🧭 Ruta de producción</h4>${rutaPasosHtml(op).replace(externoAviso(op),'')}</div>`;
   const simple=`<div style="text-align:center;margin:6px 0 30px"><button class="btn btn-ghost btn-sm" onclick="formAvance('${j}')">✏️ Formulario simple (% global, estado, prioridad)</button></div>`;
   const hist=`<div class="dp-section"><h4>📜 Historial — quién hizo qué y cuándo</h4><div id="hist-box" data-id="${esc(op.id)}">${mutedP('Cargando…')}</div></div>`;
-  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+scoreH+tl+info+ruta+hist+simple); histCargar(op.id);
+  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+hist+simple); histCargar(op.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
 }
 // Formulario simple de respaldo: % global, estado y prioridad en un solo paso

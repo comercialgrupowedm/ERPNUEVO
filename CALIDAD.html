@@ -1430,7 +1430,7 @@ function detailItem(id,foco){
   const certH=`<div class="dp-section"><h4>🏅 Certificados (${cs.length})</h4>${cs.length?cs.map(c=>`<div class="cm-line" style="cursor:pointer" onclick="detailCert('${jsq(c.id)}')"><div class="cm-t">N° ${certNum(c)} ${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':''}<small>${fmtDate(c.fecha_emision)} · ${esc(c.inspector||'')}</small></div><span style="color:var(--muted)">›</span></div>`).join(''):mutedP('Sin certificado de conformidad.')}</div>`;
   const ss=solsDe(id);
   const solH=ss.length?`<div class="dp-section"><h4>📋 Servicios externos solicitados (${ss.length})</h4>${ss.map(s=>`<div class="cm-line"><div class="cm-t">${esc(s.material||'—')}<small>${esc(s.proveedor||'Sin proveedor')} · ${fmtDate(s.solicitado_at)}${s.detalle?' · '+esc(s.detalle):''}</small></div>${bSol(s.estado)}</div>`).join('')}</div>`:'';
-  const extH=enExterno(o)?`<div class="dp-section"><h4>🚚 Servicio externo</h4>${extLinea(o)}</div>`:'';
+  const extH=(enExterno(o)?`<div class="dp-section"><h4>🚚 Servicio externo</h4>${extLinea(o)}</div>`:'')+(tieneSvc(o)?pdServicios(o):'');
   const gar=o.es_garantia?`<div class="callout" style="margin-bottom:12px;background:#fce7f3;border-color:#f9a8d4;color:#9d174d">🛡️ <b>Garantía</b>${o.garantia_motivo?': '+esc(o.garantia_motivo):''}${o.id_prod_origen?` · <a style="cursor:pointer;font-weight:700;text-decoration:underline" onclick="detailItem('${jsq(o.id_prod_origen)}')">ver ítem original</a>`:''}<div style="font-size:11px;margin-top:4px">Las garantías las crea Comercial; aquí se inspeccionan como cualquier ítem.</div></div>`:'';
   const datos=`<div class="dp-section"><h4>📌 Datos del ítem</h4>
     ${dr('Fecha pactada',fmtDate(o.fecha_pactada)+(diasPactada(o)!=null&&!o.despachado?' · '+diasTag(diasPactada(o)):''))}
@@ -1712,6 +1712,15 @@ let _TP={mats:[],svcs:[]};
 function tpDesc(x,o){
   const mats=[...document.querySelectorAll('.tp-mchk')].filter(c=>c.checked).map(c=>(_TP.mats[+c.dataset.i]||{}).nombre).filter(Boolean);
   return x.desc||[x.nombre,mats.length?'sobre '+mats.join(' + '):'',x.dureza?'a '+x.dureza+' HRC':''].filter(Boolean).join(' ');
+}
+function svcsDe(p){ let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } } sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}]; return sv; }
+function tieneSvc(p){ return !!(p.lleva_externo||p.externo||p.externo_ok_fecha||svcsDe(p).length); }
+function pdServicios(p){
+  const sv=svcsDe(p);
+  if(!sv.length) return mutedP('Este ítem no tiene servicios externos en la cotización.');
+  const est=p.externo?`<span class="badge morado">🚚 Afuera desde ${fmtDT(p.externo_desde)}</span>`:(p.externo_ok_fecha?`<span class="badge verde">📥 Recibido ${fmtDT(p.externo_ok_fecha)}${p.externo_ok_por?' · '+esc(p.externo_ok_por):''}</span>`:'<span class="badge gris">Pendiente de enviar</span>');
+  return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.proveedor?'🏭 '+esc(x.proveedor)+'<br>':''}${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
+    <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
 }
 function modalTemple(id){
   const o=opDe(id); if(!o||!soloCal()) return;
