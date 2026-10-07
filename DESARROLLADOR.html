@@ -7447,6 +7447,24 @@ function anGerencia(){
     </div>`;
 }
 
+
+function itUsarSug(id){
+  const src=(DB.items||[]).find(x=>x.id===id); if(!src||typeof _IT==='undefined'||!_IT) return;
+  const clone=a=>JSON.parse(JSON.stringify(a||[]));
+  _IT.mats=clone(src.mats); _IT.svcs=clone(src.svcs); _IT.prcs=clone(src.prcs);
+  if(!_IT.mats.length) _IT.mats.push(_MAT0()); if(!_IT.svcs.length) _IT.svcs.push(_SVC0()); if(!_IT.prcs.length) _IT.prcs.push(_PRC0());
+  const calc=Math.round(nOr(src.presup_unit)*(1+nOr(src.margen_pct)/100)); _IT.precioManual=Math.abs(nOr(src.precio_unit)-calc)>1;
+  const sv=(k,v)=>{ const e=document.getElementById(k); if(e) e.value=(v==null?'':v); };
+  sv('i3',src.unidades||1); sv('i4',src.descripcion||''); sv('iflete',src.costo_flete||'');
+  sv('idis',src.diseno||''); document.querySelectorAll('#dis-btns .btn-seg').forEach(b=>b.classList.toggle('active',(src.diseno||'')===b.dataset.v));
+  sv('ihrdis',src.horas_diseno||''); sv('icdis',src.costo_diseno||'');
+  sv('itardis',((nOr(src.horas_diseno)>0&&nOr(src.costo_diseno)>0)?Math.round(src.costo_diseno/src.horas_diseno):nOr(DB.procesos.find(p=>p.proceso===src.diseno)?.precio))||'');
+  sv('imm',src.minutos_manual||''); const hc=document.getElementById('horas-calc-display'); if(hc) hc.textContent=(src.minutos_manual?(src.minutos_manual/60).toFixed(2):'0.00')+' h';
+  sv('imargen',src.margen_pct||''); sv('ipunit',src.precio_unit||0);
+  itRenderRows('mat'); itRenderRows('svc'); itRenderRows('prc'); _IT.mats.forEach((_,i)=>matCalc(i,false,true)); _IT.prcs.forEach((_,i)=>prcCalc(i,true));
+  try{ chequearMargenUrgencia(); }catch(e){} try{ recalcItem(false); }catch(e){}
+  toast('✅ Ítem copiado: revisa materiales, procesos y precio antes de guardar');
+}
 // ── Precio sugerido al cotizar (dentro del editor de ítem) ─────
 let _itSugT=null; function itSugerirDeb(){ clearTimeout(_itSugT); _itSugT=setTimeout(itSugerir,450); }
 async function itSugerir(){
@@ -7462,7 +7480,7 @@ async function itSugerir(){
   const g=res.filter(o=>o.gan).map(o=>Number(o.it.precio_unit)); const ok=g.length;
   const resumen=ok?`Aprobados: <b>${_anM(Math.min(...g))}</b> – <b>${_anM(Math.max(...g))}</b> · promedio <b style="color:var(--gold)">${_anM(g.reduce((a,b)=>a+b,0)/ok)}</b> por unidad`:'Ninguno de los parecidos fue aprobado todavía';
   box.innerHTML=`<div style="border:1px dashed var(--border);border-radius:12px;padding:10px 12px;background:var(--card2)"><div style="font-size:12px;font-weight:800">💡 Cotizado antes en ítems parecidos</div><div style="font-size:11.5px;margin:3px 0 6px">${resumen}</div>
-    ${res.map(o=>`<div style="display:flex;gap:8px;justify-content:space-between;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border);font-size:11.5px"><div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(String(o.it.descripcion||'').slice(0,90))}</div><div style="color:var(--muted)">COT-${o.c.cotizacion} · ${esc(o.c.empresa||'')} · ${fmtDate((o.c.fecha_emision||'').toString().slice(0,10))} · ${bEst(o.c.estado)} · ${Math.round(o.sc*100)}% parecido <span class="it-sh" data-i="${o.it.id}"></span></div></div><div style="text-align:right;flex-shrink:0;font-family:var(--mono);font-weight:700">${_anM(o.it.precio_unit)}<div style="font-size:10px;color:var(--muted);font-weight:400">×${o.it.unidades||1}</div></div></div>`).join('')}</div>`;
+    ${res.map(o=>`<div onclick="itUsarSug('${o.it.id}')" title="Toca para copiar este ítem al formulario" style="cursor:pointer;display:flex;gap:8px;justify-content:space-between;align-items:flex-start;padding:7px 4px;border-top:1px solid var(--border);font-size:11.5px"><div style="min-width:0"><div style="overflow-wrap:anywhere">${esc(String(o.it.descripcion||'').slice(0,90))}</div><div style="color:var(--muted)">COT-${o.c.cotizacion} · ${esc(o.c.empresa||'')} · ${fmtDate((o.c.fecha_emision||'').toString().slice(0,10))} · ${bEst(o.c.estado)} · ${Math.round(o.sc*100)}% parecido <span class="it-sh" data-i="${o.it.id}"></span></div></div><div style="text-align:right;flex-shrink:0;font-family:var(--mono);font-weight:700">${_anM(o.it.precio_unit)}<div style="font-size:10px;color:var(--muted);font-weight:400">×${o.it.unidades||1}</div><div style="margin-top:3px;font-size:10px;font-weight:800;color:#fff;background:#1565c0;border-radius:10px;padding:2px 8px;font-family:inherit">Usar</div></div></div>`).join('')}<div style="font-size:10px;color:var(--muted);margin-top:6px">Toca un ítem para copiar descripción, materiales, servicios, procesos, diseño, flete y precios. El Nº de ítem no cambia.</div></div>`;
   if(F('com_cotiz_vs_real')){ try{ const ids=res.map(o=>'"'+o.it.id+'"').join(','); const hs=await GET('produccion','select=id_item,horas_total,horas_total_real&id_item=in.('+ids+')');
     (hs||[]).forEach(h=>{ const el=document.querySelector('#it-sug .it-sh[data-i="'+h.id_item+'"]'); const c=Number(h.horas_total)||0, r=Number(h.horas_total_real)||0; if(el&&(c||r)) el.textContent='· ⏱ '+(c?'cotizado '+c+' h':'')+(r?' · real '+r+' h':''); }); }catch(e){} }
 }
