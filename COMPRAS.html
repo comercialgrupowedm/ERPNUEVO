@@ -548,14 +548,11 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 #content .tbl-scroll{overflow:visible!important}
 #content .tbl-wrap{overflow:auto!important}
 #content .data-tbl thead th{position:sticky;top:0;z-index:3;background:var(--card)!important;box-shadow:0 1px 0 var(--border)}
-#content .data-tbl .sk{position:sticky;z-index:2;background:var(--card)}
-#content .data-tbl thead .sk{z-index:5}
-#content .data-tbl .sk0{left:0;width:34px;min-width:34px;max-width:34px;padding-left:8px;padding-right:2px}
-#content .data-tbl .sk1{left:34px;width:46px;min-width:46px;max-width:46px;padding:4px 6px}
-#content .data-tbl .sk2{left:80px;width:250px;min-width:250px;max-width:250px;box-shadow:2px 0 0 var(--border)}
-#content .data-tbl .skl0{left:0}
-#content .data-tbl .skl1{left:46px;width:200px;min-width:200px;max-width:200px;box-shadow:2px 0 0 var(--border)}
-#content .data-tbl tbody tr:hover td.sk{background:var(--card2,#f1f5f9)}
+/* columnas que se desplazan con la tabla (solo el encabezado queda fijo arriba) */
+#content .data-tbl .sk{position:static}
+#content .data-tbl .sk0{width:34px;min-width:34px;max-width:34px;padding-left:8px;padding-right:2px}
+#content .data-tbl .sk1{width:46px;min-width:46px;max-width:46px;padding:4px 6px}
+#content .data-tbl .skl1{min-width:120px}
 #content .kstrip{padding:0 0 4px!important;gap:6px!important;margin-top:4px!important}
 #content .kchip{padding:4px 10px!important;min-width:0!important;display:flex;align-items:baseline;gap:6px;border-radius:8px!important}
 #content .kchip .n{font-size:14px!important}#content .kchip .l{margin:0!important;font-size:9px!important}
