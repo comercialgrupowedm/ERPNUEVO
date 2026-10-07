@@ -1649,6 +1649,7 @@ async function pasoOk(id,i){
 async function produccionOk(id){
   if(!soloEditor()) return; const op=opDe(id); if(!op) return;
   if(op.externo){ toast('La pieza sigue en trabajo externo: recíbela primero','error'); return; }
+  if(op.lleva_externo&&!op.externo_ok_fecha&&!confirm('Esta OP lleva servicio externo'+(op.servicio_externo?' ('+op.servicio_externo+')':'')+' y aún no aparece como recibido.\n\n¿Dar Producción OK de todos modos?')) return;
   if(pctOp(op)<100){ toast('El avance global debe estar en 100% (va en '+pctOp(op)+'%). Marca los pasos OK o actualiza el avance.','error'); return; }
   if(!confirm('¿Dar PRODUCCIÓN OK a '+opTitulo(op)+'?\n\nSe registra la fecha y hora de hoy y tu nombre.')) return;
   const r=await rpcP('planeacion_avanzar_etapa',{p_id:id,p_etapa:'entrega'},'✅ Producción OK registrado'); if(r) trasGuardar(id);

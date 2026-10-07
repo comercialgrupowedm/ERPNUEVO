@@ -1145,7 +1145,7 @@ function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar
 const PROD_SEL_C='id,id_item,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,fecha_entrega_prod,terminado_por'
   +',calidad_ok,calidad_estado,calidad_fecha,calidad_por,despachado,despacho_fecha'
-  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,es_garantia,id_prod_origen,garantia_motivo'
+  +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,servicios_cot,externo_ok_fecha,externo_ok_por,es_garantia,id_prod_origen,garantia_motivo'
   +',ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,procesos,tiene_imagen,imagen_drive_id,updated_at'
   +',qa_res:formato_qa->resultado,qa_insp:formato_qa->inspeccion,qa_tiene:formato_qa->numPiezas';
 const REM_SEL='id,numero,op,cot_num,empresa,asesor,estado,lineas,pedida_por,pedida_fecha,seleccion_por,seleccion_fecha,generada_por,generada_fecha,despachada_por,despachada_fecha,observaciones,proyecto,oc_cliente,nit,direccion,ciudad,contacto,telefono,fecha,manual,libre';
@@ -1414,7 +1414,7 @@ function detailItem(id,foco){
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
   if(cal&&ap) A.push(['↩️','#64748b','DEVOLVER APROBACIÓN',`revertirItem('${j}')`]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
-  if(cal) A.push(['🔥','#dc4a18','HOJA TEMPLE',`modalTemple('${j}')`]);
+  if(cal) A.push(['🚚','#7b1fa2','HOJA SERVICIO',`modalTemple('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
   if(puedeCal()) A.push(['🏅','#b7791f','CERTIFICADO',certVigente(id)?`detailCert('${jsq(certVigente(id).id)}')`:`editorCert(null,'${j}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
@@ -1707,64 +1707,78 @@ async function recibirExterno(id){
   if(r) trasGuardar(id);
 }
 
-// ── HOJA DE ENVÍO A TEMPLE (documento para el proveedor; marca el ítem en servicio externo) ──
+// ── HOJA DE ENVÍO A SERVICIO EXTERNO (documento para el proveedor; marca el ítem en servicio externo) ──
+// Todo se precarga de lo que cotizó el comercial: servicio (con su descripción, dureza y días), materiales y cantidad.
+let _TP={mats:[],svcs:[]};
+function tpDesc(x,o){
+  const mats=[...document.querySelectorAll('.tp-mchk')].filter(c=>c.checked).map(c=>(_TP.mats[+c.dataset.i]||{}).nombre).filter(Boolean);
+  return x.desc||[x.nombre,mats.length?'sobre '+mats.join(' + '):'',x.dureza?'a '+x.dureza+' HRC':''].filter(Boolean).join(' ');
+}
 function modalTemple(id){
   const o=opDe(id); if(!o||!soloCal()) return;
-  const provs=[...new Set([...(DB.servicios||[]).filter(s=>/TEMPLE|TRATAMIENTO|CALOR|BONIFICADO|TEMPERATURA|NITRUR|CEMENTAD/i.test((s.servicio||'')+' '+(s.proveedor||''))).map(s=>s.proveedor||s.servicio),...provsConocidos()].filter(Boolean))];
-  openModal(`🔥 Hoja de envío a temple — ${opTitulo(o)}`,
-    ayudaForm('Llena los datos del tratamiento y toca **Guardar y PDF**: el ítem queda **en servicio externo** (con el proveedor y el tratamiento en el detalle, y la fecha de regreso), se registra en el historial y se abre la hoja para imprimir y enviar con las piezas.')+
-    `<div class="form-grid">
-      <div class="field span2"><label>Referencia / producto</label><input id="tp-ref" value="${esc(o.descripcion||'')}"></div>
-      <div class="field span2" id="tp-mats-w" style="display:none"><label>Materiales de la OP — marca los que van a temple</label><div id="tp-mats" style="display:flex;flex-direction:column;gap:6px"></div></div>
+  const provs=[...new Set([...(DB.servicios||[]).map(s=>s.proveedor),...provsConocidos()].filter(Boolean))];
+  openModal(`🚚 Hoja de servicio externo — ${opTitulo(o)}`,
+    ayudaForm('Los datos vienen de la cotización: servicio, materiales, dureza y días. Revisa, escribe el **proveedor** y toca **Guardar y PDF**: el ítem queda **en servicio externo** (con el servicio y el proveedor en el detalle), se registra en el historial y se abre la hoja para imprimir y enviar con las piezas.')+
+    `<div id="tp-svc-box" class="callout" style="margin:0 0 12px;background:#f3e8ff;border-color:#d8b4fe;color:#6b21a8">Cargando servicio cotizado…</div>
+    <div class="form-grid">
       <div class="field span2" id="tp-svc-w" style="display:none"><label>Servicio cotizado</label><select id="tp-svc" onchange="tpSvcCambio()"></select></div>
-      <div class="field"><label>Material / tipo de acero</label><input id="tp-mat" placeholder="Ej: D2, H13, AISI 4140"></div>
-      <div class="field"><label>Proveedor de temple</label><input id="tp-prov" list="tp-provs" autocomplete="off"><datalist id="tp-provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
-      <div class="field"><label>Temperatura (°C)</label><input id="tp-temp" type="number" step="10" value="1020"></div>
-      <div class="field"><label>Tiempo (minutos)</label><input id="tp-tiempo" type="number" step="5" value="30"></div>
-      <div class="field"><label>Dureza requerida (HRC)</label><input id="tp-dur" placeholder="Ej: 58-62 HRC"></div>
+      <div class="field span2"><label>Qué se le va a hacer</label><textarea id="tp-obs" style="min-height:52px" placeholder="Descripción del servicio"></textarea></div>
+      <div class="field span2"><label>Referencia / producto</label><input id="tp-ref" value="${esc(o.descripcion||'')}"></div>
+      <div class="field span2" id="tp-mats-w" style="display:none"><label>Materiales de la OP — marca los que van al servicio</label><div id="tp-mats" style="display:flex;flex-direction:column;gap:8px"></div></div>
+      <div class="field"><label>Material</label><input id="tp-mat"></div>
+      <div class="field"><label>Proveedor</label><input id="tp-prov" list="tp-provs" autocomplete="off"><datalist id="tp-provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
+      <div class="field"><label>Dureza requerida (HRC)</label><input id="tp-dur" placeholder="Si aplica"></div>
       <div class="field"><label>Cantidad de piezas</label><input id="tp-cant" type="number" min="1" value="${esc(String(o.unidades??1))}"></div>
-      <div class="field"><label>Fecha de envío</label><input id="tp-fecha" type="date" value="${hoyISO()}"></div>
+      <div class="field"><label>Fecha de envío</label><input id="tp-fecha" type="date" value="${hoyISO()}" onchange="document.getElementById('tp-hasta').dataset.auto='1';tpSvcCambio(true)"></div>
       <div class="field"><label>Regreso estimado</label><input id="tp-hasta" type="date"></div>
-      <div class="field span2"><label>Observaciones especiales</label><textarea id="tp-obs" placeholder="Instrucciones adicionales…" style="min-height:52px"></textarea></div>
     </div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="guardarTemple('${idq(o)}')">🔥 Guardar y PDF</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="guardarTemple('${idq(o)}')">🚚 Guardar y PDF</button>`);
   tpPrecargar(o);
 }
-// Precarga desde lo que puso el comercial: materiales (varios → casillas), servicio cotizado (dureza, días), proveedor del catálogo.
-let _TP={mats:[],svcs:[]};
 async function tpPrecargar(o){
   _TP={mats:[],svcs:[]};
-  try{
-    _TP.mats=window.feMatsCotizados?await window.feMatsCotizados(o.id):[];
-    if(o.id_item){ const it=await GET('items','select=svcs,servicio&id='+'eq.'+encodeURIComponent(o.id_item)); const r=it&&it[0]||{}; let sv=r.svcs; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } }
-      _TP.svcs=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!_TP.svcs.length&&r.servicio) _TP.svcs=[{nombre:r.servicio}]; }
+  const arr=v=>{ if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ v=null; } } return Array.isArray(v)?v.filter(x=>x&&x.nombre):[]; };
+  try{ _TP.mats=window.feMatsCotizados?await window.feMatsCotizados(o.id):[]; }catch(e){}
+  try{ const r=(await GET('produccion','select=servicios_cot,servicio_externo,id_item&id=eq.'+encodeURIComponent(o.id)))[0]||{};
+    _TP.svcs=arr(r.servicios_cot);
+    if(!_TP.svcs.length&&r.id_item){ const it=(await GET('items','select=svcs,servicio&id=eq.'+encodeURIComponent(r.id_item)))[0]||{}; _TP.svcs=arr(it.svcs); if(!_TP.svcs.length&&it.servicio) _TP.svcs=[{nombre:it.servicio}]; }
+    if(!_TP.svcs.length&&r.servicio_externo) _TP.svcs=[{nombre:r.servicio_externo}];
   }catch(e){ window._pe=e.message; }
+  if(!_TP.svcs.length) _TP.svcs=arr(o.servicios_cot);
+  if(!_TP.svcs.length&&o.servicio_externo) _TP.svcs=[{nombre:o.servicio_externo}];
   if(!document.getElementById('tp-mat')) return;
-  const w=document.getElementById('tp-mats-w');
-  if(_TP.mats.length){ w.style.display=''; document.getElementById('tp-mats').innerHTML=_TP.mats.map((m,i)=>`<label style="display:flex;gap:8px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0;font-weight:600"><input type="checkbox" class="tp-mchk" data-i="${i}" checked onchange="tpMatsCambio()" style="width:20px;height:20px"> Material ${i+1}: ${esc(m.nombre)}${m.kg?' · '+(Math.round(m.kg*10)/10)+' kg':''}</label>`).join(''); tpMatsCambio(); }
-  if(_TP.svcs.length){ document.getElementById('tp-svc-w').style.display=''; const sel=document.getElementById('tp-svc');
+  if(_TP.mats.length){ document.getElementById('tp-mats-w').style.display=''; document.getElementById('tp-mats').innerHTML=_TP.mats.map((m,i)=>`<label style="display:flex;gap:10px;align-items:center;font-size:13.5px;text-transform:none;letter-spacing:0;font-weight:600;cursor:pointer"><input type="checkbox" class="tp-mchk" data-i="${i}" checked onchange="tpMatsCambio()" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;flex:none;accent-color:#16a34a;border-radius:4px"><span>Material ${i+1}: ${esc(m.nombre)}${m.kg?' · '+(Math.round(m.kg*10)/10)+' kg':''}</span></label>`).join(''); tpMatsCambio(true); }
+  const box=document.getElementById('tp-svc-box');
+  if(_TP.svcs.length){ const sel=document.getElementById('tp-svc');
     sel.innerHTML=_TP.svcs.map((x,i)=>`<option value="${i}">${esc(x.nombre)}${x.dureza?' · '+esc(x.dureza)+' HRC':''}${x.dias?' · '+x.dias+' d':''}</option>`).join('');
-    const k=_TP.svcs.findIndex(x=>/TEMPLE|BONIFICADO|TEMPERATURA|CEMENTAD|NITRUR/i.test(x.nombre)); sel.value=String(k>=0?k:0); tpSvcCambio(); }
+    if(_TP.svcs.length>1) document.getElementById('tp-svc-w').style.display='';
+    tpSvcCambio();
+  } else { box.style.background='#fff7ed'; box.style.borderColor='#fed7aa'; box.style.color='#9a3412'; box.innerHTML='⚠️ Esta OP no tiene servicio externo en la cotización. Describe el servicio abajo.'; }
 }
-function tpMatsCambio(){
+function tpMatsCambio(init){
   const n=[...document.querySelectorAll('.tp-mchk')].filter(c=>c.checked).map(c=>_TP.mats[+c.dataset.i].nombre);
   document.getElementById('tp-mat').value=n.join(' + ');
+  const x=_TP.svcs[+(document.getElementById('tp-svc')||{}).value||0]; const obs=document.getElementById('tp-obs');
+  if(x&&obs&&(!obs.value||obs.dataset.auto==='1')){ obs.value=tpDesc(x); obs.dataset.auto='1'; }
 }
-function tpSvcCambio(){
+function tpSvcCambio(soloFecha){
   const x=_TP.svcs[+document.getElementById('tp-svc').value]; if(!x) return;
-  if(x.dureza&&!document.getElementById('tp-dur').value) document.getElementById('tp-dur').value=String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC';
-  const hasta=document.getElementById('tp-hasta');
-  if(x.dias&&!hasta.value){ const d=new Date((document.getElementById('tp-fecha').value||hoyISO())+'T12:00:00'); d.setDate(d.getDate()+Number(x.dias)); hasta.value=d.toISOString().slice(0,10); }
-  const prov=document.getElementById('tp-prov');
+  const dur=document.getElementById('tp-dur'), hasta=document.getElementById('tp-hasta'), prov=document.getElementById('tp-prov'), obs=document.getElementById('tp-obs');
+  if(x.dias&&(!hasta.value||hasta.dataset.auto==='1')){ const d=new Date((document.getElementById('tp-fecha').value||hoyISO())+'T12:00:00'); d.setDate(d.getDate()+Number(x.dias)); hasta.value=d.toISOString().slice(0,10); hasta.dataset.auto='1'; }
+  if(soloFecha) return;
+  dur.value=x.dureza?String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC':'';
   if(!prov.value){ const c=(DB.servicios||[]).find(s=>String(s.servicio||'').trim().toUpperCase()===String(x.nombre).trim().toUpperCase()&&s.proveedor); if(c) prov.value=c.proveedor; }
-  const obs=document.getElementById('tp-obs'); if(x.desc&&!obs.value) obs.value=x.desc;
+  obs.value=tpDesc(x); obs.dataset.auto='1';
+  const box=document.getElementById('tp-svc-box');
+  box.innerHTML=`🚚 <b>Servicio cotizado:</b> ${esc(x.nombre)}${x.dureza?' · dureza '+esc(x.dureza)+' HRC':''}${x.dias?' · '+x.dias+' días':''}<div style="font-size:12px;margin-top:4px;font-weight:500">${esc(tpDesc(x))}</div>`;
 }
 async function guardarTemple(id){
   const o=opDe(id); if(!o) return;
-  const t={op:o.op,item:o.item_num,cliente:o.empresa,ref:gv('tp-ref'),material:gv('tp-mat'),proveedor:gv('tp-prov'),temp:gv('tp-temp'),tiempo:gv('tp-tiempo'),dureza:gv('tp-dur'),cant:gv('tp-cant'),fecha:gv('tp-fecha'),obs:gv('tp-obs'),solicitante:_SESSION?.nombre||''};
-  if(!t.proveedor){ toast('Escribe el proveedor de temple','error'); return; }
-  const det=['TEMPLE',t.proveedor,t.temp?t.temp+'°C':'',t.tiempo?t.tiempo+' min':'',t.dureza,t.material].filter(Boolean).join(' · ');
-  const r=await rpcC('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:det,p_hasta:gv('tp-hasta')||null},'🔥 Hoja de temple registrada — ítem en servicio externo');
+  const x=_TP.svcs[+(document.getElementById('tp-svc')||{}).value||0]||{};
+  const t={op:o.op,item:o.item_num,cliente:o.empresa,ref:gv('tp-ref'),servicio:x.nombre||'Servicio externo',material:gv('tp-mat'),proveedor:gv('tp-prov'),dureza:gv('tp-dur'),cant:gv('tp-cant'),fecha:gv('tp-fecha'),hasta:gv('tp-hasta'),obs:gv('tp-obs'),solicitante:_SESSION?.nombre||''};
+  if(!t.proveedor){ toast('Escribe el proveedor','error'); return; }
+  const det=[t.servicio,t.proveedor,t.dureza,t.material].filter(Boolean).join(' · ');
+  const r=await rpcC('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:det,p_hasta:t.hasta||null},'🚚 Hoja de servicio registrada — ítem en servicio externo');
   if(r){ trasGuardar(id); setTimeout(()=>imprimirTemple(t),300); }
 }
 function provsConocidos(){ return [...new Set([...(DB.solicitudes||[]).map(s=>s.proveedor),...(DB.servicios||[]).map(s=>s.proveedor)].filter(Boolean).map(s=>String(s).trim()))].sort((a,b)=>a.localeCompare(b,'es')); }
@@ -2380,16 +2394,16 @@ function imprimirReproceso(repId){
 }
 // Hoja de envío a temple
 function imprimirTemple(t){
-  const hl=(l,v)=>`<td style="border:2px solid #dc4a18;background:#fff7ed;text-align:center;padding:10px"><div style="font-size:9px;color:#dc4a18;font-weight:700;text-transform:uppercase">${l}</div><div style="font-size:22px;font-weight:900;color:#dc4a18">${v}</div></td>`;
-  const body=docCab('Hoja de envío a temple','Tratamiento térmico — servicio externo','OP',`OP-${t.op}`,'#dc4a18')+
-    `<table style="margin-bottom:10px;border:none"><tr>${hl('🌡 Temperatura',esc(t.temp||'—')+' °C')}<td style="border:none;width:12px"></td>${hl('⏱ Tiempo',esc(t.tiempo||'—')+' min')}</tr></table>
+  const hl=(l,v)=>`<td style="border:2px solid #7b1fa2;background:#faf5ff;text-align:center;padding:10px"><div style="font-size:9px;color:#7b1fa2;font-weight:700;text-transform:uppercase">${l}</div><div style="font-size:20px;font-weight:900;color:#7b1fa2">${v}</div></td>`;
+  const body=docCab('Hoja de envío a servicio externo',esc(t.servicio||'Servicio externo'),'OP',`OP-${t.op}`,'#7b1fa2')+
+    `<table style="margin-bottom:10px;border:none"><tr>${hl('🚚 Servicio',esc(t.servicio||'—'))}</tr></table>
     <table style="margin-bottom:10px"><tr>${cel('OP',`OP-${esc(String(t.op))}`)}${cel('Ítem',esc(String(t.item??'—')))}</tr><tr>${cel('Referencia / producto',esc(t.ref||'—'))}${cel('Cantidad',esc(String(t.cant||'—'))+' und')}</tr>
-      <tr>${cel('Material / acero',esc(t.material||'—'))}${cel('Dureza requerida',esc(t.dureza||'—'))}</tr><tr>${cel('Proveedor de temple',esc(t.proveedor||'—'))}${cel('Fecha de envío',fmtDate(t.fecha))}</tr>
-      <tr>${cel('Cliente',esc(t.cliente||'—'))}${cel('Solicitado por',esc(t.solicitante||'—'))}</tr></table>
-    ${t.obs?`<table style="margin-bottom:10px"><tr><td><b>Observaciones:</b> ${esc(t.obs)}</td></tr></table>`:''}
-    <table style="margin-bottom:10px"><tr><th class="azul" colspan="3">RESULTADOS (A LLENAR POR EL PROVEEDOR)</th></tr><tr><th class="az2">Dureza obtenida (HRC)</th><th class="az2">Firma proveedor</th><th class="az2">Fecha entrega</th></tr><tr><td style="height:30px"></td><td></td><td></td></tr></table>
+      <tr>${cel('Material',esc(t.material||'—'))}${cel('Dureza requerida',esc(t.dureza||'—'))}</tr><tr>${cel('Proveedor',esc(t.proveedor||'—'))}${cel('Fecha de envío',fmtDate(t.fecha))}</tr>
+      <tr>${cel('Cliente',esc(t.cliente||'—'))}${cel('Regreso estimado',t.hasta?fmtDate(t.hasta):'—')}</tr><tr>${cel('Solicitado por',esc(t.solicitante||'—'))}${cel('',' ')}</tr></table>
+    ${t.obs?`<table style="margin-bottom:10px"><tr><td><b>Qué se le va a hacer:</b> ${esc(t.obs)}</td></tr></table>`:''}
+    <table style="margin-bottom:10px"><tr><th class="azul" colspan="3">RESULTADOS (A LLENAR POR EL PROVEEDOR)</th></tr><tr><th class="az2">Resultado / dureza obtenida</th><th class="az2">Firma proveedor</th><th class="az2">Fecha entrega</th></tr><tr><td style="height:30px"></td><td></td><td></td></tr></table>
     <div class="firm"><div>Entregado por<br><span style="font-weight:400;color:#555">${esc(t.solicitante||'')}</span></div><div>Recibido por proveedor<br><span style="font-weight:400;color:#555">Firma / sello</span></div><div>Recibido por WEDM<br><span style="font-weight:400;color:#555">Firma</span></div></div>`;
-  _abrirDocParaImprimir(docHtml(`TEMPLE-OP${t.op}`,body),`TEMPLE-OP${t.op}.pdf`);
+  _abrirDocParaImprimir(docHtml(`SERVICIO-OP${t.op}`,body),`SERVICIO-OP${t.op}.pdf`);
 }
 // Formato de solicitud de bienes y servicios externos (COMPRAS-FO-002), horizontal como el anterior
 function docSolicitud(x){

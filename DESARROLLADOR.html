@@ -2656,7 +2656,17 @@ function usDetalle(i){
 /* ── Semáforo de producción (igual que «SEMAFORO DE AVANCE» de AppSheet) ── */
 const _PROD_FIN=['TERMINADO','PENDIENTE DESPACHO','CALIDAD APROBADA','REMISIÓN SOLICITADA','REMISIÓN GENERADA','DESPACHADO'];
 const SEM_CLS={'EN PROCESO':'verde','TERMINADO':'azul','DESPACHADO':'gris','TRABAJO EXTERNO':'urg','REPROCESO':'rojo','CANCELADO':'rojo','PAUSADO':'naranja'};
-const _prodFin=p=>!!p.despachado||_PROD_FIN.includes(p.estado);
+// "Terminada" de verdad: si lleva servicio externo y todavía no regresa (o está afuera), la OP NO está terminada.
+const _extPend=p=>!p.despachado&&(!!p.externo||(!!p.lleva_externo&&!p.externo_ok_fecha&&['TERMINADO','PENDIENTE DESPACHO'].includes(p.estado)));
+const _prodFin=p=>!!p.despachado||(_PROD_FIN.includes(p.estado)&&!_extPend(p));
+// Paso de la cotización según el estado real de sus OP (En espera → Aprobada → En proceso → Terminado → Facturada)
+function cotEtapa(c){
+  const e=_normEstado(c.estado); if(e!=='APROBADA'&&e!=='EN PROCESO'&&e!=='TERMINADO') return e;
+  const rows=rowsDeCot(c); if(!rows.length) return e;
+  const s=semProd(rows); if(!s) return e;
+  if(s.estado==='TERMINADO'||s.estado==='DESPACHADO') return 'TERMINADO';
+  return 'EN PROCESO';
+}
 function semProd(rows){   // rows: filas de Control Producción de una cotización o de un ítem
   rows=(rows||[]).filter(Boolean); if(!rows.length) return null;
   const vivos=rows.filter(p=>p.despachado||!['CANCELADO','PAUSADO'].includes(p.estado));
@@ -2741,7 +2751,7 @@ function detailCot(id){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c) return;
   try{chatCtx('','COT-'+c.cotizacion,'COT-'+c.cotizacion+' · '+(c.empresa||''));}catch(e){}
   window._detailCotId=id;
-  const its=itemsDe(id); const cli=clienteDe(c); const est=_normEstado(c.estado);
+  const its=itemsDe(id); const cli=clienteDe(c); const est=cotEtapa(c);
   let dias=null,pct=0;
   if(c.fecha_entrega_pactada){
     const hoy=new Date(); hoy.setHours(0,0,0,0);
@@ -3934,7 +3944,7 @@ const fmtDTs=d=>{ if(!d) return ''; const t=new Date(d); if(isNaN(t)) return '';
 const mutedP=t=>`<p style="font-size:12px;color:var(--muted);padding:6px 0">${t}</p>`;
 
 // ── Carga / refresco de datos de producción ─────────────────────
-const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,precio_unit,precio_total,descuento_pct,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at';
+const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,precio_unit,precio_total,descuento_pct,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,externo,externo_desde,externo_detalle,lleva_externo,servicio_externo,servicios_cot,externo_ok_fecha,externo_ok_por,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at';
 const _fd=(a,b)=>String(b||'').localeCompare(String(a||''));
 const PSYNC=[
   {t:'produccion',k:'produccion',sel:PROD_COLS,ord:'op.desc,item_num.asc,id.asc',cmp:(a,b)=>(b.op-a.op)||(Number(a.item_num)-Number(b.item_num))||String(a.id).localeCompare(String(b.id))},
@@ -4267,10 +4277,18 @@ function detalleProd(id,tab){
   const T=(k,l)=>`<div class="dp-tab ${tab===k?'active':''}" onclick="pdTab(this,'${k}')">${l}</div>`;
   const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
   openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+accionesProd(p)+
-    `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
-    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
+    `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${p.lleva_externo?T('servicios','🚚 Servicios'):''}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
+    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(p.lleva_externo?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
   if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
   cargarArchivosProd(id); cargarHistorialProd(id);
+}
+function pdServicios(p){
+  let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } }
+  sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}];
+  if(!sv.length) return mutedP('Este ítem no tiene servicios externos en la cotización.');
+  const est=p.externo?`<span class="badge morado">🚚 Afuera desde ${fmtDT(p.externo_desde)}</span>`:(p.externo_ok_fecha?`<span class="badge verde">📥 Recibido ${fmtDT(p.externo_ok_fecha)}${p.externo_ok_por?' · '+esc(p.externo_ok_por):''}</span>`:'<span class="badge gris">Pendiente de enviar</span>');
+  return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
+    <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
 }
 function accionesProd(p){
   const id=p.id; const b=[]; const mats=matsDe(id); const rol=rolActual();
