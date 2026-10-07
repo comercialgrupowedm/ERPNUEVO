@@ -1142,7 +1142,7 @@ const PG_BASE=(window.innerWidth<700?30:60);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
 // Columnas de producción que usa el módulo. formato_qa completo se carga aparte (pesa); aquí solo el resultado y quién inspeccionó.
-const PROD_SEL_C='id,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
+const PROD_SEL_C='id,id_item,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,fecha_entrega_prod,terminado_por'
   +',calidad_ok,calidad_estado,calidad_fecha,calidad_por,despachado,despacho_fecha'
   +',externo,externo_desde,externo_hasta,externo_detalle,lleva_externo,servicio_externo,externo_ok_fecha,externo_ok_por,es_garantia,id_prod_origen,garantia_motivo'
@@ -1715,6 +1715,8 @@ function modalTemple(id){
     ayudaForm('Llena los datos del tratamiento y toca **Guardar y PDF**: el ítem queda **en servicio externo** (con el proveedor y el tratamiento en el detalle, y la fecha de regreso), se registra en el historial y se abre la hoja para imprimir y enviar con las piezas.')+
     `<div class="form-grid">
       <div class="field span2"><label>Referencia / producto</label><input id="tp-ref" value="${esc(o.descripcion||'')}"></div>
+      <div class="field span2" id="tp-mats-w" style="display:none"><label>Materiales de la OP — marca los que van a temple</label><div id="tp-mats" style="display:flex;flex-direction:column;gap:6px"></div></div>
+      <div class="field span2" id="tp-svc-w" style="display:none"><label>Servicio cotizado</label><select id="tp-svc" onchange="tpSvcCambio()"></select></div>
       <div class="field"><label>Material / tipo de acero</label><input id="tp-mat" placeholder="Ej: D2, H13, AISI 4140"></div>
       <div class="field"><label>Proveedor de temple</label><input id="tp-prov" list="tp-provs" autocomplete="off"><datalist id="tp-provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
       <div class="field"><label>Temperatura (°C)</label><input id="tp-temp" type="number" step="10" value="1020"></div>
@@ -1726,6 +1728,36 @@ function modalTemple(id){
       <div class="field span2"><label>Observaciones especiales</label><textarea id="tp-obs" placeholder="Instrucciones adicionales…" style="min-height:52px"></textarea></div>
     </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="guardarTemple('${idq(o)}')">🔥 Guardar y PDF</button>`);
+  tpPrecargar(o);
+}
+// Precarga desde lo que puso el comercial: materiales (varios → casillas), servicio cotizado (dureza, días), proveedor del catálogo.
+let _TP={mats:[],svcs:[]};
+async function tpPrecargar(o){
+  _TP={mats:[],svcs:[]};
+  try{
+    _TP.mats=window.feMatsCotizados?await window.feMatsCotizados(o.id):[];
+    if(o.id_item){ const it=await GET('items','select=svcs,servicio&id='+'eq.'+encodeURIComponent(o.id_item)); const r=it&&it[0]||{}; let sv=r.svcs; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } }
+      _TP.svcs=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!_TP.svcs.length&&r.servicio) _TP.svcs=[{nombre:r.servicio}]; }
+  }catch(e){ window._pe=e.message; }
+  if(!document.getElementById('tp-mat')) return;
+  const w=document.getElementById('tp-mats-w');
+  if(_TP.mats.length){ w.style.display=''; document.getElementById('tp-mats').innerHTML=_TP.mats.map((m,i)=>`<label style="display:flex;gap:8px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0;font-weight:600"><input type="checkbox" class="tp-mchk" data-i="${i}" checked onchange="tpMatsCambio()" style="width:20px;height:20px"> Material ${i+1}: ${esc(m.nombre)}${m.kg?' · '+(Math.round(m.kg*10)/10)+' kg':''}</label>`).join(''); tpMatsCambio(); }
+  if(_TP.svcs.length){ document.getElementById('tp-svc-w').style.display=''; const sel=document.getElementById('tp-svc');
+    sel.innerHTML=_TP.svcs.map((x,i)=>`<option value="${i}">${esc(x.nombre)}${x.dureza?' · '+esc(x.dureza)+' HRC':''}${x.dias?' · '+x.dias+' d':''}</option>`).join('');
+    const k=_TP.svcs.findIndex(x=>/TEMPLE|BONIFICADO|TEMPERATURA|CEMENTAD|NITRUR/i.test(x.nombre)); sel.value=String(k>=0?k:0); tpSvcCambio(); }
+}
+function tpMatsCambio(){
+  const n=[...document.querySelectorAll('.tp-mchk')].filter(c=>c.checked).map(c=>_TP.mats[+c.dataset.i].nombre);
+  document.getElementById('tp-mat').value=n.join(' + ');
+}
+function tpSvcCambio(){
+  const x=_TP.svcs[+document.getElementById('tp-svc').value]; if(!x) return;
+  if(x.dureza&&!document.getElementById('tp-dur').value) document.getElementById('tp-dur').value=String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC';
+  const hasta=document.getElementById('tp-hasta');
+  if(x.dias&&!hasta.value){ const d=new Date((document.getElementById('tp-fecha').value||hoyISO())+'T12:00:00'); d.setDate(d.getDate()+Number(x.dias)); hasta.value=d.toISOString().slice(0,10); }
+  const prov=document.getElementById('tp-prov');
+  if(!prov.value){ const c=(DB.servicios||[]).find(s=>String(s.servicio||'').trim().toUpperCase()===String(x.nombre).trim().toUpperCase()&&s.proveedor); if(c) prov.value=c.proveedor; }
+  const obs=document.getElementById('tp-obs'); if(x.desc&&!obs.value) obs.value=x.desc;
 }
 async function guardarTemple(id){
   const o=opDe(id); if(!o) return;
@@ -3078,6 +3110,7 @@ async function feMatsCotizados(idProd){
   }
   return (_mcCache[idProd]=out);
 }
+window.feMatsCotizados=feMatsCotizados;
 async function feCargarCatalogo(){
   try{ if(!DB.matcat) DB.matcat=await GET('materiales','select=material,unidad,precio&activo=eq.true&order=material.asc'); }catch(e){ DB.matcat=[]; }
   const dl=document.getElementById('fe-dl-mat'); if(!dl) return;
