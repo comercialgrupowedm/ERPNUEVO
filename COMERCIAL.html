@@ -2305,6 +2305,7 @@ async function cargarTodo(){
   aplicarTiposCot(tps);
   DB.cotizaciones=(cs||[]).map(c=>c.estado?{...c,estado:_normEstado(c.estado)}:c);
   DB.items=its||[]; DB.clientes=clis||[]; DB.materiales=mats||[]; DB.procesos=procs||[]; DB.servicios=svcs||[];
+  try{ GET('proveedores','select=id,nombre,nit,direccion,ciudad,telefono,celular,contacto&order=nombre.asc').then(r=>{ DB.proveedores=r||[]; }).catch(()=>{ DB.proveedores=[]; }); }catch(e){ DB.proveedores=[]; }
 }
 async function iniciarApp(){
   document.getElementById('sidebar-user-info').innerHTML=`👤 ${esc(_SESSION.nombre)}<br><span style="opacity:.7">${esc(_SESSION.rol)}${_SESSION.asesor?' · '+esc(_SESSION.asesor):''}</span>`;
@@ -3299,7 +3300,7 @@ function detailItem(id){
 // ── Cotizador de ítem (materiales · servicios · procesos) ───────
 let _IT=null; const ITEM_WIZ_LAST=4;
 const _MAT0=()=>({nombre:'',geo:'Cilindro',dim1:0,largo:0,ancho:0,costo:0,kg:0,manual:false,especial:false,desc_esp:'',costo_esp:0});
-const _SVC0=()=>({nombre:'',dias:1,costo:0,dureza:'',desc:''});
+const _SVC0=()=>({nombre:'',dias:1,costo:0,dureza:'',desc:'',proveedor:''});
 let _tuLast='h';   // v7: unidad de tiempo que el asesor usó por última vez ('h' horas · 'min' minutos)
 const _PRC0=()=>({nombre:'',tarifa:0,tiempo:0,costo:0,peri:0,esp:0,matH:'ALUMINIO',costo_manual:0,modo:'unidad',tu:_tuLast});
 const nOr=(v)=>Number(v)||0;
@@ -3315,6 +3316,7 @@ function formItem(itOrId,cotId){
   openModal(isNew?`Nuevo Item — COT-${cot.cotizacion}`:`Editar Item ${it.item}`,`
     ${ayudaForm(`Describe el ítem y agrega **material**, **servicio** o **proceso** con los botones ＋. El tiempo de cada proceso se puede escribir en horas, en **H : MM** o en minutos. Al final ajusta el **sobremargen** o escribe el **precio unitario** directamente; el sistema calcula el resto.`)}<div class="wiz-tabs" id="wiz-item-tabs"><div class="wiz-tab active" onclick="wizItemTab(0)">📦 Datos</div><div class="wiz-tab" onclick="wizItemTab(1)">🧱 Materiales</div><div class="wiz-tab" onclick="wizItemTab(2)">🛠 Servicios</div><div class="wiz-tab" onclick="wizItemTab(3)">⚙️ Procesos</div><div class="wiz-tab" onclick="wizItemTab(4)">💰 Precios</div></div>
     <datalist id="mat-list"><option value="ESPECIAL">${DB.materiales.filter(m=>m.material!=='ESPECIAL'&&m.material!=='NO APLICA').map(m=>`<option value="${esc(m.material)}">`).join('')}</datalist>
+    <datalist id="prov-list">${(DB.proveedores||[]).map(p=>`<option value="${esc(p.nombre)}">`).join('')}</datalist>
     <datalist id="svc-list">${DB.servicios.map(s=>`<option value="${esc(s.servicio)}">`).join('')}</datalist>
     <datalist id="prc-list">${DB.procesos.filter(p=>p.maquina!=='DISEÑO').map(p=>`<option value="${esc(p.proceso)}">`).join('')}</datalist>
     <div class="wiz-step" id="wiz-item-0"><div class="form-grid">
@@ -3417,12 +3419,13 @@ function svcRowHTML(s,i){
     ${s.nombre?`${cat?`<div style="background:var(--card2);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap"><span>Días: <strong>${cat.dias??'—'}</strong></span><span>$/kg: <strong>${cat.precio?fmt(cat.precio):'—'}</strong></span><span>≤2kg: <strong>${cat.costo_2kg?fmt(cat.costo_2kg):'—'}</strong></span><span>≤10kg: <strong>${cat.costo_10kg?fmt(cat.costo_10kg):'—'}</strong></span></div>`:''}
     <div class="form-grid"><div class="field"><label>Días Servicio ${i+1}</label>${_spin('svc',i,'dias',s.dias,1,'1')}</div>
       <div class="field"><label>Costo Total ${i+1} <span style="color:var(--warn);font-size:10px;font-weight:700">×1.3 al sumar</span></label><div class="money-row"><span class="money-sign">$</span><input type="number" id="svc${i}-costo" value="${s.costo||''}" placeholder="0" oninput="itSvcNum(${i},'costo',this.value)"></div>${cat&&(cat.costo_2kg||cat.precio)?`<div style="font-size:10px;color:var(--muted);margin-top:3px">Precargado del catálogo (${cat.costo_2kg?'≤2 kg':'por kg'}) — puedes editarlo</div>`:''}</div>
+      <div class="field span2"><label>Proveedor del servicio <span style="font-weight:400;opacity:.7">(opcional)</span></label><input list="prov-list" value="${esc(s.proveedor||'')}" placeholder="Buscar proveedor o escribir uno nuevo" oninput="_IT.svcs[${i}].proveedor=this.value" autocomplete="off"></div>
       <div class="field span2"><label>Dureza / Especificación</label><input value="${esc(s.dureza)}" placeholder="ej. 55 HRC" oninput="_IT.svcs[${i}].dureza=this.value"></div>
       <div class="field span2"><label>Descripción / Notas</label><input value="${esc(s.desc)}" placeholder="Observaciones del servicio" oninput="_IT.svcs[${i}].desc=this.value"></div></div>`:''}</div>`;
 }
 function itSvcName(i,v){
   v=v.trim(); const s=_IT.svcs[i]; const cat=DB.servicios.find(x=>x.servicio===v);
-  if(cat){ Object.assign(s,_SVC0(),{nombre:cat.servicio,dias:cat.dias||1,costo:nOr(cat.costo_2kg)||nOr(cat.precio)}); itRenderRows('svc'); recalcItem(); document.getElementById(`svc${i}-costo`)?.focus(); }
+  if(cat){ Object.assign(s,_SVC0(),{nombre:cat.servicio,dias:cat.dias||1,costo:nOr(cat.costo_2kg)||nOr(cat.precio),proveedor:cat.proveedor||''}); itRenderRows('svc'); recalcItem(); document.getElementById(`svc${i}-costo`)?.focus(); }
   else if(!v&&s.nombre){ Object.assign(s,_SVC0()); itRenderRows('svc'); recalcItem(); }
 }
 function itSvcNum(i,f,v){ _IT.svcs[i][f]=nOr(v); recalcItem(); }
@@ -4308,7 +4311,7 @@ function pdServicios(p){
   sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}];
   if(!sv.length) return mutedP('Este ítem no tiene servicios externos en la cotización.');
   const est=p.externo?`<span class="badge morado">🚚 Afuera desde ${fmtDT(p.externo_desde)}</span>`:(p.externo_ok_fecha?`<span class="badge verde">📥 Recibido ${fmtDT(p.externo_ok_fecha)}${p.externo_ok_por?' · '+esc(p.externo_ok_por):''}</span>`:'<span class="badge gris">Pendiente de enviar</span>');
-  return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
+  return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.proveedor?'🏭 '+esc(x.proveedor)+'<br>':''}${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
     <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
 }
 function accionesProd(p){

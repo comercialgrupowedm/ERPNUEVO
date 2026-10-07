@@ -1716,7 +1716,7 @@ function tpDesc(x,o){
 }
 function modalTemple(id){
   const o=opDe(id); if(!o||!soloCal()) return;
-  const provs=[...new Set([...(DB.servicios||[]).map(s=>s.proveedor),...provsConocidos()].filter(Boolean))];
+  const provs=[...new Set([...(DB.proveedores||[]).map(p=>p.nombre),...(DB.servicios||[]).map(s=>s.proveedor),...provsConocidos()].filter(Boolean))];
   openModal(`🚚 Hoja de servicio externo — ${opTitulo(o)}`,
     ayudaForm('Los datos vienen de la cotización: servicio, materiales, dureza y días. Revisa, escribe el **proveedor** y toca **Guardar y PDF**: el ítem queda **en servicio externo** (con el servicio y el proveedor en el detalle), se registra en el historial y se abre la hoja para imprimir y enviar con las piezas.')+
     `<div id="tp-svc-box" class="callout" style="margin:0 0 12px;background:#f3e8ff;border-color:#d8b4fe;color:#6b21a8">Cargando servicio cotizado…</div>
@@ -1726,18 +1726,23 @@ function modalTemple(id){
       <div class="field span2"><label>Referencia / producto</label><input id="tp-ref" value="${esc(o.descripcion||'')}"></div>
       <div class="field span2" id="tp-mats-w" style="display:none"><label>Materiales de la OP — marca los que van al servicio</label><div id="tp-mats" style="display:flex;flex-direction:column;gap:8px"></div></div>
       <div class="field"><label>Material</label><input id="tp-mat"></div>
-      <div class="field"><label>Proveedor</label><input id="tp-prov" list="tp-provs" autocomplete="off"><datalist id="tp-provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
+      <div class="field span2"><label>Proveedor (busca en la lista o escribe uno nuevo)</label><input id="tp-prov" list="tp-provs" autocomplete="off" oninput="tpProvInfo()" onchange="tpProvInfo()" placeholder="Buscar proveedor…"><div id="tp-prov-info" style="font-size:12px;color:var(--muted);margin-top:4px"></div><datalist id="tp-provs">${provs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
       <div class="field"><label>Dureza requerida (HRC)</label><input id="tp-dur" placeholder="Si aplica"></div>
       <div class="field"><label>Cantidad de piezas</label><input id="tp-cant" type="number" min="1" value="${esc(String(o.unidades??1))}"></div>
       <div class="field"><label>Fecha de envío</label><input id="tp-fecha" type="date" value="${hoyISO()}" onchange="document.getElementById('tp-hasta').dataset.auto='1';tpSvcCambio(true)"></div>
       <div class="field"><label>Regreso estimado</label><input id="tp-hasta" type="date"></div>
+      <div class="field span2" style="border:1px dashed var(--border);border-radius:12px;padding:10px"><label style="margin-bottom:6px">🏷 Rótulo (impresora de stickers)</label>
+        <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;font-weight:700;color:#b91c1c;cursor:pointer"><input type="checkbox" id="tp-del" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;accent-color:#b91c1c"> ⚠ Pieza delicada</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><div><label>Ancho (mm)</label><input id="tp-rw" type="number" min="20" value="${tpRotSize().w}"></div><div><label>Alto (mm)</label><input id="tp-rh" type="number" min="15" value="${tpRotSize().h}"></div><div><label>Copias</label><input id="tp-rc" type="number" min="1" max="20" value="1"></div></div></div>
     </div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="guardarTemple('${idq(o)}')">🚚 Guardar y PDF</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ghost" onclick="tpRotulo('${idq(o)}')">🏷 Rótulo</button><button class="btn btn-danger" onclick="guardarTemple('${idq(o)}')">🚚 Guardar y PDF</button>`);
   tpPrecargar(o);
 }
 async function tpPrecargar(o){
   _TP={mats:[],svcs:[]};
   const arr=v=>{ if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ v=null; } } return Array.isArray(v)?v.filter(x=>x&&x.nombre):[]; };
+  try{ if(!DB.proveedores) DB.proveedores=await GET('proveedores','select=id,nombre,nit,direccion,ciudad,telefono,celular,contacto&order=nombre.asc'); }catch(e){ DB.proveedores=DB.proveedores||[]; }
+  const dl=document.getElementById('tp-provs'); if(dl&&DB.proveedores) dl.innerHTML=[...new Set(DB.proveedores.map(p=>p.nombre).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join('');
   try{ _TP.mats=window.feMatsCotizados?await window.feMatsCotizados(o.id):[]; }catch(e){}
   try{ const r=(await GET('produccion','select=servicios_cot,servicio_externo,id_item&id=eq.'+encodeURIComponent(o.id)))[0]||{};
     _TP.svcs=arr(r.servicios_cot);
@@ -1767,15 +1772,41 @@ function tpSvcCambio(soloFecha){
   if(x.dias&&(!hasta.value||hasta.dataset.auto==='1')){ const d=new Date((document.getElementById('tp-fecha').value||hoyISO())+'T12:00:00'); d.setDate(d.getDate()+Number(x.dias)); hasta.value=d.toISOString().slice(0,10); hasta.dataset.auto='1'; }
   if(soloFecha) return;
   dur.value=x.dureza?String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC':'';
+  if(!prov.value&&x.proveedor) prov.value=x.proveedor;
   if(!prov.value){ const c=(DB.servicios||[]).find(s=>String(s.servicio||'').trim().toUpperCase()===String(x.nombre).trim().toUpperCase()&&s.proveedor); if(c) prov.value=c.proveedor; }
   obs.value=tpDesc(x); obs.dataset.auto='1';
+  tpProvInfo();
   const box=document.getElementById('tp-svc-box');
   box.innerHTML=`🚚 <b>Servicio cotizado:</b> ${esc(x.nombre)}${x.dureza?' · dureza '+esc(x.dureza)+' HRC':''}${x.dias?' · '+x.dias+' días':''}<div style="font-size:12px;margin-top:4px;font-weight:500">${esc(tpDesc(x))}</div>`;
+}
+function tpProvDe(n){ n=String(n||'').trim().toUpperCase(); return n?(DB.proveedores||[]).find(p=>String(p.nombre||'').trim().toUpperCase()===n):null; }
+function tpProvInfo(){
+  const el=document.getElementById('tp-prov-info'); if(!el) return; const v=document.getElementById('tp-prov').value, p=tpProvDe(v);
+  el.innerHTML=p?`📍 ${esc([p.direccion,p.ciudad].filter(Boolean).join(' · ')||'Sin dirección registrada')}${(p.telefono||p.celular)?' · 📞 '+esc(p.telefono||p.celular):''}${p.contacto?' · 👤 '+esc(p.contacto):''}`:(v?'Proveedor nuevo (no está en la lista): se escribirá tal cual.':'');
+}
+function tpRotSize(){ try{ const s=JSON.parse(localStorage.getItem('wedm_rotulo_mm')||'null'); if(s&&s.w&&s.h) return s; }catch(e){} return {w:100,h:60}; }
+function tpRotulo(id){
+  const o=opDe(id); if(!o) return; const x=_TP.svcs[+(document.getElementById('tp-svc')||{}).value||0]||{};
+  const w=Math.max(20,+gv('tp-rw')||100), h=Math.max(15,+gv('tp-rh')||60), n=Math.min(20,Math.max(1,+gv('tp-rc')||1));
+  try{ localStorage.setItem('wedm_rotulo_mm',JSON.stringify({w,h})); }catch(e){}
+  const pv=tpProvDe(gv('tp-prov'))||{nombre:gv('tp-prov')}; const del=!!document.getElementById('tp-del').checked;
+  const k=Math.min(w/100,h/60); const fs=v=>(v*Math.max(.6,k)).toFixed(1)+'pt';
+  const dir=[pv.direccion,pv.ciudad].filter(Boolean).join(' · '), tel=pv.telefono||pv.celular||'';
+  const una=`<div class="l" style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
+    ${del?`<div style="background:#000;color:#fff;text-align:center;font-weight:900;font-size:${fs(13)};padding:1mm 0;letter-spacing:.5px">⚠ DELICADO · MANEJAR CON CUIDADO</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:.4mm solid #000;padding-bottom:.8mm"><b style="font-size:${fs(18)}">OP-${esc(String(o.op))} · Ítem ${esc(String(o.item_num??''))}</b><span style="font-size:${fs(9)}">${esc(gv('tp-cant')||'')} und · ${fmtDate(gv('tp-fecha')||hoyISO())}</span></div>
+    <div style="font-size:${fs(13)};font-weight:900;line-height:1.1">${esc(x.nombre||'Servicio externo')}</div>
+    <div style="font-size:${fs(10)};line-height:1.15;flex:1;overflow:hidden">${esc(gv('tp-obs')||'')}${gv('tp-mat')?`<br><b>Material:</b> ${esc(gv('tp-mat'))}`:''}${gv('tp-dur')?` · <b>${esc(gv('tp-dur'))}</b>`:''}</div>
+    <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fs(10)};line-height:1.15"><b style="font-size:${fs(12)}">PARA: ${esc(pv.nombre||'—')}</b><br>${esc(dir)}${tel?' · '+esc(tel):''}${pv.contacto?' · '+esc(pv.contacto):''}</div>
+    <div style="font-size:${fs(8)};opacity:.8">${esc(o.empresa||'')} · WEDM</div></div>`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo OP-${esc(String(o.op))}</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}</style></head><body>${Array(n).fill(una).join('')}</body></html>`;
+  _abrirDocParaImprimir(html,'');
 }
 async function guardarTemple(id){
   const o=opDe(id); if(!o) return;
   const x=_TP.svcs[+(document.getElementById('tp-svc')||{}).value||0]||{};
-  const t={op:o.op,item:o.item_num,cliente:o.empresa,ref:gv('tp-ref'),servicio:x.nombre||'Servicio externo',material:gv('tp-mat'),proveedor:gv('tp-prov'),dureza:gv('tp-dur'),cant:gv('tp-cant'),fecha:gv('tp-fecha'),hasta:gv('tp-hasta'),obs:gv('tp-obs'),solicitante:_SESSION?.nombre||''};
+  const pvx=tpProvDe(gv('tp-prov'))||{};
+  const t={delicado:!!(document.getElementById('tp-del')||{}).checked,provDir:[pvx.direccion,pvx.ciudad].filter(Boolean).join(' · '),provTel:pvx.telefono||pvx.celular||'',provCont:pvx.contacto||'',op:o.op,item:o.item_num,cliente:o.empresa,ref:gv('tp-ref'),servicio:x.nombre||'Servicio externo',material:gv('tp-mat'),proveedor:gv('tp-prov'),dureza:gv('tp-dur'),cant:gv('tp-cant'),fecha:gv('tp-fecha'),hasta:gv('tp-hasta'),obs:gv('tp-obs'),solicitante:_SESSION?.nombre||''};
   if(!t.proveedor){ toast('Escribe el proveedor','error'); return; }
   const det=[t.servicio,t.proveedor,t.dureza,t.material].filter(Boolean).join(' · ');
   const r=await rpcC('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:det,p_hasta:t.hasta||null},'🚚 Hoja de servicio registrada — ítem en servicio externo');
@@ -2396,9 +2427,9 @@ function imprimirReproceso(repId){
 function imprimirTemple(t){
   const hl=(l,v)=>`<td style="border:2px solid #7b1fa2;background:#faf5ff;text-align:center;padding:10px"><div style="font-size:9px;color:#7b1fa2;font-weight:700;text-transform:uppercase">${l}</div><div style="font-size:20px;font-weight:900;color:#7b1fa2">${v}</div></td>`;
   const body=docCab('Hoja de envío a servicio externo',esc(t.servicio||'Servicio externo'),'OP',`OP-${t.op}`,'#7b1fa2')+
-    `<table style="margin-bottom:10px;border:none"><tr>${hl('🚚 Servicio',esc(t.servicio||'—'))}</tr></table>
+    `<table style="margin-bottom:10px;border:none"><tr>${hl('🚚 Servicio',esc(t.servicio||'—'))}${t.delicado?'<td style="border:none;width:12px"></td><td style="border:2px solid #000;background:#000;color:#fff;text-align:center;padding:10px;font-weight:900;font-size:16px">⚠ DELICADO</td>':''}</tr></table>
     <table style="margin-bottom:10px"><tr>${cel('OP',`OP-${esc(String(t.op))}`)}${cel('Ítem',esc(String(t.item??'—')))}</tr><tr>${cel('Referencia / producto',esc(t.ref||'—'))}${cel('Cantidad',esc(String(t.cant||'—'))+' und')}</tr>
-      <tr>${cel('Material',esc(t.material||'—'))}${cel('Dureza requerida',esc(t.dureza||'—'))}</tr><tr>${cel('Proveedor',esc(t.proveedor||'—'))}${cel('Fecha de envío',fmtDate(t.fecha))}</tr>
+      <tr>${cel('Material',esc(t.material||'—'))}${cel('Dureza requerida',esc(t.dureza||'—'))}</tr><tr>${cel('Proveedor',esc(t.proveedor||'—'))}${cel('Fecha de envío',fmtDate(t.fecha))}</tr><tr>${cel('Dirección del proveedor',esc([t.provDir,t.provTel,t.provCont].filter(Boolean).join(' · ')||'—'))}${cel('',' ')}</tr>
       <tr>${cel('Cliente',esc(t.cliente||'—'))}${cel('Regreso estimado',t.hasta?fmtDate(t.hasta):'—')}</tr><tr>${cel('Solicitado por',esc(t.solicitante||'—'))}${cel('',' ')}</tr></table>
     ${t.obs?`<table style="margin-bottom:10px"><tr><td><b>Qué se le va a hacer:</b> ${esc(t.obs)}</td></tr></table>`:''}
     <table style="margin-bottom:10px"><tr><th class="azul" colspan="3">RESULTADOS (A LLENAR POR EL PROVEEDOR)</th></tr><tr><th class="az2">Resultado / dureza obtenida</th><th class="az2">Firma proveedor</th><th class="az2">Fecha entrega</th></tr><tr><td style="height:30px"></td><td></td><td></td></tr></table>
