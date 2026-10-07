@@ -1414,7 +1414,6 @@ function detailItem(id,foco){
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
   if(cal&&ap) A.push(['↩️','#64748b','DEVOLVER APROBACIÓN',`revertirItem('${j}')`]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
-  if(cal) A.push(['🚚','#7b1fa2','HOJA SERVICIO',`modalTemple('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
   if(puedeCal()) A.push(['🏅','#b7791f','CERTIFICADO',certVigente(id)?`detailCert('${jsq(certVigente(id).id)}')`:`editorCert(null,'${j}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
@@ -2015,7 +2014,7 @@ async function guardarSolicitud(){
   const marcar=document.getElementById('sl-ext')?.checked;
   const r=await rpcC('calidad_solicitar_servicio',{p_id_prod:id,p_data:Object.assign({},cab,{lineas})},'📋 Solicitud enviada a Compras');
   if(!r) return;
-  if(marcar){ try{ await sb.rpc('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:[lineas[0].tipo_servicio||lineas[0].descripcion,cab.proveedor].filter(Boolean).join(' · '),p_hasta:cab.fecha_retorno||null}); await recargar(); toast('🚚 Ítem marcado en servicio externo'); }catch(e){ toast('❌ '+errMsg(e),'error'); } }
+  if(marcar){ try{ await sb.rpc('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:[lineas[0].tipo_servicio||lineas[0].descripcion,cab.proveedor,lineas[0].dureza,lineas[0].material].filter(Boolean).join(' · '),p_hasta:cab.fecha_retorno||null}); await recargar(); toast('🚚 Ítem marcado en servicio externo'); }catch(e){ toast('❌ '+errMsg(e),'error'); } }
   _SOL=null; trasGuardar(id);
   setTimeout(()=>docSolicitud({o,cab,lineas,numero:String((r.ids||[])[0]||'').slice(0,8).toUpperCase(),fecha:hoyISO()}),300);
 }
@@ -2405,7 +2404,7 @@ function docCab(titulo,sub,numLbl,num,color){
     <td style="width:120px;text-align:center;vertical-align:middle;padding:0"><div class="azul" style="padding:4px;font-size:8px">${numLbl}</div><div style="font-size:16px;font-weight:900;color:${color||'#1a3a6b'};padding:8px 4px">${esc(String(num))}</div></td></tr></table>`;
 }
 const docPie=()=>`<div class="footer">Documento generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} · ${esc(_SESSION?.nombre||'')} · ${esc(EMPRESA_WEDM.nombre)} · NIT ${esc(EMPRESA_WEDM.nit)}</div>`;
-const docHtml=(title,body,landscape)=>`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${DOC_CSS}${landscape?'@page{size:A4 landscape;margin:6mm}':''}</style></head><body>${body}${docPie()}</body></html>`;
+const docHtml=(title,body,landscape)=>`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${DOC_CSS}${landscape?'@page{size:A4 landscape;margin:6mm}':''}</style>${landscape?'<meta name="doc-land" content="1">':''}</head><body>${body}${docPie()}</body></html>`;
 const cel=(l,v,extra)=>`<td ${extra||''}><span class="lbl">${l}</span><span class="val">${v}</span></td>`;
 
 // Reporte de NO CONFORMIDAD / REPROCESO (igual contenido que el PDF anterior)
@@ -2434,7 +2433,7 @@ function imprimirTemple(t){
     ${t.obs?`<table style="margin-bottom:10px"><tr><td><b>Qué se le va a hacer:</b> ${esc(t.obs)}</td></tr></table>`:''}
     <table style="margin-bottom:10px"><tr><th class="azul" colspan="3">RESULTADOS (A LLENAR POR EL PROVEEDOR)</th></tr><tr><th class="az2">Resultado / dureza obtenida</th><th class="az2">Firma proveedor</th><th class="az2">Fecha entrega</th></tr><tr><td style="height:30px"></td><td></td><td></td></tr></table>
     <div class="firm"><div>Entregado por<br><span style="font-weight:400;color:#555">${esc(t.solicitante||'')}</span></div><div>Recibido por proveedor<br><span style="font-weight:400;color:#555">Firma / sello</span></div><div>Recibido por WEDM<br><span style="font-weight:400;color:#555">Firma</span></div></div>`;
-  _abrirDocParaImprimir(docHtml(`SERVICIO-OP${t.op}`,body),`SERVICIO-OP${t.op}.pdf`);
+  _abrirDocParaImprimir(docHtml(`SERVICIO-OP${t.op}`,body,true),`SERVICIO-OP${t.op}.pdf`);
 }
 // Formato de solicitud de bienes y servicios externos (COMPRAS-FO-002), horizontal como el anterior
 function docSolicitud(x){
@@ -2442,6 +2441,7 @@ function docSolicitud(x){
   const body=docCab('Formato de solicitud de bienes y servicios externos','COMPRAS - FO - 002 · Elaboración 12/08/2019 · Actualización 09/11/2022','N°',x.numero||'—')+
     `<table style="margin-bottom:10px"><thead><tr><th class="az2">Nombre del colaborador</th><th class="az2">Área de trabajo</th><th class="az2">Mes</th><th class="az2">Día</th><th class="az2">Año</th><th class="az2">Cotización</th><th class="az2">OP</th><th class="az2">Ítem</th><th class="az2">Proveedor</th></tr></thead>
       <tbody><tr class="center"><td>${esc(cab.solicitante||'—')}</td><td>${esc(cab.area||'CALIDAD')}</td><td>${f.getMonth()+1}</td><td>${f.getDate()}</td><td>${f.getFullYear()}</td><td>${esc(String(o&&o.cot_num||'—'))}</td><td><b>${esc(String(o&&o.op||'—'))}</b></td><td>${esc(String(o&&o.item_num!=null?o.item_num:'—'))}</td><td>${esc(cab.proveedor||'—')}</td></tr></tbody></table>
+    ${(cab.provInfo||cab.delicado)?`<table style="margin-bottom:10px"><tr>${cab.provInfo?`<td><span class="lbl">Dirección / contacto del proveedor</span><b>${esc(cab.provInfo)}</b></td>`:''}${cab.delicado?'<td style="width:22%;background:#000;color:#fff;text-align:center;font-weight:900;font-size:13px">⚠ PIEZA DELICADA</td>':''}</tr></table>`:''}
     <table><thead><tr><th class="azul" colspan="6">REGISTRO DE BIEN O SERVICIO SOLICITADO</th></tr><tr><th class="az2" style="width:8%">Cantidad</th><th class="az2" style="width:34%">Descripción</th><th class="az2" style="width:20%">Tipo de servicio</th><th class="az2" style="width:16%">Material</th><th class="az2" style="width:10%">Dureza</th><th class="az2" style="width:12%">Precio</th></tr></thead>
       <tbody>${lineas.map(l=>`<tr><td class="center">${esc(String(l.cantidad??''))}</td><td>${esc(l.descripcion||'')}</td><td class="center">${esc(l.tipo_servicio||'')}</td><td class="center">${esc(l.material||'')}</td><td class="center">${esc(l.dureza||'')}</td><td style="text-align:right">${l.precio?fmt(l.precio):''}</td></tr>`).join('')}</tbody></table>
     <table style="margin-top:8px"><tr><td class="az2" style="width:120px">OBSERVACIONES</td><td style="white-space:pre-wrap">${esc(cab.observaciones||'')}${cab.fecha_envio?`<br>Envío: ${fmtDate(cab.fecha_envio)}`:''}${cab.fecha_retorno?` · Retorno estimado: ${fmtDate(cab.fecha_retorno)}`:''}${cab.dias?` · Días estimados: ${esc(String(cab.dias))}`:''}</td></tr></table>
@@ -2449,6 +2449,11 @@ function docSolicitud(x){
       <tbody><tr><td>Solicitante</td><td style="height:26px"></td><td></td></tr><tr><td>Jefatura de Compras</td><td style="height:26px"></td><td></td></tr><tr><td>Fecha de recibido</td><td style="height:26px"></td><td></td></tr></tbody></table>`;
   _abrirDocParaImprimir(docHtml(`SOLICITUD_BN_${x.numero}_OP${o&&o.op||''}`,body,true),`SOLICITUD_BN_${x.numero}_OP${o&&o.op||''}.pdf`);
 }
+// Fuerza hoja horizontal en un HTML ya armado (plantillas) y lo marca para imprimirse en ventana propia
+function forzarHoriz(html){ if(typeof html!=='string') return html; if(/@page\s*\{[^}]*landscape/i.test(html)&&html.indexOf('name="doc-land"')>=0) return html;
+  const add='<style>@page{size:A4 landscape;margin:6mm}</style><meta name="doc-land" content="1">';
+  html=html.replace(/@page\s*\{[^}]*portrait[^}]*\}/gi,'');
+  return /<\/head>/i.test(html)?html.replace(/<\/head>/i,add+'</head>'):add+html; }
 // Formato QA impreso (con los datos que calidad llenó)
 function imprimirQA(){
   if(!_QA) return; const st=_QA; const o=opDe(st.id)||{}; const h=st.header||{}; const n=st.numPiezas; const R=st.resultado||{};
@@ -2462,8 +2467,8 @@ function imprimirQA(){
     ${(h.mq||[]).some(Boolean)?`<table style="margin-top:8px"><tr><th class="az2" style="text-align:left">Ruta — visto bueno de calidad</th></tr><tr><td>${(h.mq||[]).map((m,i)=>m?`${chk(st.procVB[i])} ${i+1}. ${esc(m)}`:'').filter(Boolean).join(' &nbsp; · &nbsp; ')}</td></tr></table>`:''}
     <table style="margin-top:8px"><tr><td style="font-size:12px">${chk(R.conforme)} Conforme &nbsp;&nbsp; ${chk(R.noConforme)} No conforme &nbsp;&nbsp; ${chk(R.reproceso)} Reproceso &nbsp;&nbsp; ${chk(R.derogado)} Derogado (cliente aprueba)</td></tr><tr><td style="height:40px;vertical-align:top"><b>Observaciones:</b> ${esc(st.observaciones||'')}</td></tr></table>
     <div class="firm"><div>Inspector: ${esc(st.firmaInspector||'')}<br><span style="font-weight:400;color:#555">Firma</span></div><div>Aprobado por<br><span style="font-weight:400;color:#555">Firma</span></div></div>`;
-  if(window.PL&&PL.has('qa')){ try{ const html=PL.render('qa',PL.dQA({OP:h.opNum||o.op,ITEM:h.item,IDQR:st.id},{header:h,kc:kcs.length?kcs:st.kc.slice(0,5),resultado:R}),null,'FORMATO PLANO 2026'); if(html){ _abrirDocParaImprimir(html,`FORMATO_QA_OP-${h.opNum||o.op}.pdf`); return; } }catch(e){} }
-  _abrirDocParaImprimir(docHtml(`FORMATO_QA_OP-${h.opNum||o.op}`,body,n>6),`FORMATO_QA_OP-${h.opNum||o.op}.pdf`);
+  if(window.PL&&PL.has('qa')){ try{ const html=PL.render('qa',PL.dQA({OP:h.opNum||o.op,ITEM:h.item,IDQR:st.id},{header:h,kc:kcs.length?kcs:st.kc.slice(0,5),resultado:R}),null,'FORMATO PLANO 2026'); if(html){ _abrirDocParaImprimir(forzarHoriz(html),`FORMATO_QA_OP-${h.opNum||o.op}.pdf`); return; } }catch(e){} }
+  _abrirDocParaImprimir(docHtml(`FORMATO_QA_OP-${h.opNum||o.op}`,body,true),`FORMATO_QA_OP-${h.opNum||o.op}.pdf`);
 }
 // Certificado de conformidad (declaración formal para el cliente)
 const certDatosTabla=c=>`<table style="margin-bottom:10px"><tr>${cel('Orden de producción',`OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''}`)}${cel('Cliente',esc(c.empresa||'—'),'colspan="2"')}${cel('Cotización',esc(String(c.cot_num??'—')))}</tr>
@@ -3127,20 +3132,55 @@ window.feSolOp=function(pref){
   feSolItem();
 };
 window.feSolItem=async function(){ const id=document.getElementById('fs-item').value; const o=opDe(id); S.id=id; if(!o) return;
-  const first=document.querySelector('#fs-body tr'); if(first){ const c=first.querySelector('.s-c'), d=first.querySelector('.s-d'); if(!c.value&&!d.value){ c.value=o.unidades||''; d.value='ÍTEM '+(o.item_num??'')+' - '+String(o.descripcion||'').slice(0,80); first.dataset.auto='1'; } }
-  // Material ya cotizado del ítem → se carga en la fila para que solo falte dureza, tipo de servicio, etc.
+  const body=document.getElementById('fs-body'); const box=document.getElementById('fs-svcbox'); if(box){ box.style.cssText='margin:8px 8px 0;background:#f3e8ff;border:1px solid #d8b4fe;color:#6b21a8;font-size:12px;padding:8px 10px;border-radius:8px'; box.textContent='Cargando servicio cotizado…'; }
   const info=document.getElementById('fs-matinfo'); if(info) info.style.display='none';
-  let mats=[]; try{ mats=await feMatsCotizados(id); }catch(e){}
-  if(S.id!==id||!mats.length) return;
-  const rows=[...document.querySelectorAll('#fs-body tr')];
-  const auto=rows.filter(r=>r.dataset.auto==='1'&&!r.querySelector('.s-m').value.trim());
-  if(auto.length){
-    const base={cantidad:auto[0].querySelector('.s-c').value,descripcion:auto[0].querySelector('.s-d').value};
-    auto[0].querySelector('.s-m').value=mats[0].nombre;
-    if(rows.length===1) mats.slice(1).forEach(m=>{ document.getElementById('fs-body').insertAdjacentHTML('beforeend',filaSol({cantidad:base.cantidad,descripcion:base.descripcion,material:m.nombre})); const tr=document.querySelector('#fs-body tr:last-child'); if(tr) tr.dataset.auto='1'; });
-  }
-  if(info){ info.style.display='block'; info.textContent='✅ Material cotizado cargado: '+mats.map(m=>m.nombre+(m.kg?' ('+m.kg+' kg)':'')).join(' · ')+'. Completa dureza y tipo de servicio.'; }
+  let mats=[], svcs=[]; try{ [mats,svcs]=await Promise.all([feMatsCotizados(id),feSvcsDe(o)]); }catch(e){}
+  if(S.id!==id) return; _FS={mats,svcs};
+  const mw=document.getElementById('fs-matw');
+  if(mats.length){ mw.style.display=''; document.getElementById('fs-mats').innerHTML=mats.map((m,i)=>`<label style="display:flex;gap:10px;align-items:center;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" class="fs-mchk" data-i="${i}" checked onchange="feSolMats()" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;flex:none;accent-color:#16a34a"><span>Material ${i+1}: ${E(m.nombre)}${m.kg?' · '+(Math.round(m.kg*10)/10)+' kg':''}</span></label>`).join(''); } else mw.style.display='none';
+  const matTxt=mats.map(m=>m.nombre).join(' + ');
+  const base=o.unidades||'';
+  const filas=(svcs.length?svcs:[{nombre:''}]).map((x,i)=>({cantidad:base,descripcion:svcs.length?feSvcDesc(x,mats.map(m=>m.nombre)):('ÍTEM '+(o.item_num??'')+' - '+String(o.descripcion||'').slice(0,80)),tipo_servicio:x.nombre||'',material:matTxt,dureza:x.dureza?String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC':'',precio:x.costo?Math.round(Number(x.costo)):''}));
+  body.innerHTML=filas.map(filaSol).join(''); [...body.querySelectorAll('tr')].forEach((tr,i)=>{ tr.dataset.auto='1'; tr.dataset.svc=String(i); });
+  // proveedor, días y fechas desde lo cotizado
+  const x0=svcs[0]||{}; const pv=document.getElementById('fs-prov');
+  if(!pv.value){ let n=x0.proveedor||''; if(!n&&x0.nombre){ const c=(DB.servicios||[]).find(s=>String(s.servicio||'').trim().toUpperCase()===String(x0.nombre).trim().toUpperCase()&&s.proveedor); if(c) n=c.proveedor; } if(n) pv.value=n; }
+  const dd=Math.max(0,...svcs.map(x=>Number(x.dias)||0)); if(dd){ document.getElementById('fs-dias').value=dd; const r=document.getElementById('fs-ret'); r.dataset.man=''; }
+  feSolFechas(); feSolProv();
+  if(box){ if(svcs.length){ box.innerHTML='🚚 <b>Servicio cotizado:</b> '+svcs.map(x=>E(x.nombre)+(x.dureza?' · '+E(x.dureza)+' HRC':'')+(x.dias?' · '+x.dias+' d':'')).join(' &nbsp;|&nbsp; ')+'<div style="margin-top:3px;font-weight:500">Todo se cargó de la cotización; revisa y ajusta si hace falta.</div>'; } else { box.style.background='#fff7ed'; box.style.borderColor='#fed7aa'; box.style.color='#9a3412'; box.innerHTML='⚠️ Esta OP no tiene servicio externo en la cotización. Llena el tipo de servicio y la descripción.'; } }
 };
+let _FS={mats:[],svcs:[]};
+function feProvTxt(n){ const p=(typeof tpProvDe==='function')?tpProvDe(n):null; return p?[p.direccion,p.ciudad,(p.telefono||p.celular)?'Tel '+(p.telefono||p.celular):'',p.contacto?'Contacto: '+p.contacto:''].filter(Boolean).join(' · '):''; }
+window.feSolProv=function(){ const el=document.getElementById('fs-prov-info'); if(!el) return; const v=document.getElementById('fs-prov').value.trim(); const t=feProvTxt(v); el.innerHTML=t?'📍 '+E(t):(v?'Proveedor nuevo (no está en la lista): se escribirá tal cual.':''); };
+window.feSolFechas=function(){ const r=document.getElementById('fs-ret'); if(!r||r.dataset.man==='1') return; const d=Number(document.getElementById('fs-dias').value)||0; if(!d) return; const f=new Date((document.getElementById('fs-env').value||hoyISO())+'T12:00:00'); f.setDate(f.getDate()+d); r.value=f.toISOString().slice(0,10); };
+function feSvcDesc(x,mats){ return x.desc||[x.nombre,mats.length?'sobre '+mats.join(' + '):'',x.dureza?'a '+String(x.dureza).replace(/\s*HRC\s*$/i,'')+' HRC':''].filter(Boolean).join(' '); }
+window.feSolMats=function(){ const m=[...document.querySelectorAll('.fs-mchk')].filter(c=>c.checked).map(c=>(_FS.mats[+c.dataset.i]||{}).nombre).filter(Boolean);
+  [...document.querySelectorAll('#fs-body tr')].forEach(tr=>{ if(tr.dataset.auto!=='1') return; tr.querySelector('.s-m').value=m.join(' + ');
+    const x=_FS.svcs[+tr.dataset.svc]; if(x) tr.querySelector('.s-d').value=feSvcDesc(x,m); }); };
+window.feSolRotulo=function(){ const o=opDe(S.id); if(!o){ toast('Elige una OP e ítem','error'); return; } const c=leeCab(), f=leeFilas()[0]||{};
+  const w=Math.max(20,+document.getElementById('fs-rw').value||100), h=Math.max(15,+document.getElementById('fs-rh').value||60), n=Math.min(20,Math.max(1,+document.getElementById('fs-rc').value||1));
+  try{ localStorage.setItem('wedm_rotulo_mm',JSON.stringify({w,h})); }catch(e){}
+  const pv=(typeof tpProvDe==='function'&&tpProvDe(c.proveedor))||{nombre:c.proveedor}; const k=Math.min(w/100,h/60), fz=v=>(v*Math.max(.6,k)).toFixed(1)+'pt';
+  const dir=[pv.direccion,pv.ciudad].filter(Boolean).join(' · '), tel=pv.telefono||pv.celular||'';
+  const una=`<div style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
+   ${c.delicado?`<div style="background:#000;color:#fff;text-align:center;font-weight:900;font-size:${fz(13)};padding:1mm 0">⚠ DELICADO · MANEJAR CON CUIDADO</div>`:''}
+   <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:.4mm solid #000;padding-bottom:.8mm"><b style="font-size:${fz(18)}">OP-${E(String(o.op))} · Ítem ${E(String(o.item_num??''))}</b><span style="font-size:${fz(9)}">${E(f.cantidad||'')} und · ${fmtDate(c.fecha_envio||hoyISO())}</span></div>
+   <div style="font-size:${fz(13)};font-weight:900;line-height:1.1">${E(f.tipo_servicio||'Servicio externo')}</div>
+   <div style="font-size:${fz(10)};line-height:1.15;flex:1;overflow:hidden">${E(f.descripcion||'')}${f.material?`<br><b>Material:</b> ${E(f.material)}`:''}${f.dureza?` · <b>${E(f.dureza)}</b>`:''}</div>
+   <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fz(10)};line-height:1.15"><b style="font-size:${fz(12)}">PARA: ${E(pv.nombre||'—')}</b><br>${E(dir)}${tel?' · '+E(tel):''}${pv.contacto?' · '+E(pv.contacto):''}</div>
+   <div style="font-size:${fz(8)};opacity:.8">${E(o.empresa||'')} · WEDM</div></div>`;
+  _abrirDocParaImprimir(`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo OP-${E(String(o.op))}</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}</style></head><body>${Array(n).fill(una).join('')}</body></html>`,''); };
+async function feSvcsDe(o){
+  const arr=v=>{ if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ v=null; } } return Array.isArray(v)?v.filter(x=>x&&x.nombre):[]; };
+  let sv=[];
+  try{ const r=(await GET('produccion','select=servicios_cot,servicio_externo,id_item&id=eq.'+encodeURIComponent(o.id)))[0]||{};
+    sv=arr(r.servicios_cot);
+    if(!sv.length&&r.id_item){ const it=(await GET('items','select=svcs,servicio&id=eq.'+encodeURIComponent(r.id_item)))[0]||{}; sv=arr(it.svcs); if(!sv.length&&it.servicio) sv=[{nombre:it.servicio}]; }
+    if(!sv.length&&r.servicio_externo) sv=[{nombre:r.servicio_externo}]; }catch(e){}
+  if(!sv.length) sv=arr(o.servicios_cot);
+  if(!sv.length&&o.servicio_externo) sv=[{nombre:o.servicio_externo}];
+  return sv;
+}
 const _mcCache={};
 async function feMatsCotizados(idProd){
   if(_mcCache[idProd]) return _mcCache[idProd];
@@ -3163,12 +3203,13 @@ async function feCargarCatalogo(){
   dl.innerHTML=(DB.matcat||[]).map(m=>`<option value="${E(m.material)}" label="${E(m.precio?money(m.precio)+'/'+(m.unidad||'kg'):'')}">`).join('');
 }
 function leeFilas(){ return [...document.querySelectorAll('#fs-body tr')].map(tr=>({cantidad:tr.querySelector('.s-c').value.trim(),descripcion:tr.querySelector('.s-d').value.trim(),tipo_servicio:tr.querySelector('.s-t').value.trim(),material:tr.querySelector('.s-m').value.trim(),dureza:tr.querySelector('.s-u').value.trim(),precio:tr.querySelector('.s-p').value.replace(/[^\d.,]/g,'').replace(',','.').trim()})).filter(l=>l.cantidad||l.descripcion||l.tipo_servicio||l.material||l.dureza||l.precio); }
-function leeCab(){ const g=id=>document.getElementById(id).value.trim(); return {proveedor:g('fs-prov'),dias:g('fs-dias'),observaciones:g('fs-obs'),fecha_envio:g('fs-env'),fecha_retorno:g('fs-ret'),solicitante:g('fs-colab'),area:g('fs-area')||'CALIDAD'}; }
+function leeCab(){ const g=id=>document.getElementById(id).value.trim(); return {proveedor:g('fs-prov'),dias:g('fs-dias'),observaciones:g('fs-obs'),fecha_envio:g('fs-env'),fecha_retorno:g('fs-ret'),solicitante:g('fs-colab'),area:g('fs-area')||'CALIDAD',delicado:!!(document.getElementById('fs-del')||{}).checked,provInfo:feProvTxt(g('fs-prov'))}; }
 window.feSolImprimir=function(){ const o=opDe(S.id); if(!o){ toast('Elige una OP e ítem','error'); return; } docSolicitud({o,cab:leeCab(),lineas:leeFilas(),numero:S.numero||'—',fecha:hoyISO()}); };
 window.feSolGuardar=async function(){
   if(!soloCal()) return; const id=document.getElementById('fs-item').value; const o=opDe(id); if(!o){ toast('Elige una OP e ítem válidos','error'); return; }
   const lineas=leeFilas(); if(!lineas.length){ toast('Agrega al menos una fila','error'); return; }
   if(lineas.some(l=>(l.descripcion||l.tipo_servicio).length<3)){ toast('Cada fila necesita descripción o tipo de servicio','error'); return; }
+  if(!leeCab().proveedor){ toast('Escribe o elige el proveedor','error'); return; }
   const cab=leeCab(); const marcar=document.getElementById('fs-ext')&&document.getElementById('fs-ext').checked;
   const r=await rpcC('calidad_solicitar_servicio',{p_id_prod:id,p_data:Object.assign({},cab,{lineas})},'📋 Solicitud enviada a Compras'); if(!r) return;
   if(marcar){ try{ await sb.rpc('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:[lineas[0].tipo_servicio||lineas[0].descripcion,cab.proveedor].filter(Boolean).join(' · '),p_hasta:cab.fecha_retorno||null}); await recargar(); }catch(e){ toast('⚠️ La solicitud se creó, pero no se pudo marcar el ítem en externo','error'); } }
@@ -3178,13 +3219,15 @@ window.feSolGuardar=async function(){
 window.modalSolicitud=function(id){
   if(!soloCal()) return; const o=id?opDe(id):null; const hoy=new Date(); S={id:id||'',numero:'Nueva'};
   const svcs=[...new Set((DB.servicios||[]).map(s=>s.servicio).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  const provs=(typeof provsConocidos==='function')?provsConocidos():[];
+  const provs=[...new Set([...((DB.proveedores||[]).map(p=>p.nombre)),...((typeof provsConocidos==='function')?provsConocidos():[])].filter(Boolean))];
   const html=`<div class="fe-sheet">
    <datalist id="fe-dl-ops">${opsLista().map(x=>`<option value="${x}">`).join('')}</datalist><datalist id="fe-dl-svc">${svcs.map(s=>`<option value="${E(s)}">`).join('')}</datalist><datalist id="fe-dl-desc"></datalist><datalist id="fe-dl-mat"></datalist><datalist id="fe-dl-prov">${provs.map(p=>`<option value="${E(p)}">`).join('')}</datalist>
    ${hdr('Formato de solicitud<br>de bienes y servicios externos',`<span>OP</span><div><input id="fs-op" list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(o?o.op:'')}" onchange="feSolOp()" oninput="if(this.value.length>=5)feSolOp()"></div>`,'<div><span>Fecha de elaboración</span>12/08/2019</div><div><span>Fecha de actualización</span>09/11/2022</div>')}
    <div class="fe-bar1"><span>Información general</span><span>COMPRAS - FO - 002 &nbsp; N° <b>Nueva</b></span></div>
    <table class="fe-info"><thead><tr><th>Nombre del colaborador</th><th>Área de trabajo</th><th style="width:60px">Mes</th><th style="width:60px">Día</th><th style="width:70px">Año</th><th>Cotización</th><th>Ítem</th></tr></thead>
     <tbody><tr><td><input id="fs-colab" style="text-align:center" value="${E(_SESSION&&_SESSION.nombre||'')}"></td><td><input id="fs-area" style="text-align:center" value="CALIDAD"></td><td>${hoy.getMonth()+1}</td><td>${hoy.getDate()}</td><td>${hoy.getFullYear()}</td><td><input id="fs-cot" style="text-align:center" value="${E(o?o.cot_num||'':'')}"></td><td><select id="fs-item" style="text-align:center" onchange="feSolItem()"></select></td></tr></tbody></table>
+   <div id="fs-svcbox" class="callout" style="margin:8px 8px 0;background:#f3e8ff;border-color:#d8b4fe;color:#6b21a8;font-size:12px">Cargando servicio cotizado…</div>
+   <div id="fs-matw" style="display:none;margin:8px 8px 0"><div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:4px">Materiales de la OP — marca los que van al servicio</div><div id="fs-mats" style="display:flex;flex-direction:column;gap:6px"></div></div>
    <div class="fe-bar2" style="margin-top:0">Registro de bien o servicio solicitado <span id="fs-cli" style="font-weight:400;opacity:.8;margin-left:8px"></span></div>
    <table class="fe-rows"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Tipo de servicio</th><th>Material</th><th>Dureza</th><th>Precio</th></tr></thead><tbody id="fs-body">${filaSol()}</tbody></table>
    <div id="fs-matinfo" style="display:none;margin:6px 8px 0;padding:6px 10px;border-radius:8px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600"></div>
@@ -3192,8 +3235,10 @@ window.modalSolicitud=function(id){
    <div class="fe-obs"><b>Observaciones:</b><textarea id="fs-obs" rows="2"></textarea></div>
    <div class="fe-ap-t">Aprobación y verificación final</div>
    <table class="fe-aprob"><thead><tr><th style="width:25%">Responsable</th><th style="width:37%">Firma</th><th>Observaciones</th></tr></thead><tbody><tr><td>Solicitante</td><td></td><td></td></tr><tr><td>Jefatura de Compras</td><td></td><td></td></tr><tr><td>Fecha de recibido</td><td></td><td></td></tr></tbody></table>
-   <div class="fe-extra"><div><label>Proveedor sugerido</label><input id="fs-prov" list="fe-dl-prov" autocomplete="off" placeholder="Buscar o escribir"></div><div><label>Días estimados</label><input id="fs-dias" type="number" min="1" value="3"></div><div><label>Fecha de envío</label><input id="fs-env" type="date" value="${hoyISO()}"></div><div><label>Retorno estimado</label><input id="fs-ret" type="date"></div>
-    <div style="grid-column:1/-1;font-size:11px;color:#475569"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:12px;font-weight:600"><input type="checkbox" id="fs-ext" style="width:18px;height:18px" ${o&&enExterno(o)?'disabled':''}> Marcar también el ítem como <b>en servicio externo</b> (sale de las colas de calidad)</label><div style="margin-top:4px">Estos datos no se imprimen: sirven para que Compras contrate el servicio y para el seguimiento del regreso.</div></div></div>
+   <div class="fe-extra"><div style="grid-column:1/-1"><label>Proveedor (busca en la lista o escribe uno nuevo)</label><input id="fs-prov" list="fe-dl-prov" autocomplete="off" placeholder="Buscar proveedor…" oninput="feSolProv()" onchange="feSolProv()"><div id="fs-prov-info" style="font-size:12px;color:#475569;margin-top:3px"></div></div><div><label>Días estimados</label><input id="fs-dias" type="number" min="1" value="3" onchange="feSolFechas()"></div><div><label>Fecha de envío</label><input id="fs-env" type="date" value="${hoyISO()}" onchange="feSolFechas()"></div><div><label>Retorno estimado</label><input id="fs-ret" type="date" onchange="this.dataset.man='1'"></div>
+    <div style="grid-column:1/-1;border:1px dashed #94a3b8;border-radius:8px;padding:8px"><label style="display:flex;gap:10px;align-items:center;text-transform:none;font-size:14px;font-weight:700;color:#b91c1c"><input type="checkbox" id="fs-del" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;accent-color:#b91c1c"> ⚠ Pieza delicada</label>
+     <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:8px;align-items:end"><div><label>Rótulo ancho (mm)</label><input id="fs-rw" type="number" min="20" value="${tpRotSize().w}"></div><div><label>Alto (mm)</label><input id="fs-rh" type="number" min="15" value="${tpRotSize().h}"></div><div><label>Copias</label><input id="fs-rc" type="number" min="1" max="20" value="1"></div><button type="button" class="pr" style="padding:8px 12px;border-radius:8px;border:0;background:#0f172a;color:#fff;font-weight:700;cursor:pointer" onclick="feSolRotulo()">🏷 Rótulo</button></div></div>
+    <div style="grid-column:1/-1;font-size:11px;color:#475569"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:12px;font-weight:600"><input type="checkbox" id="fs-ext" style="-webkit-appearance:checkbox;appearance:auto;width:20px;height:20px;accent-color:#16a34a" ${o&&enExterno(o)?'disabled':'checked'}> Marcar también el ítem como <b>en servicio externo</b> (sale de las colas de calidad)</label><div style="margin-top:4px">Proveedor, dirección y «delicado» sí salen impresos; el rótulo se imprime aparte en la impresora de stickers.</div></div></div>
   </div>`;
   feAbrir('📋 Nueva solicitud de bienes y servicios externos',html,`<button class="pr" onclick="feSolImprimir()">🖨️ Vista de impresión</button><button class="sv" onclick="feSolGuardar()">💾 Crear solicitud</button>`);
   feCargarCatalogo();
@@ -4220,7 +4265,7 @@ window.WEDM_DETALLE=function(p){ detailItem(p.id); };</script>
 <div id="wfab-m"></div>
 <script>
 (function(){
-  var CFG={externo:{ok:function(){return puedeCal()},a:[{l:'🚚 Enviar un ítem a externo',f:function(){pickItem('🚚 Enviar a servicio externo',function(o){return vivo(o)&&!enExterno(o)},'modalExterno')}},{l:'🔥 Hoja de temple',f:function(){pickItem('🔥 Hoja de temple',function(o){return vivo(o)},'modalTemple')}}]},solicitudes:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva solicitud',f:function(){modalSolicitud()}}]},certificados:{ok:function(){return puedeCal()},a:[{l:'➕ Nuevo certificado',f:function(){editorCert(null,null)}}]},remisiones:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva remisión',f:function(){feRemision()}}]}};
+  var CFG={externo:{ok:function(){return puedeCal()},a:[{l:'🚚 Enviar un ítem a externo',f:function(){pickItem('🚚 Enviar a servicio externo',function(o){return vivo(o)&&!enExterno(o)},'modalExterno')}},{l:'📝 Solicitar servicio',f:function(){modalSolicitud()}}]},solicitudes:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva solicitud',f:function(){modalSolicitud()}}]},certificados:{ok:function(){return puedeCal()},a:[{l:'➕ Nuevo certificado',f:function(){editorCert(null,null)}}]},remisiones:{ok:function(){return puedeCal()},a:[{l:'➕ Nueva remisión',f:function(){feRemision()}}]}};
   var b=document.getElementById('wfab'), m=document.getElementById('wfab-m'), cur=null;
   function acts(){
     try{
@@ -4316,7 +4361,7 @@ window.WEDM_DETALLE=function(p){ detailItem(p.id); };</script>
 
  /* Hojas horizontales: el iframe de impresión ignora @page, así que si la plantilla es horizontal se imprime en ventana propia */
  (function(){ var o=window._abrirDocParaImprimir; if(typeof o!=='function'||o.__pl) return;
-  var w2=function(html,fn,c3){ if(typeof html==='string'&&html.indexOf('name="pl-render"')>=0&&/@page\s*\{[^}]*landscape/i.test(html)){
+  var w2=function(html,fn,c3){ if(typeof html==='string'&&(html.indexOf('name="pl-render"')>=0||html.indexOf('name="doc-land"')>=0)&&/@page\s*\{[^}]*landscape/i.test(html)){
     try{ if(typeof c3==='string'&&c3&&typeof _guardarPdfDrive==='function') _guardarPdfDrive(html,fn,c3); }catch(e){}
     var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); try{ if(fn) w.document.title=String(fn).replace(/\.pdf$/i,''); }catch(e){} setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },900); return; } }
    return o.apply(this,arguments); };
