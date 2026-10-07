@@ -602,6 +602,9 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="pedidos" onclick="nav('pedidos')"><span class="nav-icon">🛒</span>Pedidos de compra<span class="nav-badge" id="b-ped" style="display:none">0</span></div>
     <div class="nav-item" data-m="ordenes" onclick="nav('ordenes')"><span class="nav-icon">📄</span>Órdenes de compra<span class="nav-badge" id="b-oc" style="display:none">0</span></div>
     <div class="nav-item" data-m="opmp" onclick="nav('opmp')"><span class="nav-icon">🧱</span>OP pendientes de MP<span class="nav-badge" id="b-opmp" style="display:none">0</span></div>
+    <div class="nav-item" data-m="almacen" onclick="nav('almacen')"><span class="nav-icon">🏪</span>Almacén<span class="nav-badge" id="b-alm" style="display:none">0</span></div>
+    <div class="nav-item" data-m="inventario" onclick="nav('inventario')"><span class="nav-icon">📦</span>Inventario de materiales</div>
+    <div class="nav-item" data-m="sexterno" onclick="nav('sexterno')"><span class="nav-icon">🚚</span>Servicio externo</div>
     <div class="nav-item" data-m="proveedores" onclick="nav('proveedores')"><span class="nav-icon">🏭</span>Proveedores</div>
     <div class="nav-item" data-m="sugeridos" onclick="nav('sugeridos')"><span class="nav-icon">💡</span>Materiales sugeridos</div>
     <div class="nav-item" data-m="resumen" onclick="nav('resumen')"><span class="nav-icon">📑</span>Resumen</div>
@@ -1071,9 +1074,9 @@ async function doLogin(){
 //  ERP COMPRAS · GRUPO WEDM  — mismo backend y misma estructura que Comercial y Diseño
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores',resumen:'Resumen de compras',sugeridos:'Materiales sugeridos',opmp:'OP pendientes de MP',subir:'Subir datos anteriores'};
+const TITLES={dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores',resumen:'Resumen de compras',sugeridos:'Materiales sugeridos',opmp:'OP pendientes de MP',almacen:'Almacén',inventario:'Inventario de materiales',sexterno:'Servicio externo',subir:'Subir datos anteriores'};
 const PG_BASE=(window.innerWidth<700?30:60);
-const EST={SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
+const EST={ALMACEN:['En almacén (por revisar)','gris'],SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
 const PROD_SEL='id,op,item_num,cot_num,empresa,descripcion,unidades,asesor,disenador,fecha_pactada,prioridad,imagen_thumb,imagen_drive_id,mp_ok,diseno_ok,despachado,estado,es_garantia';
 // Imagen de la OP: miniatura guardada en la base o, si no hay, la foto que está en Google Drive (columna «OBSERVACIONES DE VALIDACIÓN» de AppSheet)
 const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
@@ -1115,7 +1118,7 @@ async function cargarTodo(refrescarOPs){
     GETALL('proveedores','select=*&order=nombre.asc,id.asc'),
     GETALL('oc_lineas','select=*&order=id_oc.asc,orden.asc').catch(()=>[]),
   ]);
-  DB.lineas=lin||[]; DB.ocs=ocs||[]; DB.provs=provs||[]; DB.ocLineas=ocl||[];
+  DB.lineas=lin||[]; DB.lineas.forEach(m=>{ if(m.estado==='SOLICITADO'&&m.alm_estado==='POR REVISAR') m.estado='ALMACEN'; }); DB.ocs=ocs||[]; DB.provs=provs||[]; DB.ocLineas=ocl||[];
   if(refrescarOPs) DB.prods=new Map();
   await cargarProds();
   _SYNC.init=true;
@@ -1811,7 +1814,7 @@ function dashboard(){
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores,opmp,sugeridos,resumen,subir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={dashboard,pedidos,ordenes,proveedores,opmp,almacen,inventario,sexterno,sugeridos,resumen,subir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   if(m==='subir'&&!puedeImportar()){ toast('Solo el administrador puede subir datos','error'); return; }
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
@@ -1837,6 +1840,7 @@ function avisarNuevas(){
 }
 function updateBadges(){
   try{ opmBadge(); }catch(e){}
+  try{ const na=(DB.lineas||[]).filter(m=>m.estado==='ALMACEN'&&m.tipo!=='SERVICIO EXTERNO').length; const el=document.getElementById('b-alm'); if(el){ el.textContent=na; el.style.display=na?'':'none'; } }catch(e){}
   const n=(DB.lineas||[]).filter(m=>m.estado==='SOLICITADO').length;
   ['b-ped','bb-ped'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n?'':'none'; } });
   const o=(DB.ocs||[]).filter(x=>x.estado==='EMITIDA').length;
@@ -2959,7 +2963,7 @@ async function _opmDatos(){
   }
   return rows.map(p=>{
     const L=(DB.lineas||[]).filter(m=>m.id_prod===p.id), act=L.filter(m=>m.estado!=='RECHAZADO');
-    const porComprar=act.filter(m=>m.estado==='SOLICITADO').length, hechas=act.filter(m=>m.estado==='COMPRADO'||m.estado==='RECIBIDO');
+    const porComprar=act.filter(m=>m.estado==='SOLICITADO'||m.estado==='ALMACEN').length, hechas=act.filter(m=>m.estado==='COMPRADO'||m.estado==='RECIBIDO');
     const sinValor=hechas.filter(m=>!(Number(m.costo_real)>0));
     const total=hechas.reduce((a,m)=>a+(Number(m.costo_real)||0),0);
     const bor=borr[p.id]||0; const listo=!p.mp_ok&&!bor&&!porComprar&&hechas.length>0;
@@ -3025,6 +3029,154 @@ function opmSet(k){ _OPM.f=k; pgReset(); opmp(); }
 function opmOrd(c){ if(!c){ delete _CS.om; } else _CS.om={c,d:(_CS.om&&_CS.om.c===c&&_CS.om.d==='asc')?'desc':'asc'}; opmp(); }
 function opmTog(id){ if(_OPM.abiertos.has(id)) _OPM.abiertos.delete(id); else _OPM.abiertos.add(id); opmp(); }
 function opmTogD(id,o){ if(o) _OPM.abiertos.add(id); else _OPM.abiertos.delete(id); }
+
+// ═══ ALMACÉN · INVENTARIO · SERVICIO EXTERNO ══════════════════════════════
+const _mny=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO');
+const puedeAlm=()=>puede('almacen');
+const puedeAlmC=()=>puede('almacen','compras');
+const _ALM={f:'rev',q:''}, _INV={q:'',f:'todo',rows:null}, _SX={f:'por',q:'',rows:null};
+const _normM=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,' ').trim();
+function _srch(id,val,fn,ph){ return `<div class="filter-bar" style="margin:8px 0"><div class="filter-bar-top"><div class="filter-search-wrap" style="flex:1 1 100%"><input type="text" placeholder="${ph}" value="${esc(val)}" autocomplete="off" oninput="${fn}(this.value)"></div></div></div>`; }
+function _kchips(list,cur,fn){ return `<div class="kstrip" style="margin-top:12px">${list.map(([k,l,n])=>`<button class="chip ${cur===k?'on':''}" onclick="${fn}('${k}')">${l}${n==null?'':` <b>${n}</b>`}</button>`).join('')}</div>`; }
+function _keepFocus(){ const i=document.querySelector('.filter-search-wrap input'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+async function _invCargar(force){ if(force||!DB.inv){ try{ DB.inv=await GET('inv_materiales','select=*&activo=eq.true&order=material.asc&limit=3000')||[]; }catch(e){ DB.inv=DB.inv||[]; } } return DB.inv; }
+function _invMatch(m){   // inventario que coincide con el material pedido
+  const n=_normM(m.material); if(!n) return [];
+  const w=n.split(' ').filter(x=>x.length>1);
+  return (DB.inv||[]).map(i=>{ const k=_normM(i.material); let s=0; if(k===n) s=100; else if(k.includes(n)||n.includes(k)) s=60; else s=w.filter(x=>k.includes(x)).length*10; return {i,s}; }).filter(x=>x.s>=20).sort((a,b)=>b.s-a.s||b.i.cantidad-a.i.cantidad).map(x=>x.i);
+}
+// ── ALMACÉN ──
+async function almacen(){
+  const banner=moduleBanner('🏪','Almacén','Revisa cada material pedido: si hay en almacén se entrega y pasa a recibido; si no, pasa a Compras','','linear-gradient(135deg,#7c2d12,#b45309)');
+  await _invCargar();
+  const L=(DB.lineas||[]).filter(m=>m.tipo!=='SERVICIO EXTERNO');
+  const rev=L.filter(m=>m.estado==='ALMACEN'), nohay=L.filter(m=>m.estado==='SOLICITADO'&&m.alm_estado==='NO HAY'), leg=L.filter(m=>m.estado==='SOLICITADO'&&!m.alm_estado), sal=L.filter(m=>m.alm_estado==='SALIO');
+  const sets={rev,nohay,leg,sal}; let rows=sets[_ALM.f]||rev;
+  const q=_ALM.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const txt=m=>{ const p=prodDe(m.id_prod)||{}; return [p.op,p.empresa,p.descripcion,p.disenador,m.material,m.detalle,m.solicitado_por,m.proveedor].join(' ').toLowerCase(); };
+  if(q.length) rows=rows.filter(m=>{ const t=txt(m); return q.every(w=>t.includes(w)); });
+  rows=rows.slice().sort((a,b)=>String(a.solicitado_at||'').localeCompare(String(b.solicitado_at||'')));
+  const chips=_kchips([['rev','🔎 Por revisar',rev.length],['nohay','🛒 Pasaron a compras',nohay.length],['leg','Ya en compras (sin revisar)',leg.length],['sal','📦 Salieron de almacén',sal.length]],_ALM.f,'almSet');
+  const pg=pgSlice('alm',rows);
+  const card=m=>{ const p=prodDe(m.id_prod)||{}; const mt=_invMatch(m); const e=m.alm_estado==='SALIO'?['Salió de almacén','verde']:m.alm_estado==='NO HAY'?['No hay · en compras','naranja']:m.estado==='ALMACEN'?['Por revisar','azul']:['En compras','gris'];
+    const can=m.estado==='ALMACEN'||m.estado==='SOLICITADO';
+    const stock=mt.length?`<div style="margin-top:6px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:6px 9px;font-size:12px"><b>📦 En inventario:</b> ${mt.slice(0,3).map(i=>`${esc(i.material)}${i.detalle?' ('+esc(i.detalle)+')':''} — <b>${Number(i.cantidad)} ${esc(i.unidad)}</b>${i.ubicacion?' · '+esc(i.ubicacion):''}`).join('<br>')}</div>`:`<div style="margin-top:6px;font-size:12px;color:var(--muted)">Sin coincidencia en el inventario.</div>`;
+    return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${imgSrcOP(p,120)?imgTag(p,120,'','lc-thumb'):'<div class="lc-thumb ph">🪨</div>'}<div style="min-width:0"><div class="lc-id">OP-${esc(p.op??'—')} · ÍTEM ${esc(p.item_num??'—')}</div><div class="lc-title" style="white-space:normal">${esc(m.material||'—')}</div><div class="lc-sub" style="white-space:normal">${esc(cantTxt(m))}${m.detalle?' · '+esc(m.detalle):''}</div></div></div><div style="text-align:right;flex-shrink:0"><span class="badge ${e[1]}">${e[0]}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${fmtDTs(m.solicitado_at)}</div></div></div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">${esc(p.empresa||'')}${p.descripcion?' · '+esc(String(p.descripcion).slice(0,70)):''}${m.solicitado_por?' · pidió '+esc(m.solicitado_por):''}${p.fecha_pactada?' · entrega '+fmtDate(p.fecha_pactada):''}</div>
+      ${m.alm_estado==='SALIO'?`<div style="font-size:11.5px;margin-top:4px">📦 Entregó ${esc(m.alm_por||'')} · ${fmtDT(m.alm_at)}</div>`:stock}
+      ${can&&puedeAlmC()?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">${m.alm_estado==='NO HAY'?'':`<button class="btn btn-ghost btn-sm" onclick="almNoHay('${esc(m.id)}')">🛒 No hay · pasar a compras</button>`}${puedeAlm()?`<button class="btn btn-primary btn-sm" onclick="almEntregar('${esc(m.id)}')">📦 Sí hay · entregar y recibir</button>`:''}</div>`:''}</div>`; };
+  setContent(banner+chips+_srch('alm',_ALM.q,'almQ','Buscar OP, material, cliente, quién pidió…')+(rows.length?`<div class="card-list" style="display:grid;grid-template-columns:1fr;gap:10px">${pg.map(card).join('')}</div>`+pgMore('alm',rows):empty(_ALM.f==='rev'?'No hay materiales por revisar 🎉':'Sin resultados','🏪')));
+}
+function almSet(k){ _ALM.f=k; pgReset(); almacen(); }
+function almQ(v){ _ALM.q=v; clearTimeout(window._almT); window._almT=setTimeout(()=>{ pgReset(); almacen().then(_keepFocus); },350); }
+async function almNoHay(id){
+  const m=linDe(id); if(!m) return;
+  openModal('🛒 No hay en almacén',`<div style="font-size:13px;margin-bottom:8px"><b>${esc(m.material)}</b> · ${esc(cantTxt(m))}<br>Pasa a Compras como “por comprar”.</div><div class="field"><label>Observación para Compras (opcional)</label><textarea id="an-obs" placeholder="Ej: solo hay 2 kg, falta el resto"></textarea></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="almNoHayOk('${esc(id)}')">Pasar a compras</button>`);
+}
+async function almNoHayOk(id){ const o=(document.getElementById('an-obs')||{}).value||''; closeModal(); if(await rpcC('alm_no_hay',{p_ids:[id],p_obs:o},'🛒 Pasó a Compras')) { almacen(); updateBadges(); } }
+async function almEntregar(id){
+  const m=linDe(id); if(!m) return; await _invCargar(); const mt=_invMatch(m); const cant=Number(m.cantidad_kg)||Number(m.cantidad)||1;
+  const opts=(DB.inv||[]).slice().sort((a,b)=>(mt.includes(b)?1:0)-(mt.includes(a)?1:0)||a.material.localeCompare(b.material,'es')).map(i=>`<option value="${esc(i.id)}" ${mt[0]&&mt[0].id===i.id?'selected':''}>${esc(i.material)}${i.detalle?' · '+esc(i.detalle):''} — hay ${Number(i.cantidad)} ${esc(i.unidad)}</option>`).join('');
+  openModal('📦 Entregar desde almacén',`<div style="font-size:13px;margin-bottom:8px"><b>${esc(m.material)}</b> · pide ${esc(cantTxt(m))}<br><span style="color:var(--muted)">Al guardar descuenta del inventario y la línea pasa directo a <b>Recibido</b>.</span></div>
+    <div class="form-grid"><div class="field span2"><label>Material en inventario</label><select id="ae-inv"><option value="">— No está en el inventario (no descontar) —</option>${opts}</select></div>
+    <div class="field"><label>Cantidad que sale</label><input id="ae-cant" type="number" step="any" inputmode="decimal" value="${cant}"></div>
+    <div class="field"><label>Valor (opcional)</label><input id="ae-costo" type="number" step="any" inputmode="decimal" placeholder="$"></div>
+    <div class="field span2"><label>Datos / medidas del material</label><input id="ae-det" value="${esc(m.detalle||'')}" placeholder="Ej: Ø200 × L100 mm"></div>
+    <div class="field span2"><label>Observaciones</label><input id="ae-obs" placeholder="Ej: sobrante de la OP-13500"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="almEntregarOk('${esc(id)}')">📦 Entregar y recibir</button>`);
+}
+async function almEntregarOk(id){
+  const g=i=>(document.getElementById(i)||{}).value||''; const inv=g('ae-inv')||null, cant=Number(g('ae-cant'))||0;
+  if(inv&&cant<=0){ toast('Indica la cantidad que sale','error'); return; }
+  closeModal(); if(await rpcC('alm_entregar',{p_id:id,p_inv:inv,p_cant:cant||null,p_detalle:g('ae-det')||null,p_costo:g('ae-costo')===''?null:Number(g('ae-costo')),p_obs:g('ae-obs')||null},'📦 Entregado desde almacén — pasó a recibido')){ DB.inv=null; almacen(); updateBadges(); }
+}
+// ── INVENTARIO ──
+async function inventario(){
+  const banner=moduleBanner('📦','Inventario de materiales','Lo que hay en almacén · agiliza saber si hay que comprar','','linear-gradient(135deg,#1e3a8a,#0f766e)');
+  await _invCargar(true); const I=DB.inv||[];
+  const bajo=i=>i.stock_min!=null&&Number(i.cantidad)<=Number(i.stock_min), sin=i=>Number(i.cantidad)<=0;
+  let rows=I; if(_INV.f==='bajo') rows=I.filter(bajo); else if(_INV.f==='sin') rows=I.filter(sin);
+  const q=_INV.q.trim().toLowerCase().split(/\s+/).filter(Boolean); if(q.length) rows=rows.filter(i=>{ const t=[i.material,i.detalle,i.ubicacion].join(' ').toLowerCase(); return q.every(w=>t.includes(w)); });
+  const chips=_kchips([['todo','Todo',I.length],['bajo','⚠ Bajo mínimo',I.filter(bajo).length],['sin','Sin stock',I.filter(sin).length]],_INV.f,'invSet');
+  const can=puedeAlmC(); const pg=pgSlice('inv',rows);
+  const tbl=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Material</th><th>Medidas / detalle</th><th>Hay</th><th>Ubicación</th><th>Mínimo</th><th>Actualizado</th><th></th></tr></thead><tbody>${pg.map(i=>`<tr><td><b>${esc(i.material)}</b></td><td style="white-space:normal;min-width:140px">${esc(i.detalle||'—')}</td><td><b style="font-family:var(--mono);${bajo(i)?'color:#b45309':''}">${Number(i.cantidad)} ${esc(i.unidad)}</b>${sin(i)?' <span class="badge rojo">Sin stock</span>':bajo(i)?' <span class="badge naranja">Bajo</span>':''}</td><td>${esc(i.ubicacion||'—')}</td><td>${i.stock_min!=null?Number(i.stock_min):'—'}</td><td style="font-size:11px">${fmtDTs(i.updated_at)}${i.updated_por?'<br>'+esc(i.updated_por):''}</td><td style="white-space:nowrap">${can?`<button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','ENTRADA')">➕</button> <button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','SALIDA')">➖</button> <button class="btn btn-ghost btn-sm" onclick="invForm('${esc(i.id)}')">✏️</button> `:''}<button class="btn btn-ghost btn-sm" onclick="invHist('${esc(i.id)}')">🕘</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  setContent(banner+(can?`<div style="margin-top:10px"><button class="btn btn-primary" onclick="invForm()">＋ Nuevo material</button></div>`:'')+chips+_srch('inv',_INV.q,'invQ','Buscar material, medidas, ubicación…')+(rows.length?tbl+pgMore('inv',rows):empty('Aún no hay materiales en el inventario','📦')));
+}
+function invSet(k){ _INV.f=k; pgReset(); inventario(); }
+function invQ(v){ _INV.q=v; clearTimeout(window._invT); window._invT=setTimeout(()=>{ pgReset(); inventario().then(_keepFocus); },350); }
+async function invForm(id){
+  const i=id?(DB.inv||[]).find(x=>x.id===id):null;
+  if(!DB.matcat){ try{ DB.matcat=await GET('materiales','select=material,unidad&activo=eq.true&order=material.asc'); }catch(e){ DB.matcat=[]; } }
+  openModal(i?'✏️ Editar material':'＋ Nuevo material en inventario',`<datalist id="inv-mats">${(DB.matcat||[]).map(m=>`<option value="${esc(m.material)}">`).join('')}</datalist><div class="form-grid">
+    <div class="field span2"><label>Material</label><input id="iv-mat" list="inv-mats" value="${esc(i?.material||'')}" placeholder="Buscar en el catálogo o escribir" autocomplete="off"></div>
+    <div class="field span2"><label>Medidas / detalle</label><input id="iv-det" value="${esc(i?.detalle||'')}" placeholder="Ej: Ø200 × L100 mm"></div>
+    <div class="field"><label>Cantidad que hay</label><input id="iv-cant" type="number" step="any" inputmode="decimal" value="${i?Number(i.cantidad):''}"></div>
+    <div class="field"><label>Unidad</label><select id="iv-uni">${['kg','und','m','mm','lámina','barra'].map(u=>`<option ${(i?.unidad||'kg')===u?'selected':''}>${u}</option>`).join('')}</select></div>
+    <div class="field"><label>Ubicación</label><input id="iv-ubi" value="${esc(i?.ubicacion||'')}" placeholder="Estante / zona"></div>
+    <div class="field"><label>Stock mínimo (aviso)</label><input id="iv-min" type="number" step="any" inputmode="decimal" value="${i?.stock_min??''}"></div>
+    ${i?`<div class="field span2"><label>Motivo del ajuste (si cambias la cantidad)</label><input id="iv-nota" placeholder="Ej: conteo físico"></div>`:''}</div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="invGuardar('${i?esc(i.id):''}')">Guardar</button>`);
+}
+async function invGuardar(id){
+  const g=x=>(document.getElementById(x)||{}).value||''; if(!g('iv-mat').trim()){ toast('Escribe el material','error'); return; }
+  const d={id:id||null,material:g('iv-mat'),detalle:g('iv-det'),cantidad:g('iv-cant')===''?0:Number(g('iv-cant')),unidad:g('iv-uni'),ubicacion:g('iv-ubi'),stock_min:g('iv-min')===''?null:Number(g('iv-min')),nota:g('iv-nota')};
+  closeModal(); if(await rpcC('inv_guardar',{p_data:d},'✅ Inventario guardado')) inventario();
+}
+function invMov(id,tipo){
+  const i=(DB.inv||[]).find(x=>x.id===id); if(!i) return;
+  openModal((tipo==='ENTRADA'?'➕ Entrada · ':'➖ Salida · ')+i.material,`<div style="font-size:13px;margin-bottom:8px">Hay <b>${Number(i.cantidad)} ${esc(i.unidad)}</b></div><div class="form-grid"><div class="field"><label>Cantidad (${esc(i.unidad)})</label><input id="im-c" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Nota</label><input id="im-n" placeholder="${tipo==='ENTRADA'?'Ej: llegó de compra':'Ej: uso interno'}"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="invMovOk('${esc(id)}','${tipo}')">Guardar</button>`);
+}
+async function invMovOk(id,tipo){ const c=Number((document.getElementById('im-c')||{}).value)||0; if(c<=0){ toast('Escribe la cantidad','error'); return; } const n=(document.getElementById('im-n')||{}).value||''; closeModal(); if(await rpcC('inv_movimiento',{p_id:id,p_tipo:tipo,p_cant:c,p_nota:n},'✅ Movimiento registrado')) inventario(); }
+async function invHist(id){
+  const i=(DB.inv||[]).find(x=>x.id===id); openModal('🕘 Movimientos · '+(i?i.material:''),'<div style="padding:20px;text-align:center;color:var(--muted)">⏳ Cargando…</div>');
+  try{ const r=await GET('inv_movimientos','select=*&id_inv=eq.'+encodeURIComponent(id)+'&order=at.desc&limit=100');
+    document.getElementById('modal-body').innerHTML=(r&&r.length)?r.map(x=>`<div style="padding:7px 0;border-top:1px solid var(--border);font-size:12.5px"><b style="color:${x.cantidad>=0?'#16a34a':'#b91c1c'}">${x.cantidad>=0?'+':''}${Number(x.cantidad)}</b> · saldo ${Number(x.saldo)} <span class="badge gris">${esc(x.tipo)}</span>${x.op?` <b>OP-${x.op}</b>`:''}<div style="color:var(--muted);font-size:11px">${fmtDT(x.at)} · ${esc(x.usuario||'')}${x.nota?' · '+esc(x.nota):''}</div></div>`).join(''):mutedP('Sin movimientos.'); }catch(e){ document.getElementById('modal-body').innerHTML=errorView(e); }
+}
+// ── SERVICIO EXTERNO ──
+async function _sxDatos(){
+  const r=await GET('produccion','select=id,op,item_num,cot_num,empresa,descripcion,unidades,fecha_pactada,imagen_thumb,imagen_drive_id,estado,externo,externo_desde,externo_hasta,externo_detalle,externo_ok_fecha,externo_ok_por,servicio_externo,servicios_cot,diseno_ok,mp_ok,terminado,avance&lleva_externo=eq.true&despachado=eq.false&estado=neq.CANCELADO&order=op.desc&limit=1500');
+  return (r||[]).map(p=>{ let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } } sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}];
+    const st=p.externo?'afuera':p.externo_ok_fecha?'recibido':'por'; const sol=(DB.lineas||[]).filter(m=>m.id_prod===p.id&&m.tipo==='SERVICIO EXTERNO');
+    const prov=(sv.find(x=>x.proveedor)||{}).proveedor||''; return {p,sv,st,sol,prov,txt:[p.op,p.empresa,p.descripcion,sv.map(x=>x.nombre+' '+(x.proveedor||'')).join(' '),p.externo_detalle].join(' ').toLowerCase()}; });
+}
+async function sexterno(force){
+  const banner=moduleBanner('🚚','Servicio externo','Piezas que llevan servicio de un proveedor: por enviar, afuera y recibidas','','linear-gradient(135deg,#6b21a8,#7c3aed)');
+  if(force===true||!_SX.rows){ setContent(banner+'<div style="padding:30px;text-align:center;color:var(--muted)">⏳ Cargando…</div>'); try{ _SX.rows=await _sxDatos(); }catch(e){ setContent(banner+errorView(e)); return; } }
+  const all=_SX.rows; const cnt=k=>all.filter(x=>x.st===k).length; let rows=_SX.f==='todas'?all:all.filter(x=>x.st===_SX.f);
+  const q=_SX.q.trim().toLowerCase().split(/\s+/).filter(Boolean); if(q.length) rows=rows.filter(x=>q.every(w=>x.txt.includes(w)));
+  const chips=_kchips([['por','📤 Por enviar',cnt('por')],['afuera','🚚 Afuera',cnt('afuera')],['recibido','📥 Recibidos',cnt('recibido')],['todas','Todas',all.length]],_SX.f,'sxSet');
+  const pg=pgSlice('sx',rows); const can=puedeCompras();
+  const card=x=>{ const p=x.p; const e=x.st==='afuera'?['Afuera','morado']:x.st==='recibido'?['Recibido','verde']:['Por enviar','naranja']; const pv=(DB.provs||[]).find(v=>String(v.nombre||'').trim().toUpperCase()===String(x.st==='afuera'?(p.externo_detalle||x.prov):x.prov).trim().toUpperCase()||(p.externo_detalle&&String(p.externo_detalle).toUpperCase().includes(String(v.nombre||'').toUpperCase())&&v.nombre));
+    return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${imgSrcOP(p,120)?imgTag(p,120,'','lc-thumb'):'<div class="lc-thumb ph">🔩</div>'}<div style="min-width:0"><div class="lc-id">OP-${esc(p.op)} · ÍTEM ${esc(p.item_num??'—')} · COT-${esc(p.cot_num||'—')}</div><div class="lc-title" style="white-space:normal">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:normal">${esc(String(p.descripcion||'—').slice(0,100))}</div></div></div><div style="text-align:right;flex-shrink:0"><span class="badge ${e[1]}">${e[0]}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${p.fecha_pactada?'entrega '+fmtDate(p.fecha_pactada):''}</div></div></div>
+      <div style="margin-top:6px;font-size:12.5px">${x.sv.map(s=>`🚚 <b>${esc(s.nombre)}</b>${s.dureza?' · '+esc(s.dureza)+' HRC':''}${s.dias?' · '+s.dias+' d':''}${s.proveedor?' · 🏭 '+esc(s.proveedor):''}`).join('<br>')}</div>
+      ${x.st==='afuera'?`<div style="font-size:12px;margin-top:4px">Salió ${fmtDT(p.externo_desde)}${p.externo_detalle?' — '+esc(p.externo_detalle):''}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}
+      ${x.st==='recibido'?`<div style="font-size:12px;margin-top:4px">📥 Recibido ${fmtDT(p.externo_ok_fecha)}${p.externo_ok_por?' · '+esc(p.externo_ok_por):''}</div>`:''}
+      ${pv?`<div style="font-size:11.5px;color:var(--muted);margin-top:3px">📍 ${esc([pv.direccion,pv.ciudad].filter(Boolean).join(' · ')||'sin dirección')}${pv.telefono?' · 📞 '+esc(pv.telefono):''}${pv.contacto?' · 👤 '+esc(pv.contacto):''}</div>`:''}
+      ${x.sol.length?`<div style="font-size:11.5px;margin-top:4px;color:var(--muted)">📝 Solicitud de servicio: ${x.sol.map(m=>esc((EST[m.estado]||[m.estado])[0])).join(', ')}</div>`:''}
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="opmHist('${esc(p.id)}')">🕘 Historial</button>${can&&x.st==='por'?`<button class="btn btn-primary btn-sm" onclick="sxEnviar('${esc(p.id)}')">📤 Enviar</button>`:''}${can&&x.st==='afuera'?`<button class="btn btn-primary btn-sm" onclick="sxRecibir('${esc(p.id)}')">📥 Recibir</button>`:''}</div></div>`; };
+  setContent(banner+chips+_srch('sx',_SX.q,'sxQ','Buscar OP, cliente, servicio, proveedor…')+(rows.length?`<div class="card-list" style="display:grid;grid-template-columns:1fr;gap:10px">${pg.map(card).join('')}</div>`+pgMore('sx',rows):empty('Sin OP en esta vista','🚚')));
+}
+function sxSet(k){ _SX.f=k; pgReset(); sexterno(); }
+function sxQ(v){ _SX.q=v; clearTimeout(window._sxT); window._sxT=setTimeout(()=>{ pgReset(); sexterno().then(_keepFocus); },350); }
+function sxEnviar(id){
+  const x=(_SX.rows||[]).find(r=>r.p.id===id); if(!x) return; const s=x.sv[0]||{}; const d=new Date(); d.setDate(d.getDate()+(Number(s.dias)||0)); const hasta=s.dias?d.toISOString().slice(0,10):'';
+  openModal('📤 Enviar a servicio externo · OP-'+x.p.op,`<datalist id="sx-provs">${(DB.provs||[]).map(p=>`<option value="${esc(p.nombre)}">`).join('')}</datalist><div style="font-size:13px;margin-bottom:8px">${x.sv.map(v=>'<b>'+esc(v.nombre)+'</b>'+(v.dureza?' · '+esc(v.dureza)+' HRC':'')).join('<br>')}</div><div class="form-grid">
+    <div class="field span2"><label>Proveedor (busca o escribe uno nuevo)</label><input id="sx-prov" list="sx-provs" value="${esc(x.prov)}" autocomplete="off" oninput="sxProvInfo()"><div id="sx-info" style="font-size:12px;color:var(--muted);margin-top:4px"></div></div>
+    <div class="field"><label>Regreso estimado</label><input id="sx-hasta" type="date" value="${hasta}"></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="sxEnviarOk('${esc(id)}')">📤 Enviar</button>`); sxProvInfo();
+}
+function sxProvInfo(){ const el=document.getElementById('sx-info'); if(!el) return; const v=(document.getElementById('sx-prov').value||'').trim().toUpperCase(); const p=v&&(DB.provs||[]).find(x=>String(x.nombre||'').trim().toUpperCase()===v); el.innerHTML=p?`📍 ${esc([p.direccion,p.ciudad].filter(Boolean).join(' · ')||'Sin dirección registrada')}${p.telefono?' · 📞 '+esc(p.telefono):''}${p.contacto?' · 👤 '+esc(p.contacto):''}`:(v?'Proveedor nuevo: se escribirá tal cual.':''); }
+async function sxEnviarOk(id){
+  const x=(_SX.rows||[]).find(r=>r.p.id===id); const prov=(document.getElementById('sx-prov').value||'').trim(); const hasta=(document.getElementById('sx-hasta').value||'');
+  if(!prov){ toast('Escribe el proveedor','error'); return; } const det=[(x&&x.sv[0]||{}).nombre,prov].filter(Boolean).join(' · '); closeModal();
+  if(await rpcC('servicio_externo_set',{p_id:id,p_ok:true,p_detalle:det,p_hasta:hasta||null},'🚚 Enviado a servicio externo')) sexterno(true);
+}
+async function sxRecibir(id){
+  const x=(_SX.rows||[]).find(r=>r.p.id===id); if(!confirm('¿Confirmas que OP-'+(x?x.p.op:'')+' REGRESÓ del servicio externo?\n\nSe registra fecha, hora y tu nombre.')) return;
+  if(await rpcC('servicio_externo_set',{p_id:id,p_ok:false},'📥 Recibido de servicio externo')) sexterno(true);
+}
 
 // ── Devolver etapa con motivo obligatorio (queda en el historial) ──
 function devolverMotivo(id,etapa,nom,run){
