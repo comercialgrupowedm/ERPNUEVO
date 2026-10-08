@@ -1493,15 +1493,18 @@ async function mqCargarListas(){
   try{ const u=await GET('cotizaciones','select=id,cotizacion,empresa,asesor,estado,precio_total,fecha_emision&order=fecha_emision.desc,cotizacion.desc&limit=8'); const el=document.getElementById('mq-ult');
     if(el&&u&&u.length) el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:14px"><div style="font-weight:800;font-size:14px">🕘 Últimas cotizaciones</div>${u.map(c=>`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px"><b>COT-${esc(String(c.cotizacion))}</b> · ${esc(c.empresa||'')} <span style="color:var(--muted)">· ${esc(c.estado||'')} · ${esc(c.asesor||'')}</span></div>`).join('')}</div>`; }catch(e){}
 }
+const MQ_VAL=13500, MQ_MIN=130000, MQ_CNC=0.3, MQ_EDM=0.5;
 function mqFormHtml(){
-  return `<datalist id="mq-dl"></datalist>
-  <div class="callout" style="margin:10px 0">Aquí creas la cotización de marquillas. Queda a nombre del asesor elegido (Mauricio García) y le aparece en <b>Comercial</b>. En cada ítem pega la <b>tabla</b> o <b>imagen</b> que mandó el cliente: se guarda <b>tal cual</b> y sale en la cotización impresa, en el ítem y en la OP.</div>
+  return `<datalist id="mq-dl"></datalist><datalist id="mq-sizes">${['1.6','2.0','2.2','2.4','2.5','2.6','2.8','3.0','3.2','3.5','4.0'].map(x=>`<option value="${x}">`).join('')}</datalist>
+  <div class="callout" style="margin:10px 0">Escribe el <b>texto que se graba</b> y el <b>tamaño de letra</b>: el sistema cuenta los caracteres (sin espacios), calcula el <b>precio</b> y carga solo los procesos <b>CNC + EDM</b>. Si el cliente mandó una tabla o imagen, pégala en el ítem: queda tal cual en la cotización.</div>
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
     <div class="form-grid">
       <div class="field span2"><label>Cliente (busca o escribe)</label><input id="mq-cli" list="mq-dl" autocomplete="off" oninput="mqCli()" onchange="mqCli()" placeholder="Empresa…"><div id="mq-cli-i" style="font-size:12px;color:var(--muted);margin-top:3px"></div></div>
       <div class="field"><label>Tipo</label><select id="mq-tipo"><option>—</option></select></div>
       <div class="field"><label>Asesor</label><select id="mq-ase"><option>Mauricio García</option></select></div>
-      <div class="field span2"><label>Proyecto / referencia</label><input id="mq-proy" placeholder="Ej: Marquillas tejidas referencia 2026" autocomplete="off"></div>
+      <div class="field span2"><label>Proyecto / referencia</label><input id="mq-proy" placeholder="Ej: Marcación en pies 2026" autocomplete="off"></div>
+      <div class="field"><label>Valor por carácter ($)</label><input id="mq-val" type="number" inputmode="numeric" value="${MQ_VAL}" oninput="mqRecalcTodo()"></div>
+      <div class="field"><label>Precio mínimo ($)</label><input id="mq-min" type="number" inputmode="numeric" value="${MQ_MIN}" oninput="mqRecalcTodo()"></div>
       <div class="field"><label>Entrega (días)</label><input id="mq-lead" type="number" min="0" inputmode="numeric"></div>
       <div class="field"><label>Forma de pago</label><input id="mq-pago" placeholder="Ej: 30 días" autocomplete="off"></div>
     </div></div>
@@ -1515,18 +1518,32 @@ function mqItemHtml(it,i){
   return `<div class="mq-it" data-id="${it.id}" style="background:var(--card);border:1px solid var(--border);border-top:4px solid #ea580c;border-radius:12px;padding:12px 14px;margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Ítem ${i+1}</b>${_MQ.its.length>1?`<button class="btn btn-sm btn-ghost" onclick="mqDelItem('${it.id}')">🗑️ Quitar</button>`:''}</div>
     <div class="form-grid">
-      <div class="field span2"><label>Descripción</label><textarea class="mq-d" style="min-height:48px" placeholder="Ej: Marquilla tejida 5 x 2 cm, fondo blanco"></textarea></div>
-      <div class="field"><label>Cantidad</label><input class="mq-u" type="number" min="1" inputmode="numeric" value="1" oninput="mqTot()"></div>
-      <div class="field"><label>Precio unitario ($)</label><input class="mq-p" type="number" min="0" step="any" inputmode="decimal" oninput="mqTot()"></div>
-      <div class="field span2"><label>🏷️ Texto / tabla / imagen del cliente <span style="font-weight:500;color:var(--muted)">(pega aquí tal cual lo mandó)</span></label>
-        <div class="mq-ed" contenteditable="true" onpaste="mqPaste(event,this)" style="min-height:110px;border:2px dashed var(--border);border-radius:10px;padding:8px;background:#fff;color:#111;overflow:auto;max-height:340px;font-size:13px" data-ph="Pega aquí (Ctrl+V / mantener pulsado → Pegar)"></div>
+      <div class="field span2"><label>Texto que se graba <span class="mq-n" style="font-weight:700;color:var(--accent)"></span></label><textarea class="mq-t" style="min-height:44px" oninput="mqCalc(this)" placeholder="Ej: 1/0 AWG (53,5 mm2)"></textarea></div>
+      <div class="field"><label>Tamaño de letra (mm)</label><input class="mq-s" list="mq-sizes" inputmode="decimal" value="2.8" oninput="mqCalc(this)"></div>
+      <div class="field"><label>Cantidad</label><input class="mq-u" type="number" min="1" inputmode="numeric" value="1" oninput="mqCalc(this)"></div>
+      <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none"><input type="checkbox" class="mq-pies" checked onchange="mqCalc(this)" style="-webkit-appearance:checkbox;appearance:auto;width:20px;height:20px"> Marcación en pies</label></div>
+      <div class="field span2"><label>Descripción <span style="font-weight:500;color:var(--muted)">(se arma sola; puedes editarla)</span></label><textarea class="mq-d" style="min-height:60px" oninput="this.dataset.man='1'"></textarea></div>
+      <div class="field"><label>Precio unitario ($)</label><input class="mq-p" type="number" min="0" step="any" inputmode="decimal" oninput="this.dataset.man='1';mqTot()"><div class="mq-pc" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>
+      <div class="field"><label>Procesos por unidad (h)</label><div style="display:flex;gap:6px"><input class="mq-cnc" type="number" step="0.05" min="0" value="${MQ_CNC}" title="Centro de mecanizado (CNC)" oninput="mqTot()"><input class="mq-edm" type="number" step="0.05" min="0" value="${MQ_EDM}" title="EDM simple" oninput="mqTot()"></div><div style="font-size:11px;color:var(--muted);margin-top:3px">CNC · EDM (se cargan solos en la cotización)</div></div>
+      <div class="field span2"><label>🏷️ Tabla / imagen del cliente <span style="font-weight:500;color:var(--muted)">(opcional, tal cual la mandó)</span></label>
+        <div class="mq-ed" contenteditable="true" onpaste="mqPaste(event,this)" style="min-height:80px;border:2px dashed var(--border);border-radius:10px;padding:8px;background:#fff;color:#111;overflow:auto;max-height:340px;font-size:13px" data-ph="Pega aquí (Ctrl+V / mantener pulsado → Pegar)"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><label class="btn btn-sm btn-ghost" style="cursor:pointer">📷 Subir imagen<input type="file" accept="image/*" style="display:none" onchange="mqFile(this)"></label><button class="btn btn-sm btn-ghost" onclick="mqLimpiar(this)">🧹 Limpiar</button></div></div>
     </div></div>`;
 }
-function mqEstado(){ return [...document.querySelectorAll('.mq-it')].map(el=>({id:el.dataset.id,d:el.querySelector('.mq-d').value,u:el.querySelector('.mq-u').value,p:el.querySelector('.mq-p').value,h:el.querySelector('.mq-ed').innerHTML})); }
-function mqRepintar(est){ const cab=['mq-cli','mq-tipo','mq-ase','mq-proy','mq-lead','mq-pago','mq-obs'].map(id=>[id,(document.getElementById(id)||{}).value]);
+function mqChars(t){ return String(t||'').replace(/\s+/g,'').length; }
+function mqCalc(el){
+  const box=el.closest('.mq-it'); const val=Number(document.getElementById('mq-val').value)||0, min=Number(document.getElementById('mq-min').value)||0;
+  const t=box.querySelector('.mq-t').value, n=mqChars(t); box.querySelector('.mq-n').textContent=n?`· ${n} caracteres`:'';
+  const pc=Math.max(min,n*val); const d=box.querySelector('.mq-d'), p=box.querySelector('.mq-p');
+  if(!d.dataset.man){ const sz=String(box.querySelector('.mq-s').value||'').trim(); d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',box.querySelector('.mq-pies').checked?'" MARCACION EN PIES "':''].filter(Boolean).join('\n'); }
+  if(!p.dataset.man) p.value=n?pc:''; box.querySelector('.mq-pc').textContent=n?`Calculado: ${n} × $${val.toLocaleString('es-CO')}${n*val<min?` → mínimo $${min.toLocaleString('es-CO')}`:` = $${pc.toLocaleString('es-CO')}`}`:'';
+  mqTot();
+}
+function mqRecalcTodo(){ document.querySelectorAll('.mq-it').forEach(b=>mqCalc(b.querySelector('.mq-t'))); }
+function mqEstado(){ return [...document.querySelectorAll('.mq-it')].map(el=>({id:el.dataset.id,t:el.querySelector('.mq-t').value,s:el.querySelector('.mq-s').value,u:el.querySelector('.mq-u').value,pies:el.querySelector('.mq-pies').checked,d:el.querySelector('.mq-d').value,dm:el.querySelector('.mq-d').dataset.man||'',p:el.querySelector('.mq-p').value,pm:el.querySelector('.mq-p').dataset.man||'',cnc:el.querySelector('.mq-cnc').value,edm:el.querySelector('.mq-edm').value,h:el.querySelector('.mq-ed').innerHTML})); }
+function mqRepintar(est){ const keep=['mq-cli','mq-tipo','mq-ase','mq-proy','mq-val','mq-min','mq-lead','mq-pago','mq-obs'].map(id=>[id,(document.getElementById(id)||{}).value]);
   document.getElementById('mq-its').innerHTML=_MQ.its.map(mqItemHtml).join('');
-  document.querySelectorAll('.mq-it').forEach(el=>{ const e=(est||[]).find(x=>x.id===el.dataset.id); if(e){ el.querySelector('.mq-d').value=e.d; el.querySelector('.mq-u').value=e.u; el.querySelector('.mq-p').value=e.p; el.querySelector('.mq-ed').innerHTML=e.h; } }); mqTot(); }
+  document.querySelectorAll('.mq-it').forEach(el=>{ const e=(est||[]).find(x=>x.id===el.dataset.id); if(e){ el.querySelector('.mq-t').value=e.t; el.querySelector('.mq-s').value=e.s; el.querySelector('.mq-u').value=e.u; el.querySelector('.mq-pies').checked=e.pies; const d=el.querySelector('.mq-d'); d.value=e.d; if(e.dm) d.dataset.man='1'; const p=el.querySelector('.mq-p'); p.value=e.p; if(e.pm) p.dataset.man='1'; el.querySelector('.mq-cnc').value=e.cnc; el.querySelector('.mq-edm').value=e.edm; el.querySelector('.mq-ed').innerHTML=e.h; mqCalc(el.querySelector('.mq-t')); } }); mqTot(); }
 function mqAddItem(){ const e=mqEstado(); _MQ.its.push(mqNuevoItem()); mqRepintar(e); }
 function mqDelItem(id){ const e=mqEstado().filter(x=>x.id!==id); _MQ.its=_MQ.its.filter(x=>x.id!==id); mqRepintar(e); }
 function mqLimpiar(b){ b.closest('.mq-it').querySelector('.mq-ed').innerHTML=''; }
@@ -1542,16 +1559,25 @@ async function mqPaste(ev,ed){
 function mqCli(){ const v=document.getElementById('mq-cli').value.trim().toLowerCase(); const c=(_MQ.clientes||[]).find(x=>String(x.empresa||'').toLowerCase()===v); _MQ.cli=c||null;
   document.getElementById('mq-cli-i').innerHTML=c?`✅ Cliente registrado${c.nit?' · NIT '+esc(c.nit):''}${c.ciudad?' · '+esc(c.ciudad):''}${c.contacto?' · '+esc(c.contacto):''}`:(v?'Cliente nuevo (no está en la lista): se escribirá tal cual.':''); }
 function mqTot(){ const t=mqEstado().reduce((s,x)=>s+(Number(x.u)||0)*(Number(x.p)||0),0); const el=document.getElementById('mq-tot'); if(el) el.textContent='Subtotal: $'+Math.round(t).toLocaleString('es-CO')+' + IVA 19% = $'+Math.round(t*1.19).toLocaleString('es-CO'); }
+async function mqTarifas(){
+  if(_MQ.tar) return _MQ.tar; const t={cnc:210897,edm:140600};
+  try{ const r=await GET('procesos','select=proceso,precio&activo=eq.true&proceso=in.(CENTRO DE MECANIZADO,EDM SIMPLE)'); (r||[]).forEach(x=>{ if(x.proceso==='CENTRO DE MECANIZADO'&&Number(x.precio)>0) t.cnc=Number(x.precio); if(x.proceso==='EDM SIMPLE'&&Number(x.precio)>0) t.edm=Number(x.precio); }); }catch(e){}
+  return (_MQ.tar=t);
+}
 async function mqCrear(){
   const g=id=>(document.getElementById(id)||{}).value||''; const empresa=g('mq-cli').trim(); if(!empresa){ toast('Elige o escribe el cliente','error'); return; }
-  const its=mqEstado().map(x=>({descripcion:x.d.trim(),unidades:Number(x.u)||1,precio_unit:Number(x.p)||0,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,''))})).filter(x=>x.descripcion||x.marquilla_html);
-  if(!its.length){ toast('Agrega al menos un ítem con descripción o imagen/tabla','error'); return; }
+  const tar=await mqTarifas(); const R=Math.round;
+  const its=mqEstado().map(x=>{ const u=Number(x.u)||1, pu=Number(x.p)||0; const prcs=[]; const mk=(nombre,tarifa,h)=>{ if(h>0) prcs.push({nombre,tarifa,tiempo:h,costo:R(tarifa*h*u),peri:0,esp:0,matH:'ALUMINIO',costo_manual:0,modo:'unidad'}); };
+      mk('CENTRO DE MECANIZADO',tar.cnc,Number(x.cnc)||0); mk('EDM SIMPLE',tar.edm,Number(x.edm)||0);
+      const ct=prcs.reduce((s,p)=>s+p.costo,0); const pres=u?R(ct/u):0;
+      return {descripcion:x.d.trim(),unidades:u,precio_unit:pu,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,'')),prcs,costo_total:ct,presup_unit:pres,margen_pct:pres>0?Math.round((pu/pres-1)*10000)/100:0}; }).filter(x=>x.descripcion||x.marquilla_html);
+  if(!its.length){ toast('Agrega al menos un ítem con texto o imagen/tabla','error'); return; }
+  if(its.some(x=>!(x.precio_unit>0))&&!confirm('Hay ítems sin precio. ¿Crear la cotización de todos modos?')) return;
   if(its.some(x=>x.marquilla_html.length>900000)){ toast('Una imagen/tabla pesa demasiado; usa una imagen más pequeña','error'); return; }
   const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const r=await rpcR('cot_marquilla_crear',{p:{empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:c.contacto||null,telefono:c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
   if(!r) return; const num=(r&&r.cotizacion)||''; _MQ.its=[mqNuevoItem()];
   setContent(moduleBanner('✅','Cotización creada','Ya la puede ver Mauricio en Comercial')+`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px;text-align:center"><div style="font-size:34px;font-weight:900;color:var(--accent)">COT-${esc(String(num))}</div><div style="margin:6px 0 14px;color:var(--muted)">${its.length} ítem(s) · total con IVA $${Math.round(Number(r.total||0)).toLocaleString('es-CO')}</div><button class="btn btn-primary" onclick="nav('marquillas')">➕ Crear otra</button></div>`);
 }
-
 // ── Navegación, avisos y arranque ──────────────────────────────────
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
 function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
