@@ -3340,11 +3340,13 @@ function mqEsCot(cot){ return /marquilla/i.test(String(cot&&cot.tipo||'')); }
 function mqRateGet(cot){
   let v=Number(cot&&cot.marq_valor_caracter)||0, m=Number(cot&&cot.marq_minimo)||0;
   try{ const j=JSON.parse(localStorage.getItem('mqrate_'+cot.id)||'null'); if(j){ if(!v) v=Number(j.v)||0; if(!m) m=Number(j.m)||0; } }catch(e){}
-  return {v:v||MQ_VAL0,m:m||MQ_MIN0};
+  let l=null; try{ const j=JSON.parse(localStorage.getItem('mqrate_'+cot.id)||'null'); if(j&&j.l!=null) l=j.l; }catch(e){}
+  return {v:v||MQ_VAL0,m:m||MQ_MIN0,l:l==null?'" MARCACION EN PIES "':l};
 }
+function mqLeySave(){ try{ const k='mqrate_'+_IT.cotId; const j=JSON.parse(localStorage.getItem(k)||'{}'); j.l=gv('imq-ley'); localStorage.setItem(k,JSON.stringify(j)); }catch(e){} }
 async function mqRateSave(){
   const cot=DB.cotizaciones.find(x=>x.id===_IT.cotId); if(!cot) return; const v=gn('imq-val'), m=gn('imq-min');
-  try{ localStorage.setItem('mqrate_'+cot.id,JSON.stringify({v,m})); }catch(e){}
+  try{ localStorage.setItem('mqrate_'+cot.id,JSON.stringify({v,m,l:gv('imq-ley')})); }catch(e){}
   cot.marq_valor_caracter=v; cot.marq_minimo=m;
   const n=document.getElementById('imq-note'); if(n) n.textContent='✓ Tarifa guardada para esta cotización';
   try{ await PATCH('cotizaciones',cot.id,{marq_valor_caracter:v,marq_minimo:m}); }catch(e){}
@@ -3357,7 +3359,7 @@ function mqItPanel(cot,it){
       <div class="form-grid">
         <div class="field span2"><label>Texto que se graba</label><textarea id="imq-txt" style="min-height:70px" placeholder="Ej: ESPECIALIDADES ELECTROMECANICAS" oninput="mqItCalc()"></textarea><div id="imq-n" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>
         <div class="field"><label>Tamaño letra (mm)</label><input type="text" id="imq-mm" placeholder="3.0" oninput="mqItCalc()"></div>
-        <div class="field"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none"><input type="checkbox" id="imq-pies" checked onchange="mqItCalc()"> Marcación en pies</label></div>
+        <div class="field"><label>Leyenda adicional (opcional)</label><div style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="imq-pies" checked onchange="mqItCalc();mqLeySave()" style="-webkit-appearance:checkbox;appearance:auto;width:22px;height:22px;min-width:22px;padding:0;margin:0;flex:none;accent-color:#0d9488"><input type="text" id="imq-ley" value="${esc(r.l)}" placeholder='" MARCACION EN PIES "' oninput="mqItCalc()" onchange="mqLeySave()" style="flex:1"></div></div>
         <div class="field"><label>Valor por carácter ($)</label><input type="number" id="imq-val" value="${r.v}" oninput="mqItCalc()" onchange="mqRateSave()"></div>
         <div class="field"><label>Mínimo ($)</label><input type="number" id="imq-min" value="${r.m}" oninput="mqItCalc()" onchange="mqRateSave()"></div>
       </div>
@@ -3383,7 +3385,7 @@ function mqItCalc(){
   const res=document.getElementById('imq-res'); if(res) res.textContent=n?`${n} × ${fmt(val)} = ${fmt(raw)}${raw<min?` → mínimo ${fmt(min)}`:''}  ·  Precio unitario: ${fmt(pc)}`:'';
   if(!n) return;
   const d=document.getElementById('i4'); const sz=String(gv('imq-mm')||'').trim();
-  if(d&&!d.dataset.man||d&&d.dataset.mq==='1'){ d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',document.getElementById('imq-pies').checked?'" MARCACION EN PIES "':''].filter(Boolean).join('\n'); d.dataset.mq='1'; d.dataset.man=''; }
+  if(d&&!d.dataset.man||d&&d.dataset.mq==='1'){ d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',document.getElementById('imq-pies').checked?String(gv('imq-ley')||'').trim():''].filter(Boolean).join('\n'); d.dataset.mq='1'; d.dataset.man=''; }
   mqItProc();
   _IT.precioManual=true; const ip=document.getElementById('ipunit'); if(ip) ip.value=pc; onPrecioInput();
 }
