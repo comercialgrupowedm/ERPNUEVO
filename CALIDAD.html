@@ -1413,6 +1413,7 @@ function detailItem(id,foco){
   if(cal&&o.terminado&&!ap) A.push(['⚠️','#dc2626','RECHAZAR / REPROCESO',`modalRechazo('${j}')`]);
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
   if(cal&&ap) A.push(['↩️','#64748b','DEVOLVER APROBACIÓN',`revertirItem('${j}')`]);
+  if(cal&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
   if(puedeCal()) A.push(['🏅','#b7791f','CERTIFICADO',certVigente(id)?`detailCert('${jsq(certVigente(id).id)}')`:`editorCert(null,'${j}')`]);
