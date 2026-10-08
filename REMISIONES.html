@@ -1184,7 +1184,8 @@ function detalleRem(id){
   if(puede('administracion')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
   if(puedeLibre()&&!esFinal(m)) b.push(btn('📝','#7c3aed','Formulario libre',`formLibreRem('${id}')`));
   if(puede('administracion')&&!esFinal(m)&&['PEDIDA','SELECCIONADA','GENERADA'].includes(m.estado)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
-  if(puede('administracion')&&m.estado!=='DESPACHADA') b.push(btn('🗑️','#991b1b','Eliminar',`remEliminar('${id}')`));
+  if(puede('administracion')) b.push(btn('🗑️','#991b1b','Eliminar',`remEliminar('${id}')`));
+  if(!m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)&&puede('administracion','calidad')) b.push(btn('🔢','#0d9488','Asignar número',`remAsignarNum('${id}')`));
   const ls=m.lineas||[]; const dr=(l,v)=>`<div style="margin-bottom:8px"><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px">${l}</span><div style="font-size:13px;font-weight:500;white-space:pre-wrap">${v?esc(v):'—'}</div></div>`;
   openDetail(remNum(m),`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${remNum(m)} · ${opR(m)}</div><div class="cot-hero-empresa">${esc(m.empresa||'—')}</div><div class="cot-hero-sub">COT-${m.cot_num||'—'}${m.manual?' · remisión manual':''}</div></div><div class="cot-hero-right"><div class="cot-hero-total-label">Unidades</div><div class="cot-hero-total-value">${remUnd(m)}</div></div></div><div class="cot-hero-badges">${bRem(m.estado)}${m.asesor?`<span class="cot-hero-asesor">👤 ${esc(m.asesor)}</span>`:''}</div></div>
     ${remPendiente(m)?`<div style="margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:13px">🔔 <b>Esta remisión espera tu acción.</b></div>`:(!esFinal(m)?`<div style="margin:12px 0 0;font-size:12px;color:var(--muted)">⏳ Espera a <b>${rolAccion(m)}</b>.</div>`:'')}
@@ -1243,7 +1244,8 @@ async function remGenerar(id){
   const r=await rpcR('remision_generar',{p_id:id}); if(r){ toast('🧾 Remisión REM-'+(r.numero||'')+' generada — pasa a calidad para despachar'); afterRem(id); }
 }
 async function remDespachar(id){
-  const m=remDe(id); if(!m||!confirm('¿Confirmas que esta mercancía ya salió? Se descuenta de producción y no se puede deshacer.')) return;
+  const m=remDe(id); if(m&&!m.numero){ toast('Esta remisión no tiene número: usa «Asignar número» antes de despachar','error'); return; }
+  if(!m||!confirm('¿Confirmas que esta mercancía ya salió? Se descuenta de producción y no se puede deshacer.')) return;
   if(await rpcR('remision_despachar',{p_id:id},'🚚 Remisión despachada')) afterRem(id);
 }
 async function remCancelar(id){
@@ -1260,7 +1262,7 @@ function erQuitar(i){ _ER.lineas.splice(i,1); erRender(); }
 function formEditarRem(id){
   const m=remDe(id); if(!m) return;
   _ER={lineas:(m.lineas||[]).map(l=>({...l}))};
-  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí corriges lo que sale **impreso** (cliente, dirección, orden de compra, fecha) y también los **ítems y cantidades**. La cantidad no puede superar lo que la OP tiene disponible.`)}<div class="form-grid">${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
+  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí corriges lo que sale **impreso** (cliente, dirección, orden de compra, fecha) y también los **ítems y cantidades**. La cantidad no puede superar lo que la OP tiene disponible.`)}<div class="form-grid">${puede('administracion')?fldR('Número de remisión (REM-)','er-num',m.numero||'','inputmode="numeric"'):''}${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
     ${fldR('Orden de compra del cliente','er-oc',m.oc_cliente||'')}<div class="field"><label>Fecha del documento</label><input type="date" id="er-fec" value="${esc(fFecha(m))}"></div>${fldR('Proyecto','er-pro',m.proyecto||'','',true)}
     <div class="field span2"><label>Observaciones</label><textarea id="er-obs">${esc(m.observaciones||'')}</textarea></div></div>
     <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems y cantidades</h4><div id="er-lines"></div><button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="erAgregar()">➕ Agregar ítem</button><div style="font-size:11.5px;color:var(--muted);margin-top:8px">En una remisión despachada, al cambiar una cantidad se ajusta lo despachado en producción y queda registrado en el historial del ítem.</div></div>`,
@@ -1272,7 +1274,10 @@ async function guardarEditarRem(id){
   if(!d.empresa){ toast('Escribe el cliente','error'); return; }
   if(!d.lineas.length){ toast('La remisión debe tener al menos un ítem','error'); return; }
   if(d.lineas.some(l=>!(Number(l.cantidad)>0))){ toast('Cada ítem necesita una cantidad mayor que 0','error'); return; }
-  closeModal(); if(await rpcR('remision_editar',{p_id:id,p_data:d},'✅ Datos guardados')) afterRem(id);
+  const m0=remDe(id); const nuevoNum=puede('administracion')?gv('er-num'):''; closeModal();
+  if(!await rpcR('remision_editar',{p_id:id,p_data:d},'✅ Datos guardados')) return;
+  if(nuevoNum&&String(m0&&m0.numero||'')!==String(nuevoNum)){ if(!(Number(nuevoNum)>0)){ toast('Número no válido','error'); } else await rpcR('remision_set_numero',{p_id:id,p_numero:Number(nuevoNum)},'🔢 Número cambiado a REM-'+nuevoNum); }
+  afterRem(id);
 }
 // ── Remisión manual (sin OP) ───────────────────────────────────────
 function mnAdd(desc='',cant=1){
@@ -1748,8 +1753,19 @@ function rlImprimir(){
 }
 async function remEliminar(id){
   const m=remDe(id); if(!m) return;
-  if(!confirm('¿Eliminar '+remNum(m)+' definitivamente? Esta acción no se puede deshacer.')) return;
-  if(await rpcR('remision_eliminar',{p_id:id},'🗑️ Remisión eliminada')){ closeDetail(); refreshCurrentView(); }
+  const desp=m.estado==='DESPACHADA';
+  if(!confirm('¿Eliminar '+remNum(m)+' definitivamente? Esta acción no se puede deshacer.'+(desp?'\n\nEstá DESPACHADA: lo despachado se devuelve a la OP.':''))) return;
+  let ok=null;
+  try{ showBusy(); await sb.rpc('remision_eliminar_total',{p_id:id}); await recargar(); toast('🗑️ Remisión eliminada'); ok=true; }
+  catch(e){ const msg=String(e&&e.message||e);
+    if(/remision_eliminar_total|schema cache|does not exist/i.test(msg)) ok=await rpcR('remision_eliminar',{p_id:id},'🗑️ Remisión eliminada');
+    else toast('❌ '+msg,'error'); }
+  finally{ hideBusy(); }
+  if(ok){ closeDetail(); refreshCurrentView(); }
+}
+async function remAsignarNum(id){
+  const m=remDe(id); if(!m) return;
+  const r=await rpcR('remision_asignar_numero',{p_id:id}); if(r){ toast('🔢 Número asignado: REM-'+(r.numero||'')); afterRem(id); }
 }
 
 
