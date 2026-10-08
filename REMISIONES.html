@@ -1127,12 +1127,12 @@ function remCard(m){
   return `<div class="list-card" onclick="detalleRem('${m.id}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">${remNum(m)}${m.manual?' <span class="badge gris" style="font-size:9px">MANUAL</span>':''}</div>
     <div class="lc-title">${esc(m.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.proyecto||'')}</div></div>
     <div style="text-align:right;flex-shrink:0">${bRem(m.estado)}${remPendiente(m)?'<div style="margin-top:4px" title="Requiere tu acción">🔔</div>':''}${esMosat(m)?'<div style="margin-top:4px"><span class="badge gris" style="font-size:9px">🌐 EN</span></div>':''}</div></div>
-    <div class="lc-meta" style="font-size:11.5px;color:var(--muted);gap:10px"><span>${opR(m)}</span><span>COT-${m.cot_num||'—'}</span><span>📅 ${fmtDate(fFecha(m))||'—'}</span><span>📦 ${ls.length} ítem${ls.length!==1?'s':''} · ${remUnd(m)} und</span></div>
+    <div class="lc-meta" style="font-size:11.5px;color:var(--muted);gap:10px"><span>${opR(m)}</span><span>COT-${m.cot_num||'—'}</span><span>📅 ${fmtDate(fFecha(m))||'—'}</span><span>📦 ${ls.length} ítem${ls.length!==1?'s':''} · ${remUnd(m)} und</span>${m.pedida_por?`<span>🙋 Pidió: ${esc(m.pedida_por)}${m.pedida_unidades!=null?' · '+Number(m.pedida_unidades)+' und pedidas':''}</span>`:''}</div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?`<button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄 ${esMosat(m)?'Packing List':'PDF'}</button>`:''}${puedeLibre()&&!esFinal(m)?`<button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️ Editar</button>`:''}${m.estado==='PEDIDA'||m.estado==='SELECCIONADA'?`<span style="font-size:11px;color:var(--muted);align-self:center">Espera a ${rolAccion(m)}</span>`:''}</div></div>`;
 }
 function remTabla(rows){
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>REM #</th><th>Acciones</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Ítems</th><th>Und</th></tr></thead><tbody>
-  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td onclick="event.stopPropagation()" style="white-space:nowrap;overflow:visible">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td></tr>`; }).join('')}
+  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>REM #</th><th>Acciones</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Pidió</th><th>Pedidas</th><th>Ítems</th><th>Und</th></tr></thead><tbody>
+  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td onclick="event.stopPropagation()" style="white-space:nowrap;overflow:visible">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td style="font-size:11.5px;white-space:nowrap">${esc(m.pedida_por||'—')}</td><td class="td-center"><b>${m.pedida_unidades!=null?Number(m.pedida_unidades):'—'}</b></td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td></tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
 function remisiones(){
@@ -1187,6 +1187,7 @@ function detalleRem(id){
     ${remPendiente(m)?`<div style="margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);font-size:13px">🔔 <b>Esta remisión espera tu acción.</b></div>`:(!esFinal(m)?`<div style="margin:12px 0 0;font-size:12px;color:var(--muted)">⏳ Espera a <b>${rolAccion(m)}</b>.</div>`:'')}
     ${m.libre?`<div style="margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);font-size:12px">📝 Remisión hecha con el <b>formulario libre</b>, sin pasos obligatorios.</div>`:''}
     ${stepperH(m)}
+    ${(m.pedida_por||m.pedida_unidades!=null)?`<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.3);font-size:13px">🙋 <b>Pidió:</b> ${esc(m.pedida_por||'—')}${m.pedida_fecha?' · '+fmtDT(m.pedida_fecha):''}<br>📦 <b>Unidades pedidas:</b> ${m.pedida_unidades!=null?Number(m.pedida_unidades)+' und':'—'}${m.pedida_nota?'<br>📝 '+esc(m.pedida_nota):''}</div>`:''}
     ${b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:''}
     <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:340px"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map((l,i)=>`<tr><td class="td-center" style="font-weight:700">${l.item??i+1}</td><td style="max-width:230px;white-space:normal">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:800">${l.cantidad}${l.unidades&&Number(l.unidades)!==Number(l.cantidad)?`<div style="font-size:10px;color:var(--muted);font-weight:500">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP('Sin ítems seleccionados todavía')}</div>
     <div class="dp-section" style="margin-top:14px"><h4>🏢 Destinatario</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">${dr('Señores',m.empresa)}${dr('NIT',m.nit)}${dr('Dirección',m.direccion)}${dr('Ciudad',m.ciudad)}${dr('Encargado',m.contacto)}${dr('Teléfono',m.telefono)}${dr('Orden de compra del cliente',m.oc_cliente)}${dr('Fecha del documento',fmtDate(fFecha(m)))}</div>${dr('Proyecto',m.proyecto)}${dr('Observaciones',m.observaciones)}</div>`);
@@ -1196,9 +1197,26 @@ function detalleRem(id){
 // ── Acciones del flujo ─────────────────────────────────────────────
 const fldR=(lbl,id,val='',extra='',span=false)=>`<div class="field${span?' span2':''}"><label>${lbl}</label><input id="${id}" value="${esc(val)}" ${extra} autocomplete="off"></div>`;
 function afterRem(id){ updateBadges(); refreshCurrentView(); if(id) detalleRem(id); }
-async function remPedirOp(op){
-  if(!confirm('¿Pedir la remisión de la OP-'+op+'? El comercial deberá elegir qué se despacha.')) return;
-  if(await rpcR('remision_pedir',{p_op:op},'📦 Remisión pedida — el comercial elige qué se despacha')){ _RM.f='curso'; nav('remisiones'); }
+function remPedirOp(op){
+  const its=(DB.prods||[]).filter(p=>p.op===op); const disp=its.reduce((s,p)=>s+dispProd(p),0);
+  if(!disp){ toast('No hay unidades por despachar en esta OP','warn'); return; }
+  openModal(`📦 Pedir remisión — OP-${op}`,
+    `<div class="callout" style="margin:0 0 12px">Hay <b>${disp} und</b> por despachar en la OP. Indica <b>cuántas se van a despachar en esta remisión</b>; el comercial deberá elegir qué se despacha.</div>
+    <div class="form-grid"><div class="field"><label>Unidades a despachar</label><input id="pr-und" type="number" inputmode="numeric" min="1" max="${disp}" value="${disp}"></div>
+    <div class="field span2"><label>Nota (opcional)</label><input id="pr-nota" placeholder="Ej: salida parcial…"></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="remPedirOpOk(${Number(op)},${disp})">📦 Pedir remisión</button>`);
+}
+async function remPedirOpOk(op,max){
+  const u=Number(document.getElementById('pr-und').value), nota=(document.getElementById('pr-nota').value||'').trim();
+  if(!(u>0)){ toast('Escribe cuántas unidades se van a despachar','error'); return; }
+  if(u>max){ toast('No puedes pedir más de '+max+' und','error'); return; }
+  closeModal();
+  let r=null;
+  try{ r=await sb.rpc('remision_pedir_u',{p_op:op,p_unidades:u,p_nota:nota||null}); await recargar(); toast('📦 Remisión pedida: '+u+' und — el comercial elige qué se despacha'); r=true; }
+  catch(e){ const m=String(e&&e.message||e);
+    if(/remision_pedir_u|schema cache|does not exist/i.test(m)) r=await rpcR('remision_pedir',{p_op:op},'📦 Remisión pedida (sin cantidad: falta correr remision_pedir_unidades.sql)');
+    else toast('❌ '+m,'error'); }
+  if(r){ _RM.f='curso'; nav('remisiones'); }
 }
 function formSelRem(id){
   const m=remDe(id); if(!m) return;
