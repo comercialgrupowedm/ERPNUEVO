@@ -3304,6 +3304,7 @@ function formItem(itOrId,cotId){
     <datalist id="svc-list">${DB.servicios.map(s=>`<option value="${esc(s.servicio)}">`).join('')}</datalist>
     <datalist id="prc-list">${DB.procesos.filter(p=>p.maquina!=='DISEÑO').map(p=>`<option value="${esc(p.proceso)}">`).join('')}</datalist>
     <div class="wiz-step" id="wiz-item-0"><div class="form-grid">
+      ${mqItPanel(cot,it)}
       <div class="field"><label>Nº Item ★</label><input type="number" id="i2" value="${nextNum}"></div>
       <div class="field"><label>Unidades ★</label><input type="number" id="i3" value="${it.unidades||1}" min="1" oninput="itRecalcAll()"></div>
       <div class="field span2"><label>Descripción Item</label><textarea id="i4" style="min-height:130px" placeholder="Descripción de la pieza…" oninput="itSugerirDeb()">${esc(it.descripcion||'')}</textarea></div>
@@ -3330,6 +3331,61 @@ function formItem(itOrId,cotId){
         <div class="field span2"><label>Precio × Item</label><div id="precio-x-item" style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--gold);padding:8px">${fmt(totalItem(it))}</div></div></div></div>`,
     itemFooterHtml(0));
   itRenderRows('mat'); itRenderRows('svc'); itRenderRows('prc'); _IT.mats.forEach((_,i)=>matCalc(i,false,!isNew)); _IT.prcs.forEach((_,i)=>prcCalc(i,!isNew)); chequearMargenUrgencia(); try{itSugerir();}catch(e){}
+  try{ mqItInit(cot,it,isNew); }catch(e){}
+}
+
+// ── Marquillas en el cotizador de ítems (misma base que Remisiones) ──
+const MQ_VAL0=13500, MQ_MIN0=130000, MQ_CNC0=0.3, MQ_EDM0=0.5;
+function mqEsCot(cot){ return /marquilla/i.test(String(cot&&cot.tipo||'')); }
+function mqRateGet(cot){
+  let v=Number(cot&&cot.marq_valor_caracter)||0, m=Number(cot&&cot.marq_minimo)||0;
+  try{ const j=JSON.parse(localStorage.getItem('mqrate_'+cot.id)||'null'); if(j){ if(!v) v=Number(j.v)||0; if(!m) m=Number(j.m)||0; } }catch(e){}
+  return {v:v||MQ_VAL0,m:m||MQ_MIN0};
+}
+async function mqRateSave(){
+  const cot=DB.cotizaciones.find(x=>x.id===_IT.cotId); if(!cot) return; const v=gn('imq-val'), m=gn('imq-min');
+  try{ localStorage.setItem('mqrate_'+cot.id,JSON.stringify({v,m})); }catch(e){}
+  cot.marq_valor_caracter=v; cot.marq_minimo=m;
+  const n=document.getElementById('imq-note'); if(n) n.textContent='✓ Tarifa guardada para esta cotización';
+  try{ await PATCH('cotizaciones',cot.id,{marq_valor_caracter:v,marq_minimo:m}); }catch(e){}
+}
+function mqItPanel(cot,it){
+  const on=mqEsCot(cot); const r=mqRateGet(cot);
+  return `<div class="field span2" id="imq-wrap">${on?'':`<button type="button" class="btn btn-ghost btn-sm" id="imq-tog" onclick="document.getElementById('imq-box').style.display='';this.style.display='none'">🏷️ Usar calculadora de marquilla</button>`}
+    <div id="imq-box" style="${on?'':'display:none;'}border:2px solid #0d9488;border-radius:10px;padding:10px;background:rgba(13,148,136,.06)">
+      <div style="font-weight:800;font-size:12px;color:#0f766e;margin-bottom:8px">🏷️ CALCULADORA DE MARQUILLA</div>
+      <div class="form-grid">
+        <div class="field span2"><label>Texto que se graba</label><textarea id="imq-txt" style="min-height:70px" placeholder="Ej: ESPECIALIDADES ELECTROMECANICAS" oninput="mqItCalc()"></textarea><div id="imq-n" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>
+        <div class="field"><label>Tamaño letra (mm)</label><input type="text" id="imq-mm" placeholder="3.0" oninput="mqItCalc()"></div>
+        <div class="field"><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;font-size:12px;text-transform:none"><input type="checkbox" id="imq-pies" checked onchange="mqItCalc()"> Marcación en pies</label></div>
+        <div class="field"><label>Valor por carácter ($)</label><input type="number" id="imq-val" value="${r.v}" oninput="mqItCalc()" onchange="mqRateSave()"></div>
+        <div class="field"><label>Mínimo ($)</label><input type="number" id="imq-min" value="${r.m}" oninput="mqItCalc()" onchange="mqRateSave()"></div>
+      </div>
+      <div id="imq-res" style="font-family:var(--mono);font-size:12px;margin-top:6px"></div>
+      <div id="imq-note" style="font-size:10.5px;color:var(--muted);margin-top:4px">Tarifa editable: se recuerda para esta cotización. CNC 0.3 h + EDM 0.5 h se agregan solos.</div>
+    </div></div>`;
+}
+function mqItInit(cot,it,isNew){
+  const d=document.getElementById('i4'); if(d){ if(!isNew&&d.value) d.dataset.man='1'; d.addEventListener('input',()=>{ d.dataset.man='1'; d.dataset.mq=''; }); }
+  if(!isNew&&it.precio_unit){ /* ítem existente: no pisar hasta que escriban el texto */ }
+}
+function mqItProc(){
+  const tar=(n,def)=>nOr((DB.procesos.find(p=>String(p.proceso).toUpperCase()===n)||{}).precio)||def;
+  const mk=(n,t,def)=>({..._PRC0(),nombre:n,tarifa:tar(n,def),tiempo:t,modo:'unidad',tu:'h'});
+  const keep=_IT.prcs.filter(p=>p.nombre&&!/^(CENTRO DE MECANIZADO|EDM SIMPLE)$/i.test(p.nombre));
+  _IT.prcs=[mk('CENTRO DE MECANIZADO',MQ_CNC0,210897),mk('EDM SIMPLE',MQ_EDM0,140600),...keep];
+  _IT.prcs.forEach((_,i)=>prcCalc(i)); itRenderRows('prc');
+}
+function mqItCalc(){
+  if(!_IT) return; const t=gv('imq-txt'); const n=String(t||'').replace(/\s+/g,'').length;
+  const val=gn('imq-val'), min=gn('imq-min'); const raw=n*val, pc=Math.max(min,raw);
+  const nn=document.getElementById('imq-n'); if(nn) nn.textContent=n?`${n} caracteres (sin espacios)`:'';
+  const res=document.getElementById('imq-res'); if(res) res.textContent=n?`${n} × ${fmt(val)} = ${fmt(raw)}${raw<min?` → mínimo ${fmt(min)}`:''}  ·  Precio unitario: ${fmt(pc)}`:'';
+  if(!n) return;
+  const d=document.getElementById('i4'); const sz=String(gv('imq-mm')||'').trim();
+  if(d&&!d.dataset.man||d&&d.dataset.mq==='1'){ d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',document.getElementById('imq-pies').checked?'" MARCACION EN PIES "':''].filter(Boolean).join('\n'); d.dataset.mq='1'; d.dataset.man=''; }
+  mqItProc();
+  _IT.precioManual=true; const ip=document.getElementById('ipunit'); if(ip) ip.value=pc; onPrecioInput();
 }
 function itemFooterHtml(idx){
   let h=`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`;
