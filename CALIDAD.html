@@ -1911,12 +1911,29 @@ function despacho(){
 
 // Pedir la remisión de una OP: mismo RPC que «Por pedir» del módulo Remisiones (remision_pedir: calidad, comercial o administración).
 // No se duplica nada de Remisiones: la selección, la generación y el número los siguen haciendo comercial y administración allá.
-async function pedirRemision(op){
+function pedirRemision(op){
   if(!soloCal()) return;
-  const aprob=(DB.produccion||[]).filter(o=>o.op===op&&pendDesp(o)).length, total=(DB.produccion||[]).filter(o=>o.op===op&&vivo(o)).length;
-  if(!confirm(`¿Pedir la remisión de la OP-${op}?\n\n${aprob} de ${total} ítem(s) activos de esta OP ya están aprobados por calidad. El comercial elegirá qué se despacha (solo puede elegir ítems con la aprobación del módulo de Calidad; las heredadas hay que confirmarlas primero) y administración la generará.`)) return;
-  const r=await rpcC('remision_pedir',{p_op:op},'📦 Remisión pedida — el comercial elige qué se despacha');
-  if(r) refreshCurrentView();
+  const its=(DB.produccion||[]).filter(o=>o.op===op&&pendDesp(o)); const tot=(DB.produccion||[]).filter(o=>o.op===op&&vivo(o)).length;
+  const disp=its.reduce((s,o)=>s+dispDe(o),0);
+  if(!disp){ toast('No hay unidades aprobadas por despachar en esta OP','warn'); return; }
+  openModal(`📦 Pedir remisión — OP-${op}`,
+    `<div class="callout" style="margin:0 0 12px">${its.length} de ${tot} ítem(s) activos de la OP están aprobados por calidad, con <b>${disp} und</b> por despachar. Indica <b>cuántas unidades se van a despachar en esta remisión</b>; el comercial elige los ítems y administración la genera.</div>
+    <div class="form-grid"><div class="field"><label>Unidades a despachar</label><input id="pr-und" type="number" inputmode="numeric" min="1" max="${disp}" value="${disp}"></div>
+    <div class="field span2"><label>Nota para comercial / administración (opcional)</label><input id="pr-nota" placeholder="Ej: salida parcial, el cliente las recoge…"></div></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">Queda registrado quién la pidió: ${esc(_SESSION&&_SESSION.nombre||'')}.</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="pedirRemisionOk(${Number(op)},${disp})">📦 Pedir remisión</button>`);
+}
+async function pedirRemisionOk(op,max){
+  const u=Number(document.getElementById('pr-und').value), nota=(document.getElementById('pr-nota').value||'').trim();
+  if(!(u>0)){ toast('Escribe cuántas unidades se van a despachar','error'); return; }
+  if(u>max){ toast('No puedes pedir más de '+max+' und (lo aprobado por despachar)','error'); return; }
+  closeModal();
+  let ok=false;
+  try{ await sb.rpc('remision_pedir_u',{p_op:op,p_unidades:u,p_nota:nota||null}); ok=true; toast('📦 Remisión pedida: '+u+' und — el comercial elige qué se despacha'); await recargar(); }
+  catch(e){ const m=String(e&&e.message||e);
+    if(/remision_pedir_u|schema cache|does not exist/i.test(m)){ const r=await rpcC('remision_pedir',{p_op:op},'📦 Remisión pedida (sin cantidad: falta correr remision_pedir_unidades.sql)'); ok=!!r; }
+    else toast('❌ '+m,'error'); }
+  if(ok) refreshCurrentView();
 }
 
 // ── PESTAÑA: SOLICITUDES EXTERNAS (formato COMPRAS-FO-002) ─────────────
