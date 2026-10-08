@@ -1532,6 +1532,30 @@ function pdServicios(p){
   return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.proveedor?'🏭 '+esc(x.proveedor)+'<br>':''}${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
     <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
 }
+/* ── Marquillas: texto / imagen / tabla del cliente tal cual (items.marquilla_html) ── */
+function mqSan(h){
+  if(!h) return ''; let d; try{ d=new DOMParser().parseFromString('<body>'+h+'</body>','text/html'); }catch(e){ return ''; }
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,textarea,select,base,svg,video,audio').forEach(n=>n.remove());
+  d.body.querySelectorAll('*').forEach(n=>{ [...n.attributes].forEach(a=>{ const k=a.name.toLowerCase(), v=String(a.value||'');
+    if(k.startsWith('on')||k==='class'||k==='id') { n.removeAttribute(a.name); return; }
+    if((k==='href'||k==='src')&&!/^(https?:|data:image\/(png|jpe?g|gif|webp);base64,|mailto:|#)/i.test(v.trim())) n.removeAttribute(a.name);
+    if(k==='style'&&/url\s*\(|expression|javascript:|position\s*:|@import/i.test(v)) n.removeAttribute('style'); }); });
+  d.body.querySelectorAll('img').forEach(i=>{ if(!i.getAttribute('src')) i.remove(); });
+  return d.body.innerHTML.trim();
+}
+function mqRender(h){
+  const s=mqSan(h); if(!s) return '';
+  const d=new DOMParser().parseFromString('<body>'+s+'</body>','text/html');
+  d.body.querySelectorAll('table').forEach(t=>{ t.style.borderCollapse='collapse'; t.style.maxWidth='100%'; t.style.fontSize='11px'; t.querySelectorAll('td,th').forEach(c=>{ if(!c.style.border) c.style.border='1px solid #999'; c.style.padding='3px 6px'; }); });
+  d.body.querySelectorAll('img').forEach(i=>{ i.style.maxWidth='100%'; i.style.height='auto'; });
+  return '<div style="overflow-x:auto;word-break:break-word">'+d.body.innerHTML+'</div>';
+}
+function mqBox(){ return '<div class="dp-section" id="mq-op" style="display:none"><h4>🏷️ Texto / diseño del cliente</h4><div id="mq-op-b"></div></div>'; }
+async function mqCargarProd(pid){
+  try{ const r=(await GET('produccion','select=id_item&id=eq.'+encodeURIComponent(pid)))[0]; if(!r||!r.id_item) return;
+    const it=(await GET('items','select=marquilla_html&id=eq.'+encodeURIComponent(r.id_item)))[0]; if(!it||!it.marquilla_html) return;
+    const b=document.getElementById('mq-op-b'), s=document.getElementById('mq-op'); if(b&&s){ b.innerHTML=mqRender(it.marquilla_html); s.style.display=''; } }catch(e){}
+}
 function pdTab(el,k){ _PD.tab=k; switchDpTab(el,k); }
 function detalleProd(id,tab){
   const p=prodDe(id); if(!p){ toast('Ítem de OP no encontrado','error'); return; }
@@ -1552,9 +1576,9 @@ function detalleProd(id,tab){
   const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
   openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+(mpNivel(p)?`<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:13px;font-weight:700">${mpNivel(p)===2?'🚨 ¡Ojo, pida el material!':'🔴 No ha pedido el material'} · ${mpDiasHab(p)} días hábiles sin pedido. Si este ítem no lleva material, usa el botón “No lleva material”.</div>`:'')+accionesProd(p)+
     `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${tieneSvc(p)?T('servicios','🚚 Servicios'):''}${T('archivos','📎 Archivos')}${F('dis_parecidos')?T('parecidos','💡 Parecidos'):''}${T('historial','🕘 Historial')}</div>`+
-    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(tieneSvc(p)?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+(F('dis_parecidos')?P('parecidos','<div id="pd-sim">'+mutedP('Buscando parecidos…')+'</div>'):'')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
+    P('resumen',pdResumen(p)+mqBox())+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(tieneSvc(p)?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+(F('dis_parecidos')?P('parecidos','<div id="pd-sim">'+mutedP('Buscando parecidos…')+'</div>'):'')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
   if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
-  cargarArchivosProd(id); cargarHistorialProd(id); if(F('dis_parecidos')) setTimeout(()=>simCargar(id,'pd-sim'),50);
+  cargarArchivosProd(id); mqCargarProd(id); cargarHistorialProd(id); if(F('dis_parecidos')) setTimeout(()=>simCargar(id,'pd-sim'),50);
 }
 function pdResumen(p){
   const reps=repsDe(p.id); const rems=remsDeOp(p.op).filter(m=>(m.lineas||[]).some(l=>l.id_prod===p.id)||m.estado==='PEDIDA');

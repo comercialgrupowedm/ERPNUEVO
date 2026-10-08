@@ -1639,6 +1639,30 @@ function pdServicios(p){
   return `<div class="dp-section"><h4>🚚 Servicios externos cotizados</h4>${sv.map(x=>dr(esc(x.nombre),`<div style="font-size:12px;text-align:right">${x.proveedor?'🏭 '+esc(x.proveedor)+'<br>':''}${x.dureza?'Dureza '+esc(x.dureza)+' HRC<br>':''}${x.dias?x.dias+' días':''}${x.desc?'<br>'+esc(x.desc):''}</div>`)).join('')}
     <div style="margin-top:10px">${est}</div>${p.externo_detalle?`<div style="font-size:12px;margin-top:6px;color:var(--muted)">${esc(p.externo_detalle)}${p.externo_hasta?' · regresa '+fmtDate(p.externo_hasta):''}</div>`:''}</div>`;
 }
+/* ── Marquillas: texto / imagen / tabla del cliente tal cual (items.marquilla_html) ── */
+function mqSan(h){
+  if(!h) return ''; let d; try{ d=new DOMParser().parseFromString('<body>'+h+'</body>','text/html'); }catch(e){ return ''; }
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,textarea,select,base,svg,video,audio').forEach(n=>n.remove());
+  d.body.querySelectorAll('*').forEach(n=>{ [...n.attributes].forEach(a=>{ const k=a.name.toLowerCase(), v=String(a.value||'');
+    if(k.startsWith('on')||k==='class'||k==='id') { n.removeAttribute(a.name); return; }
+    if((k==='href'||k==='src')&&!/^(https?:|data:image\/(png|jpe?g|gif|webp);base64,|mailto:|#)/i.test(v.trim())) n.removeAttribute(a.name);
+    if(k==='style'&&/url\s*\(|expression|javascript:|position\s*:|@import/i.test(v)) n.removeAttribute('style'); }); });
+  d.body.querySelectorAll('img').forEach(i=>{ if(!i.getAttribute('src')) i.remove(); });
+  return d.body.innerHTML.trim();
+}
+function mqRender(h){
+  const s=mqSan(h); if(!s) return '';
+  const d=new DOMParser().parseFromString('<body>'+s+'</body>','text/html');
+  d.body.querySelectorAll('table').forEach(t=>{ t.style.borderCollapse='collapse'; t.style.maxWidth='100%'; t.style.fontSize='11px'; t.querySelectorAll('td,th').forEach(c=>{ if(!c.style.border) c.style.border='1px solid #999'; c.style.padding='3px 6px'; }); });
+  d.body.querySelectorAll('img').forEach(i=>{ i.style.maxWidth='100%'; i.style.height='auto'; });
+  return '<div style="overflow-x:auto;word-break:break-word">'+d.body.innerHTML+'</div>';
+}
+function mqBox(){ return '<div class="dp-section" id="mq-op" style="display:none"><h4>🏷️ Texto / diseño del cliente</h4><div id="mq-op-b"></div></div>'; }
+async function mqCargarProd(pid){
+  try{ const r=(await GET('produccion','select=id_item&id=eq.'+encodeURIComponent(pid)))[0]; if(!r||!r.id_item) return;
+    const it=(await GET('items','select=marquilla_html&id=eq.'+encodeURIComponent(r.id_item)))[0]; if(!it||!it.marquilla_html) return;
+    const b=document.getElementById('mq-op-b'), s=document.getElementById('mq-op'); if(b&&s){ b.innerHTML=mqRender(it.marquilla_html); s.style.display=''; } }catch(e){}
+}
 function externoAviso(op){
   if(!op.externo&&!rutaTieneExterno(op)) return '';
   const pe=puede('planeacion','administracion'), j=idq(op);
@@ -2030,7 +2054,7 @@ function detailOP(id){
   const ruta=`<div class="dp-section"><h4>🧭 Ruta de producción</h4>${rutaPasosHtml(op).replace(externoAviso(op),'')}</div>`;
   const simple=`<div style="text-align:center;margin:6px 0 30px"><button class="btn btn-ghost btn-sm" onclick="formAvance('${j}')">✏️ Formulario simple (% global, estado, prioridad)</button></div>`;
   const hist=`<div class="dp-section"><h4>📜 Historial — quién hizo qué y cuándo</h4><div id="hist-box" data-id="${esc(op.id)}">${mutedP('Cargando…')}</div></div>`;
-  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+hist+simple); histCargar(op.id);
+  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+mqBox()+hist+simple); histCargar(op.id); mqCargarProd(op.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
 }
 // Formulario simple de respaldo: % global, estado y prioridad en un solo paso

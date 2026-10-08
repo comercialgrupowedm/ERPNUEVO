@@ -537,6 +537,7 @@ details.ay-det[open]{padding-bottom:10px}
 
 /* ── Mayúsculas en todo el ERP: se ve en mayúsculas aunque el valor real conserve mayúsculas y minúsculas ── */
 input[type=text],input:not([type]),input[type=search],input[type=email],input[type=url],textarea,select{text-transform:none}
+.mq-ed:empty:before{content:attr(data-ph);color:#94a3b8}.mq-ed table{border-collapse:collapse}.mq-ed td,.mq-ed th{border:1px solid #999;padding:3px 6px}.mq-ed img{max-width:100%}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -583,6 +584,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-section">Remisiones</div>
     <div class="nav-item active" data-m="dashboard" onclick="nav('dashboard')"><span class="nav-icon">📊</span>Inicio</div>
     <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">🚚</span>Remisiones<span class="nav-badge" id="b-rem" style="display:none">0</span></div>
+    <div class="nav-item" data-m="marquillas" onclick="nav('marquillas')"><span class="nav-icon">🏷️</span>Cotizar marquillas</div>
     <div class="nav-item" data-m="porpedir" onclick="nav('porpedir')"><span class="nav-icon">📥</span>Por pedir<span class="nav-badge" id="b-pp" style="display:none">0</span></div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
@@ -599,6 +601,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <div id="bottom-nav">
   <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div><div>Inicio</div></div>
   <div class="bn-item" data-m="remisiones" onclick="nav('remisiones')"><div class="bn-icon">🚚</div><div>Remisiones</div><span class="bn-badge" id="bb-rem" style="display:none">0</span></div>
+  <div class="bn-item" data-m="marquillas" onclick="nav('marquillas')"><div class="bn-icon">🏷️</div><div>Marquillas</div></div>
   <div class="bn-item" data-m="porpedir" onclick="nav('porpedir')"><div class="bn-icon">📥</div><div>Por pedir</div><span class="bn-badge" id="bb-pp" style="display:none">0</span></div>
 </div>
 
@@ -1050,7 +1053,7 @@ async function doLogin(){
 //  Flujo: Calidad PIDE → Comercial SELECCIONA → Administración GENERA → Calidad DESPACHA
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir'};
+const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas'};
 const PG_BASE=(window.innerWidth<700?30:60);
 const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
 const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
@@ -1430,38 +1433,123 @@ function dashboard(){
   const etapa=m=>({PEDIDA:m.pedida_fecha,SELECCIONADA:m.seleccion_fecha||m.pedida_fecha,GENERADA:m.generada_fecha||m.seleccion_fecha||m.pedida_fecha}[m.estado]);
   const edad=m=>dias(etapa(m),hoy);
   const atasc=curso.filter(m=>(edad(m)||0)>=3).sort((a,b)=>(edad(b)||0)-(edad(a)||0));
-  const card=(t,h,ex)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;min-width:0;${ex||''}"><div style="font-size:12px;font-weight:800;margin-bottom:8px">${t}</div>${h}</div>`;
-  const banner=moduleBanner('📊','Remisiones',`${curso.length} en curso · ${opsPorPedir().length} OP por pedir`);
-  const kp=`<div class="kstrip" style="margin-top:8px">${kchip(pend.length,'🔔 Esperan mi acción','#ea580c',"_RM.f='pend';nav('remisiones')")}${kchip(opsPorPedir().length,'📥 OP por pedir','#0d9488',"nav('porpedir')")}${kchip(curso.length,'🚚 En curso','var(--info)',"_RM.f='curso';nav('remisiones')")}${kchip(atasc.length,'⏱️ Detenidas ≥3 d','var(--danger)')}${kchip(despHoy.length,'✅ Despachadas hoy','#16a34a')}${kchip(despMes.length,'📦 Despachadas este mes','#16a34a')}${kchip(undMes,'🔢 Unidades este mes','#0f766e')}${kchip(fd(ciclo),'⏳ Ciclo promedio','#7b1fa2')}</div>`;
-  // Embudo
-  const ET=[['PEDIDA','⏳ Pedida','comercial','var(--warn)',m=>dias(m.pedida_fecha,m.seleccion_fecha)],['SELECCIONADA','☑️ Seleccionada','administración','var(--info)',m=>dias(m.seleccion_fecha,m.generada_fecha)],['GENERADA','🧾 Generada','calidad','#7b1fa2',m=>dias(m.generada_fecha,m.despachada_fecha)],['DESPACHADA','✅ Despachada','','#16a34a',null]];
-  const mx=Math.max(1,...ET.map(e=>all.filter(m=>m.estado===e[0]).length));
-  const emb=card('🔻 Dónde están las remisiones',ET.map(([k,l,quien,c,fn])=>{ const n=all.filter(m=>m.estado===k).length; const t=fn?prom(base.map(fn)):null;
-    return `<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:11.5px"><span><b>${l}</b>${quien?` <span style="color:var(--muted)">· le toca a ${quien}</span>`:''}</span><span><b>${n}</b>${t!=null?` <span style="color:var(--muted)">· demora ${fd(t)}</span>`:''}</span></div><div style="height:9px;background:var(--card2);border-radius:6px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.round(n/mx*100)}%;background:${c}"></div></div></div>`; }).join(''));
-  // Despachos por mes (12)
-  const ms=[]; for(let k=11;k>=0;k--){ const d=new Date(hoy.getFullYear(),hoy.getMonth()-k,1); ms.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
-  const pm=ms.map(y=>{ const l=desp.filter(m=>fFecha(m).slice(0,7)===y); return {y,n:l.length,u:l.reduce((s,m)=>s+remUnd(m),0)}; });
-  const mxm=Math.max(1,...pm.map(x=>x.n));
-  const mesL=y=>{ const [a,b]=y.split('-'); return new Date(+a,+b-1,1).toLocaleDateString('es-CO',{month:'short'}).replace('.',''); };
-  const grafM=card('📅 Despachos por mes <span style="font-weight:600;color:var(--muted)">· últimos 12</span>',`<div style="display:flex;align-items:flex-end;gap:4px;height:120px">${pm.map(x=>`<div title="${x.y}: ${x.n} remisiones · ${x.u} und" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0"><div style="font-size:9.5px;font-weight:700">${x.n||''}</div><div style="width:100%;max-width:26px;height:${Math.max(x.n?4:1,Math.round(x.n/mxm*86))}px;background:${x.y===mes?'#16a34a':'var(--accent,#2563eb)'};border-radius:4px 4px 0 0;opacity:${x.n?1:.25}"></div><div style="font-size:9px;color:var(--muted);margin-top:2px">${mesL(x.y)}</div></div>`).join('')}</div>`);
-  // Top clientes
-  const cl=new Map(); desp.filter(m=>dias(m.despachada_fecha||m.fecha,hoy)<=365||!m.despachada_fecha).forEach(m=>{ const k=m.empresa||'—'; const c=cl.get(k)||{n:0,u:0}; c.n++; c.u+=remUnd(m); cl.set(k,c); });
-  const top=[...cl.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,8); const mxc=Math.max(1,...top.map(x=>x[1].n));
-  const topH=card('🏆 Clientes con más despachos <span style="font-weight:600;color:var(--muted)">· último año</span>',top.length?top.map(([k,v])=>`<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;margin-bottom:5px"><div style="width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(k)}">${esc(k)}</div><div style="flex:1;height:8px;background:var(--card2);border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.round(v.n/mxc*100)}%;background:#0d9488"></div></div><b style="min-width:70px;text-align:right">${v.n} · ${v.u} und</b></div>`).join(''):mutedP('Sin despachos'));
-  // Detenidas
-  const atH=card('⏱️ Remisiones detenidas <span style="font-weight:600;color:var(--muted)">· las más antiguas sin avanzar</span>',atasc.length?atasc.slice(0,8).map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="detalleRem('${m.id}')"><div style="font-weight:700;font-size:12px">${remNum(m)} · ${esc(m.empresa||'—')}</div><div style="font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center">${bRem(m.estado)} <span>${opR(m)}</span> · le toca a <b>${rolAccion(m)}</b> · <b style="color:var(--danger)">${fd(edad(m))}</b></div></div>`).join('')+(atasc.length>8?`<div style="text-align:center;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="_RM.f='curso';nav('remisiones')">Ver las ${atasc.length} →</button></div>`:''):mutedP('Nada detenido 🎉'));
-  // OP por pedir
-  const pp=opsPorPedir().slice(0,8);
-  const ppH=card('📥 OP listas para pedir remisión',pp.length?pp.map(o=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="nav('porpedir')"><div style="font-weight:700;font-size:12px">OP-${o.op} · ${esc(o.empresa||'—')}</div><div style="font-size:11px;color:var(--muted)">COT-${o.cot||'—'} · ${o.items.length} ítem(s) · ${o.items.reduce((s,x)=>s+Number(x.d||0),0)} und por despachar${o.asesor?' · '+esc(o.asesor):''}</div></div>`).join('')+(opsPorPedir().length>8?`<div style="text-align:center;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="nav('porpedir')">Ver todas →</button></div>`:''):mutedP('No hay OP pendientes de pedir'));
-  const paraMi=card('🔔 Lo que espera tu acción',pend.length?`<div class="card-list">${pend.slice(0,4).map(remCard).join('')}</div>`:mutedP('Nada pendiente para tu rol 🎉'));
-  const ult=desp.slice().sort((a,b)=>String(fFecha(b)).localeCompare(String(fFecha(a)))||(b.numero||0)-(a.numero||0)).slice(0,8);
-  const ultH=card('✅ Últimas despachadas',ult.length?ult.map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="detalleRem('${m.id}')"><div style="font-weight:700;font-size:12px">${remNum(m)} · ${esc(m.empresa||'—')}</div><div style="font-size:11px;color:var(--muted)">${opR(m)} · ${remUnd(m)} und · ${fmtDT?fmtDT(m.despachada_fecha||m.fecha):fFecha(m)}</div></div>`).join(''):mutedP('Aún no hay despachadas'));
-  setContent(`${banner}${kp}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:8px;margin-top:8px;align-items:start">${paraMi}${atH}${emb}${grafM}${ppH}${topH}${ultH}</div><div style="height:60px"></div>`);
+  const nPP=opsPorPedir().length;
+  const N=e=>all.filter(m=>m.estado===e).length;
+  const rol=(typeof rolActual==='function'?rolActual():'')||'';
+  const pasos=[
+    {ic:'📥',t:'Por pedir',n:nPP,q:'Calidad',d:'OP con unidades aprobadas esperando que se pida su remisión.',c:'#0d9488',go:"nav('porpedir')"},
+    {ic:'⏳',t:'Pedidas',n:N('PEDIDA'),q:'Comercial',d:'Ya la pidieron; comercial elige qué ítems y cuántas unidades salen.',c:'#ea580c',go:"_RM.f='ped';nav('remisiones')"},
+    {ic:'☑️',t:'Seleccionadas',n:N('SELECCIONADA'),q:'Administración',d:'Comercial ya eligió; administración genera el número de remisión.',c:'#1565c0',go:"_RM.f='curso';nav('remisiones')"},
+    {ic:'🧾',t:'Generadas',n:N('GENERADA'),q:'Calidad',d:'Lista con número; calidad la despacha cuando el material sale.',c:'#7b1fa2',go:"_RM.f='curso';nav('remisiones')"}];
+  const paso=(x,i)=>`<div onclick="${x.go}" style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-top:4px solid ${x.c};border-radius:12px;padding:12px 14px;flex:1;min-width:150px"><div style="font-size:11px;color:var(--muted);font-weight:700">PASO ${i+1} · le toca a ${x.q}</div><div style="display:flex;align-items:baseline;gap:8px;margin:4px 0"><span style="font-size:30px;font-weight:900;color:${x.c}">${x.n}</span><span style="font-size:14px;font-weight:800">${x.ic} ${x.t}</span></div><div style="font-size:12px;color:var(--muted);line-height:1.35">${x.d}</div></div>`;
+  const banner=moduleBanner('📊','Remisiones','Así van los despachos, paso a paso');
+  const resumen=`<div style="font-size:13px;margin:12px 2px;color:var(--text)">📦 Este mes se han despachado <b>${despMes.length}</b> remisión${despMes.length!==1?'es':''} (<b>${undMes}</b> und)${ciclo!=null?` · desde que se pide hasta que sale tardan en promedio <b>${fd(ciclo)}</b>`:''}.</div>`;
+  const flujo=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${pasos.map(paso).join('')}</div>`;
+  const fila=m=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="detalleRem('${m.id}')"><div style="font-weight:700;font-size:13px">${remNum(m)} · ${esc(m.empresa||'—')}</div><div style="font-size:11.5px;color:var(--muted)">${opR(m)} · ${bRem(m.estado)}${m.pedida_por?' · pidió '+esc(m.pedida_por):''}${m.pedida_unidades!=null?' · '+Number(m.pedida_unidades)+' und':''}</div></div>`;
+  const sec=(t,sub,h)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px"><div style="font-size:14px;font-weight:800">${t}</div><div style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">${sub}</div>${h}</div>`;
+  const miH=sec('🔔 Lo que espera tu acción','Remisiones que te tocan según tu rol',pend.length?pend.slice(0,5).map(fila).join('')+(pend.length>5?`<div style="padding-top:8px"><a style="cursor:pointer;color:var(--accent);font-weight:700;font-size:12px" onclick="_RM.f='pend';nav('remisiones')">Ver las ${pend.length} →</a></div>`:''):mutedP('Nada pendiente para ti 🎉'));
+  const atH=atasc.length?sec('⏱️ Detenidas hace 3 días o más','Llevan tiempo en el mismo paso: conviene empujarlas',atasc.slice(0,4).map(m=>fila(m).replace('</div></div>',` · <b style="color:var(--danger)">${Math.floor(edad(m)||0)} d</b></div></div>`)).join('')):'';
+  const ult=desp.slice().sort((a,b)=>String(fFecha(b)).localeCompare(String(fFecha(a)))||(b.numero||0)-(a.numero||0)).slice(0,5);
+  const ultH=sec('✅ Últimas despachadas','Las 5 más recientes',ult.length?ult.map(m=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="detalleRem('${m.id}')"><div style="font-weight:700;font-size:13px">${remNum(m)} · ${esc(m.empresa||'—')}</div><div style="font-size:11.5px;color:var(--muted)">${opR(m)} · ${remUnd(m)} und · ${fmtDate(fFecha(m))}</div></div>`).join(''):mutedP('Aún no hay despachos.'));
+  setContent(`${banner}${resumen}${flujo}${miH}${atH}${ultH}<div style="height:60px"></div>`);
+}
+
+
+// ── COTIZAR MARQUILLAS (Adriana crea la cotización; queda a nombre del asesor, p.ej. Mauricio García) ──
+let _MQ={its:[],cli:null,tipos:null,clientes:null,ult:null};
+function mqNuevoItem(){ return {id:Math.random().toString(36).slice(2,8)}; }
+async function mqCompress(file,max=1000){
+  return await new Promise((ok,ko)=>{ const fr=new FileReader(); fr.onerror=()=>ko(new Error('No se pudo leer la imagen'));
+    fr.onload=()=>{ const im=new Image(); im.onerror=()=>ko(new Error('Imagen no válida')); im.onload=()=>{ const k=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height); ok(c.toDataURL('image/jpeg',.85)); }; im.src=fr.result; }; fr.readAsDataURL(file); });
+}
+function mqSan(h){
+  if(!h) return ''; let d; try{ d=new DOMParser().parseFromString('<body>'+h+'</body>','text/html'); }catch(e){ return ''; }
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,textarea,select,base,svg,video,audio').forEach(n=>n.remove());
+  d.body.querySelectorAll('*').forEach(n=>{ [...n.attributes].forEach(a=>{ const k=a.name.toLowerCase(), v=String(a.value||'');
+    if(k.startsWith('on')||k==='class'||k==='id'){ n.removeAttribute(a.name); return; }
+    if((k==='href'||k==='src')&&!/^(https?:|data:image\/(png|jpe?g|gif|webp);base64,|mailto:|#)/i.test(v.trim())) n.removeAttribute(a.name);
+    if(k==='style'&&/url\s*\(|expression|javascript:|position\s*:|@import/i.test(v)) n.removeAttribute('style'); }); });
+  d.body.querySelectorAll('img').forEach(i=>{ if(!i.getAttribute('src')) i.remove(); });
+  return d.body.innerHTML.trim();
+}
+function mqRender(h){ const s=mqSan(h); return s?'<div style="overflow-x:auto;word-break:break-word">'+s+'</div>':''; }
+async function marquillas(){
+  if(MOD==='marquillas'&&document.getElementById('mq-form')) return; // no borrar lo que se está escribiendo
+  const banner=moduleBanner('🏷️','Cotizar marquillas','Cotización para Mauricio · pega la imagen o tabla del cliente tal cual');
+  if(!_MQ.its.length) _MQ.its=[mqNuevoItem()];
+  setContent(banner+`<div id="mq-form">${mqFormHtml()}</div><div id="mq-ult"></div><div style="height:80px"></div>`);
+  mqCargarListas();
+}
+async function mqCargarListas(){
+  try{ if(!_MQ.clientes) _MQ.clientes=await GETALL('clientes','select=id,empresa,nit,direccion,ciudad,contacto,telefono&order=empresa.asc'); }catch(e){ _MQ.clientes=_MQ.clientes||[]; }
+  try{ if(!_MQ.tipos) _MQ.tipos=await GET('tipos_cot','select=nombre,codigo,crea_en_cotizacion&activo=eq.true&order=orden.asc'); }catch(e){ _MQ.tipos=_MQ.tipos||[]; }
+  const dl=document.getElementById('mq-dl'); if(dl) dl.innerHTML=(_MQ.clientes||[]).map(c=>`<option value="${esc(c.empresa)}">`).join('');
+  const ts=document.getElementById('mq-tipo'); if(ts&&_MQ.tipos&&_MQ.tipos.length){ const l=_MQ.tipos.filter(t=>t.crea_en_cotizacion!==false); const pref=(l.find(t=>/marquilla/i.test(t.nombre))||l[0]||{}).nombre; ts.innerHTML=l.map(t=>`<option ${t.nombre===pref?'selected':''}>${esc(t.nombre)}</option>`).join(''); }
+  try{ const u=await GET('cotizaciones','select=id,cotizacion,empresa,asesor,estado,precio_total,fecha_emision&order=fecha_emision.desc,cotizacion.desc&limit=8'); const el=document.getElementById('mq-ult');
+    if(el&&u&&u.length) el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:14px"><div style="font-weight:800;font-size:14px">🕘 Últimas cotizaciones</div>${u.map(c=>`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px"><b>COT-${esc(String(c.cotizacion))}</b> · ${esc(c.empresa||'')} <span style="color:var(--muted)">· ${esc(c.estado||'')} · ${esc(c.asesor||'')}</span></div>`).join('')}</div>`; }catch(e){}
+}
+function mqFormHtml(){
+  return `<datalist id="mq-dl"></datalist>
+  <div class="callout" style="margin:10px 0">Aquí creas la cotización de marquillas. Queda a nombre del asesor elegido (Mauricio García) y le aparece en <b>Comercial</b>. En cada ítem pega la <b>tabla</b> o <b>imagen</b> que mandó el cliente: se guarda <b>tal cual</b> y sale en la cotización impresa, en el ítem y en la OP.</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+    <div class="form-grid">
+      <div class="field span2"><label>Cliente (busca o escribe)</label><input id="mq-cli" list="mq-dl" autocomplete="off" oninput="mqCli()" onchange="mqCli()" placeholder="Empresa…"><div id="mq-cli-i" style="font-size:12px;color:var(--muted);margin-top:3px"></div></div>
+      <div class="field"><label>Tipo</label><select id="mq-tipo"><option>—</option></select></div>
+      <div class="field"><label>Asesor</label><select id="mq-ase"><option>Mauricio García</option></select></div>
+      <div class="field span2"><label>Proyecto / referencia</label><input id="mq-proy" placeholder="Ej: Marquillas tejidas referencia 2026" autocomplete="off"></div>
+      <div class="field"><label>Entrega (días)</label><input id="mq-lead" type="number" min="0" inputmode="numeric"></div>
+      <div class="field"><label>Forma de pago</label><input id="mq-pago" placeholder="Ej: 30 días" autocomplete="off"></div>
+    </div></div>
+  <div id="mq-its">${_MQ.its.map(mqItemHtml).join('')}</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="mqAddItem()">➕ Agregar otro ítem</button></div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px"><div class="field"><label>Observaciones (opcional)</label><textarea id="mq-obs" style="min-height:52px"></textarea></div>
+    <div id="mq-tot" style="font-size:13px;margin:8px 0;font-weight:700"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="mqCrear()">✅ Crear cotización</button></div>`;
+}
+function mqItemHtml(it,i){
+  return `<div class="mq-it" data-id="${it.id}" style="background:var(--card);border:1px solid var(--border);border-top:4px solid #ea580c;border-radius:12px;padding:12px 14px;margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Ítem ${i+1}</b>${_MQ.its.length>1?`<button class="btn btn-sm btn-ghost" onclick="mqDelItem('${it.id}')">🗑️ Quitar</button>`:''}</div>
+    <div class="form-grid">
+      <div class="field span2"><label>Descripción</label><textarea class="mq-d" style="min-height:48px" placeholder="Ej: Marquilla tejida 5 x 2 cm, fondo blanco"></textarea></div>
+      <div class="field"><label>Cantidad</label><input class="mq-u" type="number" min="1" inputmode="numeric" value="1" oninput="mqTot()"></div>
+      <div class="field"><label>Precio unitario ($)</label><input class="mq-p" type="number" min="0" step="any" inputmode="decimal" oninput="mqTot()"></div>
+      <div class="field span2"><label>🏷️ Texto / tabla / imagen del cliente <span style="font-weight:500;color:var(--muted)">(pega aquí tal cual lo mandó)</span></label>
+        <div class="mq-ed" contenteditable="true" onpaste="mqPaste(event,this)" style="min-height:110px;border:2px dashed var(--border);border-radius:10px;padding:8px;background:#fff;color:#111;overflow:auto;max-height:340px;font-size:13px" data-ph="Pega aquí (Ctrl+V / mantener pulsado → Pegar)"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><label class="btn btn-sm btn-ghost" style="cursor:pointer">📷 Subir imagen<input type="file" accept="image/*" style="display:none" onchange="mqFile(this)"></label><button class="btn btn-sm btn-ghost" onclick="mqLimpiar(this)">🧹 Limpiar</button></div></div>
+    </div></div>`;
+}
+function mqEstado(){ return [...document.querySelectorAll('.mq-it')].map(el=>({id:el.dataset.id,d:el.querySelector('.mq-d').value,u:el.querySelector('.mq-u').value,p:el.querySelector('.mq-p').value,h:el.querySelector('.mq-ed').innerHTML})); }
+function mqRepintar(est){ const cab=['mq-cli','mq-tipo','mq-ase','mq-proy','mq-lead','mq-pago','mq-obs'].map(id=>[id,(document.getElementById(id)||{}).value]);
+  document.getElementById('mq-its').innerHTML=_MQ.its.map(mqItemHtml).join('');
+  document.querySelectorAll('.mq-it').forEach(el=>{ const e=(est||[]).find(x=>x.id===el.dataset.id); if(e){ el.querySelector('.mq-d').value=e.d; el.querySelector('.mq-u').value=e.u; el.querySelector('.mq-p').value=e.p; el.querySelector('.mq-ed').innerHTML=e.h; } }); mqTot(); }
+function mqAddItem(){ const e=mqEstado(); _MQ.its.push(mqNuevoItem()); mqRepintar(e); }
+function mqDelItem(id){ const e=mqEstado().filter(x=>x.id!==id); _MQ.its=_MQ.its.filter(x=>x.id!==id); mqRepintar(e); }
+function mqLimpiar(b){ b.closest('.mq-it').querySelector('.mq-ed').innerHTML=''; }
+function mqInsertImg(ed,src){ const im=document.createElement('img'); im.src=src; im.style.maxWidth='100%'; ed.appendChild(im); ed.appendChild(document.createElement('br')); }
+async function mqFile(inp){ const f=inp.files&&inp.files[0]; if(!f) return; try{ mqInsertImg(inp.closest('.mq-it').querySelector('.mq-ed'),await mqCompress(f)); }catch(e){ toast('❌ '+e.message,'error'); } inp.value=''; }
+async function mqPaste(ev,ed){
+  const cd=ev.clipboardData; if(!cd) return; const files=[...(cd.files||[])].filter(f=>/^image\//.test(f.type));
+  const html=cd.getData('text/html');
+  if(files.length&&!/<table/i.test(html||'')){ ev.preventDefault(); for(const f of files){ try{ mqInsertImg(ed,await mqCompress(f)); }catch(e){ toast('❌ '+e.message,'error'); } } return; }
+  if(html){ ev.preventDefault(); let s=mqSan(html.replace(/<!--[\s\S]*?-->/g,'')); document.execCommand('insertHTML',false,s); }
+  setTimeout(()=>{ ed.querySelectorAll('img').forEach(im=>{ if(/^(file|cid):/i.test(im.getAttribute('src')||'')) { im.remove(); toast('Una imagen no se pudo pegar: súbela con «📷 Subir imagen»','warn'); } }); },50);
+}
+function mqCli(){ const v=document.getElementById('mq-cli').value.trim().toLowerCase(); const c=(_MQ.clientes||[]).find(x=>String(x.empresa||'').toLowerCase()===v); _MQ.cli=c||null;
+  document.getElementById('mq-cli-i').innerHTML=c?`✅ Cliente registrado${c.nit?' · NIT '+esc(c.nit):''}${c.ciudad?' · '+esc(c.ciudad):''}${c.contacto?' · '+esc(c.contacto):''}`:(v?'Cliente nuevo (no está en la lista): se escribirá tal cual.':''); }
+function mqTot(){ const t=mqEstado().reduce((s,x)=>s+(Number(x.u)||0)*(Number(x.p)||0),0); const el=document.getElementById('mq-tot'); if(el) el.textContent='Subtotal: $'+Math.round(t).toLocaleString('es-CO')+' + IVA 19% = $'+Math.round(t*1.19).toLocaleString('es-CO'); }
+async function mqCrear(){
+  const g=id=>(document.getElementById(id)||{}).value||''; const empresa=g('mq-cli').trim(); if(!empresa){ toast('Elige o escribe el cliente','error'); return; }
+  const its=mqEstado().map(x=>({descripcion:x.d.trim(),unidades:Number(x.u)||1,precio_unit:Number(x.p)||0,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,''))})).filter(x=>x.descripcion||x.marquilla_html);
+  if(!its.length){ toast('Agrega al menos un ítem con descripción o imagen/tabla','error'); return; }
+  if(its.some(x=>x.marquilla_html.length>900000)){ toast('Una imagen/tabla pesa demasiado; usa una imagen más pequeña','error'); return; }
+  const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const r=await rpcR('cot_marquilla_crear',{p:{empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:c.contacto||null,telefono:c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
+  if(!r) return; const num=(r&&r.cotizacion)||''; _MQ.its=[mqNuevoItem()];
+  setContent(moduleBanner('✅','Cotización creada','Ya la puede ver Mauricio en Comercial')+`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px;text-align:center"><div style="font-size:34px;font-weight:900;color:var(--accent)">COT-${esc(String(num))}</div><div style="margin:6px 0 14px;color:var(--muted)">${its.length} ítem(s) · total con IVA $${Math.round(Number(r.total||0)).toLocaleString('es-CO')}</div><button class="btn btn-primary" onclick="nav('marquillas')">➕ Crear otra</button></div>`);
 }
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));

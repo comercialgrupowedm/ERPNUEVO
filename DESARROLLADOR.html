@@ -3165,12 +3165,12 @@ function generarPDFCotizacion(id,soloGuardar){
   const iva=Number(c.iva||0)||Math.round(sub*IVA_PCT/100); const descVal=Number(c.descuento||0), descPct=Number(c.descuento_pct||0);
   const total=(Number(c.precio_total||0)||sub+iva)-descVal; const money=v=>'$'+Number(v||0).toLocaleString('es-CO');
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}</td>
+    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
     fecha:hoy,cliente:cl(c.empresa),nit:cl(c.nit||cli.nit),direccion:cl(c.direccion||cli.direccion),ciudad:cl(c.ciudad||cli.ciudad),encargado:cl(c.encargado||cli.contacto),telefono:cl(c.telefono||cli.telefono),proyecto:cl(c.descripcion_proyecto),numero:c.cotizacion,
-    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:cl(it.descripcion),unit:money(it.precio_unit),total:money(totalItem(it))})),
+    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:cl(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''),unit:money(it.precio_unit),total:money(totalItem(it))})),
     letras:esc(numeroALetras(total)),subtotal:money(sub),iva:money(iva),descuento:descVal>0?'-'+money(descVal):'',desc_lbl:'DESCUENTO'+(descPct?' ('+descPct+'%)':''),total:money(total),rs:descVal>0?5:4,
     observaciones:c.observaciones_especiales?esc(c.observaciones_especiales):'',validez:c.validez_dias||30,forma_pago:esc(pago),entrega:c.lead_time_dias??'—',asesor:esc(c.asesor||'Asesor Comercial'),cargo:esc(CARGOS[c.asesor]||'Asesor Comercial')},null,'COT-'+c.cotizacion); } }catch(e){ console.error(e); }
   const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
@@ -3269,6 +3269,7 @@ function detailItem(id){
       <div class="dp-section"><h4>📌 Identificación</h4>${dr('Item #',it.item)}${dr('Cantidad',cant)}${dr('COT',c?`<span onclick="detailCot('${c.id}')" style="color:var(--accent);cursor:pointer;text-decoration:underline">COT-${c.cotizacion} · ${esc(c.empresa||'')}</span>`:'—')}
         ${dr('Material',esc(it.material||'—'))}${dr('Proceso',esc(it.proceso||'—'))}${dr('Servicio externo',esc(it.servicio||'—'))}</div>
       <div class="dp-section"><h4>📝 Descripción</h4><div style="font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(it.descripcion||'—')}</div></div>
+      ${it.marquilla_html?`<div class="dp-section"><h4>🏷️ Texto / diseño del cliente</h4>${mqRender(it.marquilla_html)}</div>`:''}
       <div class="dp-section"><h4>💵 Financiero</h4>${dr('Precio unitario',fmt(pu))}${dr('Precio × ítem',`<strong style="color:var(--gold);font-size:15px;font-family:var(--mono)">${fmt(pt)}</strong>`)}</div>
       <div class="dp-section"><h4>📎 Planos y documentos</h4><div id="it-planos">${mutedP('Cargando…')}</div></div></div>
     <div class="dp-tabpanel" data-panel="costos">
@@ -4261,6 +4262,30 @@ function produccion(){
 
 // ── CONTROL PRODUCCIÓN · detalle ────────────────────────────────
 let _PD={id:null,tab:'resumen'};
+/* ── Marquillas: texto / imagen / tabla del cliente tal cual (items.marquilla_html) ── */
+function mqSan(h){
+  if(!h) return ''; let d; try{ d=new DOMParser().parseFromString('<body>'+h+'</body>','text/html'); }catch(e){ return ''; }
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,textarea,select,base,svg,video,audio').forEach(n=>n.remove());
+  d.body.querySelectorAll('*').forEach(n=>{ [...n.attributes].forEach(a=>{ const k=a.name.toLowerCase(), v=String(a.value||'');
+    if(k.startsWith('on')||k==='class'||k==='id') { n.removeAttribute(a.name); return; }
+    if((k==='href'||k==='src')&&!/^(https?:|data:image\/(png|jpe?g|gif|webp);base64,|mailto:|#)/i.test(v.trim())) n.removeAttribute(a.name);
+    if(k==='style'&&/url\s*\(|expression|javascript:|position\s*:|@import/i.test(v)) n.removeAttribute('style'); }); });
+  d.body.querySelectorAll('img').forEach(i=>{ if(!i.getAttribute('src')) i.remove(); });
+  return d.body.innerHTML.trim();
+}
+function mqRender(h){
+  const s=mqSan(h); if(!s) return '';
+  const d=new DOMParser().parseFromString('<body>'+s+'</body>','text/html');
+  d.body.querySelectorAll('table').forEach(t=>{ t.style.borderCollapse='collapse'; t.style.maxWidth='100%'; t.style.fontSize='11px'; t.querySelectorAll('td,th').forEach(c=>{ if(!c.style.border) c.style.border='1px solid #999'; c.style.padding='3px 6px'; }); });
+  d.body.querySelectorAll('img').forEach(i=>{ i.style.maxWidth='100%'; i.style.height='auto'; });
+  return '<div style="overflow-x:auto;word-break:break-word">'+d.body.innerHTML+'</div>';
+}
+function mqBox(){ return '<div class="dp-section" id="mq-op" style="display:none"><h4>🏷️ Texto / diseño del cliente</h4><div id="mq-op-b"></div></div>'; }
+async function mqCargarProd(pid){
+  try{ const r=(await GET('produccion','select=id_item&id=eq.'+encodeURIComponent(pid)))[0]; if(!r||!r.id_item) return;
+    const it=(await GET('items','select=marquilla_html&id=eq.'+encodeURIComponent(r.id_item)))[0]; if(!it||!it.marquilla_html) return;
+    const b=document.getElementById('mq-op-b'), s=document.getElementById('mq-op'); if(b&&s){ b.innerHTML=mqRender(it.marquilla_html); s.style.display=''; } }catch(e){}
+}
 function pdTab(el,k){ _PD.tab=k; switchDpTab(el,k); }
 function detalleProd(id,tab){
   const p=prodDe(id); if(!p){ toast('Ítem de OP no encontrado','error'); return; }
@@ -4281,9 +4306,9 @@ function detalleProd(id,tab){
   const P=(k,h)=>`<div class="dp-tabpanel ${tab===k?'active':''}" data-panel="${k}">${h}</div>`;
   openDetail('OP-'+p.op+' · Ítem '+(p.item_num??''),hero+stepperProd(p)+kpis+accionesProd(p)+
     `<div class="dp-tabs">${T('resumen','📋 Resumen')}${T('procesos',`⚙️ Procesos (${(p.procesos||[]).length})`)}${T('materiales',`🧱 Materiales (${mats.length})`)}${tieneSvc(p)?T('servicios','🚚 Servicios'):''}${T('archivos','📎 Archivos')}${T('historial','🕘 Historial')}</div>`+
-    P('resumen',pdResumen(p))+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(tieneSvc(p)?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
+    P('resumen',pdResumen(p)+mqBox())+P('procesos',pdProcesos(p))+P('materiales',pdMateriales(p))+(tieneSvc(p)?P('servicios',pdServicios(p)):'')+P('archivos','<div id="pd-arch">'+mutedP('Cargando…')+'</div>')+P('historial','<div id="pd-hist">'+mutedP('Cargando…')+'</div>'),'');
   if(sc){ const b=document.getElementById('dp-body'); if(b) b.scrollTop=sc; }
-  cargarArchivosProd(id); cargarHistorialProd(id);
+  cargarArchivosProd(id); mqCargarProd(id); cargarHistorialProd(id);
 }
 function svcsDe(p){ let sv=p.servicios_cot; if(typeof sv==='string'){ try{ sv=JSON.parse(sv); }catch(e){ sv=[]; } } sv=(Array.isArray(sv)?sv:[]).filter(x=>x&&x.nombre); if(!sv.length&&p.servicio_externo) sv=[{nombre:p.servicio_externo}]; return sv; }
 function tieneSvc(p){ return !!(p.lleva_externo||p.externo||p.externo_ok_fecha||svcsDe(p).length); }
