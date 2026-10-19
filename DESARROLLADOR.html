@@ -5395,8 +5395,8 @@ async function impFullPick(files){
       }else{
         const buf=await file.arrayBuffer();
         const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellNF:true,cellFormula:false,cellHTML:false,cellText:false,
-          sheets:['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP']});
-        ['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP'].forEach(n=>{ if(wb.Sheets[n]) fuentes.set(n,{...impSheetRows(wb.Sheets[n]),origen:file.name}); });
+          sheets:['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP','CLIENTES','REMISIONES','REMISION_DETALLE','BIENES Y SERVICIOS']});
+        ['COTIZACIONES','ELEMENTOS','CONTROL PRODUCCIÓN','EXPORT_IMAGENES_OP','CLIENTES','REMISIONES','REMISION_DETALLE','BIENES Y SERVICIOS'].forEach(n=>{ if(wb.Sheets[n]) fuentes.set(n,{...impSheetRows(wb.Sheets[n]),origen:file.name}); });
       }
     }
     if(!fuentes.size){ say('❌ No encontré datos que reconocer en los archivos.'+(avisos.length?'<br>'+avisos.map(esc).join('<br>'):'')); return; }
@@ -5474,6 +5474,113 @@ async function impFullPick(files){
       plan.push({...sp,total:recs.length,nuevos,cambios,iguales,omitidas,conflictos,colCount,estadoRaro,fixes:built.fixes||[],imgIds,planoProd});
     }
 
+    /* Clientes y Remisiones (hojas CLIENTES, REMISIONES + REMISION_DETALLE): se agregan los nuevos y solo se llenan campos VACÍOS de la base; lo existente no se pisa */
+    try{
+      const hx=src=>{ const m={}; (src.headers||[]).forEach((h,i)=>{ if(!(h in m)) m[h]=i; }); return m; };
+      const tx=v=>{ const t=String(v??'').trim(); return (t===''||t==='-'||t==='.')?null:t; };
+      const nm=v=>{ const t=tx(v); if(t===null) return null; const x=parseFloat(t.replace(/[^\d.\-]/g,'')); return isNaN(x)?null:x; };
+      const it0=v=>{ const x=nm(v); return x===null?null:Math.round(x); };
+      const fe=v=>{ const t=tx(v); return t&&/^\d{4}-\d\d-\d\d/.test(t)?t.slice(0,10):null; };
+      const fillPlan=(sp,recs,exist,keyOf,fields,extraNuevo)=>{
+        const exMap=new Map(exist.map(e=>[keyOf(e),e])), nuevos=[], cambios=[], colCount={}; let iguales=0;
+        recs.forEach(r=>{
+          const e=exMap.get(keyOf(r));
+          if(!e){ nuevos.push(r); return; }
+          const ch={}, old={};
+          fields.forEach(k=>{ if(r[k]!==null&&r[k]!==undefined&&(e[k]===null||e[k]===undefined||e[k]==='')){ ch[k]=r[k]; old[k]=e[k]??null; colCount[k]=(colCount[k]||0)+1; } });
+          if(Object.keys(ch).length) cambios.push({id:e.id,op:e.op,numero:e.numero,empresa:e.empresa,ch,old}); else iguales++;
+        });
+        return {...sp,total:recs.length,nuevos,cambios,iguales,omitidas:[],conflictos:[],colCount,estadoRaro:0,fixes:[]};
+      };
+      const fCli=fuentes.get('CLIENTES');
+      if(fCli){
+        say('🔎 Analizando <b>CLIENTES</b>…'); await _impTick();
+        const h=hx(fCli), g=(r,k)=>h[k]===undefined?'':r[h[k]];
+        const recs=[], vistos=new Set();
+        fCli.rows.forEach(r=>{ const emp=tx(g(r,'Empresa')); if(!emp) return; const k=emp.toUpperCase(); if(vistos.has(k)) return; vistos.add(k);
+          let cp=tx(g(r,'Condicion de pago (dias)')); if(cp&&/^\d+(\.0+)?$/.test(cp)) cp=String(parseInt(cp,10));
+          let tel=tx(g(r,'Telefono')); if(tel) tel=tel.replace(/\.0+$/,'');
+          recs.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),empresa:emp,ciudad:tx(g(r,'Ciudad')),nit:tx(g(r,'Nit')),condicion_pago:cp,direccion:tx(g(r,'Direccion')),contacto:tx(g(r,'Contacto')),telefono:tel,correo:tx(g(r,'Correo'))}); });
+        const exist=await GETALL('clientes','select=id,empresa,ciudad,nit,condicion_pago,direccion,contacto,telefono,correo&order=id.asc');
+        const pl=fillPlan({sheet:'CLIENTES',table:'clientes',label:'Clientes',icon:'🏢'},recs,exist,r=>String(r.empresa||'').trim().toUpperCase(),['ciudad','nit','condicion_pago','direccion','contacto','telefono','correo']);
+        pl.nuevos.forEach(r=>{ Object.keys(r).forEach(k=>{ if(r[k]===null) delete r[k]; }); });
+        pl.always=['empresa'];
+        plan.push(pl);
+      }
+      const fRem=fuentes.get('REMISIONES'), fDet=fuentes.get('REMISION_DETALLE');
+      if(fRem){
+        say('🔎 Analizando <b>REMISIONES</b>…'); await _impTick();
+        const prods=await GETALL('produccion','select=id,op,item_num&order=id.asc');
+        const prodDe=new Map(); prods.forEach(p=>{ if(p.op!=null) prodDe.set(p.op+'|'+(p.item_num??''),p.id); });
+        const lin=new Map();   // ID_REMISION → líneas
+        if(fDet){ const hd=hx(fDet), gd=(r,k)=>hd[k]===undefined?'':r[hd[k]]; fDet.rows.forEach(r=>{ const idr=tx(gd(r,'ID_REMISION')); if(!idr) return; if(!lin.has(idr)) lin.set(idr,[]); lin.get(idr).push({item:it0(gd(r,'ITEM')),desc:tx(gd(r,'DESCRIPCION')),un:nm(gd(r,'UNIDADES'))}); }); }
+        const h=hx(fRem), g=(r,k)=>h[k]===undefined?'':r[h[k]];
+        const recs=[], vistos=new Set();
+        fRem.rows.forEach(r=>{ const numero=it0(g(r,'REMISION')); if(numero===null||vistos.has(numero)) return; vistos.add(numero);
+          const idp=tx(g(r,'ID_PEDIDO')), op=it0(g(r,'OP'));
+          const lineas=(lin.get(idp)||[]).map(l=>({item:l.item,id_prod:(op!=null&&l.item!=null)?(prodDe.get(op+'|'+l.item)||null):null,cantidad:l.un,unidades:l.un,descripcion:l.desc||''}));
+          recs.push({id:idp||(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),numero,op,cot_num:it0(g(r,'COT')),empresa:tx(g(r,'EMPRESA')),asesor:tx(g(r,'ASESOR')),nit:tx(g(r,'NIT')),direccion:tx(g(r,'DIRECCION')),ciudad:tx(g(r,'CIUDAD')),contacto:tx(g(r,'ENCARGADO')),telefono:tx(g(r,'TELEFONO')),proyecto:tx(g(r,'DESCRIPCION DEL PROYECTO')),observaciones:tx(g(r,'OBSERVACIONES ESPECIALES')),oc_cliente:tx(g(r,'ORDEN DE COMPRA')),fecha:fe(g(r,'FECHA EMISION COT.'))||fe(g(r,'FECHA EMISION COT.')),lineas}); });
+        const exist=await GETALL('remisiones','select=id,numero,op,cot_num,empresa,asesor,nit,direccion,ciudad,contacto,telefono,proyecto,observaciones,oc_cliente,fecha,lineas&order=id.asc');
+        const campos=['op','cot_num','empresa','asesor','nit','direccion','ciudad','contacto','telefono','proyecto','observaciones','oc_cliente','fecha'];
+        const pl=fillPlan({sheet:'REMISIONES',table:'remisiones',label:'Remisiones',icon:'🚚'},recs,exist,r=>String(r.numero),campos);
+        // remisiones de la base SIN ítems: se completan con REMISION_DETALLE (las que ya tienen ítems no se tocan)
+        const exMap=new Map(exist.map(e=>[String(e.numero),e]));
+        recs.forEach(r=>{ const e=exMap.get(String(r.numero)); if(!e||!r.lineas.length) return; if(Array.isArray(e.lineas)&&e.lineas.length) return;
+          let c=pl.cambios.find(x=>x.id===e.id); if(!c){ c={id:e.id,op:e.op,numero:e.numero,empresa:e.empresa,ch:{},old:{}}; pl.cambios.push(c); if(pl.iguales>0) pl.iguales--; }
+          c.ch.lineas=r.lineas; c.old.lineas=[]; pl.colCount.lineas=(pl.colCount.lineas||0)+1; });
+        const idsUsados=new Set(exist.map(e=>String(e.id)));
+        pl.nuevos.forEach(r=>{ if(idsUsados.has(String(r.id))) r.id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()); });   // ID_PEDIDO ya usado por otra remisión: no pisarla
+        pl.nuevos.forEach(r=>{ Object.keys(r).forEach(k=>{ if(r[k]===null) delete r[k]; }); Object.assign(r,{estado:'DESPACHADA',manual:false,libre:false,pedida_por:'Excel (importación)',generada_por:'Excel (importación)',seleccion_por:'Excel (importación)',despachada_por:'Excel (importación)'}); });
+        pl.always=['numero'];
+        plan.push(pl);
+      }
+    }catch(e){ console.error(e); avisos.push('No pude analizar clientes/remisiones: '+errMsg(e)); }
+
+    /* Bienes y Servicios → prod_materiales: solo se agregan filas NUEVAS (legacy_id) que se puedan ligar a una OP + ítem real; lo existente no se toca (Compras lo actualiza a diario) */
+    try{
+      const fBs=fuentes.get('BIENES Y SERVICIOS');
+      if(fBs){
+        say('🔎 Analizando <b>BIENES Y SERVICIOS</b>…'); await _impTick();
+        const hm={}; fBs.headers.forEach((h,i)=>{ if(!(h in hm)) hm[h]=i; });
+        const g=(r,k)=>hm[k]===undefined?'':r[hm[k]];
+        const tx=v=>{ const t=String(v??'').replace(/\s+/g,' ').trim(); return (t===''||t==='0'||t==='0.0'||t==='-')?null:t; };
+        const nm=v=>{ const t=tx(v); if(t===null) return null; const x=parseFloat(t.replace(/[^\d.\-]/g,'')); return isNaN(x)?null:x; };
+        const ent=v=>{ const x=nm(v); return x===null?null:String(Math.round(x)); };
+        const si=v=>v===true||/^(true|verdadero|si|sí|1|x)$/i.test(String(v??'').trim());
+        const fe=v=>{ const t=String(v??'').trim(); return /^\d{4}-\d\d-\d\d/.test(t)?t.slice(0,10):null; };
+        const prods=await GETALL('produccion','select=id,op,item_num&order=id.asc');
+        const prodDe=new Map(); prods.forEach(x=>{ if(x.op!=null) prodDe.set(x.op+'|'+(x.item_num??''),x.id); });
+        const pn=plan.find(x=>x.table==='produccion'); if(pn) pn.nuevos.forEach(r=>{ if(r.op!=null) prodDe.set(r.op+'|'+(r.item_num??''),r.id); });   // OP que se están creando en esta misma carga
+        const ex=await GETALL('prod_materiales','select=id,legacy_id&legacy_id=not.is.null&order=id.asc');
+        const yaLeg=new Set(ex.map(e=>String(e.legacy_id)));
+        const nuevos=[], sk={sinOP:0,opNoExiste:0,itemNoExiste:0,sinNombre:0}; let iguales=0, total=0;
+        fBs.rows.forEach(r=>{
+          const leg=ent(g(r,'IDCOMPRAS'))||tx(g(r,'IDCOMPRAS')); if(!leg) return; total++;
+          if(yaLeg.has(String(leg))){ iguales++; return; }
+          const op=ent(g(r,'#OP')), item=ent(g(r,'ITEM')), mat=tx(g(r,'PRODUCTO'));
+          if(!mat){ sk.sinNombre++; return; }
+          if(!op){ sk.sinOP++; return; }
+          const idp=item?prodDe.get(op+'|'+item):null;
+          if(!idp){ if(![...prodDe.keys()].some(k=>k.startsWith(op+'|'))) sk.opNoExiste++; else sk.itemNoExiste++; return; }
+          const rech=si(g(r,'RECHAZADO')), comp=si(g(r,'COMPRADO')), rec=g(r,'RECIBIDO')!==''&&g(r,'RECIBIDO')!==false&&String(g(r,'RECIBIDO')).toLowerCase()!=='false';
+          const estado=rech?'RECHAZADO':(rec?'RECIBIDO':(comp?'COMPRADO':'SOLICITADO'));
+          const costo=nm(g(r,'$COSTO MP (Pesos)'));
+          const rec_={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),legacy_id:String(leg),id_prod:String(idp),material:mat,
+            tipo:tx(g(r,'SERVICIO EXTERNO'))?'SERVICIO EXTERNO':'MATERIAL',cantidad:nm(g(r,'CANT')),estado,manual:false,
+            solicitado_por:tx(g(r,'COLABORADOR')),solicitado_at:fe(g(r,'FECHA DE PEDIDO')),obs_compras:tx(g(r,'OBSERVACIONES')),
+            autorizado_por:si(g(r,'AUTORIZACION JUAN DIEGO'))?'Juan Diego García':null,
+            costo_real:costo&&costo>0?costo:null,proveedor:tx(g(r,'PROVEEDOR')),factura:tx(g(r,'# FACTURA')),fecha_compra:fe(g(r,'FECHA DE COMPRA')),
+            motivo_rechazo:rech?tx(g(r,'MOTIVO DE RECHAZO')):null,comprado_por:comp||rec?'Excel (importación)':null,recibido_por:rec?'Excel (importación)':null,
+            recibido_at:rec?fe(g(r,'FECHA RECIBIDO')):null};
+          Object.keys(rec_).forEach(k=>{ if(rec_[k]===null) delete rec_[k]; });
+          nuevos.push(rec_);
+        });
+        const omit=sk.sinOP+sk.opNoExiste+sk.itemNoExiste+sk.sinNombre;
+        if(omit) avisos.push('Bienes y Servicios: '+omit+' filas nuevas NO se importan porque no se pueden ligar a una OP + ítem que exista en producción (sin OP: '+sk.sinOP+' · OP que no está en la base: '+sk.opNoExiste+' · ítem que no existe: '+sk.itemNoExiste+' · sin nombre: '+sk.sinNombre+').');
+        plan.push({sheet:'BIENES Y SERVICIOS',table:'prod_materiales',label:'Bienes y Servicios (compras de OP)',icon:'🛒',total,nuevos,cambios:[],iguales,omitidas:[],conflictos:[],colCount:{},estadoRaro:0,fixes:[]});
+      }
+    }catch(e){ console.error(e); avisos.push('No pude analizar Bienes y Servicios: '+errMsg(e)); }
+
     /* Imágenes y planos (hoja EXPORT_IMAGENES_OP) */
     let img=null;
     const srcI=fuentes.get('EXPORT_IMAGENES_OP');
@@ -5535,7 +5642,7 @@ function impFullPreview(){
     if(p.error) return `<div style="padding:10px 12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;font-size:12px;color:#991b1b">⚠️ ${esc(p.error)}</div>`;
     const cols=Object.entries(p.colCount).sort((a,b)=>b[1]-a[1]);
     const chips=cols.map(([c,k])=>{
-      const off=(p.table==='produccion'&&c==='estado'&&p.estadoRaro>0);
+      const off=(p.table==='produccion'&&(/^(avance|estado$|diseno_|mp_|externo|terminado|entrega_prod_fecha|fecha_entrega_prod|calidad_|despach|hrs_.*real|horas_total_real|proceso_actual|ruta_mq|prioridad|observaciones|semana)/.test(c)||(c==='estado'&&p.estadoRaro>0)));   // campos vivos de planta: desmarcados por defecto, la base manda
       return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:3px 9px;margin:2px 3px 2px 0;cursor:pointer"><input type="checkbox" class="impf-col" data-t="${p.table}" data-c="${c}" ${off?'':'checked'}><b>${esc(c)}</b> <span style="color:var(--muted)">${n(k)}</span></label>`;
     }).join('');
     const muestra=p.cambios.slice(0,5).map(c=>`<div style="font-size:11px;color:var(--muted);padding:2px 0;border-bottom:1px dashed var(--border)"><b style="color:var(--text)">${p.table==='produccion'?'OP '+esc(c.op):'ID '+esc(c.id)}</b> · ${Object.keys(c.ch).slice(0,3).map(k=>esc(k)+': '+esc(_impShort(c.old[k]))+' → <b>'+esc(_impShort(c.ch[k]))+'</b>').join(' · ')}</div>`).join('');
@@ -5594,7 +5701,7 @@ async function impFullApply(){
     p.cambios.forEach(c=>{
       const o={id:c.id}; const sel=cols[p.table]||new Set(); let n=0;
       Object.keys(c.ch).forEach(k=>{ if(sel.has(k)){ o[k]=c.ch[k]; n++; } });
-      if(n){ (p.always||[]).forEach(k=>{ if(o[k]===undefined) o[k]=(k==='op'?c.op:null); }); up.push(o); }   // op va siempre: es NOT NULL y el upsert lo exige
+      if(n){ (p.always||[]).forEach(k=>{ if(o[k]===undefined) o[k]=(c[k]!==undefined?c[k]:null); }); up.push(o); }   // op va siempre: es NOT NULL y el upsert lo exige
     });
     jobs.push({table:p.table,label:p.label,nuevos:p.nuevos,cambios:up});
   });
