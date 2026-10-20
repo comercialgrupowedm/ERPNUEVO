@@ -5259,7 +5259,7 @@ let _impF=null;
 function impFullCard(){
   return `<div class="imp-card" style="border-color:#dc2626;background:rgba(220,38,38,.05)" onclick="document.getElementById('impfull-file').click()">
     <div class="imp-icon" style="background:linear-gradient(135deg,#7c2d12,#dc2626)">📚</div>
-    <div class="imp-info"><div class="imp-name">Importar Excel o CSV (uno o varios archivos)</div>
+    <div class="imp-info"><div class="imp-name">Importar Excel o CSV (uno o varios archivos) <span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;border-radius:8px;padding:1px 7px;margin-left:6px">versión 19-oct · v3</span></div>
     <div class="imp-sub">Excel GRUPO_WEDM.xlsx y/o los CSV de cotizaciones, ítems, control producción e imágenes · se comparan antes de subir</div></div><div class="imp-arrow">›</div>
     <input type="file" id="impfull-file" accept=".xlsx,.xls,.csv,text/csv" multiple style="display:none" onclick="event.stopPropagation()" onchange="impFullPick(Array.from(this.files));this.value=''"></div>
     <div id="impfull-out"></div>`;
@@ -5553,21 +5553,24 @@ async function impFullPick(files){
         const pn=plan.find(x=>x.table==='produccion'); if(pn) pn.nuevos.forEach(r=>{ if(r.op!=null) prodDe.set(r.op+'|'+(r.item_num??''),r.id); });   // OP que se están creando en esta misma carga
         const ex=await GETALL('prod_materiales','select=id,legacy_id&legacy_id=not.is.null&order=id.asc');
         const yaLeg=new Set(ex.map(e=>String(e.legacy_id)));
-        const nuevos=[], sk={sinOP:0,opNoExiste:0,itemNoExiste:0,sinNombre:0}; let iguales=0, total=0;
+        const nuevos=[], sk={sinOP:0,opNoExiste:0,itemNoExiste:0,sinNombre:0,sugeridos:0}; let iguales=0, total=0;
         fBs.rows.forEach(r=>{
-          const leg=ent(g(r,'IDCOMPRAS'))||tx(g(r,'IDCOMPRAS')); if(!leg) return; total++;
+          let leg=tx(g(r,'IDCOMPRAS')); if(leg&&/^\d+(\.0+)?$/.test(leg)) leg=String(parseInt(leg,10)); if(!leg) return; total++;   // el código puede ser alfanumérico (p. ej. 0af87d1b): se compara tal cual, NUNCA se le quitan letras
           if(yaLeg.has(String(leg))){ iguales++; return; }
           const op=ent(g(r,'#OP')), item=ent(g(r,'ITEM')), mat=tx(g(r,'PRODUCTO'));
           if(!mat){ sk.sinNombre++; return; }
           if(!op){ sk.sinOP++; return; }
-          const idp=item?prodDe.get(op+'|'+item):null;
-          if(!idp){ if(![...prodDe.keys()].some(k=>k.startsWith(op+'|'))) sk.opNoExiste++; else sk.itemNoExiste++; return; }
+          let idp=item?prodDe.get(op+'|'+item):null, sug=false;
+          if(!idp){   // sin ítem (o ítem inexistente): se SUGIERE el ítem 1 de esa OP, igual que en la migración anterior
+            const its=[...prodDe.keys()].filter(k=>k.startsWith(op+'|')).map(k=>k.split('|')[1]).sort((x,y)=>(+x||1e9)-(+y||1e9));
+            if(!its.length){ sk.opNoExiste++; return; }
+            idp=prodDe.get(op+'|'+(its.includes('1')?'1':its[0])); sug=true; sk.sugeridos++; }
           const rech=si(g(r,'RECHAZADO')), comp=si(g(r,'COMPRADO')), rec=g(r,'RECIBIDO')!==''&&g(r,'RECIBIDO')!==false&&String(g(r,'RECIBIDO')).toLowerCase()!=='false';
           const estado=rech?'RECHAZADO':(rec?'RECIBIDO':(comp?'COMPRADO':'SOLICITADO'));
           const costo=nm(g(r,'$COSTO MP (Pesos)'));
           const rec_={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),legacy_id:String(leg),id_prod:String(idp),material:mat,
             tipo:tx(g(r,'SERVICIO EXTERNO'))?'SERVICIO EXTERNO':'MATERIAL',cantidad:nm(g(r,'CANT')),estado,manual:false,
-            solicitado_por:tx(g(r,'COLABORADOR')),solicitado_at:fe(g(r,'FECHA DE PEDIDO')),obs_compras:tx(g(r,'OBSERVACIONES')),
+            solicitado_por:tx(g(r,'COLABORADOR')),solicitado_at:fe(g(r,'FECHA DE PEDIDO')),obs_compras:(sug?((tx(g(r,'OBSERVACIONES'))?tx(g(r,'OBSERVACIONES'))+' · ':'')+'Ítem no indicado en el sistema anterior'):tx(g(r,'OBSERVACIONES'))),
             autorizado_por:si(g(r,'AUTORIZACION JUAN DIEGO'))?'Juan Diego García':null,
             costo_real:costo&&costo>0?costo:null,proveedor:tx(g(r,'PROVEEDOR')),factura:tx(g(r,'# FACTURA')),fecha_compra:fe(g(r,'FECHA DE COMPRA')),
             motivo_rechazo:rech?tx(g(r,'MOTIVO DE RECHAZO')):null,comprado_por:comp||rec?'Excel (importación)':null,recibido_por:rec?'Excel (importación)':null,
@@ -5576,7 +5579,8 @@ async function impFullPick(files){
           nuevos.push(rec_);
         });
         const omit=sk.sinOP+sk.opNoExiste+sk.itemNoExiste+sk.sinNombre;
-        if(omit) avisos.push('Bienes y Servicios: '+omit+' filas nuevas NO se importan porque no se pueden ligar a una OP + ítem que exista en producción (sin OP: '+sk.sinOP+' · OP que no está en la base: '+sk.opNoExiste+' · ítem que no existe: '+sk.itemNoExiste+' · sin nombre: '+sk.sinNombre+').');
+        if(sk.sugeridos) avisos.push('Bienes y Servicios: '+sk.sugeridos+' filas traen la OP pero no el ítem (o el ítem no existe): se ligaron a SUGERENCIA al ítem 1 de esa OP y quedan marcadas en observaciones («Ítem no indicado en el sistema anterior»). Revísalas en Compras.');
+        if(omit) avisos.push('Bienes y Servicios: '+omit+' filas nuevas NO se importan porque su OP no existe en la base ni en el Excel (sin OP: '+sk.sinOP+' · OP que no está: '+sk.opNoExiste+' · sin nombre: '+sk.sinNombre+').');
         plan.push({sheet:'BIENES Y SERVICIOS',table:'prod_materiales',label:'Bienes y Servicios (compras de OP)',icon:'🛒',total,nuevos,cambios:[],iguales,omitidas:[],conflictos:[],colCount:{},estadoRaro:0,fixes:[]});
       }
     }catch(e){ console.error(e); avisos.push('No pude analizar Bienes y Servicios: '+errMsg(e)); }
