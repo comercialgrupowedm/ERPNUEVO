@@ -480,6 +480,9 @@ td.mono{font-family:var(--mono);font-size:11px}
 @media(min-width:1700px){
   .detail-panel{width:900px}
 }
+@media(min-width:700px){
+  .detail-panel.dp-wide{width:88vw!important;max-width:88vw!important}
+}
 .dp-head{
   padding:0 14px;height:52px;border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--card);
@@ -1962,6 +1965,7 @@ function askConfirm(titulo,mensaje,textoOk='Sí, continuar',peligro=false){
 }
 function askDone(v){ const r=window._askRes; window._askRes=null; closeModal(); if(r) r(v); }
 function openDetail(title,body,actions=''){
+  document.getElementById('dp').classList.remove('dp-wide');
   document.getElementById('dp-title').textContent=title;
   document.getElementById('dp-body').innerHTML=body;
   document.getElementById('dp-actions').innerHTML=actions;
@@ -2352,16 +2356,27 @@ const _dash={};
 const vSin=c=>{ const s=Number(c&&c.precio_sin_iva)||0; if(s>0) return s; return Math.round((Number(c&&c.precio_total)||0)/1.19); };
 function dashPanel(key,titulo,emptyMsg='Sin resultados'){
   const list=_dash[key]||[];
+  const tot=list.reduce((t,c)=>t+vSin(c),0);
   const body=!list.length?`<div class="empty" style="padding:40px 20px"><div class="empty-icon">📭</div><p>${emptyMsg}</p></div>`:`
-    <div style="padding:12px 14px;font-size:12px;color:var(--muted)">${list.length} cotizaciones</div>
-    <div class="card-list" style="padding:0 14px 80px">${list.map(c=>`
-      <div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="lc-id">COT-${c.cotizacion}</span>${bEst(c.estado)}${bTipo(c.tipo)}</div>
-        <div class="lc-title">${esc(c.empresa||'Sin empresa')}</div>
-        <div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.descripcion_proyecto||'—')}</div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--gold)">${fmt(vSin(c))}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmtDate(c.fecha_emision)}</div></div></div></div>`).join('')}</div>`;
+    <div style="padding:12px 14px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>${list.length} cotizaciones · toca ▸ para ver los ítems o la fila para abrir el detalle</span><b style="font-family:var(--mono);color:var(--gold)">${fmt(Math.round(tot))} sin IVA</b></div>
+    <div class="tbl-wrap" style="max-height:none;padding:0 6px 80px"><table class="data-tbl" style="min-width:680px"><thead><tr><th style="width:34px"></th><th>COT</th><th>Estado</th><th>Tipo</th><th>Cliente</th><th>Descripción</th><th>Fecha</th><th style="text-align:right">Sin IVA</th></tr></thead><tbody>${list.map(c=>`
+      <tr style="cursor:pointer" onclick="detailCot('${c.id}')"><td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" id="dpb-${c.id}" onclick="dpTog('${c.id}')" title="Ver ítems" style="padding:2px 8px;min-width:0">▸</button></td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap">COT-${c.cotizacion}</td><td>${bEst(c.estado)}</td><td>${bTipo(c.tipo)}</td>
+        <td style="font-weight:700;max-width:200px">${esc(c.empresa||'Sin empresa')}</td><td style="max-width:260px">${esc(c.descripcion_proyecto||'—')}</td>
+        <td style="white-space:nowrap">${fmtDate(c.fecha_emision)}</td><td class="td-num" style="font-weight:700;color:var(--gold)">${fmt(vSin(c))}</td></tr>
+      <tr id="dpx-${c.id}" style="display:none"><td></td><td colspan="7" style="background:var(--card2,#f1f5f9);padding:8px 12px"></td></tr>`).join('')}</tbody></table></div>`;
   openDetail(titulo,body,'');
+  document.getElementById('dp').classList.add('dp-wide');   // panel ancho (3/4 de la pantalla) para ver más de la descripción
+}
+function dpTog(id){
+  const r=document.getElementById('dpx-'+id), b=document.getElementById('dpb-'+id); if(!r) return;
+  const abrir=r.style.display==='none';
+  if(abrir&&!r.dataset.ok){
+    const c=(DB.cotizaciones||[]).find(x=>x.id===id)||{id}; const its=itemsDe(id);
+    r.lastElementChild.innerHTML=its.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted)"><th style="padding:3px 6px">Ítem</th><th style="padding:3px 6px">Cant</th><th style="padding:3px 6px">Descripción</th><th style="padding:3px 6px">Producción</th><th style="padding:3px 6px;text-align:right">Valor</th></tr></thead><tbody>${its.map(it=>`<tr onclick="event.stopPropagation();detailItem('${it.id}')" style="cursor:pointer;border-top:1px solid var(--border,#e2e8f0)"><td style="padding:4px 6px;font-weight:700">${it.item??'—'}</td><td style="padding:4px 6px">${it.unidades||1}</td><td style="padding:4px 6px">${esc((it.descripcion||'—').slice(0,160))}</td><td style="padding:4px 6px">${bSemItem(it,c)}</td><td style="padding:4px 6px;text-align:right;font-family:var(--mono)">${fmt(Math.round(totalItem(it)))}</td></tr>`).join('')}</tbody></table>`:'<span style="font-size:12px;color:var(--muted)">Esta cotización no tiene ítems.</span>';
+    r.dataset.ok='1';
+  }
+  r.style.display=abrir?'':'none'; if(b) b.textContent=abrir?'▾':'▸';
 }
 // v9: montos compactos para las tarjetas (1.498 M = 1.498 millones) y fechas 'AAAA-MM-DD' sin correrse por zona horaria
 const fmtCorto=n=>{ n=Number(n)||0; return n>=1e6?'$'+(n/1e6).toLocaleString('es-CO',{maximumFractionDigits:n>=1e8?0:1})+' M':fmt(n); };
@@ -6965,5 +6980,6 @@ PL.dRem=function(m,tipo){
 })();
 </script>
 <!-- /MANUALES -->
+<style id="dp-ancho">@media(min-width:700px){.detail-panel{width:88vw!important;max-width:88vw!important}}</style>
 </body>
 </html>
