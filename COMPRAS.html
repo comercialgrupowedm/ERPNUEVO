@@ -1766,7 +1766,24 @@ function rsDatos(){
   const tipo=grp(m=>m.tipo);
   const op=grp(m=>{ const p=prodDe(m.id_prod); return p&&p.op!=null?'OP-'+p.op+(p.empresa?' · '+p.empresa:''):''; }).sort((a,b)=>b.real-a.real);
   const desv=par.map(m=>({m,d:real(m)-cot(m)})).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,8);
-  return {T,mes,prov,tipo,op,desv,desde};
+  return {T,mes,prov,tipo,op,desv,desde,L};
+}
+function rsGestion(D){
+  const $=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO'); const dd=(x,y)=>{ const a=new Date(x),b=new Date(y); return (isNaN(a)||isNaN(b))?null:Math.max(0,(b-a)/864e5); }; const avg=a=>a.length?a.reduce((t,v)=>t+v,0)/a.length:null; const f1=v=>v==null?'—':v.toFixed(1)+' d';
+  const th='style="text-align:left;padding:6px 8px;background:#1a3a6b;color:#fff;font-size:10px;text-transform:uppercase"', thr='style="text-align:right;padding:6px 8px;background:#1a3a6b;color:#fff;font-size:10px;text-transform:uppercase"', td='style="padding:6px 8px;border-bottom:1px solid #e2e8f0"', tdr='style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap"';
+  const cot=m=>Number(m.costo_cotizado)||0, real=m=>Number(m.costo_real)||0;
+  const calc=L=>{ const par=L.filter(m=>cot(m)>0&&real(m)>0); const ahorro=par.reduce((t,m)=>t+cot(m)-real(m),0), base=par.reduce((t,m)=>t+cot(m),0);
+    const pc=L.map(m=>dd(m.solicitado_at,m.comprado_at||m.fecha_compra)).filter(v=>v!=null), ce=L.map(m=>dd(m.comprado_at||m.fecha_compra,m.recibido_at)).filter(v=>v!=null), tot=L.map(m=>dd(m.solicitado_at,m.recibido_at)).filter(v=>v!=null);
+    const prom=L.filter(m=>Number(m.dias_entrega)>0&&m.recibido_at&&(m.comprado_at||m.fecha_compra)); const ok=prom.filter(m=>dd(m.comprado_at||m.fecha_compra,m.recibido_at)<=Number(m.dias_entrega)+0.99).length;
+    return {n:L.length,ahorro,pct:base?ahorro/base*100:0,pc:avg(pc),ce:avg(ce),tot:avg(tot),cumpl:prom.length?ok/prom.length*100:null,nProm:prom.length}; };
+  const T=calc(D.L); const por={}; D.L.forEach(m=>{ const k=m.comprado_por||'—'; (por[k]=por[k]||[]).push(m); });
+  const rows=Object.entries(por).map(([k,l])=>({k,...calc(l)})).sort((a,b)=>b.ahorro-a.ahorro);
+  const kp=(v,l,c)=>`<div style="border:1px solid #d5dde8;border-top:3px solid ${c};border-radius:8px;padding:10px 14px;background:#fbfcfe"><div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:#64748b">${l}</div><div style="font-size:17px;font-weight:800;color:#1a3a6b;margin-top:3px">${v}</div></div>`;
+  const col=v=>v>=0?'#16a34a':'#dc2626';
+  return `<div style="margin-top:18px"><div style="font-weight:800;color:#1a3a6b;font-size:12px;margin-bottom:6px">Gestión de compras</div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">${kp('<span style="color:'+col(T.ahorro)+'">'+$(T.ahorro)+'</span>','Ahorro logrado (cotizado − comprado)','#16a34a')}${kp(T.pct.toFixed(1)+'%','% de ahorro sobre lo cotizado','#16a34a')}${kp(f1(T.pc),'Pedido → compra (prom.)','#5b84c4')}${kp(f1(T.ce),'Compra → recibido (prom.)','#5b84c4')}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px">${kp(f1(T.tot),'Ciclo total pedido → recibido','#1a3a6b')}${kp(T.cumpl==null?'—':T.cumpl.toFixed(0)+'%','Entregas dentro del plazo prometido ('+T.nProm+' líneas con plazo)','#1a3a6b')}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px"><thead><tr><th ${th}>Comprador</th><th ${thr}>Líneas</th><th ${thr}>Ahorro</th><th ${thr}>% ahorro</th><th ${thr}>Pedido→compra</th><th ${thr}>Compra→recibido</th><th ${thr}>Cumplimiento</th></tr></thead><tbody>${rows.map(r=>`<tr><td ${td}>${esc(r.k)}</td><td ${tdr}>${r.n}</td><td ${tdr}><b style="color:${col(r.ahorro)}">${$(r.ahorro)}</b></td><td ${tdr}>${r.pct.toFixed(1)}%</td><td ${tdr}>${f1(r.pc)}</td><td ${tdr}>${f1(r.ce)}</td><td ${tdr}>${r.cumpl==null?'—':r.cumpl.toFixed(0)+'%'}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function resumenHtml(){
   const D=rsDatos(); const T=D.T; const E=EMPRESA_WEDM;
@@ -1790,7 +1807,7 @@ function resumenHtml(){
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px">${kp(M(T.real),'Total comprado','#1a3a6b',$(T.real)+' · sin IVA')}${kp(M(T.parCot),'Cotizado','#5b84c4',$(T.parCot)+' · '+T.parN+' líneas comparables')}${kp(M(T.parReal),'Comprado (real)','#1a3a6b',$(T.parReal)+' · mismas líneas')}${kp((T.dif>0?'+':'')+M(T.dif),'Diferencia real vs. cotizado',T.dif>0?'#dc2626':'#16a34a',(T.pct>0?'+':'')+T.pct.toFixed(1)+' % frente a lo cotizado')}${kp(T.n.toLocaleString('es-CO'),'Líneas compradas','#1a3a6b','Compradas y recibidas')}${kp(M(T.pend),'Por comprar (cotizado)','#b45309',T.pendN+' líneas pendientes')}</div>
     ${T.sinCot?`<div style="margin-top:8px;color:#b45309;font-size:10.5px">⚠️ ${T.sinCot} línea(s) compradas no tenían precio cotizado y no entran en la comparación.</div>`:''}
     <div style="margin-top:18px"><div style="font-weight:800;color:#1a3a6b;font-size:12px;margin-bottom:6px">Cotizado vs. comprado por mes</div>${chart}</div>
-    ${tabla('Por proveedor',D.prov,10,'Proveedor')}${tabla('Por tipo',D.tipo,4,'Tipo')}${tabla('Por OP (mayor gasto)',D.op,10,'OP · Cliente')}${desv}
+    ${rsGestion(D)}${tabla('Por proveedor',D.prov,10,'Proveedor')}${tabla('Por tipo',D.tipo,4,'Tipo')}${tabla('Por OP (mayor gasto)',D.op,10,'OP · Cliente')}${desv}
     <div style="margin-top:18px;color:#94a3b8;font-size:9.5px;border-top:1px solid #e2e8f0;padding-top:6px">Valores sin IVA. «Cotizado» es el precio estimado al pedir; «Comprado» es el precio real que registró Compras.</div></div>`;
 }
 function resumen(){
