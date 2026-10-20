@@ -2091,8 +2091,32 @@ async function modalImagen(id){
   if(op.imagen_thumb==null){ try{ const r=await GET('produccion','select=imagen_thumb&id=eq.'+encodeURIComponent(op.id)); op.imagen_thumb=(r&&r[0]&&r[0].imagen_thumb)||''; }catch(e){} }
   const src=imgSrcOP(op,400); const j=idq(op);
   openModal(`🖼️ Imagen — ${opTitulo(op)}`,
-    `<div style="text-align:center;padding:8px 0">${src?`<img src="${esc(src)}" alt="" style="max-width:100%;max-height:300px;border-radius:10px;object-fit:contain;border:1px solid var(--border)">`:'<div style="font-size:42px">🖼️</div><div style="color:var(--muted);font-size:13px;margin-top:6px">Este ítem no tiene imagen</div>'}</div><input type="file" id="op-img-f" accept="image/*" style="display:none" onchange="opImagenSubir('${j}',this.files[0])">`,
+    `<div style="text-align:center;padding:8px 0">${src?`<img src="${esc(src)}" alt="" style="max-width:100%;max-height:300px;border-radius:10px;object-fit:contain;border:1px solid var(--border)">`:'<div style="font-size:42px">🖼️</div><div style="color:var(--muted);font-size:13px;margin-top:6px">Este ítem no tiene imagen</div>'}</div><input type="file" id="op-img-f" accept="image/*" style="display:none" onchange="opImagenSubir('${j}',this.files[0])"><div id="op-img-sug" style="margin-top:6px"></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${op.imagen_thumb?`<button class="btn btn-ghost" style="color:var(--danger)" onclick="opImagenQuitar('${j}')">🗑️ Quitar</button>`:''}<button class="btn btn-primary" onclick="document.getElementById('op-img-f').click()">📷 ${src?'Cambiar':'Agregar'} imagen</button>`);
+  opImagenSugerir(id);
+}
+window._IMG_SUG=[];
+async function opImagenSugerir(id){
+  const box=document.getElementById('op-img-sug'); if(!box) return; const op=opDe(id); if(!op) return;
+  box.innerHTML='<div style="font-size:12px;color:var(--muted)">Buscando imágenes de ítems parecidos…</div>';
+  let L=[]; try{ L=await sb.rpc('prod_imagenes_sugeridas',{p_id:op.id})||[]; }catch(e){ box.innerHTML=''; return; }
+  window._IMG_SUG=L; const j=idq(op);
+  if(!L.length){ box.innerHTML='<div style="font-size:12px;color:var(--muted)">No hay imágenes de ítems parecidos para sugerir.</div>'; return; }
+  box.innerHTML=`<div style="font-weight:800;font-size:12px;margin:6px 0">💡 Imágenes que ya existen en ítems parecidos</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">${L.map((x,n)=>{ const u=x.imagen_thumb||(x.imagen_drive_id?driveImg(x.imagen_drive_id,200):''); const pc=Math.round(Number(x.score)*100); return `<div onclick="opImagenSug('${j}',${n})" style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:6px;text-align:center;background:var(--card)"><div style="height:86px;display:flex;align-items:center;justify-content:center"><img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="max-width:100%;max-height:86px;object-fit:contain"></div><div style="font-size:10px;margin-top:4px;line-height:1.25">OP-${x.op} · ${esc(String(x.descripcion||'').slice(0,34))}</div><div style="font-size:10px;font-weight:700;color:${pc>=85?'#16a34a':'#d97706'}">${pc>=85?'Casi idéntico':'Parecido'} · ${pc}%</div></div>`; }).join('')}</div>`;
+}
+function opImagenSug(id,n){
+  const op=opDe(id), x=(window._IMG_SUG||[])[n]; if(!op||!x) return; const j=idq(op);
+  const u=x.imagen_thumb||(x.imagen_drive_id?driveImg(x.imagen_drive_id,600):'');
+  openModal('🔎 ¿Es esta la imagen de este ítem?',
+    `<div style="text-align:center"><img src="${esc(u)}" alt="" referrerpolicy="no-referrer" style="max-width:100%;max-height:300px;object-fit:contain;border-radius:10px;border:1px solid var(--border)"></div>
+     <div class="callout" style="margin:10px 0;background:#fffbeb;border-color:#fde68a;color:#92400e">⚠️ Verifica que sea realmente la imagen que necesita este ítem antes de confirmar.</div>
+     <div style="font-size:12.5px;line-height:1.6"><div><b>Este ítem:</b> ${esc(op.empresa||'—')} · ${esc(op.descripcion||'—')}</div><div style="margin-top:4px"><b>Origen de la imagen:</b> OP-${x.op} ítem ${x.item_num??'—'} · ${esc(x.empresa||'—')} · ${esc(x.descripcion||'—')}</div></div>`,
+    `<button class="btn btn-ghost" onclick="modalImagen('${j}')">← Volver</button><button class="btn btn-primary" onclick="opImagenReusar('${j}','${String(x.id).replace(/'/g,"\\'")}')">✅ Sí, usar esta imagen</button>`);
+}
+async function opImagenReusar(id,desde){
+  const op=opDe(id); if(!op) return;
+  try{ showBusy(); await sb.rpc('prod_reusar_imagen',{p_id:op.id,p_desde:desde}); const r=await GET('produccion','select=imagen_thumb,imagen_drive_id&id=eq.'+encodeURIComponent(op.id)); hideBusy(); if(r&&r[0]){ op.imagen_thumb=r[0].imagen_thumb||''; op.imagen_drive_id=r[0].imagen_drive_id||''; } closeModal(); toast('🖼️ Imagen reutilizada'); detailOP(id); }
+  catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
 async function opImagenGuardar(id,thumb,msg){
   const op=opDe(id); if(!op) return;
@@ -4318,7 +4342,7 @@ img[data-wl-zoom]{cursor:zoom-in}
     $('lb-x').onclick=close; $('lb-p').onclick=function(){go(-1)}; $('lb-nx').onclick=function(){go(1)};
     $('lb-z').onclick=function(){ zoomTo(S.z>1?1:2.2); };
     $('lb-st').onclick=function(e){ var k=e.target.dataset&&e.target.dataset.k; if(k!=null) jump(Number(k)); };
-    $('lb-ed').onclick=function(){ $('lb-f').click(); };
+    $('lb-ed').onclick=function(){ var sl=S.list[S.i]; var up=function(){ $('lb-f').click(); }; if(sl&&sl.p&&window.imgSugAbrir){ imgSugAbrir(sl.p,up,function(r){ sl.p.imagen_thumb=r.thumb; sl.p.imagen_drive_id=r.drive; sl.src=r.src; sl.thumb=r.thumb||r.src; var im=sl.im; if(im&&im.isConnected){ im.src=r.src; delete im.dataset.did; } S.dirty=true; render(); }); } else up(); };
     $('lb-dt').onclick=function(){ var sl=S.list[S.i]; if(!sl||!sl.p) return; var p=sl.p; close(); setTimeout(function(){ try{ window.WEDM_DETALLE(p); }catch(e){ toastMsg('No se pudo abrir el detalle','error'); } },230); };
     $('lb-f').onchange=function(){ cambiar(this.files&&this.files[0]); };
     $('lb-stage').addEventListener('click',function(e){ if(e.target===this) close(); });
@@ -5012,5 +5036,51 @@ async function colabBorrar(reg){
 </script>
 <!-- /MANUALES -->
 <style id="dp-ancho">@media(min-width:700px){.detail-panel{width:88vw!important;max-width:88vw!important}}</style>
+<script id="imgsug">
+/* Sugerir imágenes ya existentes (ítems parecidos) antes de subir una nueva */
+(function(){
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var dimg=function(id,w){ return 'https://lh3.googleusercontent.com/d/'+encodeURIComponent(id)+'=w'+w; };
+  var ov=null;
+  function cerrar(){ if(ov){ ov.remove(); ov=null; } }
+  function caja(html){
+    if(!ov){ ov=document.createElement('div'); ov.id='imgsug-ov'; ov.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:14px'; document.body.appendChild(ov); ov.addEventListener('click',function(e){ if(e.target===ov) cerrar(); }); }
+    ov.innerHTML='<div style="background:var(--card,#fff);color:var(--text,#0f172a);border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.4);font-family:inherit">'+html+'</div>';
+  }
+  var btn=function(t,fn,pri,extra){ return '<button type="button" data-a="'+fn+'" style="padding:9px 14px;border-radius:9px;border:1px solid '+(pri?'#2563eb':'#cbd5e1')+';background:'+(pri?'#2563eb':'transparent')+';color:'+(pri?'#fff':'inherit')+';font-weight:700;cursor:pointer;font-size:13px;'+(extra||'')+'">'+t+'</button>'; };
+  window.imgSugAbrir=async function(p,subir,hecho){
+    var L=[]; try{ L=await sb.rpc('prod_imagenes_sugeridas',{p_id:p.id})||[]; }catch(e){ L=[]; }
+    if(!L.length){ subir(); return; }
+    var lista=function(){
+      caja('<div style="font-weight:800;font-size:15px;margin-bottom:4px">🖼️ Imagen del ítem</div><div style="font-size:12px;color:#64748b;margin-bottom:10px">💡 Ya existen imágenes en ítems parecidos. Puedes reutilizar una o subir una nueva.</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px">'+L.map(function(x,n){ var u=x.imagen_thumb||(x.imagen_drive_id?dimg(x.imagen_drive_id,200):''); var pc=Math.round(Number(x.score)*100);
+          return '<div data-n="'+n+'" style="cursor:pointer;border:1px solid #cbd5e1;border-radius:10px;padding:6px;text-align:center"><div style="height:90px;display:flex;align-items:center;justify-content:center"><img src="'+esc(u)+'" alt="" referrerpolicy="no-referrer" style="max-width:100%;max-height:90px;object-fit:contain;pointer-events:none"></div><div style="font-size:10px;margin-top:4px;line-height:1.25">OP-'+esc(x.op)+' · '+esc(String(x.descripcion||'').slice(0,34))+'</div><div style="font-size:10px;font-weight:700;color:'+(pc>=85?'#16a34a':'#d97706')+'">'+(pc>=85?'Casi idéntico':'Parecido')+' · '+pc+'%</div></div>'; }).join('')+'</div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">'+btn('Cancelar','x')+btn('📷 Subir imagen nueva','up',true)+'</div>');
+      ov.querySelectorAll('[data-n]').forEach(function(d){ d.onclick=function(){ confirmar(Number(d.dataset.n)); }; });
+      ov.querySelector('[data-a=x]').onclick=cerrar;
+      ov.querySelector('[data-a=up]').onclick=function(){ cerrar(); subir(); };
+    };
+    var confirmar=function(n){
+      var x=L[n]; var u=x.imagen_thumb||(x.imagen_drive_id?dimg(x.imagen_drive_id,600):'');
+      caja('<div style="font-weight:800;font-size:15px;margin-bottom:8px">🔎 ¿Es esta la imagen de este ítem?</div><div style="text-align:center"><img src="'+esc(u)+'" alt="" referrerpolicy="no-referrer" style="max-width:100%;max-height:300px;object-fit:contain;border-radius:10px;border:1px solid #cbd5e1"></div>'
+        +'<div style="margin:10px 0;padding:9px 11px;border-radius:9px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px">⚠️ Verifica que sea realmente la imagen que necesita este ítem antes de confirmar.</div>'
+        +'<div style="font-size:12.5px;line-height:1.55"><div><b>Este ítem:</b> '+esc(p.empresa||'—')+' · '+esc(p.descripcion||'—')+'</div><div style="margin-top:4px"><b>Origen de la imagen:</b> OP-'+esc(x.op)+' ítem '+esc(x.item_num==null?'—':x.item_num)+' · '+esc(x.empresa||'—')+' · '+esc(x.descripcion||'—')+'</div></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">'+btn('← Volver','b')+btn('✅ Sí, usar esta imagen','ok',true)+'</div>');
+      ov.querySelector('[data-a=b]').onclick=lista;
+      ov.querySelector('[data-a=ok]').onclick=async function(){
+        this.disabled=true; this.textContent='Guardando…';
+        try{
+          await sb.rpc('prod_reusar_imagen',{p_id:p.id,p_desde:x.id});
+          var r=await sb.get('produccion','select=imagen_thumb,imagen_drive_id&id=eq.'+encodeURIComponent(p.id));
+          var t=(r&&r[0]&&r[0].imagen_thumb)||'', d=(r&&r[0]&&r[0].imagen_drive_id)||'';
+          cerrar(); if(hecho) hecho({thumb:t,drive:d,src:t||(d?dimg(d,1600):'')});
+          try{ if(typeof toast==='function') toast('🖼️ Imagen reutilizada'); }catch(e){}
+        }catch(e){ cerrar(); try{ if(typeof toast==='function') toast('❌ '+((e&&e.message)||e),'error'); }catch(_){} }
+      };
+    };
+    lista();
+  };
+})();
+</script>
 </body>
 </html>
