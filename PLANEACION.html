@@ -1151,7 +1151,7 @@ async function doLogin(){
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
 const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
 const PG_BASE=(window.innerWidth<700?30:60);
-const PROD_SEL_P='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
+const PROD_SEL_P='id,op,item_num,cot_num,precio_total,fecha_inicio,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
   +',hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_rectificadora,hrs_cnc_real,hrs_torno_real,hrs_fresadora_real,hrs_banco_real,hrs_rect_real,hrs_edm,hrs_hilo,hrs_soldadura,hrs_ingenieria,horas_total_real'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,terminado_por,calidad_ok,calidad_estado,calidad_fecha,calidad_por,despacho_fecha'
@@ -1230,6 +1230,7 @@ function operariosConocidos(){
 // ── Datos ──────────────────────────────────────────────────────────
 async function cargarTodo(){
   DB.produccion=await GETALL('produccion','select='+PROD_SEL_P+'&estado=neq.TERMINADO&order=fecha_pactada.asc.nullslast,op.desc').catch(()=>[]);
+  try{ const m={}; (await sb.rpc('plan_valor_activo')||[]).forEach(x=>{m[x.id]=Number(x.v)||0;}); (DB.produccion||[]).forEach(o=>{ if(m[o.id]!=null) o._val=m[o.id]; }); }catch(e){}
   _SYNC.init=true;
 }
 async function recargar(){ await cargarTodo(); if(DB.todas){ try{ DB.todas=await GETALL('produccion','select='+PROD_SEL_P+'&order=op.desc,item_num.asc'); }catch(e){} } }
@@ -1270,6 +1271,55 @@ function opCard(op){
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────────────
+// ── VALOR ACTIVO (igual que en Comercial): valor sin IVA de los ítems que siguen en producción ──
+const _plvVivo=o=>!o.despachado&&!o.es_garantia&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(String(o.estado||'').toUpperCase());
+const _plvMes=o=>String(o.fecha_inicio||'').slice(0,7)||'0000-00';
+const _plvMS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const _plvLbl=ym=>{ const [y,m]=ym.split('-'); return +m?(_plvMS[+m-1]+' '+y):'Sin fecha'; };
+function _plvGrupos(rows){ const g={}; rows.forEach(o=>{ const k=o.op; const x=g[k]||(g[k]={op:k,rows:[],val:0,emp:o.empresa,cot:o.cot_num,ent:o.fecha_pactada}); x.rows.push(o); x.val+=Number(o._val!=null?o._val:o.precio_total)||0; if(!x.ent&&o.fecha_pactada) x.ent=o.fecha_pactada; }); return Object.values(g).sort((a,b)=>Number(b.op)-Number(a.op)); }
+function plvValorActivoHTML(){
+  const rows=(DB.produccion||[]).filter(_plvVivo); window._plvRows=rows;
+  const tot=rows.reduce((t,o)=>t+(Number(o._val!=null?o._val:o.precio_total)||0),0); const gr=_plvGrupos(rows);
+  const pm={}; rows.forEach(o=>{ const k=_plvMes(o); const x=pm[k]||(pm[k]={ym:k,v:0,ops:new Set()}); x.v+=Number(o._val!=null?o._val:o.precio_total)||0; x.ops.add(o.op); });
+  const meses=Object.values(pm).sort((a,b)=>b.ym.localeCompare(a.ym)); const mx=Math.max(1,...meses.map(m=>m.v));
+  const sz=tot>=1e9?20:tot>=1e8?22:24;
+  const mH=meses.length?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.18)"><div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Por mes</div><div style="max-height:172px;overflow-y:auto;padding-right:2px">${meses.map(m=>`<div onclick="event.stopPropagation();plvPanel('${m.ym}')" style="padding:5px 0;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:6px;font-size:11px;color:#fff"><span style="opacity:.9;white-space:nowrap">${_plvLbl(m.ym)} <span style="opacity:.55">· ${m.ops.size}</span></span><b style="font-family:var(--mono)">${fmt(Math.round(m.v))}</b></div><div style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:3px"><div style="height:3px;width:${Math.round(m.v/mx*100)}%;background:#fff;border-radius:2px"></div></div></div>`).join('')}</div></div>`:'';
+  return `<div style="padding:0 2px;margin:12px 0"><div onclick="plvPanel('all')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer;max-width:560px">
+    <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">🔥 Valor activo · en producción</div>
+    <div style="font-size:${sz}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(tot))}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${gr.length} OPs en curso · ${rows.length} ítems · sin IVA</div>${mH}</div></div>`;
+}
+var _PLV={ym:'all',q:'',ase:'',k:'op',d:-1};
+function plvPanel(ym){
+  _PLV={ym:ym,q:'',ase:'',k:'op',d:-1};
+  const rows=window._plvRows||[]; const ases=[...new Set(rows.map(o=>o.asesor).filter(Boolean))].sort();
+  const ttl='🔥 Valor activo'+(ym==='all'?' (en producción)':' · '+_plvLbl(ym));
+  openDetail(ttl,`<div style="padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="input" id="plv-q" placeholder="🔍 Buscar OP, cot, cliente, ítem…" oninput="_PLV.q=this.value;plvTabla()" style="flex:1;min-width:180px"><select class="input" id="plv-a" onchange="_PLV.ase=this.value;plvTabla()" style="width:auto"><option value="">Todos los asesores</option>${ases.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}</select></div><div id="plv-t"></div>`,'');
+  plvTabla();
+}
+function plvSort(k){ if(_PLV.k===k) _PLV.d*=-1; else{ _PLV.k=k; _PLV.d=(k==='emp'||k==='ase')?1:-1; } plvTabla(); }
+function plvTabla(){
+  const el=document.getElementById('plv-t'); if(!el) return;
+  let rows=window._plvRows||[]; if(_PLV.ym!=='all') rows=rows.filter(o=>_plvMes(o)===_PLV.ym);
+  if(_PLV.ase) rows=rows.filter(o=>o.asesor===_PLV.ase);
+  const q=_PLV.q.trim().toLowerCase();
+  if(q) rows=rows.filter(o=>[o.op,o.cot_num,o.empresa,o.descripcion,o.asesor].join(' ').toLowerCase().includes(q));
+  const gr=_plvGrupos(rows).map(g=>{ g.ase=(g.rows.find(o=>o.asesor)||{}).asesor||''; g.av=Math.round(g.rows.reduce((t,o)=>t+(Number(o.avance)||0),0)/g.rows.length); return g; });
+  const kv={op:g=>Number(g.op),cot:g=>Number(g.cot)||0,emp:g=>String(g.emp||'').toLowerCase(),ase:g=>String(g.ase||'').toLowerCase(),it:g=>g.rows.length,ent:g=>g.ent||'9999',av:g=>g.av,val:g=>g.val}[_PLV.k]||(g=>0);
+  gr.sort((a,b)=>{ const x=kv(a),y=kv(b); return (x<y?-1:x>y?1:0)*_PLV.d; });
+  const tot=gr.reduce((t,g)=>t+g.val,0);
+  const th=(k,t,st)=>`<th onclick="plvSort('${k}')" style="cursor:pointer;user-select:none;${st||''}">${t}${_PLV.k===k?(_PLV.d>0?' ▲':' ▼'):''}</th>`;
+  el.innerHTML=!gr.length?`<div class="empty" style="padding:40px 20px"><div class="empty-icon">📭</div><p>Sin resultados</p></div>`:`
+    <div style="padding:0 14px 8px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>${gr.length} OPs · toca ▸ para ver los ítems o la fila para abrir el detalle</span><b style="font-family:var(--mono);color:var(--gold,#b45309)">${fmt(Math.round(tot))} sin IVA</b></div>
+    <div class="tbl-wrap" style="max-height:none;padding:0 6px 80px"><table class="data-tbl" style="min-width:760px"><thead><tr><th style="width:34px"></th>${th('op','OP')}${th('cot','COT')}${th('emp','Cliente')}${th('ase','Asesor')}${th('it','Ítems')}${th('ent','Entrega')}${th('av','Avance','min-width:130px')}${th('val','Sin IVA','text-align:right')}</tr></thead><tbody>${gr.map(g=>{ const av=g.av, col=av>=100?'#16a34a':av>=50?'#2563eb':'#f59e0b'; return `
+      <tr style="cursor:pointer" onclick="detailOP('${idq(g.rows[0])}')"><td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" id="plb-${g.op}" onclick="plvTog('${g.op}')" title="Ver ítems" style="padding:2px 8px;min-width:0">▸</button></td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap">OP-${g.op}</td><td style="font-family:var(--mono)">${g.cot==null?'—':g.cot}</td>
+        <td style="font-weight:700;max-width:240px">${esc(g.emp||'—')}</td><td>${esc(g.ase||'—')}</td><td>${g.rows.length}</td><td style="white-space:nowrap">${g.ent?fmtDate(g.ent):'—'}</td>
+        <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:12px;background:var(--border,#e2e8f0);border-radius:6px;overflow:hidden;min-width:60px"><div style="width:${Math.min(100,av)}%;height:100%;background:${col}"></div></div><b style="font-size:11px;min-width:32px;text-align:right">${av}%</b></div></td>
+        <td class="td-num" style="font-weight:700;color:var(--gold,#b45309);text-align:right">${fmt(Math.round(g.val))}</td></tr>
+      <tr id="plx-${g.op}" style="display:none"><td></td><td colspan="8" style="background:var(--card2,#f1f5f9);padding:8px 12px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted)"><th style="padding:3px 6px">Ítem</th><th style="padding:3px 6px">Cant</th><th style="padding:3px 6px">Descripción</th><th style="padding:3px 6px">Estado</th><th style="padding:3px 6px">Avance</th><th style="padding:3px 6px;text-align:right">Valor</th></tr></thead><tbody>${g.rows.slice().sort((a,b)=>(a.item_num||0)-(b.item_num||0)).map(o=>`<tr onclick="event.stopPropagation();detailOP('${idq(o)}')" style="cursor:pointer;border-top:1px solid var(--border,#e2e8f0)"><td style="padding:4px 6px;font-weight:700">${o.item_num??'—'}</td><td style="padding:4px 6px">${o.unidades||1}</td><td style="padding:4px 6px">${esc((o.descripcion||'—').slice(0,160))}</td><td style="padding:4px 6px">${esc(o.estado||'—')}</td><td style="padding:4px 6px">${Math.round(Number(o.avance)||0)}%</td><td style="padding:4px 6px;text-align:right;font-family:var(--mono)">${fmt(Math.round(Number(o._val!=null?o._val:o.precio_total)||0))}</td></tr>`).join('')}</tbody></table></td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function plvTog(op){ const r=document.getElementById('plx-'+op), b=document.getElementById('plb-'+op); if(!r) return; const a=r.style.display==='none'; r.style.display=a?'':'none'; if(b) b.textContent=a?'▾':'▸'; }
 function dashboard(){
   const all=(DB.produccion||[]).filter(enCurso);
   const enProceso=all.filter(o=>o.estado==='EN PROCESO');
@@ -1293,7 +1343,7 @@ function dashboard(){
   const topH=porScore.length?`<div class="dp-section" style="margin-top:14px"><h4>⭐ Atender primero (por score)</h4><div class="plx">${porScore.slice(0,32).map(o=>plCard(o,true)).join('')}</div>${porScore.length>32?`<div style="text-align:center;font-size:12px;color:var(--accent);cursor:pointer;padding:8px" onclick="nav('ops')">Ver las ${porScore.length} OP ordenadas por score →</div>`:''}</div>`:'';
   const criticasH=vencidas.length?`<div class="dp-section" style="margin-top:14px"><h4>🔴 OPs vencidas (${vencidas.length})</h4><div class="card-list">${vencidas.slice(0,6).map(opCard).join('')}</div>${vencidas.length>6?`<div style="text-align:center;font-size:12px;color:var(--accent);cursor:pointer;padding:8px" onclick="nav('ops')">Ver todas →</div>`:''}</div>`:'';
   const semH=`<div class="dp-section" style="margin-top:14px"><h4>📅 OPs por semana</h4>${semTop.map(([s,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="width:80px;font-size:12px;color:var(--muted)">Semana ${s}</div><div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${Math.round(n/semTop[0][1]*100)}%;height:100%;background:var(--teal)"></div></div><div style="width:24px;text-align:right;font-size:12px;font-weight:700">${n}</div></div>`).join('')}</div>`;
-  setContent(`${banner}${kpis}${topH}${cargaMaq}${criticasH}${semH}<div style="height:80px"></div>`);
+  setContent(`${banner}${kpis}${plvValorActivoHTML()}${topH}${cargaMaq}${criticasH}${semH}<div style="height:80px"></div>`);
   try{ lzThumbs(); plFit(); setTimeout(plFit,400); }catch(e){}
 }
 
