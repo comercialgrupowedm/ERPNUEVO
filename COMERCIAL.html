@@ -6848,5 +6848,97 @@ PL.dRem=function(m,tipo){
 })();
 </script>
 <!-- /WEDM-OFFLINE -->
+<!-- MANUALES (tarjeta en el menú + visor; lee la carpeta Manuales del panel desarrollador) -->
+<style>
+#man-ov{position:fixed;inset:0;z-index:100000;background:var(--bg,#f1f5f9);display:none;flex-direction:column;color:var(--text,#0f172a);font-family:inherit}
+#man-ov.open{display:flex}
+.man-top{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f2443;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;padding-top:max(12px,env(safe-area-inset-top))}
+.man-top .man-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.man-btn{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:9px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;display:inline-block}
+.man-body{flex:1;overflow:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.man-sec{font-size:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px}
+.man-sec:first-child{margin-top:0}
+.man-it{display:flex;align-items:center;gap:12px;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.man-it:active{transform:scale(.98)}
+.man-it.mio{border-color:#4f83f1;box-shadow:0 0 0 2px rgba(79,131,241,.18)}
+.man-ic{font-size:26px;flex-shrink:0}
+.man-n{font-weight:700;font-size:14px}
+.man-d{font-size:12px;color:#64748b;margin-top:2px}
+.man-tag{font-size:10px;font-weight:800;background:#e0e7ff;color:#3730a3;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.man-v{flex:1;border:0;width:100%;background:#fff}
+.man-msg{padding:30px 14px;text-align:center;color:#64748b;font-size:14px}
+</style>
+<script>
+(function(){
+  if(window.__manualesInit) return; window.__manualesInit=1;
+  var ov=document.createElement('div'); ov.id='man-ov'; document.body.appendChild(ov);
+  var URLS=[];
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function norm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
+  var f=norm((location.pathname.split('/').pop()||'').replace(/\.html?$/i,''));
+  var MAPA={comercial:'comercial',diseno:'dise',compras:'compras',remisiones:'remision',calidad:'calidad',planeacion:'planeaci',planta:'planta'};
+  var clave=MAPA[f]||'';
+  function top(titulo,extra){ return '<div class="man-top"><button class="man-btn" id="man-x" aria-label="Cerrar">✕</button><div class="man-t">'+esc(titulo)+'</div>'+(extra||'')+'</div>'; }
+  function cerrar(){ ov.classList.remove('open'); ov.innerHTML=''; URLS.forEach(function(u){ try{ URL.revokeObjectURL(u); }catch(e){} }); URLS=[]; }
+  function bindX(fn){ var x=document.getElementById('man-x'); if(x) x.onclick=fn||cerrar; }
+  function bonito(m){ if(m.kind==='archivo'){ var n=String(m.nombre||'').replace(/\.pdf$/i,'').replace(/_/g,' '); return n.charAt(0).toUpperCase()+n.slice(1); } return m.nombre; }
+  function rpc(fn,p){ return sb.rpc(fn,p||{}); }
+  async function lista(){
+    ov.classList.add('open');
+    ov.innerHTML=top('📚 Manuales')+'<div class="man-body"><div class="man-msg">Cargando manuales…</div></div>'; bindX();
+    var rows;
+    try{ rows=await rpc('manuales_listar'); }catch(e){ ov.innerHTML=top('📚 Manuales')+'<div class="man-body"><div class="man-msg">No se pudieron cargar los manuales.<br>'+esc((e&&e.message)||e)+'</div></div>'; bindX(); return; }
+    rows=(rows||[]).slice();
+    var mio=function(m){ return clave && norm(m.nombre).indexOf(clave)>=0; };
+    var item=function(m){ var pdf=m.kind==='archivo';
+      return '<div class="man-it'+(mio(m)?' mio':'')+'" data-id="'+esc(m.id)+'"><div class="man-ic">'+(pdf?'📕':'📘')+'</div><div style="min-width:0"><div class="man-n">'+esc(bonito(m))+(pdf?'<span class="man-tag">PDF</span>':'')+'</div>'+(m.descripcion?'<div class="man-d">'+esc(m.descripcion)+'</div>':'')+'</div></div>'; };
+    var propios=rows.filter(mio), docs=rows.filter(function(m){ return m.kind!=='archivo'&&!mio(m); }), pdfs=rows.filter(function(m){ return m.kind==='archivo'&&!mio(m); });
+    var h='';
+    if(propios.length) h+='<div class="man-sec">De este módulo</div>'+propios.map(item).join('');
+    if(docs.length) h+='<div class="man-sec">Manuales para leer en pantalla</div>'+docs.map(item).join('');
+    if(pdfs.length) h+='<div class="man-sec">Manuales en PDF (para descargar)</div>'+pdfs.map(item).join('');
+    if(!h) h='<div class="man-msg">Todavía no hay manuales cargados.</div>';
+    ov.innerHTML=top('📚 Manuales')+'<div class="man-body">'+h+'</div>'; bindX();
+    var byId={}; rows.forEach(function(m){ byId[m.id]=m; });
+    ov.querySelectorAll('.man-it').forEach(function(el){ el.onclick=function(){ ver(byId[el.dataset.id]); }; });
+  }
+  function b64blob(b64,mime){ var bin=atob(b64), n=bin.length, u=new Uint8Array(n); for(var i=0;i<n;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type:mime||'application/pdf'}); }
+  async function ver(m){
+    ov.innerHTML=top(bonito(m))+'<div class="man-body"><div class="man-msg">Abriendo…</div></div>'; bindX(lista);
+    var d; try{ d=await rpc('manual_obtener',{p_id:m.id}); }catch(e){ ov.innerHTML=top(bonito(m))+'<div class="man-body"><div class="man-msg">No se pudo abrir el manual.<br>'+esc((e&&e.message)||e)+'</div></div>'; bindX(lista); return; }
+    if(d&&d.data){   // PDF
+      var url; try{ url=URL.createObjectURL(b64blob(d.data,d.mime)); URLS.push(url); }catch(e){ ov.innerHTML=top(bonito(m))+'<div class="man-body"><div class="man-msg">El archivo no se pudo leer.</div></div>'; bindX(lista); return; }
+      var nombre=String(d.nombre||'manual.pdf');
+      ov.innerHTML=top(bonito(m),'<a class="man-btn" href="'+url+'" download="'+esc(nombre)+'">⬇ Descargar</a><a class="man-btn" href="'+url+'" target="_blank" rel="noopener">Abrir</a>')+'<iframe class="man-v" src="'+url+'" title="'+esc(bonito(m))+'"></iframe>'; bindX(lista);
+    }else{           // documento HTML
+      var html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#fff">'+((d&&d.contenido)||'<p style="padding:20px;font-family:sans-serif">Este manual está vacío.</p>')+'</body></html>';
+      ov.innerHTML=top(bonito(m))+'<iframe class="man-v" sandbox="allow-popups" title="'+esc(bonito(m))+'"></iframe>'; bindX(lista);
+      ov.querySelector('iframe').srcdoc=html;
+    }
+  }
+  window.abrirManuales=lista;
+  function asegurar(){
+    try{
+      document.querySelectorAll('.mn-grid').forEach(function(g){
+        if(g.querySelector('.mn-man')) return;
+        var c=document.createElement('div'); c.className='mn-card mn-man';
+        c.innerHTML='<div class="mn-img"><div class="mn-circle">📚</div></div><div class="mn-t">Manuales</div>';
+        c.onclick=function(){ try{ if(window.mnCerrar) window.mnCerrar(); }catch(e){} lista(); };
+        g.appendChild(c);
+      });
+      var sc=document.querySelector('#sidebar .nav-scroll');
+      if(sc && !document.getElementById('nav-manuales')){
+        var n=document.createElement('div'); n.className='nav-item'; n.id='nav-manuales';
+        n.innerHTML='<span class="nav-icon">📚</span>Manuales'; n.onclick=function(){ lista(); };
+        sc.appendChild(n);
+      }
+    }catch(e){}
+  }
+  var pend=false;
+  new MutationObserver(function(){ if(pend) return; pend=true; setTimeout(function(){ pend=false; asegurar(); },60); }).observe(document.body,{childList:true,subtree:true});
+  asegurar(); setInterval(asegurar,3000);
+})();
+</script>
+<!-- /MANUALES -->
 </body>
 </html>
