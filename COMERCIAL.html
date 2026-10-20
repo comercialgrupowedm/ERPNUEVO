@@ -1001,7 +1001,7 @@ kbd{
     gap: 24px; transition: opacity .4s ease;
   }
   #splash.hidden { opacity: 0; pointer-events: none; }
-  .splash-logo { width: min(80vw, 420px); height: auto; }
+  .splash-logo { width: min(80vw, 420px); height: auto; } .splash-logo{background:#fff;border-radius:16px;padding:12px 18px;box-sizing:content-box;filter:none}
   .splash-title { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: .5px; }
   .splash-sub { color: #8888aa; font-size: 13px; margin-top: -16px; }
   .splash-bar-wrap {
@@ -3182,7 +3182,7 @@ function generarPDFCotizacion(id,soloGuardar){
   const iva=Number(c.iva||0)||Math.round(sub*IVA_PCT/100); const descVal=Number(c.descuento||0), descPct=Number(c.descuento_pct||0);
   const total=(Number(c.precio_total||0)||sub+iva)-descVal; const money=v=>'$'+Number(v||0).toLocaleString('es-CO');
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
+    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
@@ -3207,8 +3207,8 @@ function generarPDFCotizacion(id,soloGuardar){
         <div><span style="color:#366092">CIUDAD:</span> ${cl(c.ciudad||cli.ciudad)}</div>
         <div><span style="color:#366092">ENCARGADO:</span> ${cl(c.encargado||cli.contacto)}</div>
         <div><span style="color:#366092">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
-        <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
-    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
+        <table style="margin-top:10px;width:100%"><tr><td class="azul-row borde" style="padding:5px 10px;color:#366092;font-weight:700">PROYECTO:</td><td class="azul-row borde negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
+    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita azul-row" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
       <tbody>${rows}</tbody></table>
     <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;vertical-align:top;line-height:1.6;color:#434343;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
