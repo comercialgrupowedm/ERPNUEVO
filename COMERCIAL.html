@@ -2397,7 +2397,7 @@ function dashboard(){
   const mes=cots;   // cotizaciones del periodo elegido
   // v9: ACTIVO = aprobadas que todavía tienen producción por despachar, + aprobadas de los últimos 60 días que aún no tienen OP.
   // (las aprobadas cuya producción ya se despachó completa son historia y no cuentan)
-  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0}); if(!p.despachado) x.pend++; });
+  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0}); if(!p.despachado&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(String(p.estado||'').toUpperCase())) x.pend++; });
   const hace60=now.getTime()-60*864e5;
   const esActiva=c=>{ const x=prodPorCot[c.cotizacion]; return x?x.pend>0:_dFecha(c.fecha_emision||c.created_at).getTime()>=hace60; };
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
