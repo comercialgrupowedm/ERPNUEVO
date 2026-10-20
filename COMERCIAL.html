@@ -2348,6 +2348,8 @@ async function iniciarApp(){
 
 // ══ DASHBOARD ═══════════════════════════════════════════════════
 const _dash={};
+// Valores SIN IVA (antes de IVA) para todo lo que se muestra; la cotización/factura sí lleva IVA
+const vSin=c=>{ const s=Number(c&&c.precio_sin_iva)||0; if(s>0) return s; return Math.round((Number(c&&c.precio_total)||0)/1.19); };
 function dashPanel(key,titulo,emptyMsg='Sin resultados'){
   const list=_dash[key]||[];
   const body=!list.length?`<div class="empty" style="padding:40px 20px"><div class="empty-icon">📭</div><p>${emptyMsg}</p></div>`:`
@@ -2357,7 +2359,7 @@ function dashPanel(key,titulo,emptyMsg='Sin resultados'){
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="lc-id">COT-${c.cotizacion}</span>${bEst(c.estado)}${bTipo(c.tipo)}</div>
         <div class="lc-title">${esc(c.empresa||'Sin empresa')}</div>
         <div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.descripcion_proyecto||'—')}</div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--gold)">${fmt(c.precio_total)}</div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--gold)">${fmt(vSin(c))}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmtDate(c.fecha_emision)}</div></div></div></div>`).join('')}</div>`;
   openDetail(titulo,body,'');
 }
@@ -2421,9 +2423,9 @@ function dashboard(){
   const esActiva=c=>{ const x=prodPorCot[c.cotizacion]; return x?x.pend>0:_dFecha(c.fecha_emision||c.created_at).getTime()>=hace60; };
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
   // Valor activo por ÍTEM: de cada cotización solo cuenta la parte de los ítems que siguen en producción (lo terminado/despachado/cancelado se resta)
-  const valAct=c=>{ const x=prodPorCot[c.cotizacion]; const t=Number(c.precio_total||0); if(!x||!x.n) return t; const f=x.tv>0?x.pv/x.tv:x.pend/x.n; return Math.round(t*f); };
-  const activas=activasTodas.map(c=>({...c,precio_total:valAct(c)}));   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
-  const sum=l=>l.reduce((s,c)=>s+Number(c.precio_total||0),0);
+  const valAct=c=>{ const x=prodPorCot[c.cotizacion]; const t=vSin(c); if(!x||!x.n) return t; const f=x.tv>0?x.pv/x.tv:x.pend/x.n; return Math.round(t*f); };
+  const activas=activasTodas.map(c=>{ const v=valAct(c); return {...c,precio_total:v,precio_sin_iva:v}; });   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
+  const sum=l=>l.reduce((s,c)=>s+vSin(c),0);
   const _MS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], mesLbl=ym=>{ const [y,m]=ym.split('-'); return _MS[+m-1]+' '+y; };
   const porMes=list=>{ const g={}; list.forEach(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); if(isNaN(d)) return; const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); (g[ym]=g[ym]||[]).push(c); }); return Object.keys(g).sort().reverse().map(ym=>({ym,l:g[ym],t:sum(g[ym])})); };
   const gm=_dashP.graf||'lista';
@@ -2450,7 +2452,7 @@ function dashboard(){
   const cotsOp=cotsAll.filter(c=>_opN.has(Number(c.cotizacion))||(c.id&&_opI.has(c.id)));   // Top clientes: solo lo que ya pasó a producción (tiene OP)
   const topBase=_dashP.topMes?cotsOp.filter(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); return !isNaN(d)&&_usYMd(d)===_dashP.topMes; }):cotsOp;   // Top clientes: TODO por defecto; chips de mes opcionales
   const topMeses=porMes(cotsOp).slice(0,6).map(x=>x.ym);
-  const cm={}; topBase.forEach(c=>{ const e=c.empresa||'Sin empresa'; if(!cm[e]) cm[e]={nombre:e,total:0,cots:0,aprobadas:0}; cm[e].total+=Number(c.precio_total||0); cm[e].cots++; if(_normEstado(c.estado)==='APROBADA') cm[e].aprobadas++; });
+  const cm={}; topBase.forEach(c=>{ const e=c.empresa||'Sin empresa'; if(!cm[e]) cm[e]={nombre:e,total:0,cots:0,aprobadas:0}; cm[e].total+=vSin(c); cm[e].cots++; if(_normEstado(c.estado)==='APROBADA') cm[e].aprobadas++; });
   const top=Object.values(cm).filter(x=>x.total>0).sort((a,b)=>b.total-a.total).slice(0,8); const maxC=top[0]?.total||1;
   _dash.topBase=topBase;
   window._dashTop=top.map(t=>t.nombre);
@@ -2510,7 +2512,7 @@ function dashboard(){
       <div class="card-list">${esperaL.slice(0,8).map(c=>`<div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
         <div class="lc-id">COT-${c.cotizacion}</div><div class="lc-title">${esc(c.empresa||'Sin empresa')}</div>
         <div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.descripcion_proyecto||'—')}</div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px">${bTipo(c.tipo)}<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);margin-top:4px">${fmt(c.precio_total)}</div></div></div></div>`).join('')}
+        <div style="text-align:right;flex-shrink:0;margin-left:10px">${bTipo(c.tipo)}<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);margin-top:4px">${fmt(vSin(c))}</div></div></div></div>`).join('')}
         ${esperaL.length>8?`<div onclick="dashPanel('esperaL','🟡 En Espera','No hay cotizaciones pendientes')" style="grid-column:1/-1;text-align:center;padding:10px;color:var(--accent);font-size:13px;cursor:pointer;font-weight:600">+ ${esperaL.length-8} más →</div>`:''}</div></div>`
     :`<div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.03));border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:16px;text-align:center">
       <div style="font-size:24px;margin-bottom:6px">✅</div><div style="font-size:13px;font-weight:700;color:#10b981">¡Todo al día!</div><div style="font-size:11px;color:var(--muted);margin-top:4px">No hay cotizaciones pendientes de respuesta</div></div>`}
@@ -2518,7 +2520,7 @@ function dashboard(){
       <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="dashPanel('recL','🕐 Cotizaciones · ${tagL}')">Ver todas →</div></div>
       <div class="card-list">${recientes.length?recientes.map(c=>`<div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px"><div class="lc-id">COT-${c.cotizacion}</div>${bEst(c.estado)}</div><div class="lc-title">${esc(c.empresa||'Sin empresa')}</div></div>
-        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0;margin-left:10px">${fmt(c.precio_total)}</div></div></div>`).join(''):empty('Sin cotizaciones')}</div></div>
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0;margin-left:10px">${fmt(vSin(c))}</div></div></div>`).join(''):empty('Sin cotizaciones')}</div></div>
   </div>`);
 }
 function dashTopCliente(i){
@@ -2778,7 +2780,7 @@ function cotizaciones(){
     setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('cot',sorted).map(c=>`
       <div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div><div class="lc-id">${c._op?esc(c._op)+' · ':''}COT-${c.cotizacion}</div>
         <div class="lc-title">${esc(c.empresa||'Sin empresa')}</div><div class="lc-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
-        <div style="text-align:right;flex-shrink:0">${bTipo(c.tipo)}<br><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(c.precio_total)}</span></div></div>
+        <div style="text-align:right;flex-shrink:0">${bTipo(c.tipo)}<br><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${fmt(vSin(c))}</span></div></div>
         <div class="lc-meta">${c._sem?bSem(c._sem):''}${bEstCot(c.id,c.estado)}${btnsEstCot(c)}<span style="font-size:11px;color:var(--muted)">Lead: ${c.lead_time_dias??0}d</span><span style="font-size:11px;color:var(--muted)">${esc(c.asesor||'')}</span></div>${c._opAv!=null?`<div style="margin-top:6px">${prog(c._opAv)}<div style="font-size:9px;color:var(--muted);margin-top:1px">${c._opAv}% avance OP</div></div>`:''}</div>`).join(''):empty('Sin resultados para los filtros aplicados')}</div>`);
   }
   window._opmRender=null;
@@ -2818,11 +2820,11 @@ function detailCot(id){
     <div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left">
       <div class="cot-hero-id">COT-${c.cotizacion}<button class="cot-hero-copy" onclick="copyText('COT-${c.cotizacion}')" title="Copiar ID">⧉</button></div>
       <div class="cot-hero-empresa">${esc(c.empresa||'Sin empresa')}</div><div class="cot-hero-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
-      <div class="cot-hero-right"><div class="cot-hero-total-label">Total COT</div><div class="cot-hero-total-value">${fmt(c.precio_total)}</div></div></div>
+      <div class="cot-hero-right"><div class="cot-hero-total-label">Total COT · antes de IVA</div><div class="cot-hero-total-value">${fmt(vSin(c))}</div></div></div>
       <div class="cot-hero-badges">${bTipo(c.tipo)} ${bEst(c.estado)} ${bSem(semProd(rowsDeCot(c)))}${c.asesor?`<span class="cot-hero-asesor">👤 ${esc(c.asesor)}</span>`:''}${c.fecha_emision?`<span style="font-size:10px;opacity:.7;margin-left:auto">📅 ${fmtDate(c.fecha_emision)}</span>`:''}</div></div>
     ${timelineH(COT_STEPS,est,{'EN ESPERA':c.fecha_emision,'APROBADA':c.fecha_entrega_pactada})}
     <div class="cot-kpis">
-      <div class="kpi-mini gold-kpi"><span class="ki">💰</span><div class="kv gold">${fmt(c.precio_total)}</div><div class="kl">Valor Total</div></div>
+      <div class="kpi-mini gold-kpi"><span class="ki">💰</span><div class="kv gold">${fmt(vSin(c))}</div><div class="kl">Valor sin IVA</div></div>
       <div class="kpi-mini"><span class="ki">📦</span><div class="kv">${its.length}</div><div class="kl">Ítem${its.length!==1?'s':''}</div></div>
       <div class="kpi-mini ${kCls}"><span class="ki">${dias==null?'📅':dias<0?'🔴':dias<5?'🟡':'🟢'}</span><div class="kv ${kVal}">${dias==null?'—':Math.abs(dias)+'d'}</div><div class="kl">${dias==null?'Sin fecha':dias<0?'Vencido hace':dias<5?'⚡ Urgente':'Restantes'}</div></div></div>
     ${c.fecha_entrega_pactada&&dias!=null?`<div class="delivery-bar-wrap"><div class="delivery-bar-header"><span class="delivery-bar-title">⏱ Progreso del plazo · Lead time: ${c.lead_time_dias??'—'} días</span><span class="delivery-bar-date">🗓 ${fmtDate(c.fecha_entrega_pactada)}</span></div>
@@ -3216,8 +3218,8 @@ function generarPDFCotizacion(id,soloGuardar){
     table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#366092!important;color:#fff!important}.azul-light{background:#366092!important;color:#fff!important}
     .azul-row{background:#f3f3f3!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #366092}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
     .total-row{background:#366092!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
-    <img src="${MARCA_AGUA_COT}" style="position:absolute;top:6px;right:6px;width:130px;opacity:.16;pointer-events:none">
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#366092;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
+    <div style="text-align:right;margin:0 0 6px;padding:6px 8px 2px 0;line-height:0;overflow:visible"><img src="${MARCA_AGUA_COT}" style="width:124px;height:auto;opacity:.3;pointer-events:none"></div>
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
       <div style="color:#434343;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br>Tel: ${EMPRESA_WEDM.tel} &nbsp; Cel: ${EMPRESA_WEDM.cel}<br>Email: ${EMPRESA_WEDM.email}<br>NIT: ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
       <td style="width:45%;vertical-align:top"><div style="line-height:1.75">
@@ -3869,7 +3871,7 @@ function _cotsDeCliente(c){ return DB.cotizaciones.filter(x=>x.id_cliente===c.id
 function clientes(){
   const all=[...DB.clientes].sort((a,b)=>(a.empresa||'').localeCompare(b.empresa||'')); const data=filterData('clientes',all);
   const uniq=k=>[...new Set(all.map(c=>c[k]).filter(Boolean))].sort();
-  const stats={}; DB.cotizaciones.forEach(x=>{ const k=String(x.empresa||'').toUpperCase(); if(!stats[k]) stats[k]={n:0,t:0}; stats[k].n++; stats[k].t+=Number(x.precio_total||0); });
+  const stats={}; DB.cotizaciones.forEach(x=>{ const k=String(x.empresa||'').toUpperCase(); if(!stats[k]) stats[k]={n:0,t:0}; stats[k].n++; stats[k].t+=vSin(x); });
   const st=c=>stats[String(c.empresa||'').toUpperCase()]||{n:0,t:0};
   const fb=filterBar('clientes',[{key:'__search__',label:'Buscar empresa, NIT, ciudad...',type:'text'},{key:'ciudad',label:'Ciudad',type:'select',opts:uniq('ciudad')},{key:'encargado',label:'Asesor',type:'select',opts:uniq('encargado')},{key:'condicion_pago',label:'Pago',type:'select',opts:uniq('condicion_pago')}]);
   const banner=moduleBanner('🏢','Clientes','Directorio de empresas y contactos','','linear-gradient(135deg,#0891b2,#22d3ee)');
@@ -3895,7 +3897,7 @@ function detailCliente(id){
   openDetail(c.empresa||'Cliente',`
     <div class="dp-section"><h4>Datos del Cliente</h4>${dr('Empresa',`<strong>${esc(c.empresa)}</strong>`)}${dr('NIT',esc(c.nit||'—'))}${dr('Ciudad',esc(c.ciudad||'—'))}${dr('Dirección',esc(c.direccion||'—'))}${dr('Correo',esc(c.correo||'—'))}${dr('Teléfono',esc(c.telefono||'—'))}
       ${dr('Contacto',esc(c.contacto||'—'))}${dr('Asesor encargado',esc(c.encargado||'—'))}${dr('Condición pago',esc(c.condicion_pago||'—'))}${c.notas?dr('Notas',esc(c.notas)):''}</div>
-    <div class="dp-section"><h4>Cotizaciones (${cots.length})</h4>${cots.length?`<div class="sub-tbl"><table><thead><tr><th>COT</th><th>Estado</th><th>Total</th></tr></thead><tbody>${cots.slice(0,15).map(ct=>`<tr onclick="detailCot('${ct.id}')" style="cursor:pointer"><td style="color:var(--accent)">COT-${ct.cotizacion}</td><td>${bEst(ct.estado)}</td><td style="font-family:var(--mono)">${fmt(ct.precio_total)}</td></tr>`).join('')}</tbody></table></div>`:'<p style="font-size:12px;color:var(--muted)">Sin cotizaciones</p>'}</div>`,
+    <div class="dp-section"><h4>Cotizaciones (${cots.length})</h4>${cots.length?`<div class="sub-tbl"><table><thead><tr><th>COT</th><th>Estado</th><th>Sin IVA</th></tr></thead><tbody>${cots.slice(0,15).map(ct=>`<tr onclick="detailCot('${ct.id}')" style="cursor:pointer"><td style="color:var(--accent)">COT-${ct.cotizacion}</td><td>${bEst(ct.estado)}</td><td style="font-family:var(--mono)">${fmt(vSin(ct))}</td></tr>`).join('')}</tbody></table></div>`:'<p style="font-size:12px;color:var(--muted)">Sin cotizaciones</p>'}</div>`,
     `${canEdit()?`<button class="btn btn-ghost btn-sm" onclick="formCliente(DB.clientes.find(x=>x.id==='${id}'))">✏️</button>`:''}${_esAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCliente('${id}')">🗑</button>`:''}`);
 }
 function formCliente(c,volverCot){
@@ -5957,8 +5959,8 @@ const _anSel=(k,opts)=>`<select onchange="anSet('${k}',Number(this.value))" styl
 // ── Cotizaciones sin respuesta ─────────────────────────────────
 function anEspera(){
   const data=misCots().filter(c=>_normEstado(c.estado)==='EN ESPERA').map(c=>({c,f:_anD(c.fecha_emision||c.created_at)})).map(x=>({...x,d:_anDias(x.f)})).filter(x=>x.d!=null&&x.d>=_AN.dias).sort((a,b)=>b.d-a.d);
-  const tot=data.reduce((s,x)=>s+(Number(x.c.precio_total)||0),0);
-  const por={}; data.forEach(x=>{ const a=x.c.asesor||'—'; (por[a]=por[a]||{n:0,v:0}); por[a].n++; por[a].v+=Number(x.c.precio_total)||0; });
+  const tot=data.reduce((s,x)=>s+(vSin(x.c)),0);
+  const por={}; data.forEach(x=>{ const a=x.c.asesor||'—'; (por[a]=por[a]||{n:0,v:0}); por[a].n++; por[a].v+=vSin(x.c); });
   const kp=`<div style="padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap">${_anKpi('Sin respuesta',data.length,'cotizaciones en espera')}${_anKpi('Valor en juego',_anM(tot),'',`var(--gold)`)}${_anKpi('Más antigua',data[0]?data[0].d+' días':'—',data[0]?'COT-'+data[0].c.cotizacion:'')}</div>`;
   const fl=`<div style="padding:0 14px 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--muted)">Enviadas hace más de</span>${_anSel('dias',[[7,'7 días'],[15,'15 días'],[30,'30 días'],[60,'60 días'],[90,'90 días']])}
     <span style="font-size:11px;color:var(--muted);margin-left:auto">${Object.entries(por).sort((a,b)=>b[1].v-a[1].v).slice(0,4).map(([a,o])=>esc(a)+': '+o.n).join(' · ')}</span></div>`;
@@ -5970,8 +5972,8 @@ function anEspera(){
     {h:'Asesor',v:x=>esc(x.c.asesor||'—'),s:x=>x.c.asesor||''},
     {h:'Emitida',v:x=>fmtDate((x.c.fecha_emision||x.c.created_at||'').toString().slice(0,10)),s:x=>x.f?x.f.getTime():0},
     {h:'Días',cls:'td-center',v:x=>`<b style="color:${col(x.d)}">${x.d}</b>`,s:x=>x.d},
-    {h:'Valor',cls:'td-num',v:x=>_anM(x.c.precio_total),s:x=>Number(x.c.precio_total)||0}];
-  const card=x=>`<div class="list-card" onclick="detailCot('${x.c.id}')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-id">COT-${x.c.cotizacion} · ${esc(x.c.asesor||'—')}</div><div class="lc-title">${esc(x.c.empresa||'—')}</div><div class="lc-sub">emitida ${fmtDate((x.c.fecha_emision||x.c.created_at||'').toString().slice(0,10))}</div></div><div style="text-align:right;flex-shrink:0"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${_anM(x.c.precio_total)}</div><div style="font-size:11px;font-weight:700;color:${col(x.d)}">${x.d} días</div></div></div></div>`;
+    {h:'Valor',cls:'td-num',v:x=>_anM(vSin(x.c)),s:x=>vSin(x.c)}];
+  const card=x=>`<div class="list-card" onclick="detailCot('${x.c.id}')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-id">COT-${x.c.cotizacion} · ${esc(x.c.asesor||'—')}</div><div class="lc-title">${esc(x.c.empresa||'—')}</div><div class="lc-sub">emitida ${fmtDate((x.c.fecha_emision||x.c.created_at||'').toString().slice(0,10))}</div></div><div style="text-align:right;flex-shrink:0"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold)">${_anM(vSin(x.c))}</div><div style="font-size:11px;font-weight:700;color:${col(x.d)}">${x.d} días</div></div></div></div>`;
   return kp+fl+LV.render('an_esp',data,{card,cols,click:x=>`detailCot('${x.c.id}')`});
 }
 
@@ -5979,7 +5981,7 @@ function anEspera(){
 function anInactivos(){
   const g=new Map();
   misCots().filter(c=>_normEstado(c.estado)==='APROBADA').forEach(c=>{ const k=String(c.empresa||'').trim().toUpperCase(); if(!k) return; const f=_anD(c.fecha_emision||c.created_at); if(!f) return;
-    let o=g.get(k); if(!o){ o={k,nombre:c.empresa,n:0,v:0,ult:f,pri:f,asesor:c.asesor}; g.set(k,o); } o.n++; o.v+=Number(c.precio_total)||0; if(f>o.ult){ o.ult=f; o.asesor=c.asesor; } if(f<o.pri) o.pri=f; });
+    let o=g.get(k); if(!o){ o={k,nombre:c.empresa,n:0,v:0,ult:f,pri:f,asesor:c.asesor}; g.set(k,o); } o.n++; o.v+=vSin(c); if(f>o.ult){ o.ult=f; o.asesor=c.asesor; } if(f<o.pri) o.pri=f; });
   const data=[...g.values()].map(o=>({...o,d:_anDias(o.ult),frec:o.n>1?Math.round((o.ult-o.pri)/86400000/(o.n-1)):null})).filter(o=>o.n>=_AN.minn&&o.d>=_AN.inact&&o.d<=1100).sort((a,b)=>b.v-a.v);
   const kp=`<div style="padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap">${_anKpi('Clientes en pausa',data.length,'compraban seguido')}${_anKpi('Compras históricas',_anM(data.reduce((s,o)=>s+o.v,0)),'valor aprobado',`var(--gold)`)}</div>
     <div style="padding:0 14px 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--muted)">Con</span>${_anSel('minn',[[2,'2+ compras'],[3,'3+ compras'],[5,'5+ compras'],[10,'10+ compras']])}<span style="font-size:12px;color:var(--muted)">y sin comprar hace</span>${_anSel('inact',[[90,'3 meses'],[180,'6 meses'],[365,'1 año']])}</div>`;
@@ -6032,10 +6034,10 @@ function goProd(id){ try{ detalleProd(id); }catch(e){} }
 function anGerencia(){
   const cs=misCots(), now=new Date(), ym=d=>d.getFullYear()*12+d.getMonth();
   const apr=cs.filter(c=>_normEstado(c.estado)==='APROBADA').map(c=>({c,f:_anD(c.fecha_emision||c.created_at)})).filter(x=>x.f);
-  const sum=a=>a.reduce((s,x)=>s+(Number(x.c.precio_total)||0),0);
+  const sum=a=>a.reduce((s,x)=>s+(vSin(x.c)),0);
   const mes=apr.filter(x=>ym(x.f)===ym(now)), ant=apr.filter(x=>ym(x.f)===ym(now)-1);
   const vm=sum(mes), va=sum(ant), dl=va?Math.round((vm-va)/va*100):null;
-  const esp=cs.filter(c=>_normEstado(c.estado)==='EN ESPERA'); const ve=esp.reduce((s,c)=>s+(Number(c.precio_total)||0),0);
+  const esp=cs.filter(c=>_normEstado(c.estado)==='EN ESPERA'); const ve=esp.reduce((s,c)=>s+vSin(c),0);
   const l90=cs.filter(c=>{ const f=_anD(c.fecha_emision||c.created_at); return f&&(now-f)/86400000<=90; });
   const ap90=l90.filter(c=>_normEstado(c.estado)==='APROBADA').length, tasa=l90.length?Math.round(ap90/l90.length*100):0;
   const P=(DB.produccion||[]).filter(p=>!['TERMINADO','CANCELADO','#REF!'].includes(p.estado)&&!p.terminado);
@@ -6044,10 +6046,10 @@ function anGerencia(){
   const est={}; P.forEach(p=>{ est[p.estado]=(est[p.estado]||0)+1; });
   // 12 meses
   const ms=[]; for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); ms.push({k:ym(d),l:['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()],v:0}); }
-  apr.forEach(x=>{ const m=ms.find(m=>m.k===ym(x.f)); if(m) m.v+=Number(x.c.precio_total)||0; });
+  apr.forEach(x=>{ const m=ms.find(m=>m.k===ym(x.f)); if(m) m.v+=vSin(x.c); });
   const mx=Math.max(1,...ms.map(m=>m.v));
   const bars=`<div style="display:flex;align-items:flex-end;gap:4px;height:110px;margin-top:6px">${ms.map(m=>`<div title="${m.l}: ${_anM(m.v)}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%"><div style="font-size:8px;color:var(--muted)">${m.v?Math.round(m.v/1e6):''}</div><div style="width:100%;height:${Math.max(2,Math.round(m.v/mx*80))}px;background:${m.k===ym(now)?'var(--accent)':'#94a3b8'};border-radius:3px 3px 0 0"></div><div style="font-size:9px;color:var(--muted);margin-top:2px">${m.l}</div></div>`).join('')}</div><div style="font-size:10px;color:var(--muted)">Millones aprobados por mes de emisión</div>`;
-  const y0=new Date(now.getFullYear(),0,1); const top={}; apr.filter(x=>x.f>=y0).forEach(x=>{ const k=x.c.empresa||'—'; top[k]=(top[k]||0)+(Number(x.c.precio_total)||0); });
+  const y0=new Date(now.getFullYear(),0,1); const top={}; apr.filter(x=>x.f>=y0).forEach(x=>{ const k=x.c.empresa||'—'; top[k]=(top[k]||0)+(vSin(x.c)); });
   const topL=Object.entries(top).sort((a,b)=>b[1]-a[1]).slice(0,6); const tmx=topL[0]?topL[0][1]:1;
   const sec=(t,b)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;flex:1;min-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:6px">${t}</div>${b}</div>`;
   return `<div style="padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap">
