@@ -2416,11 +2416,13 @@ function dashboard(){
   const mes=cots;   // cotizaciones del periodo elegido
   // v9: ACTIVO = aprobadas que todavía tienen producción por despachar, + aprobadas de los últimos 60 días que aún no tienen OP.
   // (las aprobadas cuya producción ya se despachó completa son historia y no cuentan)
-  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0}); if(!p.despachado&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(String(p.estado||'').toUpperCase())) x.pend++; });
+  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0,n:0,tv:0,pv:0}); const vv=Number(p.precio_total)||0; x.n++; x.tv+=vv; if(!p.despachado&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(String(p.estado||'').toUpperCase())){ x.pend++; x.pv+=vv; } });
   const hace60=now.getTime()-60*864e5;
   const esActiva=c=>{ const x=prodPorCot[c.cotizacion]; return x?x.pend>0:_dFecha(c.fecha_emision||c.created_at).getTime()>=hace60; };
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
-  const activas=activasTodas;   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
+  // Valor activo por ÍTEM: de cada cotización solo cuenta la parte de los ítems que siguen en producción (lo terminado/despachado/cancelado se resta)
+  const valAct=c=>{ const x=prodPorCot[c.cotizacion]; const t=Number(c.precio_total||0); if(!x||!x.n) return t; const f=x.tv>0?x.pv/x.tv:x.pend/x.n; return Math.round(t*f); };
+  const activas=activasTodas.map(c=>({...c,precio_total:valAct(c)}));   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
   const sum=l=>l.reduce((s,c)=>s+Number(c.precio_total||0),0);
   const _MS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], mesLbl=ym=>{ const [y,m]=ym.split('-'); return _MS[+m-1]+' '+y; };
   const porMes=list=>{ const g={}; list.forEach(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); if(isNaN(d)) return; const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); (g[ym]=g[ym]||[]).push(c); }); return Object.keys(g).sort().reverse().map(ym=>({ym,l:g[ym],t:sum(g[ym])})); };
@@ -2468,17 +2470,17 @@ function dashboard(){
   <div style="padding:14px 2px;display:flex;flex-direction:column;gap:14px">
     ${dashControlesHTML()}
     ${dashGrafCtl()}
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+    <div style="display:grid;grid-template-columns:${_esDev()?'minmax(0,1fr) minmax(0,1fr)':'minmax(0,1fr)'};gap:10px">
       <div onclick="dashPanel('activas','🔥 Valor activo (todo el tiempo)','No hay cotizaciones activas')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">🔥 Valor activo · todo el tiempo</div>
         <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div>${mesesAct}</div>
-      <div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
+      ${_esDev()?`<div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">💰 Vendido ${rg.label}</div>
         <div style="font-size:${dashSz(sum(aprob))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(aprob)))}</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${aprob.length} aprobadas de ${mes.length} cotizadas</div>
         <div onclick="event.stopPropagation();dashPanel('sinProc','📝 Cotizado sin procesar ${rg.label}','Todo lo cotizado en este periodo se procesó')" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.18)">
           <div style="font-size:10px;color:rgba(255,255,255,.55)">Cotizado y no procesado ›</div>
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85);font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(sinProc)))} · ${sinProc.length}</div></div>${mesesVend}</div>
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85);font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(sinProc)))} · ${sinProc.length}</div></div>${mesesVend}</div>`:''}
     </div>
     ${pipeline.length?`<div style="background:var(--card2);border-radius:14px;padding:14px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px">📊 Pipeline · ${esc(rg.corto)}</div>
