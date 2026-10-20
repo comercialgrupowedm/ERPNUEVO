@@ -1609,7 +1609,8 @@ function nav(m,keep){
   if(!keep){ const gs=document.getElementById('globalSearch'); if(gs) gs.value=''; }
   refreshCurrentView();
 }
-function onGlobalSearch(v){ _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
+function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
+function onGlobalSearch(v){ if(_gsLocal(v)) return; _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
   try{ await recargar(); avisarNuevas(); refreshCurrentView(); toast('Datos actualizados'); }catch(e){ toast(errMsg(e),'error'); }

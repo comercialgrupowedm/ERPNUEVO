@@ -1225,6 +1225,7 @@ window.addEventListener('popstate',function(e){
   _navFromPopstate=false;
 });
 let _gsT=null;
+function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
 function onGlobalSearch(v){
   clearTimeout(_gsT);
   _gsT=setTimeout(()=>{
@@ -1232,6 +1233,7 @@ function onGlobalSearch(v){
     else if(MOD==='planos'){ _PS.q=v; pgReset(); planos(); }
     else if(MOD==='planta'){ _PL.q=v; pgReset(); planta(); }
     else if(MOD==='itemscot'){ _IC.q=v; pgReset(); itemscot(); }
+    else if(_gsLocal(v)){}
     else if(String(v).trim()) plantaGo({q:v});
   },220);
 }

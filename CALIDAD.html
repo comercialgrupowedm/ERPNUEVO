@@ -2381,7 +2381,8 @@ function docRemision(id){
 
 // ── BÚSQUEDA GLOBAL ─────────────────────────────────────────────────
 let _BQ='';
-function onGlobalSearch(v){ _BQ=v; if(!String(v).trim()){ if(MOD==='buscar') nav('dashboard'); return; } if(MOD!=='buscar') nav('buscar',true); else buscar(); }
+function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
+function onGlobalSearch(v){ if(MOD!=='buscar'&&_gsLocal(v)) return; _BQ=v; if(!String(v).trim()){ if(MOD==='buscar') nav('dashboard'); return; } if(MOD!=='buscar') nav('buscar',true); else buscar(); }
 function buscar(){
   const q=_BQ; const items=(DB.produccion||[]).concat(DB.extra||[]).filter(o=>buscaOP(o,q)).slice(0,40);
   const certs=(DB.certificados||[]).filter(c=>_norm([c.numero,certNum(c),'OP-'+c.op,c.op,c.empresa,c.referencia].join(' ')).includes(_norm(q))).slice(0,20);
