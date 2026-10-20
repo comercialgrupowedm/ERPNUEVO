@@ -768,15 +768,34 @@ const sb = {
 const eq = v => 'eq.'+encodeURIComponent(v);
 async function GET(t,q){ return sb.get(t,q); }
 // Trae TODAS las filas por páginas de 1000 (el orden debe ser estable: termina en id)
+// Progreso real de carga: suma de filas ya descargadas / filas totales (conteo estimado de cada tabla)
+const _LP={tot:{},got:{},max:0};
+function _lpPct(){ let t=0,g=0; for(const k in _LP.tot){ t+=_LP.tot[k]; g+=Math.min(_LP.got[k]||0,_LP.tot[k]); } return t?Math.min(99,Math.round(g/t*100)):0; }
+function _lpTick(fin){
+  try{
+    const sp=document.getElementById('splash'); const p=Math.max(_LP.max,_lpPct()); _LP.max=p;
+    if(sp&&!sp.classList.contains('hide')&&!sp.classList.contains('hidden')){
+      const f=(typeof splashProgress==='function')?splashProgress:(typeof setSplash==='function'?setSplash:null);
+      if(f) f(Math.max(15,p),'Descargando datos…');
+    }
+  }catch(e){}
+}
 async function GETALL(t,q,ps=1000){
-  const page=o=>sb.get(t,q+'&limit='+ps+'&offset='+o);
-  let out=await page(0); if(out.length<ps) return out;
+  const id=t+'|'+q;
+  const add=n=>{ _LP.got[id]=(_LP.got[id]||0)+n; _lpTick(); };
+  const page=async o=>{ const r=await sb.get(t,q+'&limit='+ps+'&offset='+o); add(r.length); return r; };
+  // total estimado (una fila, cabecera Content-Range); si falla, el total se va ajustando
+  fetch(SB_URL+'/rest/v1/'+t+'?'+q.replace(/select=[^&]*/,'select=id')+'&limit=1',{headers:{...sb.h,Prefer:'count=estimated'}}).then(r=>{ const m=/\/(\d+)$/.exec(r.headers.get('content-range')||''); if(m&&_LP.tot[id]==null){ _LP.tot[id]=Number(m[1]); _lpTick(); } }).catch(()=>{});
+  let out=await page(0); if(out.length<ps){ _LP.tot[id]=out.length; _LP.got[id]=out.length; _lpTick(); return out; }
+  if(_LP.tot[id]==null||_LP.tot[id]<out.length+ps) _LP.tot[id]=Math.max(_LP.tot[id]||0,out.length+ps);
   let off=ps;
   for(;;){
     const res=await Promise.all([off,off+ps,off+2*ps].map(page)); let fin=false;
     for(const r of res){ out=out.concat(r); if(r.length<ps){ fin=true; break; } }
+    if(out.length>(_LP.tot[id]||0)) _LP.tot[id]=out.length+ps;
     if(fin) break; off+=3*ps;
   }
+  _LP.tot[id]=out.length; _LP.got[id]=out.length; _lpTick();
   return out;
 }
 async function POST(t,d){ showBusy(); try{ return await sb.post(t,d); } finally{ hideBusy(); } }
@@ -2610,7 +2629,7 @@ async function iniciarApp(){
     let ok=true; try{ ok=(await sb.rpc('sesion_valida'))!==false; }catch(e){}
     if(!ok){ endSession('Sesión vencida — ingresa de nuevo'); return; }
     if(!_misRoles().some(x=>ROLES_CAL.includes(x))){ endSession('Sin acceso al módulo de Calidad'); return; }
-    setSplash(55,'Cargando calidad…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
+    setSplash(15,'Cargando calidad…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
