@@ -4267,7 +4267,7 @@ function ayudaForm(texto){
     ov.querySelectorAll('.mn-card').forEach(function(cd){ cd.onclick=function(){ var it=its[+cd.dataset.i]; mnCerrar(); it.el.click(); }; });
     ov.classList.add('open'); b.classList.add('active'); };
   window.addEventListener('resize',function(){ if(ov.classList.contains('open')) pos(); });
-  document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('#sidebar .nav-item')) mnCerrar(); },true);
+  document.addEventListener('click',function(e){ var t=e.target; if(t.closest&&(t.closest('#sidebar .nav-item')||(t.closest('#qa-bar .qbar-item, #bottom-nav .bn-item')&&!t.closest('#bn-menu')))) mnCerrar(); },true);
 })();
 </script>
 <!-- SPLASH de carga con porcentaje en tiempo real (solo después de iniciar sesión) -->
