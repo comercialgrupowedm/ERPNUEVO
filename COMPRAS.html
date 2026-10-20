@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<meta name="app-build" content="20261020-180726">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3629,7 +3630,7 @@ window.WEDM_DETALLE=function(p){ _PD.q=String(p.op); _PD.est='TODOS'; var g=docu
  function ocultaNav(){ var n=document.getElementById('nav-inst'); if(n&&std) n.style.display='none'; }
  window.addEventListener('appinstalled',function(){ var n=document.getElementById('nav-inst'); if(n) n.style.display='none'; });
  if(document.readyState!=='loading'){ init(); ocultaNav(); } else document.addEventListener('DOMContentLoaded',function(){ init(); ocultaNav(); });
- if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw-erp.js').catch(function(){}); }); }
+ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw-erp.js',{updateViaCache:'none'}).then(function(g){ try{ g.update(); }catch(e){} }).catch(function(){}); }); }
 })();
 </script>
 <!-- /WEDM-INSTALAR -->
@@ -4298,7 +4299,7 @@ PL.dOC=function(d){
   try{ await sync(); }catch(e){}
   try{ await cclear(); }catch(e){}
   try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
-  location.reload();
+  if(window.wedmRecargaLimpia) wedmRecargaLimpia(); else location.reload();
  }
  function navSync(){ try{
   if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=function(){ syncCero(); }; r.parentNode.insertBefore(b,r.nextSibling); } }
@@ -4452,6 +4453,41 @@ PL.dOC=function(d){
     };
     lista();
   };
+})();
+</script>
+<script id="updchk">
+/* Aviso de versión nueva + recarga limpia (evita quedarse con archivos viejos en caché) */
+(function(){
+  function cur(){ var m=document.querySelector('meta[name="app-build"]'); return m?m.content:''; }
+  window.wedmRecargaLimpia=async function(){
+    try{ if(navigator.serviceWorker){ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){ return r.unregister(); })); } }catch(e){}
+    try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+    var u=new URL(location.href); u.searchParams.set('v',String(Date.now())); location.replace(u.toString());
+  };
+  var shown=false, last=0;
+  function mostrar(){
+    if(shown||!document.body) return; shown=true;
+    var b=document.createElement('div'); b.id='upd-bar';
+    b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483100;background:#1d4ed8;color:#fff;padding:9px 14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font:600 13px system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.3)';
+    b.innerHTML='<span>🔄 Hay una versión nueva de la aplicación.</span><button id="upd-go" style="background:#fff;color:#1d4ed8;border:0;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer">Actualizar ahora</button><button id="upd-x" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:8px;padding:6px 10px;cursor:pointer">Después</button>';
+    document.body.appendChild(b);
+    document.getElementById('upd-go').onclick=function(){ this.disabled=true; this.textContent='Actualizando…'; wedmRecargaLimpia(); };
+    document.getElementById('upd-x').onclick=function(){ b.remove(); shown=false; last=Date.now()+10*60*1000; };
+  }
+  async function chk(){
+    if(shown||!/^https?:$/.test(location.protocol)||navigator.onLine===false||Date.now()<last) return;
+    last=Date.now()+60*1000;
+    try{
+      var r=await fetch(location.pathname+'?_chk='+Date.now(),{cache:'no-store',credentials:'omit'});
+      if(!r.ok||!r.body) return;
+      var rd=r.body.getReader(), dec=new TextDecoder(), t='', m=null;
+      while(!m){ var x=await rd.read(); if(x.done) break; t+=dec.decode(x.value,{stream:true}); m=t.match(/<meta name="app-build" content="([^"]*)"/); if(t.length>60000) break; }
+      try{ rd.cancel(); }catch(e){}
+      if(m&&cur()&&m[1]!==cur()) mostrar();
+    }catch(e){}
+  }
+  window.addEventListener('load',function(){ setTimeout(chk,6000); setInterval(chk,4*60*1000); });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) chk(); });
 })();
 </script>
 </body>
