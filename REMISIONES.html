@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261020-221423">
+<meta name="app-build" content="20261020-222350">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3207,7 +3207,16 @@ function lineasHtml(){
     return `<tr class="${i%2?'azul-row':''}"><td class="center borde" style="width:6%">${i+1}<div><button class="x nop" title="Quitar" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;font-size:9px;cursor:pointer;margin-top:3px" onclick="feRemQuitar(${i})">✕</button></div></td><td class="center borde" style="width:9%"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700;border-bottom:1px dotted #94a3b8" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:8px;text-align:center;color:#64748b">de ${E(it.unidades)} pend.</div>`:''}</td><td class="borde"><textarea rows="2" style="resize:vertical;border:1px dotted #94a3b8" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td></tr>`; }).join('')
    ||`<tr><td class="borde center" colspan="3" style="padding:16px;color:#888">Sin ítems todavía — busca una OP o cotización arriba, o agrega uno manual</td></tr>`;
 }
-function itemsHtml(){
+function yaHtml(){
+  const ids=new Set((R.items||[]).map(x=>x.id_prod)), rem=(DB.remisiones||[]).filter(m=>m.estado!=='CANCELADA'&&m.estado!=='ANULADA'&&m.id!==R.id);
+  const rows=(R.todos||[]).filter(p=>!ids.has(p.id)).map(p=>{ const refs=[];
+    rem.forEach(m=>(m.lineas||[]).forEach(l=>{ if(l.id_prod===p.id){ const n=m.numero?'REM-'+m.numero:'sin número'; refs.push((typeof detalleRem==='function'?`<a href="#" onclick="event.preventDefault();closeModal();detalleRem('${E(m.id)}')" style="color:#1d4ed8;font-weight:700">${E(n)}</a>`:`<b>${E(n)}</b>`)+' ('+E(l.cantidad)+')'); } }));
+    return `<tr><td style="text-align:center">OP-${E(p.op)}</td><td style="text-align:center">${E(p.item_num)}</td><td style="padding:3px 6px">${E(p.descripcion)}</td><td style="text-align:center">${E(p.unidades)}</td><td style="padding:3px 6px">${refs.join(' · ')||'despachado antes del sistema'}</td></tr>`; });
+  if(!rows.length) return '';
+  return `<div style="margin-top:8px;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4"><div style="padding:4px 8px;font-size:11px;font-weight:700;color:#166534">✅ Ya remisionados completos — no se pueden volver a escoger</div><table class="fe-rows"><thead><tr><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Und</th><th>Remisión</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+function itemsHtml(){ return itemsHtml0()+yaHtml(); }
+function itemsHtml0(){
   const its=R.items||[];
   if(!its.length) return `<div style="padding:12px;border:1.5px dashed #94a3b8;border-radius:8px;text-align:center;color:#64748b;font-size:11px">Escribe una OP o una cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
   const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
@@ -3236,6 +3245,7 @@ window.feRemBuscar=async force=>{
   try{
     const r=await sb.rpc('remision_buscar_libre',{p_op:op||null,p_cot:cot||null,p_excluir_id:R.id||null});
     R.items=(r&&r.items)||[];
+    try{ R.todos=await GETALL('produccion','select=id,op,item_num,descripcion,unidades,cant_despachada&'+(op?'op=eq.'+op:'cot_num=eq.'+cot)+'&order=op.asc,item_num.asc'); }catch(_){ R.todos=[]; }
     if(r&&r.cliente){ const c=r.cliente; const set=(id,v)=>{ const el=$(id); if(el&&(force||!el.value)) el.value=v||''; };
       set('fr-emp',c.empresa);set('fr-nit',c.nit);set('fr-dir',c.direccion);set('fr-ciu',c.ciudad);set('fr-con',c.contacto);set('fr-tel',c.telefono);set('fr-oc',c.oc_cliente);set('fr-pro',c.proyecto); }
     refrescar(); toast(R.items.length+' ítem(s) con saldo pendiente');
