@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261021-175336">
+<meta name="app-build" content="20261021-181741">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2985,6 +2985,7 @@ function onBuscarCliente(val){
   if(cli.condicion_pago) set('fc',cli.condicion_pago);
   window._cotCliId=cli.id;
 }
+function cotNumLibre(){ try{ if(_SESSION&&_SESSION.rol==='desarrollador') return true; return !!(typeof F==='function'&&F('com_cot_numero_manual')&&typeof canEdit==='function'&&canEdit()); }catch(e){ return false; } }
 function formCot(c){
   c=c||{}; const isNew=!c.id; const tipoActual=c.tipo||'PE. Proyecto externo'; window._cotCliId=c.id_cliente||null; window._cotEditId=c.id||''; window._cotTab=0; window._ocFile=null;
   const asesores=_esAdmin()?asesoresLista():[_asesorActual()]; const its=isNew?[]:itemsDe(c.id);
@@ -2992,7 +2993,7 @@ function formCot(c){
     ${ayudaForm(`Se llena en tres pasos: **📅 Inicio** (tipo, asesor y descripción), **🏢 Empresa** (cliente, lead time y fecha pactada) y **✅ Estado**. **Crear Cotización** aparece solo cuando ya están los datos obligatorios; si falta alguno, un aviso naranja te lleva al paso correcto. El precio no se escribe aquí: se forma con los ítems que agregues después.`)}
     <div class="wiz-tabs" id="wiz-cot-tabs"><div class="wiz-tab active" onclick="wizTab('wiz-cot',0)">📅 Inicio</div><div class="wiz-tab" onclick="wizTab('wiz-cot',1)">🏢 Empresa</div><div class="wiz-tab" onclick="wizTab('wiz-cot',2)">✅ Estado</div></div>
     <div class="wiz-step" id="wiz-cot-0"><div class="form-grid">
-      <div class="field"><label>Nº Cotización</label><div style="font-family:var(--mono);font-size:${isNew?'14':'20'}px;font-weight:800;color:var(--accent);padding:10px 0">${isNew?'Se asignará al guardar':'COT-'+c.cotizacion}</div></div>
+      <div class="field"><label>Nº Cotización${cotNumLibre()?' <span style="font-size:9px;color:var(--muted)">(editable por ahora)</span>':''}</label>${cotNumLibre()?`<input type="number" id="fnum" min="1" value="${isNew?'':esc(String(c.cotizacion??''))}" placeholder="Automático" style="font-family:var(--mono);font-weight:800;font-size:16px;color:var(--accent)"><div style="font-size:10.5px;color:var(--muted);margin-top:3px">${isNew?'Déjalo vacío para que se asigne el siguiente.':'Al cambiarlo se actualiza también en las OP, remisiones y certificados.'}</div>`:`<div style="font-family:var(--mono);font-size:${isNew?'14':'20'}px;font-weight:800;color:var(--accent);padding:10px 0">${isNew?'Se asignará al guardar':'COT-'+c.cotizacion}</div>`}</div>
       <div class="field"><label>Fecha Emisión COT. ${isNew?'★':'<span style="font-size:9px;color:var(--muted)">(no editable)</span>'}</label>
         <input type="date" id="fe" value="${toISODate(c.fecha_emision)||hoyISO()}" ${isNew?'oninput="if(document.getElementById(\'fd\')?.value) calcFechaEntrega()"':'disabled style="opacity:.6;background:var(--card2)"'}></div>
       <div class="field span2"><label>Tipo</label><select id="f1" onchange="onTipoCot(this.value)" style="font-weight:700">${tiposElegibles(tipoActual).map(t=>`<option value="${esc(t)}" ${tipoActual===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
@@ -3101,13 +3102,24 @@ async function saveCot(exist){
   const btn=document.getElementById('btn-save-cot'); if(btn){ btn.disabled=true; btn.textContent='⏳ Guardando…'; }
   try{
     if(exist){
+      const _cur=DB.cotizaciones.find(x=>x.id===exist), _nn=parseInt(gv('fnum'));
+      if(cotNumLibre()&&_nn>0&&_cur&&_nn!==Number(_cur.cotizacion)){
+        const _dup=DB.cotizaciones.some(x=>x.id!==exist&&Number(x.cotizacion)===_nn);
+        if(_dup&&!confirm('Ya existe otra cotización con el número '+_nn+'. ¿Cambiar de todos modos (quedarán dos con el mismo número)?')){ if(btn){ btn.disabled=false; btn.textContent='✓ Guardar'; } return; }
+        const _old=_cur.cotizacion; await sb.rpc('dev_cot_cambiar_numero',{p_id:exist,p_nuevo:_nn,p_forzar:_dup});
+        _cur.cotizacion=_nn; (DB.produccion||[]).forEach(p=>{ if(p.id_cotizacion===exist||(!p.id_cotizacion&&p.cot_num===_old)) p.cot_num=_nn; }); (DB.remisiones||[]).forEach(m=>{ if(m.id_cotizacion===exist||(!m.id_cotizacion&&m.cot_num===_old)) m.cot_num=_nn; });
+        toast('🔢 COT-'+_old+' → COT-'+_nn);
+      }
       const r=await PATCH('cotizaciones',exist,row); const idx=DB.cotizaciones.findIndex(x=>x.id===exist);
       if(idx>=0) DB.cotizaciones[idx]={...DB.cotizaciones[idx],...(r[0]||row)};
       if(ocFile) await subirArchivo({id_cot:exist},'orden_compra',ocFile);
       toast('✅ Cotización actualizada'); closeModal(); refreshCurrentView(); if(_detailOpen) detailCot(exist);
     }else{
       row.fecha_emision=gv('fe');
-      const num=await sb.rpc('next_cot_num'); row.cotizacion=num;
+      const _man=cotNumLibre()?parseInt(gv('fnum')):0; let num;
+      if(_man>0){ if(DB.cotizaciones.some(x=>Number(x.cotizacion)===_man)&&!confirm('Ya existe una cotización con el número '+_man+'. ¿Crearla de todos modos?')){ if(btn){ btn.disabled=false; btn.textContent='✓ Crear Cotización'; } return; } num=_man; }
+      else num=await sb.rpc('next_cot_num');
+      row.cotizacion=num;
       const r=await POST('cotizaciones',row); const nc=r[0]||row; DB.cotizaciones.unshift(nc);
       if(ocFile&&nc.id) await subirArchivo({id_cot:nc.id},'orden_compra',ocFile);
       toast(`✅ COT-${num} creada`); closeModal(); updateBadges(); refreshCurrentView(); detailCot(nc.id);
@@ -3232,18 +3244,18 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
 }
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
-  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>';
+  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
   const iva=Number(c.iva||0)||Math.round(sub*IVA_PCT/100); const descVal=Number(c.descuento||0), descPct=Number(c.descuento_pct||0);
   const total=(Number(c.precio_total||0)||sub+iva)-descVal; const money=v=>'$'+Number(v||0).toLocaleString('es-CO');
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${clp(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
+    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${dscIt(it)}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
     fecha:hoy,cliente:cl(c.empresa),nit:cl(c.nit||cli.nit),direccion:cl(c.direccion||cli.direccion),ciudad:cl(c.ciudad||cli.ciudad),encargado:cl(c.encargado||cli.contacto),telefono:cl(c.telefono||cli.telefono),proyecto:cl(c.descripcion_proyecto),numero:c.cotizacion,
-    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''),unit:money(it.precio_unit),total:money(totalItem(it))})),
+    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:dscIt(it),unit:money(it.precio_unit),total:money(totalItem(it))})),
     letras:esc(numeroALetras(total)),subtotal:money(sub),iva:money(iva),descuento:descVal>0?'-'+money(descVal):'',desc_lbl:'DESCUENTO'+(descPct?' ('+descPct+'%)':''),total:money(total),rs:descVal>0?5:4,
     observaciones:c.observaciones_especiales?esc(c.observaciones_especiales):'',validez:c.validez_dias||30,forma_pago:esc(pago),entrega:c.lead_time_dias??'—',asesor:esc(c.asesor||'Asesor Comercial'),cargo:esc(CARGOS[c.asesor]||'Asesor Comercial')},null,'COT-'+c.cotizacion); } }catch(e){ console.error(e); }
   const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
@@ -3660,7 +3672,7 @@ async function saveItem(){
   const row={id_cotizacion:_IT.cotId,item:parseInt(gv('i2'))||1,descripcion:desc||null,unidades,
     material:mats.map(m=>m.nombre).join(' + ')||null,proceso:prcs.map(p=>p.nombre).join(' + ')||null,servicio:svcs.map(s=>s.nombre).join(' + ')||null,
     mats,svcs,prcs:prcs.map(({hiloMsg,...r})=>r),costo_flete:gn('iflete'),diseno:gv('idis')||null,horas_diseno:gv('ihrdis')===''?null:gn('ihrdis'),costo_diseno:gn('icdis'),minutos_manual:gv('imm')===''?null:gn('imm'),
-    margen_pct:gn('imargen'),costo_total:Math.round(t.total),presup_unit:Math.round(t.presup),precio_unit:precio,precio_total:Math.round(precio*unidades),marquilla_html:(typeof window._ITH==='string'?(window._ITH||null):undefined)};
+    margen_pct:gn('imargen'),costo_total:Math.round(t.total),presup_unit:Math.round(t.presup),precio_unit:precio,precio_total:Math.round(precio*unidades),marquilla_html:(typeof window._ITH==='string'?(typeof wdFinal==='function'?wdFinal():(window._ITH||null)):undefined)};
   const btn=document.getElementById('btn-save-item'); if(btn){ btn.disabled=true; btn.textContent='⏳ Guardando…'; }
   try{
     if(_IT.id){ const r=await PATCH('items',_IT.id,row); const i=DB.items.findIndex(x=>x.id===_IT.id); if(i>=0) DB.items[i]={...DB.items[i],...(r[0]||row)}; toast('✅ Ítem actualizado'); }
@@ -7083,60 +7095,6 @@ PL.dRem=function(m,tipo){
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) chk(); });
 })();
 </script>
-<script id="wedword">
-/* Descripción del ítem tipo Word: texto con formato, imágenes (Ctrl+V) y tablas -> items.marquilla_html */
-(function(){
-  var $=function(i){ return document.getElementById(i); };
-  var big=function(){ var d=$('i4'); if(!d) return false; var v=d.value||''; return v.length>350||v.split('\n').length>7||!!window._ITH; };
-  window.wdEstado=function(){
-    var box=$('wd-box'); if(!box) return; var h=window._ITH||'';
-    box.style.display=big()?'':'none';
-    var e=$('wd-est'), p=$('wd-prev'); if(e) e.textContent=h?'✓ Esta descripción incluye formato / imágenes / tablas (se muestra debajo del texto en la cotización)':'Para pegar imágenes o tablas con formato';
-    if(p){ p.innerHTML=h&&typeof mqRender==='function'?mqRender(h):''; p.style.display=h?'':'none'; }
-  };
-  window.wdBoxHtml=function(it){
-    window._ITH=(it&&it.marquilla_html)||'';
-    setTimeout(function(){ var d=$('i4'); if(d&&!d._wdl){ d._wdl=1; d.addEventListener('input',window.wdEstado); } window.wdEstado(); },0);
-    return '<div id="wd-box" style="display:none"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="wdAbrir()">📝 Descripción tipo Word</button><span id="wd-est" style="font-size:11.5px;color:var(--muted)"></span></div><div id="wd-prev" style="display:none;margin-top:8px;border:1px dashed var(--border);border-radius:8px;padding:8px;max-height:220px;overflow:auto;font-size:12px"></div></div>';
-  };
-  function cmd(c,v){ var ed=$('wd-ed'); if(ed){ ed.focus(); document.execCommand(c,false,v||null); } }
-  async function addImg(f){ try{ var d=await imgFromFile(f,900,0.72); var ed=$('wd-ed'); ed.focus(); document.execCommand('insertHTML',false,'<img src="'+d+'" style="max-width:100%"><br>'); }catch(e){ if(window.toast) toast('❌ '+(e.message||e),'error'); } }
-  function tabla(){ var r=parseInt(prompt('Filas',3)||0), c=parseInt(prompt('Columnas',3)||0); if(!(r>0&&c>0)) return; var h='<table style="border-collapse:collapse"><tbody>'; for(var i=0;i<r;i++){ h+='<tr>'; for(var j=0;j<c;j++) h+='<td style="border:1px solid #999;padding:4px 8px;min-width:50px">&nbsp;</td>'; h+='</tr>'; } h+='</tbody></table><br>'; cmd('insertHTML',h); }
-  window.wdAbrir=function(file){
-    if($('wd-ov')) return;
-    var ov=document.createElement('div'); ov.id='wd-ov';
-    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:10px';
-    var B=function(t,a,ti){ return '<button type="button" title="'+(ti||'')+'" onmousedown="event.preventDefault();'+a+'" style="min-width:36px;height:34px;border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111);border-radius:7px;cursor:pointer;font-size:13px;padding:0 9px">'+t+'</button>'; };
-    ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;width:min(1000px,100%);max-height:96vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">'
-     +'<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:15px;flex:1">📝 Descripción tipo Word</b><button type="button" onclick="wdCerrar()" style="border:0;background:none;font-size:20px;cursor:pointer;color:inherit">✕</button></div>'
-     +'<div style="display:flex;gap:5px;flex-wrap:wrap;padding:8px 12px;background:var(--card2,#f1f5f9);border-bottom:1px solid var(--border,#e2e8f0)">'
-     +B('<b>N</b>',"wdCmd('bold')",'Negrita')+B('<i>K</i>',"wdCmd('italic')",'Cursiva')+B('<u>S</u>',"wdCmd('underline')",'Subrayado')
-     +B('• Lista',"wdCmd('insertUnorderedList')")+B('1. Lista',"wdCmd('insertOrderedList')")+B('🖼 Imagen',"wdImg()",'Insertar imagen')+B('▦ Tabla',"wdTabla()")+B('Limpiar formato',"wdCmd('removeFormat')")+'</div>'
-     +'<div id="wd-ed" contenteditable="true" data-ph="Escribe aquí, o pega imágenes y tablas (Ctrl+V)…" style="flex:1;min-height:340px;overflow:auto;padding:14px 18px;font-size:14px;line-height:1.55;outline:none;word-break:break-word"></div>'
-     +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span style="flex:1;font-size:11.5px;color:var(--muted,#64748b);min-width:200px">Esto se muestra <b>debajo del texto</b> de la descripción en la cotización y en la OP. Las imágenes se pegan con Ctrl+V.</span><button type="button" class="btn btn-ghost" onclick="wdCerrar()">Cancelar</button><button type="button" class="btn btn-primary" onclick="wdAplicar()">Aplicar</button></div></div>';
-    document.body.appendChild(ov);
-    var ed=$('wd-ed'); ed.innerHTML=typeof mqSan==='function'?mqSan(window._ITH||''):(window._ITH||'');
-    ed.querySelectorAll('img').forEach(function(i){ i.style.maxWidth='100%'; });
-    ed.addEventListener('paste',function(e){
-      var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
-      if(im){ e.preventDefault(); var f=im.getAsFile(); if(f) addImg(f); return; }
-      setTimeout(function(){ if(typeof mqSan==='function') ed.innerHTML=mqSan(ed.innerHTML); },0);
-    });
-    ed.addEventListener('drop',function(e){ var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/^image\//.test(f.type)){ e.preventDefault(); addImg(f); } });
-    var st=document.createElement('style'); st.id='wd-st'; st.textContent='#wd-ed:empty:before{content:attr(data-ph);color:#94a3b8}#wd-ed img{max-width:100%;height:auto;border-radius:4px;display:block;margin:6px 0}#wd-ed table{border-collapse:collapse;max-width:100%}#wd-ed td,#wd-ed th{border:1px solid #999;padding:3px 7px}'; document.head.appendChild(st);
-    if(file&&file.type) addImg(file); else ed.focus();
-  };
-  window.wdCmd=cmd; window.wdImg=function(){ if(window.pickFile) pickFile('image/*',addImg); }; window.wdTabla=tabla;
-  window.wdCerrar=function(){ var o=$('wd-ov'); if(o) o.remove(); var s=$('wd-st'); if(s) s.remove(); };
-  window.wdAplicar=function(){ var ed=$('wd-ed'); var h=typeof mqSan==='function'?mqSan(ed.innerHTML):ed.innerHTML;
-    window._ITH=(ed.textContent.trim()||ed.querySelector('img,table'))?h:''; wdCerrar(); window.wdEstado(); };
-  document.addEventListener('paste',function(e){
-    var t=e.target; if(!t||t.id!=='i4') return;
-    var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
-    if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f);
-  },true);
-})();
-</script>
 <script id="wedmux">
 /* WEDM UX: panel de detalle ajustable, columnas ajustables (tipo Excel) y posición de scroll conservada al guardar */
 (function(){
@@ -7286,6 +7244,79 @@ PL.dRem=function(m,tipo){
   function init(){ envolver(); pgInc(); initPanel(); enganchar(); prog();
     var mo=new MutationObserver(prog); mo.observe(document.body,{childList:true,subtree:true}); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<script id="wedword">
+/* Descripción del ítem tipo Word: texto con formato, imágenes (Ctrl+V) y tablas -> items.marquilla_html */
+(function(){
+  var $=function(i){ return document.getElementById(i); };
+  var big=function(){ var d=$('i4'); if(!d) return false; var v=d.value||''; return v.length>350||v.split('\n').length>7||!!window._ITH; };
+  window.wdEstado=function(){
+    var box=$('wd-box'); if(!box) return; var h=window._ITH||'';
+    box.style.display=big()?'':'none';
+    var e=$('wd-est'), p=$('wd-prev'); if(e) e.textContent=h?'✓ Descripción con formato / imágenes / tablas (es la misma descripción del ítem)':'Misma descripción del ítem, con formato, imágenes y tablas';
+    if(p){ p.innerHTML=h&&typeof mqRender==='function'?mqRender(h.replace(/^\s*<!--wd-->/,'')):''; p.style.display=h?'':'none'; }
+  };
+  window.wdBoxHtml=function(it){
+    window._ITH=(it&&it.marquilla_html)||''; window._wdTxt=(it&&it.descripcion)||'';
+    setTimeout(function(){ var d=$('i4'); if(d&&!d._wdl){ d._wdl=1; d.addEventListener('input',window.wdEstado); } window.wdEstado(); },0);
+    return '<div id="wd-box" style="display:none"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="wdAbrir()">📝 Descripción tipo Word</button><span id="wd-est" style="font-size:11.5px;color:var(--muted)"></span></div><div id="wd-prev" style="display:none;margin-top:8px;border:1px dashed var(--border);border-radius:8px;padding:8px;max-height:220px;overflow:auto;font-size:12px"></div></div>';
+  };
+  function cmd(c,v){ var ed=$('wd-ed'); if(ed){ ed.focus(); document.execCommand(c,false,v||null); } }
+  async function addImg(f){ try{ var d=await imgFromFile(f,900,0.72); var ed=$('wd-ed'); ed.focus(); document.execCommand('insertHTML',false,'<img src="'+d+'" style="max-width:100%"><br>'); }catch(e){ if(window.toast) toast('❌ '+(e.message||e),'error'); } }
+  function tabla(){ var r=parseInt(prompt('Filas',3)||0), c=parseInt(prompt('Columnas',3)||0); if(!(r>0&&c>0)) return; var h='<table style="border-collapse:collapse"><tbody>'; for(var i=0;i<r;i++){ h+='<tr>'; for(var j=0;j<c;j++) h+='<td style="border:1px solid #999;padding:4px 8px;min-width:50px">&nbsp;</td>'; h+='</tr>'; } h+='</tbody></table><br>'; cmd('insertHTML',h); }
+  window.wdAbrir=function(file){
+    if($('wd-ov')) return;
+    var ov=document.createElement('div'); ov.id='wd-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:10px';
+    var B=function(t,a,ti){ return '<button type="button" title="'+(ti||'')+'" onmousedown="event.preventDefault();'+a+'" style="min-width:36px;height:34px;border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111);border-radius:7px;cursor:pointer;font-size:13px;padding:0 9px">'+t+'</button>'; };
+    ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;width:min(1000px,100%);max-height:96vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">'
+     +'<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:15px;flex:1">📝 Descripción tipo Word</b><button type="button" onclick="wdCerrar()" style="border:0;background:none;font-size:20px;cursor:pointer;color:inherit">✕</button></div>'
+     +'<div style="display:flex;gap:5px;flex-wrap:wrap;padding:8px 12px;background:var(--card2,#f1f5f9);border-bottom:1px solid var(--border,#e2e8f0)">'
+     +B('<b>N</b>',"wdCmd('bold')",'Negrita')+B('<i>K</i>',"wdCmd('italic')",'Cursiva')+B('<u>S</u>',"wdCmd('underline')",'Subrayado')
+     +B('• Lista',"wdCmd('insertUnorderedList')")+B('1. Lista',"wdCmd('insertOrderedList')")+B('🖼 Imagen',"wdImg()",'Insertar imagen')+B('▦ Tabla',"wdTabla()")+B('Limpiar formato',"wdCmd('removeFormat')")+'</div>'
+     +'<div id="wd-ed" contenteditable="true" data-ph="Escribe aquí, o pega imágenes y tablas (Ctrl+V)…" style="flex:1;min-height:340px;overflow:auto;padding:14px 18px;font-size:14px;line-height:1.55;outline:none;word-break:break-word"></div>'
+     +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span style="flex:1;font-size:11.5px;color:var(--muted,#64748b);min-width:200px">Es la <b>misma descripción del ítem</b>: lo que escribas aquí se refleja en el cuadro de texto y en la cotización. Las imágenes se pegan con Ctrl+V.</span><button type="button" class="btn btn-ghost" onclick="wdCerrar()">Cancelar</button><button type="button" class="btn btn-primary" onclick="wdAplicar()">Aplicar</button></div></div>';
+    document.body.appendChild(ov);
+    var ed=$('wd-ed'); var prev=(window._ITH||'').replace(/^\s*<!--wd-->/,''); var d4=$('i4'), txt=d4?d4.value:'';
+    var txtH=txt.trim()?'<div>'+txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').split('\n').join('</div><div>').replace(/<div><\/div>/g,'<div><br></div>')+'</div>':'';
+    ed.innerHTML=typeof mqSan==='function'?mqSan((/^\s*<!--wd-->/.test(window._ITH||'')?'':txtH)+prev):((/^\s*<!--wd-->/.test(window._ITH||'')?'':txtH)+prev);
+    ed.querySelectorAll('img').forEach(function(i){ i.style.maxWidth='100%'; });
+    ed.addEventListener('paste',function(e){
+      var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
+      if(im){ e.preventDefault(); var f=im.getAsFile(); if(f) addImg(f); return; }
+      setTimeout(function(){ if(typeof mqSan==='function') ed.innerHTML=mqSan(ed.innerHTML); },0);
+    });
+    ed.addEventListener('drop',function(e){ var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/^image\//.test(f.type)){ e.preventDefault(); addImg(f); } });
+    var st=document.createElement('style'); st.id='wd-st'; st.textContent='#wd-ed:empty:before{content:attr(data-ph);color:#94a3b8}#wd-ed img{max-width:100%;height:auto;border-radius:4px;display:block;margin:6px 0}#wd-ed table{border-collapse:collapse;max-width:100%}#wd-ed td,#wd-ed th{border:1px solid #999;padding:3px 7px}'; document.head.appendChild(st);
+    if(file&&file.type) addImg(file); else ed.focus();
+  };
+  window.wdCmd=cmd; window.wdImg=function(){ if(window.pickFile) pickFile('image/*',addImg); }; window.wdTabla=tabla;
+  window.wdCerrar=function(){ var o=$('wd-ov'); if(o) o.remove(); var s=$('wd-st'); if(s) s.remove(); };
+  window.wdAplicar=function(){ var ed=$('wd-ed'); var h=typeof mqSan==='function'?mqSan(ed.innerHTML):ed.innerHTML;
+    var ok=ed.textContent.trim()||ed.querySelector('img,table'); window._ITH=ok?'<!--wd-->'+h:'';
+    var d4=$('i4'); if(d4&&ok){ var t=wdTexto(ed); d4.value=t; window._wdTxt=t; d4.dispatchEvent(new Event('input',{bubbles:true})); }
+    wdCerrar(); window.wdEstado(); };
+  function wdTexto(ed){ var c=ed.cloneNode(true);
+    [].slice.call(c.querySelectorAll('div,p')).forEach(function(d){ if(d.childNodes.length===1&&d.firstChild.nodeName==='BR') d.firstChild.remove(); });
+    [].slice.call(c.querySelectorAll('br')).forEach(function(b){ b.replaceWith('\n'); });
+    [].slice.call(c.querySelectorAll('div,p,li,tr,h1,h2,h3')).forEach(function(d){ d.appendChild(document.createTextNode('\n')); });
+    [].slice.call(c.querySelectorAll('td,th')).forEach(function(d){ d.appendChild(document.createTextNode('\t')); });
+    c.querySelectorAll('img').forEach(function(i){ i.remove(); });
+    return c.textContent.replace(/\u00a0/g,' ').replace(/\t+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim(); }
+  window.wdFinal=function(){
+    var h=window._ITH||''; if(!/^\s*<!--wd-->/.test(h)) return h||null;
+    var d4=$('i4'), t=d4?d4.value.trim():'', base=(window._wdTxt||'').trim(); if(t===base) return h;
+    var tmp=document.createElement('div'); tmp.innerHTML=h.replace(/^\s*<!--wd-->/,'');
+    var ric=[].slice.call(tmp.querySelectorAll('img,table')).map(function(n){ return n.tagName==='TABLE'?n.outerHTML:(n.closest('table')?'':n.outerHTML); }).join('<br>');
+    if(!ric) return null;
+    var esc=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').split('\n').join('<br>');
+    return '<!--wd-->'+(t?'<div>'+esc+'</div>':'')+ric; };
+  document.addEventListener('paste',function(e){
+    var t=e.target; if(!t||t.id!=='i4') return;
+    var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
+    if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f);
+  },true);
 })();
 </script>
 </body>
