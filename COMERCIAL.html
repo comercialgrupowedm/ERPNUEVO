@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261020-183016">
+<meta name="app-build" content="20261020-220644">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -7175,7 +7175,41 @@ PL.dRem=function(m,tipo){
         var r=d.apply(this,arguments); if(was&&same&&top>0&&b){ restaurar(b,top); }
         return r; }; dd._wux=1; window.openDetail=dd; }
   }
-  function init(){ envolver(); initPanel(); enganchar(); prog();
+  /* ── 4. "Mostrar más" incremental: agrega solo las filas nuevas (sin redibujar todo ni recargar miniaturas) ── */
+  function pgInc(){
+    var o=window.pgMas; if(typeof o!=='function'||o._wux) return;
+    var f=function(key){
+      var c=document.getElementById('content'), sc=window.setContent, ok=false;
+      try{
+        if(!c||typeof refreshCurrentView!=='function'||typeof _PGN==='undefined') return o.apply(this,arguments);
+        var q='table.data-tbl tbody, .card-list', lists=[].slice.call(c.querySelectorAll(q));
+        var btn=c.querySelector('button[onclick="pgMas(\''+key+'\')"]'); if(!btn||!lists.length) return o.apply(this,arguments);
+        var li=-1, bp=btn.closest('div'); for(var e=bp&&bp.previousElementSibling; e&&li<0; e=e.previousElementSibling){ var L=e.matches&&e.matches(q)?e:(e.querySelector&&e.querySelector(q)); if(L) li=lists.indexOf(L); }
+        if(li<0) return o.apply(this,arguments);
+        var live=lists[li], prev=_PGN[key]||PG_BASE, cap=null, ps=window.pgSlice;
+        _PGN[key]=prev+100;
+        window.setContent=function(h){ cap=String(h); };
+        window.pgSlice=function(k,a){ var r=ps.apply(this,arguments); return k===key?r.slice(prev):r; };
+        try{ refreshCurrentView(); }finally{ window.setContent=sc; window.pgSlice=ps; }
+        if(cap==null) return;                       // vista asíncrona: se dibuja sola
+        var t=document.createElement('template'); t.innerHTML=cap;
+        var nl=[].slice.call(t.content.querySelectorAll(q));
+        if(nl.length===lists.length && nl[li].children.length){
+          var fr=document.createDocumentFragment(); [].slice.call(nl[li].children).forEach(function(n){ fr.appendChild(document.importNode(n,true)); });
+          live.appendChild(fr);
+          var p=_pgPend; _pgPend=null;
+          if(p&&p.key===key&&p.n!=null){ btn.textContent='Mostrar más · viendo '+p.n+' de '+p.total; }
+          else if(bp) bp.remove();
+          t.content.querySelectorAll('[id^="fc-"]').forEach(function(x){ var l=document.getElementById(x.id); if(l) l.textContent=x.textContent; });
+          if(cap.indexOf('lz-th')>-1&&typeof lzThumbs==='function') setTimeout(lzThumbs,0);
+          ok=true;
+        }
+        if(!ok) sc.call(window,cap);
+      }catch(e){ try{ window.setContent=sc; }catch(_){} if(!ok) return o.apply(this,arguments); }
+    };
+    f._wux=1; window.pgMas=f;
+  }
+  function init(){ envolver(); pgInc(); initPanel(); enganchar(); prog();
     var mo=new MutationObserver(prog); mo.observe(document.body,{childList:true,subtree:true}); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
 })();
