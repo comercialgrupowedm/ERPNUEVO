@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261020-223842">
+<meta name="app-build" content="20261021-175336">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3179,18 +3179,18 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
 }
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
-  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; };
+  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>';
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
   const iva=Number(c.iva||0)||Math.round(sub*IVA_PCT/100); const descVal=Number(c.descuento||0), descPct=Number(c.descuento_pct||0);
   const total=(Number(c.precio_total||0)||sub+iva)-descVal; const money=v=>'$'+Number(v||0).toLocaleString('es-CO');
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${cl(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
+    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${clp(it.descripcion)}${it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
     fecha:hoy,cliente:cl(c.empresa),nit:cl(c.nit||cli.nit),direccion:cl(c.direccion||cli.direccion),ciudad:cl(c.ciudad||cli.ciudad),encargado:cl(c.encargado||cli.contacto),telefono:cl(c.telefono||cli.telefono),proyecto:cl(c.descripcion_proyecto),numero:c.cotizacion,
-    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:cl(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''),unit:money(it.precio_unit),total:money(totalItem(it))})),
+    lineas:(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>({item:it.item??i+1,cant:it.unidades||1,desc:clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''),unit:money(it.precio_unit),total:money(totalItem(it))})),
     letras:esc(numeroALetras(total)),subtotal:money(sub),iva:money(iva),descuento:descVal>0?'-'+money(descVal):'',desc_lbl:'DESCUENTO'+(descPct?' ('+descPct+'%)':''),total:money(total),rs:descVal>0?5:4,
     observaciones:c.observaciones_especiales?esc(c.observaciones_especiales):'',validez:c.validez_dias||30,forma_pago:esc(pago),entrega:c.lead_time_dias??'—',asesor:esc(c.asesor||'Asesor Comercial'),cargo:esc(CARGOS[c.asesor]||'Asesor Comercial')},null,'COT-'+c.cotizacion); } }catch(e){ console.error(e); }
   const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
@@ -3328,6 +3328,7 @@ function formItem(itOrId,cotId){
       <div class="field"><label>Nº Item ★</label><input type="number" id="i2" value="${nextNum}"></div>
       <div class="field"><label>Unidades ★</label><input type="number" id="i3" value="${it.unidades||1}" min="1" oninput="itRecalcAll()"></div>
       <div class="field span2"><label>Descripción Item</label><textarea id="i4" style="min-height:130px" placeholder="Descripción de la pieza…" oninput="itSugerirDeb()">${esc(it.descripcion||'')}</textarea></div>
+      <div class="field span2">${typeof wdBoxHtml==='function'?wdBoxHtml(it):''}</div>
       <div class="field span2" id="it-sug"></div>
       <div class="field span2"><label>Costo Flete (costo total) <span style="color:var(--warn);font-size:10px;font-weight:700">×1.3 al sumar</span></label><div class="money-row"><span class="money-sign">$</span><input type="number" id="iflete" value="${it.costo_flete||''}" placeholder="0" oninput="recalcItem()"></div></div></div></div>
     <div class="wiz-step" id="wiz-item-1" style="display:none"><div id="mat-rows"></div><button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" onclick="itAddRow('mat')">＋ Agregar Material</button></div>
@@ -3606,7 +3607,7 @@ async function saveItem(){
   const row={id_cotizacion:_IT.cotId,item:parseInt(gv('i2'))||1,descripcion:desc||null,unidades,
     material:mats.map(m=>m.nombre).join(' + ')||null,proceso:prcs.map(p=>p.nombre).join(' + ')||null,servicio:svcs.map(s=>s.nombre).join(' + ')||null,
     mats,svcs,prcs:prcs.map(({hiloMsg,...r})=>r),costo_flete:gn('iflete'),diseno:gv('idis')||null,horas_diseno:gv('ihrdis')===''?null:gn('ihrdis'),costo_diseno:gn('icdis'),minutos_manual:gv('imm')===''?null:gn('imm'),
-    margen_pct:gn('imargen'),costo_total:Math.round(t.total),presup_unit:Math.round(t.presup),precio_unit:precio,precio_total:Math.round(precio*unidades)};
+    margen_pct:gn('imargen'),costo_total:Math.round(t.total),presup_unit:Math.round(t.presup),precio_unit:precio,precio_total:Math.round(precio*unidades),marquilla_html:(typeof window._ITH==='string'?(window._ITH||null):undefined)};
   const btn=document.getElementById('btn-save-item'); if(btn){ btn.disabled=true; btn.textContent='⏳ Guardando…'; }
   try{
     if(_IT.id){ const r=await PATCH('items',_IT.id,row); const i=DB.items.findIndex(x=>x.id===_IT.id); if(i>=0) DB.items[i]={...DB.items[i],...(r[0]||row)}; toast('✅ Ítem actualizado'); }
@@ -9419,6 +9420,60 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) chk(); });
 })();
 </script>
+<script id="wedword">
+/* Descripción del ítem tipo Word: texto con formato, imágenes (Ctrl+V) y tablas -> items.marquilla_html */
+(function(){
+  var $=function(i){ return document.getElementById(i); };
+  var big=function(){ var d=$('i4'); if(!d) return false; var v=d.value||''; return v.length>350||v.split('\n').length>7||!!window._ITH; };
+  window.wdEstado=function(){
+    var box=$('wd-box'); if(!box) return; var h=window._ITH||'';
+    box.style.display=big()?'':'none';
+    var e=$('wd-est'), p=$('wd-prev'); if(e) e.textContent=h?'✓ Esta descripción incluye formato / imágenes / tablas (se muestra debajo del texto en la cotización)':'Para pegar imágenes o tablas con formato';
+    if(p){ p.innerHTML=h&&typeof mqRender==='function'?mqRender(h):''; p.style.display=h?'':'none'; }
+  };
+  window.wdBoxHtml=function(it){
+    window._ITH=(it&&it.marquilla_html)||'';
+    setTimeout(function(){ var d=$('i4'); if(d&&!d._wdl){ d._wdl=1; d.addEventListener('input',window.wdEstado); } window.wdEstado(); },0);
+    return '<div id="wd-box" style="display:none"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="wdAbrir()">📝 Descripción tipo Word</button><span id="wd-est" style="font-size:11.5px;color:var(--muted)"></span></div><div id="wd-prev" style="display:none;margin-top:8px;border:1px dashed var(--border);border-radius:8px;padding:8px;max-height:220px;overflow:auto;font-size:12px"></div></div>';
+  };
+  function cmd(c,v){ var ed=$('wd-ed'); if(ed){ ed.focus(); document.execCommand(c,false,v||null); } }
+  async function addImg(f){ try{ var d=await imgFromFile(f,900,0.72); var ed=$('wd-ed'); ed.focus(); document.execCommand('insertHTML',false,'<img src="'+d+'" style="max-width:100%"><br>'); }catch(e){ if(window.toast) toast('❌ '+(e.message||e),'error'); } }
+  function tabla(){ var r=parseInt(prompt('Filas',3)||0), c=parseInt(prompt('Columnas',3)||0); if(!(r>0&&c>0)) return; var h='<table style="border-collapse:collapse"><tbody>'; for(var i=0;i<r;i++){ h+='<tr>'; for(var j=0;j<c;j++) h+='<td style="border:1px solid #999;padding:4px 8px;min-width:50px">&nbsp;</td>'; h+='</tr>'; } h+='</tbody></table><br>'; cmd('insertHTML',h); }
+  window.wdAbrir=function(file){
+    if($('wd-ov')) return;
+    var ov=document.createElement('div'); ov.id='wd-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:10px';
+    var B=function(t,a,ti){ return '<button type="button" title="'+(ti||'')+'" onmousedown="event.preventDefault();'+a+'" style="min-width:36px;height:34px;border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111);border-radius:7px;cursor:pointer;font-size:13px;padding:0 9px">'+t+'</button>'; };
+    ov.innerHTML='<div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:14px;width:min(1000px,100%);max-height:96vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">'
+     +'<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:15px;flex:1">📝 Descripción tipo Word</b><button type="button" onclick="wdCerrar()" style="border:0;background:none;font-size:20px;cursor:pointer;color:inherit">✕</button></div>'
+     +'<div style="display:flex;gap:5px;flex-wrap:wrap;padding:8px 12px;background:var(--card2,#f1f5f9);border-bottom:1px solid var(--border,#e2e8f0)">'
+     +B('<b>N</b>',"wdCmd('bold')",'Negrita')+B('<i>K</i>',"wdCmd('italic')",'Cursiva')+B('<u>S</u>',"wdCmd('underline')",'Subrayado')
+     +B('• Lista',"wdCmd('insertUnorderedList')")+B('1. Lista',"wdCmd('insertOrderedList')")+B('🖼 Imagen',"wdImg()",'Insertar imagen')+B('▦ Tabla',"wdTabla()")+B('Limpiar formato',"wdCmd('removeFormat')")+'</div>'
+     +'<div id="wd-ed" contenteditable="true" data-ph="Escribe aquí, o pega imágenes y tablas (Ctrl+V)…" style="flex:1;min-height:340px;overflow:auto;padding:14px 18px;font-size:14px;line-height:1.55;outline:none;word-break:break-word"></div>'
+     +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span style="flex:1;font-size:11.5px;color:var(--muted,#64748b);min-width:200px">Esto se muestra <b>debajo del texto</b> de la descripción en la cotización y en la OP. Las imágenes se pegan con Ctrl+V.</span><button type="button" class="btn btn-ghost" onclick="wdCerrar()">Cancelar</button><button type="button" class="btn btn-primary" onclick="wdAplicar()">Aplicar</button></div></div>';
+    document.body.appendChild(ov);
+    var ed=$('wd-ed'); ed.innerHTML=typeof mqSan==='function'?mqSan(window._ITH||''):(window._ITH||'');
+    ed.querySelectorAll('img').forEach(function(i){ i.style.maxWidth='100%'; });
+    ed.addEventListener('paste',function(e){
+      var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
+      if(im){ e.preventDefault(); var f=im.getAsFile(); if(f) addImg(f); return; }
+      setTimeout(function(){ if(typeof mqSan==='function') ed.innerHTML=mqSan(ed.innerHTML); },0);
+    });
+    ed.addEventListener('drop',function(e){ var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/^image\//.test(f.type)){ e.preventDefault(); addImg(f); } });
+    var st=document.createElement('style'); st.id='wd-st'; st.textContent='#wd-ed:empty:before{content:attr(data-ph);color:#94a3b8}#wd-ed img{max-width:100%;height:auto;border-radius:4px;display:block;margin:6px 0}#wd-ed table{border-collapse:collapse;max-width:100%}#wd-ed td,#wd-ed th{border:1px solid #999;padding:3px 7px}'; document.head.appendChild(st);
+    if(file&&file.type) addImg(file); else ed.focus();
+  };
+  window.wdCmd=cmd; window.wdImg=function(){ if(window.pickFile) pickFile('image/*',addImg); }; window.wdTabla=tabla;
+  window.wdCerrar=function(){ var o=$('wd-ov'); if(o) o.remove(); var s=$('wd-st'); if(s) s.remove(); };
+  window.wdAplicar=function(){ var ed=$('wd-ed'); var h=typeof mqSan==='function'?mqSan(ed.innerHTML):ed.innerHTML;
+    window._ITH=(ed.textContent.trim()||ed.querySelector('img,table'))?h:''; wdCerrar(); window.wdEstado(); };
+  document.addEventListener('paste',function(e){
+    var t=e.target; if(!t||t.id!=='i4') return;
+    var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
+    if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f);
+  },true);
+})();
+</script>
 <script id="wedmux">
 /* WEDM UX: panel de detalle ajustable, columnas ajustables (tipo Excel) y posición de scroll conservada al guardar */
 (function(){
@@ -9487,7 +9542,7 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     });
   }
   document.addEventListener('click',function(e){ if(window._rsDrag&&Date.now()-window._rsDrag<300&&e.target.closest&&e.target.closest('th')){ e.stopPropagation(); e.preventDefault(); } },true);
-  var raf=0; function barrer(){ raf=0; document.querySelectorAll('table.data-tbl').forEach(mejorar); }
+  var raf=0; function barrer(){ raf=0; document.querySelectorAll('table.data-tbl').forEach(mejorar); if(window._agTodos) window._agTodos(); }
   function prog(){ if(!raf) raf=requestAnimationFrame(barrer); }
 
   /* ── 3. Conservar la posición al refrescar después de guardar ── */
@@ -9547,6 +9602,24 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     };
     f._wux=1; window.pgMas=f;
   }
+
+  /* ── 5. Cuadros de texto que crecen con lo que se escribe ── */
+  var agst=document.createElement('style'); agst.textContent='textarea:not([data-noag]){overflow-y:hidden;resize:vertical}'; document.head.appendChild(agst);
+  function scrAnc(t){ for(var e=t.parentElement;e;e=e.parentElement){ if(e.scrollHeight>e.clientHeight+4){ var o=getComputedStyle(e).overflowY; if(o==='auto'||o==='scroll') return e; } } return null; }
+  function ag(t){
+    if(!t||t.offsetParent===null||t.hasAttribute('data-noag')) return;
+    var a=scrAnc(t), st=a?a.scrollTop:0, cs=getComputedStyle(t), mx=Math.round(window.innerHeight*.7);
+    t.style.height='auto'; var h=t.scrollHeight+(t.offsetHeight-t.clientHeight);
+    if(cs.boxSizing!=='border-box') h-=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom);
+    t.style.height=Math.min(h,mx)+'px'; t.style.overflowY=h>mx?'auto':'hidden'; t._agl=t.value.length;
+    if(a) a.scrollTop=st;
+  }
+  function agTodos(){ document.querySelectorAll('textarea').forEach(function(t){ if(t._agl!==t.value.length||!t.dataset.ag){ t.dataset.ag='1'; ag(t); } }); }
+  document.addEventListener('input',function(e){ if(e.target&&e.target.tagName==='TEXTAREA') ag(e.target); },true);
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.tagName==='TEXTAREA') ag(e.target); });
+  document.addEventListener('click',function(){ setTimeout(agTodos,80); },true);
+  window.addEventListener('resize',function(){ document.querySelectorAll('textarea').forEach(ag); });
+  window._agTodos=agTodos;
   function init(){ envolver(); pgInc(); initPanel(); enganchar(); prog();
     var mo=new MutationObserver(prog); mo.observe(document.body,{childList:true,subtree:true}); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);

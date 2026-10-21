@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261020-223842">
+<meta name="app-build" content="20261021-175336">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -4023,7 +4023,7 @@ PL.dRem=function(m,tipo){
     });
   }
   document.addEventListener('click',function(e){ if(window._rsDrag&&Date.now()-window._rsDrag<300&&e.target.closest&&e.target.closest('th')){ e.stopPropagation(); e.preventDefault(); } },true);
-  var raf=0; function barrer(){ raf=0; document.querySelectorAll('table.data-tbl').forEach(mejorar); }
+  var raf=0; function barrer(){ raf=0; document.querySelectorAll('table.data-tbl').forEach(mejorar); if(window._agTodos) window._agTodos(); }
   function prog(){ if(!raf) raf=requestAnimationFrame(barrer); }
 
   /* ── 3. Conservar la posición al refrescar después de guardar ── */
@@ -4083,6 +4083,24 @@ PL.dRem=function(m,tipo){
     };
     f._wux=1; window.pgMas=f;
   }
+
+  /* ── 5. Cuadros de texto que crecen con lo que se escribe ── */
+  var agst=document.createElement('style'); agst.textContent='textarea:not([data-noag]){overflow-y:hidden;resize:vertical}'; document.head.appendChild(agst);
+  function scrAnc(t){ for(var e=t.parentElement;e;e=e.parentElement){ if(e.scrollHeight>e.clientHeight+4){ var o=getComputedStyle(e).overflowY; if(o==='auto'||o==='scroll') return e; } } return null; }
+  function ag(t){
+    if(!t||t.offsetParent===null||t.hasAttribute('data-noag')) return;
+    var a=scrAnc(t), st=a?a.scrollTop:0, cs=getComputedStyle(t), mx=Math.round(window.innerHeight*.7);
+    t.style.height='auto'; var h=t.scrollHeight+(t.offsetHeight-t.clientHeight);
+    if(cs.boxSizing!=='border-box') h-=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom);
+    t.style.height=Math.min(h,mx)+'px'; t.style.overflowY=h>mx?'auto':'hidden'; t._agl=t.value.length;
+    if(a) a.scrollTop=st;
+  }
+  function agTodos(){ document.querySelectorAll('textarea').forEach(function(t){ if(t._agl!==t.value.length||!t.dataset.ag){ t.dataset.ag='1'; ag(t); } }); }
+  document.addEventListener('input',function(e){ if(e.target&&e.target.tagName==='TEXTAREA') ag(e.target); },true);
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.tagName==='TEXTAREA') ag(e.target); });
+  document.addEventListener('click',function(){ setTimeout(agTodos,80); },true);
+  window.addEventListener('resize',function(){ document.querySelectorAll('textarea').forEach(ag); });
+  window._agTodos=agTodos;
   function init(){ envolver(); pgInc(); initPanel(); enganchar(); prog();
     var mo=new MutationObserver(prog); mo.observe(document.body,{childList:true,subtree:true}); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
