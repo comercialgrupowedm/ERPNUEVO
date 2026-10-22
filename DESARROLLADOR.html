@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-190000">
+<meta name="app-build" content="20261022-194500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3203,7 +3203,7 @@ function generarPDFCotizacion(id,soloGuardar){
   const total=(its.length?sub+iva:(Number(c.precio_total||0)||sub+iva))-descVal; const money=v=>fmt(Math.round(Number(v)||0));
   if(its.length&&typeof recalcularTotalesCot==='function'&&(Math.round(Number(c.precio_sin_iva)||0)!==sub||Math.round(Number(c.iva)||0)!==iva)){ try{ Promise.resolve(recalcularTotalesCot(id)).catch(()=>{}); }catch(e){} }
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="${i%2?'azul-row':''}"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${dscIt(it)}</td>
+    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${dscIt(it)}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
@@ -3212,37 +3212,37 @@ function generarPDFCotizacion(id,soloGuardar){
     letras:esc(numeroALetras(total)),subtotal:money(sub),iva:money(iva),descuento:descVal>0?'-'+money(descVal):'',desc_lbl:'DESCUENTO'+(descPct?' ('+descPct+'%)':''),total:money(total),rs:descVal>0?5:4,
     observaciones:c.observaciones_especiales?esc(c.observaciones_especiales):'',validez:c.validez_dias||30,forma_pago:esc(pago),entrega:c.lead_time_dias??'—',asesor:esc(c.asesor||'Asesor Comercial'),cargo:esc(CARGOS[c.asesor]||'Asesor Comercial')},null,'COT-'+c.cotizacion); } }catch(e){ console.error(e); }
   const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
-    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
-    table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-light{background:#2d5fa6!important;color:#fff!important}
-    .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
-    .total-row{background:#1a3a6b!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
-    <img src="${MARCA_AGUA_COT}" style="position:absolute;top:6px;right:6px;width:130px;opacity:.16;pointer-events:none">
-    <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#000;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
+    table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#366092!important;color:#fff!important}.azul-light{background:#366092!important;color:#fff!important}
+    .azul-row{background:#f3f3f3!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #366092}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:inherit}
+    .total-row{background:#366092!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
+    <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#366092;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
+    <div style="text-align:right;margin:0 0 6px;padding:6px 8px 2px 0;line-height:0;overflow:visible"><img src="${MARCA_AGUA_COT}" style="width:124px;height:auto;opacity:.3;pointer-events:none"></div>
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
-      <div style="color:#444;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br>Tel: ${EMPRESA_WEDM.tel} &nbsp; Cel: ${EMPRESA_WEDM.cel}<br>Email: ${EMPRESA_WEDM.email}<br>NIT: ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
+      <div style="color:#434343;line-height:1.7"><i>${EMPRESA_WEDM.lema}</i><br>${EMPRESA_WEDM.dir}<br>Tel: ${EMPRESA_WEDM.tel} &nbsp; Cel: ${EMPRESA_WEDM.cel}<br>Email: ${EMPRESA_WEDM.email}<br>NIT: ${EMPRESA_WEDM.nit}<br>${EMPRESA_WEDM.ciudad}</div></td>
       <td style="width:45%;vertical-align:top"><div style="line-height:1.75">
-        <div><span style="color:#1a3a6b">FECHA:</span> ${hoy}</div>
-        <div><span style="color:#1a3a6b">CLIENTE:</span> ${cl(c.empresa)}</div>
-        <div><span style="color:#1a3a6b">NIT:</span> ${cl(c.nit||cli.nit)}</div>
-        <div><span style="color:#1a3a6b">DIRECCIÓN:</span> ${cl(c.direccion||cli.direccion)}</div>
-        <div><span style="color:#1a3a6b">CIUDAD:</span> ${cl(c.ciudad||cli.ciudad)}</div>
-        <div><span style="color:#1a3a6b">ENCARGADO:</span> ${cl(c.encargado||cli.contacto)}</div>
-        <div><span style="color:#1a3a6b">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
-        <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
-    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
+        <div><span style="color:#366092">FECHA:</span> ${hoy}</div>
+        <div><span style="color:#366092">CLIENTE:</span> ${cl(c.empresa)}</div>
+        <div><span style="color:#366092">NIT:</span> ${cl(c.nit||cli.nit)}</div>
+        <div><span style="color:#366092">DIRECCIÓN:</span> ${cl(c.direccion||cli.direccion)}</div>
+        <div><span style="color:#366092">CIUDAD:</span> ${cl(c.ciudad||cli.ciudad)}</div>
+        <div><span style="color:#366092">ENCARGADO:</span> ${cl(c.encargado||cli.contacto)}</div>
+        <div><span style="color:#366092">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
+        <table style="margin-top:10px;width:100%"><tr><td class="azul-row borde" style="padding:5px 10px;color:#366092;font-weight:700">PROYECTO:</td><td class="azul-row borde negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
+    <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita azul-row" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
       <tbody>${rows}</tbody></table>
-    <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;vertical-align:top;line-height:1.6;color:#444;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
+    <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;vertical-align:top;line-height:1.6;color:#434343;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
       <td class="azul-light borde right" style="width:20%">SUBTOTAL</td><td class="borde right mono negrita" style="width:20%">${money(sub)}</td></tr>
       <tr><td class="azul-light borde right">I.V.A</td><td class="borde right mono">${money(iva)}</td></tr>
       ${descVal>0?`<tr><td class="azul-light borde right">DESCUENTO${descPct?` (${descPct}%)`:''}</td><td class="borde right mono">-${money(descVal)}</td></tr>`:''}
       <tr><td class="total-row borde right">TOTAL</td><td class="total-row borde right mono negrita">${money(total)}</td></tr></table>
-    <p style="color:#555;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
+    <p style="color:#434343;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
     ${c.observaciones_especiales?`<p style="margin-bottom:12px">OBSERVACIONES: ${esc(c.observaciones_especiales)}</p>`:''}
     <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="width:100%">
       <tr><td class="azul borde" style="width:50%">VALIDEZ COT. (días)</td><td class="borde center">${c.validez_dias||30}</td><td rowspan="3" class="azul borde center" style="font-size:10px">ATENTAMENTE</td></tr>
       <tr><td class="azul borde">FORMA DE PAGO</td><td class="borde center">${esc(pago)}</td></tr><tr><td class="azul borde">ENTREGA (días)</td><td class="borde center">${c.lead_time_dias??'—'}</td></tr></table></td>
-      <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
+      <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #366092;margin:30px 20px 4px"></div><div style="font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="color:#434343">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
     </body></html>`;
   const _nombrePdf=`COT-${c.cotizacion}-${_slugArchivo(c.empresa)}.pdf`;
   if(soloGuardar){ return _guardarPdfDrive(html,_nombrePdf,'cotizaciones'); }
@@ -8881,7 +8881,7 @@ PL.dRem=function(m,tipo){
 <script>
 /* Plantillas originales (con campos {{asi}}); la fila con data-rep se repite por cada ítem; data-si="campo" se muestra solo si el campo tiene dato */
 const PLD={};
-const CSS_AZ=`<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b;color:#fff}.azul-light{background:#2d5fa6;color:#fff}.zebra{background:#dde6f0}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}.total-row{background:#1a3a6b;color:#fff}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}}</style>`;
+const CSS_AZ=`<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b;color:#fff}.azul-light{background:#2d5fa6;color:#fff}.zebra{background:#dde6f0}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.right{text-align:right}.center{text-align:center}.mono{font-family:inherit}.total-row{background:#1a3a6b;color:#fff}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}}</style>`;
 const HDR_WEDM=`<td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="{{logo}}" alt="GRUPO WEDM" style="height:52px;width:auto"></div><div style="color:#444;line-height:1.7"><i>{{lema}}</i><br>{{dir}}<br>Tel: {{tel}} &nbsp; Cel: {{cel}}<br>Email: {{email}}<br>NIT: {{nit_emp}}<br>{{ciudad_emp}}</div></td>`;
 const CLI_BLK=(f)=>`<td style="width:45%;vertical-align:top"><div style="line-height:1.75"><div><span style="color:#1a3a6b">FECHA:</span> {{fecha}}</div><div><span style="color:#1a3a6b">${f}:</span> {{cliente}}</div><div><span style="color:#1a3a6b">NIT:</span> {{nit}}</div><div><span style="color:#1a3a6b">DIRECCIÓN:</span> {{direccion}}</div><div><span style="color:#1a3a6b">CIUDAD:</span> {{ciudad}}</div><div><span style="color:#1a3a6b">ENCARGADO:</span> {{encargado}}</div><div><span style="color:#1a3a6b">TELÉFONO:</span> {{telefono}}</div></div><table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul" style="padding:5px 10px">{{proyecto}}</td></tr></table></td>`;
 

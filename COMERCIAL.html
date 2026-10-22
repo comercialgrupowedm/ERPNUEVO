@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-184500">
+<meta name="app-build" content="20261022-194500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3263,7 +3263,7 @@ function generarPDFCotizacion(id,soloGuardar){
   const html=_plh||`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>COT-${c.cotizacion} — ${esc(c.empresa||'')}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#000;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
     table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#366092!important;color:#fff!important}.azul-light{background:#366092!important;color:#fff!important}
-    .azul-row{background:#f3f3f3!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #366092}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
+    .azul-row{background:#f3f3f3!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #366092}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:inherit}
     .total-row{background:#366092!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#366092;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
     <div style="text-align:right;margin:0 0 6px;padding:6px 8px 2px 0;line-height:0;overflow:visible"><img src="${MARCA_AGUA_COT}" style="width:124px;height:auto;opacity:.3;pointer-events:none"></div>

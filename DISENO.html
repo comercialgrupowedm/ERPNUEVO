@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-184500">
+<meta name="app-build" content="20261022-194500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1842,7 +1842,7 @@ async function prodHojaRuta(id){
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Hoja de ruta — OP-${p.op} ítem ${p.item_num??''}</title><style>
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;padding:20px 28px;max-width:900px;margin:0 auto;background:#fff}
     table{border-collapse:collapse;width:100%;margin-bottom:12px}td,th{padding:6px 8px;vertical-align:middle;border:1px solid #999}th{background:#1a3a6b;color:#fff;text-align:left}
-    .c{text-align:center}.mono{font-family:'Courier New',monospace}.nb td{border:none}h1{font-size:15px;margin-bottom:4px}h2{font-size:12px;margin:10px 0 4px}tbody tr{height:30px}
+    .c{text-align:center}.mono{font-family:inherit}.nb td{border:none}h1{font-size:15px;margin-bottom:4px}h2{font-size:12px;margin:10px 0 4px}tbody tr{height:30px}
     @media print{body{padding:10px}}</style></head><body>
     <table class="nb"><tr><td style="width:110px"><img src="${LOGO_B64_PNG}" style="width:100px"></td><td><h1>HOJA DE RUTA</h1><div style="font-size:9px;color:#555;line-height:1.6"><em>${esc(E.lema)}</em><br>${esc(E.dir)} · ${esc(E.ciudad)}<br>Tel: ${esc(E.tel)} · Cel: ${esc(E.cel)} · ${esc(E.email)} · NIT ${esc(E.nit)}</div></td>
     <td style="width:90px;text-align:center">${imgSrcOP(p,300)?`<img src="${esc(imgSrcOP(p,300))}" style="width:80px;height:80px;object-fit:cover;border:1px solid #999">`:''}</td></tr></table>

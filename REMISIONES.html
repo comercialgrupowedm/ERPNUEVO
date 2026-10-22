@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-184500">
+<meta name="app-build" content="20261022-194500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1433,7 +1433,7 @@ function docHtmlRem(m,tipo){
   const num=m.numero||'—'; const span=m.oc_cliente?3:2;
   const css=`*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
     table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#1a3a6b!important;color:#fff!important}.azul-light{background:#2d5fa6!important;color:#fff!important}
-    .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:'Courier New',monospace}
+    .azul-row{background:#dde6f0!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #1a3a6b}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:inherit}
     @page{size:letter portrait;margin:0}@media print{body{padding:14mm 18mm 12mm;max-width:100%}.no-print{display:none!important}}`;
   return `<!DOCTYPE html><html lang="${en?'en':'es'}"><head><meta charset="UTF-8"><title>${en?'PACKING LIST':L.r} ${esc(String(num))}</title><style>${css}</style></head><body>
   ${en?'':`<div style="text-align:right;line-height:0;margin:0 0 10px"><img src="${MARCA_AGUA_COT}" style="width:120px;height:auto;opacity:.18"></div>`}
