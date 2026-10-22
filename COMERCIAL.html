@@ -1732,7 +1732,7 @@ const capW = s => String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1);
 
 // ══ UTILIDADES ══════════════════════════════════════════════════
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function fmt(n){ const x=Number(String(n||0).replace(/[^0-9.-]/g,'')); return isNaN(x)?'—':'$'+x.toLocaleString('es-CO'); }
+function fmt(n){ const x=Number(String(n||0).replace(/[^0-9.-]/g,'')); return isNaN(x)?'—':(x<0?'-':'')+'$'+String(Math.round(Math.abs(x))).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 function fmtDate(d){
   if(!d) return '—';
   try{
@@ -2163,8 +2163,8 @@ function sortCtl(mod){
 function viewToggleBtns(mod){
   const v=getView(mod);
   return `<div data-tbctl="1" style="display:flex;align-items:center;gap:6px"><div class="view-toggle">
-    <button class="vt-btn ${v==='table'?'active':''}" title="Vista tabla" onclick="setView('${mod}','table')">☰</button>
-    <button class="vt-btn ${v==='cards'?'active':''}" title="Vista tarjetas" onclick="setView('${mod}','cards')">▦</button></div>${sortCtl(mod)}</div>`;
+    <button class="vt-btn ${v==='table'?'active':''}" title="Vista tabla" onclick="setView('${mod}','table')">⊞ Tabla</button>
+    <button class="vt-btn ${v==='cards'?'active':''}" title="Vista tarjetas" onclick="setView('${mod}','cards')">☰ Tarjetas</button></div>${sortCtl(mod)}</div>`;
 }
 
 // ══ LOGIN (PIN validado en el servidor) ═════════════════════════
@@ -3247,8 +3247,9 @@ function generarPDFCotizacion(id,soloGuardar){
   const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
-  const iva=Number(c.iva||0)||Math.round(sub*IVA_PCT/100); const descVal=Number(c.descuento||0), descPct=Number(c.descuento_pct||0);
-  const total=(Number(c.precio_total||0)||sub+iva)-descVal; const money=v=>'$'+Number(v||0).toLocaleString('es-CO');
+  const iva=its.length?Math.round(sub*IVA_PCT/100):(Number(c.iva||0)||Math.round(sub*IVA_PCT/100)); const descPct=Number(c.descuento_pct||0); const descVal=(its.length&&descPct>0)?Math.round((sub+iva)*descPct/100):Number(c.descuento||0);
+  const total=(its.length?sub+iva:(Number(c.precio_total||0)||sub+iva))-descVal; const money=v=>fmt(Math.round(Number(v)||0));
+  if(its.length&&typeof recalcularTotalesCot==='function'&&(Math.round(Number(c.precio_sin_iva)||0)!==sub||Math.round(Number(c.iva)||0)!==iva)){ try{ Promise.resolve(recalcularTotalesCot(id)).catch(()=>{}); }catch(e){} }
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
     <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${dscIt(it)}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
@@ -3283,7 +3284,7 @@ function generarPDFCotizacion(id,soloGuardar){
       <td class="azul-light borde right" style="width:20%">SUBTOTAL</td><td class="borde right mono negrita" style="width:20%">${money(sub)}</td></tr>
       <tr><td class="azul-light borde right">I.V.A</td><td class="borde right mono">${money(iva)}</td></tr>
       ${descVal>0?`<tr><td class="azul-light borde right">DESCUENTO${descPct?` (${descPct}%)`:''}</td><td class="borde right mono">-${money(descVal)}</td></tr>`:''}
-      <tr><td class="total-row borde right">TOTAL</td><td class="total-row borde right mono">${money(total)}</td></tr></table>
+      <tr><td class="total-row borde right">TOTAL</td><td class="total-row borde right mono negrita">${money(total)}</td></tr></table>
     <p style="color:#434343;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
     ${c.observaciones_especiales?`<p style="margin-bottom:12px">OBSERVACIONES: ${esc(c.observaciones_especiales)}</p>`:''}
     <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="width:100%">
