@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-200500">
+<meta name="app-build" content="20261022-203000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -9747,6 +9747,42 @@ window.tareasToggle=function(){ab=!ab;dibujar()};
 window.tareasLimpiar=function(){for(var i=T.length-1;i>=0;i--)if(T[i].fin)T.splice(i,1);dibujar()};
 setInterval(function(){if(T.some(function(t){return !t.fin}))dibujar()},2000);
 window.addEventListener('beforeunload',function(e){if(T.some(function(t){return !t.fin})){e.preventDefault();e.returnValue=''}});
+})();
+</script>
+
+<!-- BARRA DE CARGA EN BOTONES -->
+<style id="wdload-css">
+.wd-load{position:relative!important;overflow:hidden!important;pointer-events:none!important}
+.wd-load::before{content:'';position:absolute;left:0;top:0;bottom:0;width:var(--wd-p,0%);background:rgba(37,99,235,.22);pointer-events:none;transition:width .12s linear}
+.wd-load::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:var(--wd-p,0%);background:#2563eb;border-radius:0 2px 2px 0;pointer-events:none;transition:width .12s linear}
+</style>
+<script id="wdload">
+(function(){
+  if(window._wdLoadInit) return; window._wdLoadInit=1;
+  var btn=null,tBtn=0,pend=0,act=null,iv=null,pct=0,tShow=null,tEnd=null,tMax=null;
+  document.addEventListener('click',function(e){
+    try{var b=e.target&&e.target.closest&&e.target.closest('button,.btn,[role=button]'); if(b&&!b.disabled&&!b.classList.contains('wd-load')){btn=b;tBtn=Date.now();}}catch(x){}
+  },true);
+  function setP(v){ if(act) act.style.setProperty('--wd-p',v+'%'); }
+  function attach(b){
+    act=b; pct=0; clearTimeout(tEnd);
+    tShow=setTimeout(function(){ if(!act) return; act.classList.add('wd-load'); setP(0);
+      iv=setInterval(function(){ pct+=(92-pct)*0.05; setP(pct.toFixed(1)); },90); },150);
+    tMax=setTimeout(function(){ done(true); },60000);
+  }
+  function done(force){
+    if(!act) return; var b=act; clearInterval(iv); clearTimeout(tShow); clearTimeout(tMax); act=null;
+    if(b.classList.contains('wd-load')){ b.style.setProperty('--wd-p','100%'); setTimeout(function(){ b.classList.remove('wd-load'); b.style.removeProperty('--wd-p'); },320); }
+  }
+  function startReq(){ pend++; if(!act&&btn&&document.contains(btn)&&Date.now()-tBtn<900) attach(btn); }
+  function endReq(){ pend=Math.max(0,pend-1); if(pend===0&&act){ clearTimeout(tEnd); tEnd=setTimeout(function(){ if(pend===0) done(); },180); } }
+  window._wdStart=startReq; window._wdEnd=endReq;
+  var of=window.fetch;
+  if(of) window.fetch=function(){ var p=of.apply(this,arguments); try{ startReq(); p.then(endReq,endReq); }catch(e){} return p; };
+  function wrapH2C(){ var o=window.html2canvas; if(typeof o!=='function'||o._wd) return;
+    var w=function(){ startReq(); var p=o.apply(this,arguments); try{ p.then(endReq,endReq); }catch(e){ endReq(); } return p; };
+    try{ Object.keys(o).forEach(function(k){ w[k]=o[k]; }); }catch(e){} w._wd=1; window.html2canvas=w; }
+  wrapH2C(); document.addEventListener('DOMContentLoaded',wrapH2C); window.addEventListener('load',wrapH2C);
 })();
 </script>
 </body>
