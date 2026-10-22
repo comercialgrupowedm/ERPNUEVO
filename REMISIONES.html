@@ -586,6 +586,8 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item active" data-m="dashboard" onclick="nav('dashboard')"><span class="nav-icon">📊</span>Inicio</div>
     <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">🚚</span>Remisiones<span class="nav-badge" id="b-rem" style="display:none">0</span></div>
     <div class="nav-item" data-m="marquillas" onclick="nav('marquillas')"><span class="nav-icon">🏷️</span>Cotizar marquillas</div>
+    <div class="nav-item" data-m="mqlista" onclick="nav('mqlista')"><span class="nav-icon">🗂️</span>Ver / editar marquillas</div>
+    <div class="nav-item" data-m="cotizaciones" onclick="nav('cotizaciones')"><span class="nav-icon">📄</span>Cotizaciones</div>
     <div class="nav-item" data-m="porpedir" onclick="nav('porpedir')"><span class="nav-icon">📥</span>Por pedir<span class="nav-badge" id="b-pp" style="display:none">0</span></div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
@@ -782,7 +784,7 @@ function forceLogout(msg){ endSession(msg); }
 // ══ UTILIDADES ════════════════════════════════════════════════════
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsq = s => String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ').replace(/"/g,'&quot;');
-function fmt(n){ const x=Number(String(n||0).replace(/[^0-9.-]/g,'')); return isNaN(x)?'—':'$'+x.toLocaleString('es-CO'); }
+function fmt(n){ const x=Number(String(n||0).replace(/[^0-9.-]/g,'')); return isNaN(x)?'—':(x<0?'-':'')+'$'+String(Math.round(Math.abs(x))).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 function fmtDate(d){
   if(!d) return '—';
   try{
@@ -1073,7 +1075,7 @@ async function doLogin(){
 //  Flujo: Calidad PIDE → Comercial SELECCIONA → Administración GENERA → Calidad DESPACHA
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas'};
+const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
 const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
@@ -1543,8 +1545,9 @@ async function marquillas(){
   if(MOD==='marquillas'&&document.getElementById('mq-form')) return; // no borrar lo que se está escribiendo
   const banner=moduleBanner('🏷️','Cotizar marquillas','Cotización para Mauricio · pega la imagen o tabla del cliente tal cual');
   if(!_MQ.its.length) _MQ.its=[mqNuevoItem()];
-  setContent(banner+`<div id="mq-form">${mqFormHtml()}</div><div id="mq-ult"></div><div style="height:80px"></div>`);
-  mqCargarListas();
+  const ed=_MQ.edit?`<div class="callout" style="margin:10px 0;border-left:4px solid #ea580c"><b>✏️ Editando COT-${esc(String(_MQ.edit.cotizacion))}</b> · cambia lo que necesites y toca <b>Guardar cambios</b>. <button class="btn btn-ghost btn-sm" onclick="mqCancelarEdit()">Cancelar edición</button></div>`:'';
+  setContent(banner+ed+`<div id="mq-form">${mqFormHtml()}</div><div id="mq-ult"></div><div style="height:80px"></div>`);
+  await mqCargarListas(); if(_MQ.edit) mqAplicarEdit();
 }
 async function mqCargarListas(){
   try{ if(!_MQ.clientes) _MQ.clientes=await GETALL('clientes','select=id,empresa,nit,direccion,ciudad,contacto,telefono&order=empresa.asc'); }catch(e){ _MQ.clientes=_MQ.clientes||[]; }
@@ -1573,7 +1576,7 @@ function mqFormHtml(){
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="mqAddItem()">➕ Agregar otro ítem</button></div>
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px"><div class="field"><label>Observaciones (opcional)</label><textarea id="mq-obs" style="min-height:52px"></textarea></div>
     <div id="mq-tot" style="font-size:13px;margin:8px 0;font-weight:700"></div>
-    <button class="btn btn-primary" style="width:100%" onclick="mqCrear()">✅ Crear cotización</button></div>`;
+    <button class="btn btn-primary" style="width:100%" onclick="mqCrear()">${_MQ.edit?'💾 Guardar cambios':'✅ Crear cotización'}</button></div>`;
 }
 function mqItemHtml(it,i){
   return `<div class="mq-it" data-id="${it.id}" style="background:var(--card);border:1px solid var(--border);border-top:4px solid #ea580c;border-radius:12px;padding:12px 14px;margin-top:12px">
@@ -1631,17 +1634,76 @@ async function mqCrear(){
   const its=mqEstado().map(x=>{ const u=Number(x.u)||1, pu=Number(x.p)||0; const prcs=[]; const mk=(nombre,tarifa,h)=>{ if(h>0) prcs.push({nombre,tarifa,tiempo:h,costo:R(tarifa*h*u),peri:0,esp:0,matH:'ALUMINIO',costo_manual:0,modo:'unidad'}); };
       mk('CENTRO DE MECANIZADO',tar.cnc,Number(x.cnc)||0); mk('EDM SIMPLE',tar.edm,Number(x.edm)||0);
       const ct=prcs.reduce((s,p)=>s+p.costo,0); const pres=u?R(ct/u):0;
-      return {descripcion:x.d.trim(),unidades:u,precio_unit:pu,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,'')),prcs,costo_total:ct,presup_unit:pres,margen_pct:pres>0?Math.round((pu/pres-1)*10000)/100:0}; }).filter(x=>x.descripcion||x.marquilla_html);
+      return {id:(_MQ.edit&&(_MQ.edit.ids||[]).includes(x.id))?x.id:undefined,descripcion:x.d.trim(),unidades:u,precio_unit:pu,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,'')),prcs,costo_total:ct,presup_unit:pres,margen_pct:pres>0?Math.round((pu/pres-1)*10000)/100:0}; }).filter(x=>x.descripcion||x.marquilla_html);
   if(!its.length){ toast('Agrega al menos un ítem con texto o imagen/tabla','error'); return; }
   if(its.some(x=>!(x.precio_unit>0))&&!confirm('Hay ítems sin precio. ¿Crear la cotización de todos modos?')) return;
   if(its.some(x=>x.marquilla_html.length>900000)){ toast('Una imagen/tabla pesa demasiado; usa una imagen más pequeña','error'); return; }
-  const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const r=await rpcR('cot_marquilla_crear',{p:{empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:c.contacto||null,telefono:c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
-  if(!r) return; const num=(r&&r.cotizacion)||''; _MQ.its=[mqNuevoItem()];
-  setContent(moduleBanner('✅','Cotización creada','Ya la puede ver Mauricio en Comercial')+`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px;text-align:center"><div style="font-size:34px;font-weight:900;color:var(--accent)">COT-${esc(String(num))}</div><div style="margin:6px 0 14px;color:var(--muted)">${its.length} ítem(s) · total con IVA $${Math.round(Number(r.total||0)).toLocaleString('es-CO')}</div><button class="btn btn-primary" onclick="nav('marquillas')">➕ Crear otra</button></div>`);
+  const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const _ed=_MQ.edit; const r=await rpcR(_ed?'cot_marquilla_editar':'cot_marquilla_crear',{p:{id:_ed?_ed.id:undefined,empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:c.contacto||null,telefono:c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
+  if(!r) return; const num=(r&&r.cotizacion)||''; _MQ.its=[mqNuevoItem()]; _MQ.edit=null;
+  setContent(moduleBanner('✅',_ed?'Cotización actualizada':'Cotización creada','Ya la puede ver Mauricio en Comercial')+`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px;text-align:center"><div style="font-size:34px;font-weight:900;color:var(--accent)">COT-${esc(String(num))}</div><div style="margin:6px 0 14px;color:var(--muted)">${its.length} ítem(s) · total con IVA $${Math.round(Number(r.total||0)).toLocaleString('es-CO')}</div><button class="btn btn-primary" onclick="nav('marquillas')">➕ Crear otra</button></div>`);
 }
 // ── Navegación, avisos y arranque ──────────────────────────────────
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+// ── COTIZACIONES y MARQUILLAS (ver todo / editar marquillas) ──────────
+let _CQ={q:'',est:'',rows:null};
+async function cqCargar(force){
+  if(_CQ.rows&&!force) return _CQ.rows;
+  _CQ.rows=await GETALL('cotizaciones','select=id,cotizacion,empresa,asesor,estado,tipo,fecha_emision,precio_sin_iva,precio_total,descripcion_proyecto,origen,lead_time_dias,forma_de_pago&order=cotizacion.desc,id.asc');
+  return _CQ.rows;
+}
+function cqEstBadge(e){ const c={APROBADO:'verde',APROBADA:'verde','EN ESPERA':'warn',CANCELADO:'rojo',RECHAZADA:'rojo'}[String(e||'').toUpperCase()]||'gris'; return `<span class="badge ${c}">${esc(e||'—')}</span>`; }
+async function cotizaciones(){ return cqVista(false); }
+async function mqlista(){ return cqVista(true); }
+async function cqVista(soloMq){
+  const banner=moduleBanner(soloMq?'🗂️':'📄',soloMq?'Marquillas':'Cotizaciones',soloMq?'Todas las cotizaciones de marquilla · toca una para verla o editarla':'Todas las cotizaciones · toca una para ver sus ítems',
+    soloMq?'<button class="btn btn-primary btn-sm" onclick="_MQ.edit=null;nav(\'marquillas\')">➕ Cotizar marquilla</button>':'');
+  setContent(banner+`<div style="margin:10px 0">${empty('Cargando…','⏳')}</div>`);
+  let rows; try{ rows=await cqCargar(true); }catch(e){ setContent(banner+`<div class="callout">❌ ${esc(errMsg(e))}</div>`); return; }
+  const q=String(_CQ.q||'').toLowerCase().trim(); const ests=[...new Set(rows.map(r=>r.estado).filter(Boolean))];
+  let data=rows.filter(r=>(!soloMq||r.origen==='MARQUILLA')&&(!_CQ.est||r.estado===_CQ.est)&&(!q||[r.cotizacion,r.empresa,r.asesor,r.descripcion_proyecto,r.tipo].join(' ').toLowerCase().includes(q)));
+  const card=r=>`<div class="list-card" onclick="cqDetalle('${r.id}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id" style="font-size:15px;font-weight:900;color:var(--accent)">COT-${esc(String(r.cotizacion))}${r.origen==='MARQUILLA'?' 🏷️':''}</div><div style="font-weight:700">${esc(r.empresa||'—')}</div><div style="font-size:12px;color:var(--muted)">${esc(r.descripcion_proyecto||'')}</div></div><div style="text-align:right">${cqEstBadge(r.estado)}<div style="font-weight:800;margin-top:4px">${fmt(r.precio_total)}</div></div></div><div style="font-size:11.5px;color:var(--muted);margin-top:6px">${esc(r.asesor||'')} · ${esc(String(r.fecha_emision||'').slice(0,10))}</div></div>`;
+  const cols=[{h:'COT',v:r=>`<b style="color:var(--accent);white-space:nowrap">COT-${esc(String(r.cotizacion))}${r.origen==='MARQUILLA'?' 🏷️':''}</b>`,s:r=>Number(r.cotizacion)||0},
+    {h:'Cliente',v:r=>`<div style="min-width:150px">${esc(r.empresa||'—')}</div>`,s:r=>r.empresa||''},
+    {h:'Proyecto',v:r=>`<div style="min-width:160px;font-size:12px">${esc(String(r.descripcion_proyecto||'').slice(0,70))}</div>`,s:r=>r.descripcion_proyecto||''},
+    {h:'Asesor',v:r=>esc(r.asesor||'—'),s:r=>r.asesor||''},{h:'Estado',v:r=>cqEstBadge(r.estado),s:r=>r.estado||''},
+    {h:'Fecha',v:r=>esc(String(r.fecha_emision||'').slice(0,10)),s:r=>r.fecha_emision||''},
+    {h:'Sin IVA',cls:'td-num',v:r=>fmt(r.precio_sin_iva),s:r=>Number(r.precio_sin_iva)||0},{h:'Total',cls:'td-num',v:r=>fmt(r.precio_total),s:r=>Number(r.precio_total)||0}];
+  const fb=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="cq-q" placeholder="🔍 Buscar COT, cliente, asesor…" value="${esc(_CQ.q)}" oninput="_CQ.q=this.value;clearTimeout(window._cqT);window._cqT=setTimeout(()=>{pgReset();refreshCurrentView();},350)" style="flex:1;min-width:200px"><select onchange="_CQ.est=this.value;pgReset();refreshCurrentView()"><option value="">Todos los estados</option>${ests.map(e=>`<option ${e===_CQ.est?'selected':''}>${esc(e)}</option>`).join('')}</select><span style="align-self:center;font-size:12px;color:var(--muted)">${data.length} cotización(es)</span></div>`;
+  const cur=document.activeElement&&document.activeElement.id==='cq-q';
+  setContent(banner+fb+(data.length?LV.render(soloMq?'cqm':'cq',data,{card,cols,click:r=>`cqDetalle('${r.id}')`}):empty('Sin resultados','🔍'))+'<div style="height:80px"></div>');
+  if(cur){ const i=document.getElementById('cq-q'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+}
+async function cqDetalle(id){
+  const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
+  openDetail('COT-'+c.cotizacion,`<div style="padding:10px">${empty('Cargando…','⏳')}</div>`);
+  let its=[]; try{ its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,precio_total,marquilla_html&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc'); }catch(e){ openDetail('COT-'+c.cotizacion,`<div class="callout">❌ ${esc(errMsg(e))}</div>`); return; }
+  const dr=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">${k}</span><b style="text-align:right">${v}</b></div>`;
+  const body=`<div class="dp-section"><h4>📄 Cotización</h4>${dr('Cliente',esc(c.empresa||'—'))}${dr('Proyecto',esc(c.descripcion_proyecto||'—'))}${dr('Asesor',esc(c.asesor||'—'))}${dr('Estado',cqEstBadge(c.estado))}${dr('Tipo',esc(c.tipo||'—'))}${dr('Fecha',esc(String(c.fecha_emision||'').slice(0,10)))}${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('Total',fmt(c.precio_total))}</div>
+    <div class="dp-section"><h4>📦 Ítems (${its.length})</h4>${its.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted)">Ítem ${i.item} · ${Number(i.unidades||1)} und × ${fmt(i.precio_unit)} = <b style="color:var(--text)">${fmt(i.precio_total)}</b></div><div style="white-space:pre-wrap;font-size:13px">${esc(i.descripcion||'')}</div>${i.marquilla_html?`<div style="margin-top:4px">${mqRender(i.marquilla_html)}</div>`:''}</div>`).join('')||mutedP('Sin ítems')}</div>`;
+  const puedeEd=c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador');
+  openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,puedeEd?`<button class="btn btn-primary" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:'');
+}
+async function mqEditar(id){
+  const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
+  try{
+    const full=(await GET('cotizaciones','select=*&id=eq.'+encodeURIComponent(id)))[0]||c;
+    const its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,marquilla_html,prcs&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc');
+    _MQ.edit={id,cotizacion:c.cotizacion,c:full,its}; _MQ.its=its.map(i=>({id:i.id}));
+  }catch(e){ toast('❌ '+errMsg(e),'error'); return; }
+  closeDetail(); MOD=''; nav('marquillas');
+}
+function mqCancelarEdit(){ _MQ.edit=null; _MQ.its=[mqNuevoItem()]; nav('mqlista'); }
+function mqAplicarEdit(){
+  const E=_MQ.edit; if(!E) return; const c=E.c||{}; const set=(id,v)=>{ const el=document.getElementById(id); if(el!=null&&v!=null) el.value=v; };
+  set('mq-cli',c.empresa||''); mqCli(); if(!_MQ.cli&&c.empresa) _MQ.cli={empresa:c.empresa,nit:c.nit,direccion:c.direccion,ciudad:c.ciudad,contacto:c.encargado,telefono:c.telefono,id:c.id_cliente};
+  const ts=document.getElementById('mq-tipo'); if(ts&&c.tipo){ if(![...ts.options].some(o=>o.value===c.tipo||o.text===c.tipo)) ts.add(new Option(c.tipo,c.tipo)); ts.value=c.tipo; }
+  const as=document.getElementById('mq-ase'); if(as&&c.asesor){ if(![...as.options].some(o=>o.value===c.asesor)) as.add(new Option(c.asesor,c.asesor)); as.value=c.asesor; }
+  set('mq-proy',c.descripcion_proyecto||''); set('mq-lead',c.lead_time_dias==null?'':c.lead_time_dias); set('mq-pago',c.forma_de_pago||''); set('mq-obs',c.observaciones_especiales||'');
+  const h=(it,n)=>{ const p=(Array.isArray(it.prcs)?it.prcs:[]).find(x=>new RegExp(n,'i').test(x.nombre||'')); return p&&p.tiempo!=null?p.tiempo:0; };
+  const est=E.its.map(it=>({id:it.id,t:'',s:'',u:it.unidades||1,pies:false,d:it.descripcion||'',dm:'1',p:it.precio_unit==null?'':it.precio_unit,pm:'1',cnc:h(it,'CENTRO'),edm:h(it,'EDM'),h:it.marquilla_html||''}));
+  E.ids=E.its.map(i=>i.id); mqRepintar(est);
+}
+function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
