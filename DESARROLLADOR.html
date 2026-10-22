@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-181200">
+<meta name="app-build" content="20261022-182000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3244,7 +3244,7 @@ function generarPDFCotizacion(id,soloGuardar){
       <td style="width:40%;text-align:center;vertical-align:middle"><div style="border-top:2px solid #1a3a6b;margin:30px 20px 4px"></div><div style="font-size:10px">${esc(c.asesor||'Asesor Comercial')}</div><div style="color:#555">${esc(CARGOS[c.asesor]||'Asesor Comercial')} — Grupo WEDM</div></td></tr></table>
     </body></html>`;
   const _nombrePdf=`COT-${c.cotizacion}-${_slugArchivo(c.empresa)}.pdf`;
-  if(soloGuardar){ _guardarPdfDrive(html,_nombrePdf,'cotizaciones').then(()=>{}); return; }
+  if(soloGuardar){ return _guardarPdfDrive(html,_nombrePdf,'cotizaciones'); }
   _abrirDocParaImprimir(html,_nombrePdf,'cotizaciones');
 }
 
@@ -5799,11 +5799,28 @@ const thumbItem=it=>{ const pr=imgItem(it); return pr?`<span onclick="event.stop
 const itemImgSection=it=>{ const pr=imgItem(it); return pr?`<div class="dp-section"><h4>🖼 Imagen del ítem</h4><div style="text-align:center">${imgHtml(pr.imagen_drive_id,600,'max-width:100%;max-height:280px;border-radius:10px;cursor:zoom-in',`onclick="verImagenProd('${pr.id}')"`)}</div></div>`:''; };
 
 
+
+// Regenera en Drive los PDF de cotizaciones (uno a uno) para que queden con la calidad nueva y sin duplicados
+async function regenerarPdfsCot(){
+  if(!_esDev()) return;
+  const d=prompt('Regenerar PDFs de cotizaciones creadas desde (AAAA-MM-DD). Vacío = todas:', new Date(Date.now()-30*864e5).toISOString().slice(0,10));
+  if(d===null) return;
+  const lista=(DB.cotizaciones||[]).filter(c=>c.cotizacion&&(!d||String(c.fecha_emision||c.created_at||'').slice(0,10)>=d)).sort((a,b)=>Number(a.cotizacion)-Number(b.cotizacion));
+  if(!lista.length){ toast('No hay cotizaciones en ese rango','error'); return; }
+  if(!confirm('Se regenerarán '+lista.length+' PDF en Drive (≈5 s cada uno). Deja esta pestaña abierta. ¿Continuar?')) return;
+  let ok=0;
+  for(let i=0;i<lista.length;i++){
+    toast('📄 PDF '+(i+1)+' de '+lista.length+' — COT-'+lista[i].cotizacion);
+    try{ await generarPDFCotizacion(lista[i].id,true); ok++; }catch(e){}
+    await new Promise(r=>setTimeout(r,1200));
+  }
+  toast('✅ Regeneración terminada: '+ok+' de '+lista.length);
+}
 function importar(){
   if(!_esDev()){ setContent(errorView('Solo el desarrollador puede importar datos')); return; }
   const banner = moduleBanner('📥','Importar hojas de datos',
     'Sube un CSV o Excel (.xlsx) para actualizar (upsert) una tabla en Supabase',
-    `<button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="importShowSQL()">📋 Ver SQL RPC</button>`,
+    `<button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);margin-right:6px" onclick="regenerarPdfsCot()">📄 Regenerar PDFs en Drive</button><button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="importShowSQL()">📋 Ver SQL RPC</button>`,
     'linear-gradient(135deg,#7c2d12,#b91c1c)');
   const cards = Object.entries(IMPORT_TABLES).map(([tbl,cfg])=>`
     <div class="imp-card" onclick="importSelectTable('${tbl}')" data-tbl="${tbl}">
