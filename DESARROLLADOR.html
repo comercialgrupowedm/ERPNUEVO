@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-184500">
+<meta name="app-build" content="20261022-190000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3179,7 +3179,8 @@ async function _guardarPdfDrive(html,nombre,carpeta){
     const j=await r.json().catch(()=>null);
     if(j&&j.ok) toast('📤 Copia guardada en Drive');
     else toast('⚠️ No se pudo guardar la copia en Drive','error');
-  }catch(e){ if(ifr) ifr.remove(); toast('⚠️ No se pudo guardar la copia en Drive','error'); }
+    return !!(j&&j.ok);
+  }catch(e){ if(ifr) ifr.remove(); toast('⚠️ No se pudo guardar la copia en Drive','error'); return false; }
 }
 const _slugArchivo=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
 function _abrirDocParaImprimir(html,nombre,carpeta){
@@ -5808,13 +5809,14 @@ async function regenerarPdfsCot(){
   const lista=(DB.cotizaciones||[]).filter(c=>c.cotizacion&&(!d||String(c.fecha_emision||c.created_at||'').slice(0,10)>=d)).sort((a,b)=>Number(a.cotizacion)-Number(b.cotizacion));
   if(!lista.length){ toast('No hay cotizaciones en ese rango','error'); return; }
   if(!confirm('Se regenerarán '+lista.length+' PDF en Drive (≈5 s cada uno). Deja esta pestaña abierta. ¿Continuar?')) return;
-  let ok=0;
+  const t=tareaIni('Regenerar PDFs de cotizaciones en Drive',lista.length);
   for(let i=0;i<lista.length;i++){
-    toast('📄 PDF '+(i+1)+' de '+lista.length+' — COT-'+lista[i].cotizacion);
-    try{ await generarPDFCotizacion(lista[i].id,true); ok++; }catch(e){}
+    if(t.cancel) break;
+    let r=false; try{ r=await generarPDFCotizacion(lista[i].id,true); }catch(e){}
+    tareaAvance(t,i+1,'COT-'+lista[i].cotizacion,r!==false&&r!==undefined);
     await new Promise(r=>setTimeout(r,1200));
   }
-  toast('✅ Regeneración terminada: '+ok+' de '+lista.length);
+  tareaFin(t);
 }
 function importar(){
   if(!_esDev()){ setContent(errorView('Solo el desarrollador puede importar datos')); return; }
@@ -9689,6 +9691,53 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
     if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f);
   },true);
+})();
+</script>
+
+<!-- TAREAS EN PROCESO (solo desarrollador) -->
+<style>
+#tareas-fab{position:fixed;right:0;bottom:110px;z-index:900;display:none;align-items:center;gap:6px;background:#0d9488;color:#fff;border:1px solid #0f766e;border-right:none;border-radius:12px 0 0 12px;padding:9px 12px 9px 10px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#tareas-fab .tf-n{background:#fff;color:#0f766e;border-radius:10px;min-width:18px;height:18px;line-height:18px;text-align:center;font-size:11px;padding:0 5px}
+#tareas-panel{position:fixed;right:8px;bottom:160px;z-index:901;width:min(360px,calc(100vw - 16px));max-height:60vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#1e293b);border:1px solid var(--border,#cbd5e1);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);display:none}
+#tareas-panel .tp-h{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-weight:800;font-size:13px;border-bottom:1px solid var(--border,#e2e8f0);position:sticky;top:0;background:var(--surface,#fff)}
+#tareas-panel .tp-t{padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0);font-size:12px}
+#tareas-panel .tp-bar{height:8px;border-radius:6px;background:rgba(100,116,139,.25);overflow:hidden;margin:6px 0}
+#tareas-panel .tp-bar>i{display:block;height:100%;background:#0d9488;transition:width .3s}
+#tareas-panel button{font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--border,#cbd5e1);background:var(--card2,#f1f5f9);color:var(--text,#1e293b);cursor:pointer;font-weight:700}
+</style>
+<button id="tareas-fab" onclick="tareasToggle()">⏳ Tareas en proceso <span class="tf-n" id="tareas-n">0</span></button>
+<div id="tareas-panel"></div>
+<script>
+(function(){
+var T=window._TAREAS=[],ab=false;
+function esc2(x){return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function hm(ms){var s=Math.round(ms/1000),m=Math.floor(s/60);return m?m+' min '+(s%60)+' s':s+' s'}
+function dibujar(){
+  var fab=document.getElementById('tareas-fab'),pan=document.getElementById('tareas-panel'); if(!fab||!pan) return;
+  var act=T.filter(function(t){return !t.fin}).length;
+  document.getElementById('tareas-n').textContent=act;
+  fab.style.display=(T.length&&(typeof _esDev!=='function'||_esDev()))?'flex':'none';
+  fab.style.background=act?'#0d9488':'#475569';
+  if(!ab){pan.style.display='none';return}
+  pan.style.display='block';
+  pan.innerHTML='<div class="tp-h"><span>⏳ Tareas en proceso</span><span><button onclick="tareasLimpiar()">Limpiar terminadas</button> <button onclick="tareasToggle()">✕</button></span></div>'+
+  (T.length?T.slice().reverse().map(function(t){
+    var pct=t.total?Math.round(t.hecho*100/t.total):0, dur=hm((t.fin||Date.now())-t.ini);
+    var rest=(!t.fin&&t.hecho)?' · faltan ≈'+hm((Date.now()-t.ini)/t.hecho*(t.total-t.hecho)):'';
+    return '<div class="tp-t"><b>'+esc2(t.nombre)+'</b><div class="tp-bar"><i style="width:'+pct+'%"></i></div>'+
+    '<div>'+(t.fin?(t.cancel?'⛔ Detenida':'✅ Terminada'):'🔄 En proceso')+' · '+t.hecho+' de '+t.total+' ('+pct+'%) · '+dur+rest+'</div>'+
+    (t.actual&&!t.fin?'<div style="opacity:.75">Ahora: '+esc2(t.actual)+'</div>':'')+
+    (t.fallas.length?'<div style="color:#dc2626;margin-top:3px">⚠️ Con error ('+t.fallas.length+'): '+esc2(t.fallas.slice(-8).join(', '))+'</div>':'')+
+    (!t.fin?'<div style="margin-top:6px"><button onclick="tareaDetener('+t.id+')">Detener</button></div>':'')+'</div>'}).join(''):'<div class="tp-t">No hay tareas.</div>');
+}
+window.tareaIni=function(nombre,total){var t={id:Date.now()+Math.random(),nombre:nombre,total:total||0,hecho:0,ini:Date.now(),fin:0,fallas:[],actual:'',cancel:false};T.push(t);ab=true;dibujar();return t};
+window.tareaAvance=function(t,hecho,actual,ok){t.hecho=hecho;t.actual=actual||'';if(ok===false)t.fallas.push(actual||('#'+hecho));dibujar()};
+window.tareaFin=function(t){t.fin=Date.now();t.actual='';dibujar();try{toast((t.cancel?'⛔ ':'✅ ')+t.nombre+': '+t.hecho+' de '+t.total+(t.fallas.length?' ('+t.fallas.length+' con error)':''))}catch(e){}};
+window.tareaDetener=function(id){T.forEach(function(t){if(t.id===id)t.cancel=true});dibujar()};
+window.tareasToggle=function(){ab=!ab;dibujar()};
+window.tareasLimpiar=function(){for(var i=T.length-1;i>=0;i--)if(T[i].fin)T.splice(i,1);dibujar()};
+setInterval(function(){if(T.some(function(t){return !t.fin}))dibujar()},2000);
+window.addEventListener('beforeunload',function(e){if(T.some(function(t){return !t.fin})){e.preventDefault();e.returnValue=''}});
 })();
 </script>
 </body>
