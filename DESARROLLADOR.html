@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-182000">
+<meta name="app-build" content="20261022-182600">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -5820,7 +5820,7 @@ function importar(){
   if(!_esDev()){ setContent(errorView('Solo el desarrollador puede importar datos')); return; }
   const banner = moduleBanner('📥','Importar hojas de datos',
     'Sube un CSV o Excel (.xlsx) para actualizar (upsert) una tabla en Supabase',
-    `<button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);margin-right:6px" onclick="regenerarPdfsCot()">📄 Regenerar PDFs en Drive</button><button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="importShowSQL()">📋 Ver SQL RPC</button>`,
+    `<button class="btn btn-sm" style="background:#0d9488;color:#fff;border:1px solid #0f766e;margin-right:6px;font-weight:700" onclick="regenerarPdfsCot()">📄 Regenerar PDFs en Drive</button><button class="btn btn-sm" style="background:#475569;color:#fff;border:1px solid #334155" onclick="importShowSQL()">📋 Ver SQL RPC</button>`,
     'linear-gradient(135deg,#7c2d12,#b91c1c)');
   const cards = Object.entries(IMPORT_TABLES).map(([tbl,cfg])=>`
     <div class="imp-card" onclick="importSelectTable('${tbl}')" data-tbl="${tbl}">
