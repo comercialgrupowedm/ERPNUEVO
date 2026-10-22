@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-175200">
+<meta name="app-build" content="20261022-181200">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3173,7 +3173,7 @@ async function _guardarPdfDrive(html,nombre,carpeta){
     // Una sola página, del tamaño exacto del contenido — así nunca sale una segunda hoja en blanco.
     const {jsPDF}=window.jspdf; const imgW=612, imgH=imgW*(canvas.height/canvas.width);
     const pdf=new jsPDF({unit:'pt',format:[imgW,imgH]});
-    pdf.addImage(canvas.toDataURL("image/jpeg",0.98),'JPEG',0,0,imgW,imgH);
+    pdf.addImage(canvas.toDataURL("image/png"),'PNG',0,0,imgW,imgH,undefined,'FAST');
     const base64=pdf.output('datauristring').split(',')[1];
     const _pm=/^(COT-\d+)-/.exec(nombre); const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta,nombre,base64,prefijo:_pm?_pm[1]+'-':''})});
     const j=await r.json().catch(()=>null);
