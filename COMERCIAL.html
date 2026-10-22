@@ -4547,6 +4547,7 @@ function pdMateriales(p){
   const estCol={PENDIENTE:'gris',SOLICITADO:'naranja',COMPRADO:'verde'}; const dis=puede('diseno'); const com=puede('compras');
   return `<div class="dp-section"><h4>🧱 Materiales de la OP</h4>
     ${dis?`<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="formMatProd('${p.id}')">＋ Agregar material</button>${mats.some(m=>m.estado==='PENDIENTE')?`<button class="btn btn-ghost btn-sm" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button>`:''}</div>`:''}
+    ${mats.some(m=>m.estado==='PENDIENTE')?`<div style="background:#fef3c7;border:1.5px solid #d97706;color:#78350f;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px"><b>⚠️ ${mats.filter(m=>m.estado==='PENDIENTE').length} material(es) SIN enviar a compras.</b> Mientras estén «PENDIENTE», compras no los ve.<div style="margin-top:8px"><button class="btn btn-primary btn-sm" style="background:#d97706" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button></div></div>`:''}
     ${mats.length?mats.map(m=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(m.material)}</b>${m.detalle?`<div style="font-size:11px;color:var(--muted)">${esc(m.detalle)}</div>`:''}<div style="font-size:11px;color:var(--muted)">${cantMat(m)}${m.proveedor?' · '+esc(m.proveedor):''}</div></div><span class="badge ${estCol[m.estado]||'gris'}">${m.estado}</span></div>
       <div style="display:flex;gap:14px;margin-top:6px;font-size:12px;font-family:var(--mono)"><span>Cotizado: <b>${fmt(m.costo_cotizado)}</b></span><span>Real: <b style="color:${m.costo_real!=null&&Number(m.costo_real)>Number(m.costo_cotizado)?'var(--danger)':'var(--text)'}">${m.costo_real!=null?fmt(m.costo_real):'—'}</b></span></div>
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${dis&&m.estado==='PENDIENTE'?`<button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}','${m.id}')">✏️ Editar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delMatProd('${m.id}','${p.id}')">🗑</button>`:''}
@@ -4624,7 +4625,7 @@ function prodPickImagen(id){
   const pp=prodDe(id); if(pp&&window.imgSugAbrir) imgSugAbrir(pp,up,r=>{ pp.imagen_thumb=r.thumb; pp.imagen_drive_id=r.drive; afterAct(id); }); else up();
 }
 // materiales
-async function prodMatSolicitar(id){ if(!confirm('¿Enviar los materiales pendientes a compras?')) return; if(await rpcAct('prod_mat_solicitar',{p_id:id},'📨 Materiales enviados a compras')) afterAct(id); }
+async function prodMatSolicitar(id,sinConfirmar){ if(!sinConfirmar&&!confirm('¿Enviar los materiales pendientes a compras?')) return; if(await rpcAct('prod_mat_solicitar',{p_id:id},'📨 Materiales enviados a compras')) afterAct(id); }
 function pmCalc(){
   const nom=gv('pm1'), kg=gn('pm2'), c=document.getElementById('pm3'); if(!c) return;
   const cat=(DB.materiales||[]).find(x=>x.material===nom);
@@ -4645,6 +4646,7 @@ async function guardarMatProd(pid,mid){
   try{
     if(mid) await PATCH('prod_materiales',mid,row); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
     await prodRefreshAll(); closeModal(); toast('✅ Material guardado'); afterAct(pid);
+    if(!mid&&confirm('Material guardado en la OP.\n\n¿Enviarlo YA a compras?\n(Si no lo envías, compras NO lo ve)')) await prodMatSolicitar(pid,true);
   }catch(e){ toast('❌ '+errMsg(e),'error'); }
 }
 async function delMatProd(mid,pid){ if(!confirm('¿Quitar este material?')) return; try{ await DELETE('prod_materiales',mid); DB.prodMats=(DB.prodMats||[]).filter(m=>m.id!==mid); await prodRefreshAll(); toast('🗑 Material eliminado'); afterAct(pid); }catch(e){ toast('❌ '+errMsg(e),'error'); } }
