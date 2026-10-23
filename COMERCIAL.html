@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-193000">
+<meta name="app-build" content="20261023-194500">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -2826,8 +2826,8 @@ function cotizaciones(){
       ${thSort('cotizaciones','encargado','Encargado')}${thSort('cotizaciones','ciudad','Ciudad')}${thSort('cotizaciones','fecha_emision','Fecha Emisión')}
       ${thSort('cotizaciones','fecha_entrega_pactada','Entrega Pactada')}${thSort('cotizaciones','lead_time_dias','Lead Time')}
       ${thSort('cotizaciones','precio_sin_iva','Sin IVA')}${thSort('cotizaciones','precio_total','Total')}${thSort('cotizaciones','forma_de_pago','Forma Pago')}</tr></thead><tbody>
-      ${sorted.length?pgSlice('cot',sorted).map(c=>`<tr onclick="detailCot('${c.id}')">
-        <td class="td-center" onclick="event.stopPropagation()"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" title="Ver los ítems de esta cotización" onclick="cotxTog('${c.id}')">${_COTX.has(c.id)?'▾':'▸'}</button></td>
+      ${sorted.length?pgSlice('cot',sorted).map(c=>`<tr data-cid="${c.id}" onclick="detailCot('${c.id}')">
+        <td class="td-center" onclick="event.stopPropagation()"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" title="Ver los ítems de esta cotización" onclick="cotxTog('${c.id}')">▸</button></td>
         <td style="white-space:nowrap">${bSem(c._sem)}</td>
         <td title="${esc(c._opTip)}" style="white-space:nowrap"><span style="color:var(--accent);font-weight:700">${c._op?esc(c._op):'—'}</span></td>
         <td><span style="color:var(--accent);font-weight:700">COT-${c.cotizacion||'—'}</span></td>
@@ -2835,7 +2835,7 @@ function cotizaciones(){
         <td style="max-width:180px;font-weight:600">${esc(c.empresa||'—')}</td><td style="max-width:220px">${esc(c.descripcion_proyecto||'—')}</td>
         <td>${esc(c.asesor||'—')}</td><td>${esc(c.encargado||'—')}</td><td>${esc(c.ciudad||'—')}</td>
         <td>${fmtDate(c.fecha_emision)}</td><td>${fmtDate(c.fecha_entrega_pactada)}</td><td class="td-num">${c.lead_time_dias??0}d</td>
-        <td class="td-num">${fmt(c.precio_sin_iva)}</td><td class="td-num">${fmt(c.precio_total)}</td><td>${esc(c.forma_de_pago||'—')}</td></tr>${_COTX.has(c.id)?cotxItems(c):''}`).join('')
+        <td class="td-num">${fmt(c.precio_sin_iva)}</td><td class="td-num">${fmt(c.precio_total)}</td><td>${esc(c.forma_de_pago||'—')}</td></tr>`).join('')
         :'<tr><td colspan="17" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
   }else{
     setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('cot',sorted).map(c=>`
@@ -3271,14 +3271,35 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
   w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500);
 }
 
-// Fila desplegable de ítems en la tabla de cotizaciones
-const _COTX=new Set();
-function cotxTog(id){ if(_COTX.has(id)) _COTX.delete(id); else _COTX.add(id); refreshCurrentView(); }
+// Fila desplegable de ítems en la tabla de cotizaciones (se abre/cierra en su sitio, sin repintar ni reordenar la tabla)
+const _COTX=new Set(); function _COTXC(){ _COTX.clear(); }
+function cotxTog(id){
+  const tr=document.querySelector('tr[data-cid="'+id+'"]'); if(!tr) return; const btn=tr.querySelector('button'); const nx=tr.nextElementSibling;
+  if(nx&&nx.dataset.cx===id){ _COTX.delete(id); nx.remove(); if(btn) btn.textContent='▸'; pinQuitar('cot-'+id); return; }
+  const c=(DB.cotizaciones||[]).find(x=>x.id===id); if(!c) return; _COTX.add(id);
+  tr.insertAdjacentHTML('afterend',cotxItems(c)); if(btn) btn.textContent='▾';
+  pinFijar('cot-'+id,'COT-'+c.cotizacion+' · '+(c.empresa||''),'tr[data-cid="'+id+'"]');
+}
 function cotxItems(c){
   const its=(typeof itemsDe==='function'?itemsDe(c.id):[])||[];
-  if(!its.length) return `<tr><td></td><td colspan="16" style="padding:8px 12px;color:var(--muted);font-size:12px">Esta cotización no tiene ítems.</td></tr>`;
-  return `<tr><td></td><td colspan="16" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th><th>P. unit.</th><th>Total</th></tr></thead><tbody>${its.map((it,i)=>`<tr onclick="detailCot('${c.id}')" style="cursor:pointer"><td class="td-center"><b>${it.item??i+1}</b></td><td class="td-center">${it.unidades||1}</td><td style="max-width:420px;white-space:pre-wrap">${esc(String(it.descripcion||'—').slice(0,220))}</td><td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num"><b>${fmt(totalItem(it))}</b></td></tr>`).join('')}</tbody></table></td></tr>`;
+  if(!its.length) return `<tr data-cx="${c.id}"><td></td><td colspan="16" style="padding:8px 12px;color:var(--muted);font-size:12px">Esta cotización no tiene ítems.</td></tr>`;
+  return `<tr data-cx="${c.id}"><td></td><td colspan="16" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th><th>P. unit.</th><th>Total</th></tr></thead><tbody>${its.map((it,i)=>`<tr onclick="detailCot('${c.id}')" style="cursor:pointer"><td class="td-center"><b>${it.item??i+1}</b></td><td class="td-center">${it.unidades||1}</td><td style="max-width:420px;white-space:pre-wrap">${esc(String(it.descripcion||'—').slice(0,220))}</td><td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num"><b>${fmt(totalItem(it))}</b></td></tr>`).join('')}</tbody></table></td></tr>`;
 }
+
+// ── Barra fija «Trabajando en…»: lo que abres o despliegas queda anclado arriba para volver a ello ──
+window._PINS=window._PINS||[];
+function pinRender(){
+  let b=document.getElementById('pin-bar');
+  if(!_PINS.length){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='pin-bar'; b.style.cssText='position:fixed;left:0;right:0;z-index:900;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 12px;background:#fef3c7;border-bottom:2px solid #d97706;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:12px;color:#78350f'; document.body.appendChild(b); }
+  const t=document.getElementById('topbar'); b.style.top=(t?Math.round(t.getBoundingClientRect().bottom):0)+'px';
+  b.innerHTML='<b>📌 Trabajando en:</b>'+_PINS.map((p,i)=>`<span style="display:inline-flex;align-items:center;background:#fff;border:1px solid #d97706;border-radius:99px;overflow:hidden"><button style="border:0;background:none;padding:3px 10px;font-weight:700;cursor:pointer;color:#78350f" onclick="pinIr(${i})">${String(p.label).replace(/</g,'&lt;')}</button><button style="border:0;background:#fde68a;padding:3px 8px;cursor:pointer;font-weight:900" title="Quitar" onclick="pinQuitarI(${i})">✕</button></span>`).join('');
+}
+function pinFijar(k,label,sel){ if(!_PINS.some(p=>p.k===k)) _PINS.push({k,label,sel}); pinRender(); }
+function pinQuitar(k){ window._PINS=_PINS.filter(p=>p.k!==k); pinRender(); }
+function pinQuitarI(i){ _PINS.splice(i,1); pinRender(); }
+function pinIr(i){ const p=_PINS[i]; if(!p) return; const el=document.querySelector(p.sel); if(el){ const t=document.getElementById('pin-bar'); const off=(t?t.offsetHeight:0)+70; const y=el.getBoundingClientRect().top+window.scrollY-off; window.scrollTo({top:Math.max(0,y),behavior:'smooth'}); el.style.outline='3px solid #d97706'; setTimeout(()=>{ el.style.outline=''; },1600); } }
+(function(){ const n=window.nav; if(typeof n==='function'&&!n._pin){ window.nav=function(){ _PINS.length=0; pinRender(); _COTXC&&_COTXC(); return n.apply(this,arguments); }; window.nav._pin=1; } })();
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
   const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(c.origen==='MARQUILLA'?'<span style="font-weight:700">'+cl(String(it.descripcion||'').split(/\r?\n/).map(x=>x.trim()).find(Boolean)||'')+'</span>':/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));

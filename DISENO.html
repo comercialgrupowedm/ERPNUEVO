@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-193000">
+<meta name="app-build" content="20261023-194500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1360,23 +1360,44 @@ function bdScope(k){ _BD.scope=k; _BD.kf=''; pgReset(); bandeja(); }
 let _bdT=null; function bdSetQ(v){ clearTimeout(_bdT); _bdT=setTimeout(()=>{ _BD.q=v; pgReset(); bandeja(); },220); }
 
 // ── Vista «Por OP»: una fila por OP (con cantidad de ítems) y botón para desplegar/elegir el ítem ──
-window._OPX=window._OPX||new Set();
-function opxTog(k){ if(_OPX.has(k)) _OPX.delete(k); else _OPX.add(k); refreshCurrentView(); }
-function opxTodos(vista,ops,abrir){ ops.forEach(o=>{ const k=vista+'|'+o; if(abrir) _OPX.add(k); else _OPX.delete(k); }); refreshCurrentView(); }
+window._OPX=window._OPX||new Set(); window._OPXG=window._OPXG||{}; const _COTXC=()=>{ _OPX.clear(); };
+function opxDet(k){ const its=_OPXG[k]||[]; return `<tr data-opx="${k}"><td></td><td colspan="8" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th></th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Estado</th><th>Avance</th><th>Pactada</th><th>Diseñador</th></tr></thead><tbody>${its.slice().sort((x,y)=>(x.item_num||0)-(y.item_num||0)).map(p=>`<tr onclick="detalleProd('${p.id}')" style="cursor:pointer"><td>${thumbProd(p,30)}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:320px">${esc(String(p.descripcion||'—').slice(0,140))}</td><td class="td-center">${p.unidades??'—'}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td style="min-width:80px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${pactadaTag(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}</tbody></table></td></tr>`; }
+function opxTog(k,forzar){
+  const tr=document.querySelector('tr[data-op="'+k+'"]'); if(!tr) return; const btn=tr.querySelector('button'); const nx=tr.nextElementSibling; const abierto=!!(nx&&nx.dataset.opx===k);
+  if(forzar===true&&abierto) return; if(forzar===false&&!abierto) return;
+  if(abierto){ _OPX.delete(k); nx.remove(); if(btn) btn.textContent='▸'; tr.style.background=''; pinQuitar('op-'+k); return; }
+  _OPX.add(k); tr.insertAdjacentHTML('afterend',opxDet(k)); if(btn) btn.textContent='▾'; tr.style.background='var(--bg,#f1f5f9)';
+  const its=_OPXG[k]||[]; pinFijar('op-'+k,'OP-'+String(k).split('|')[1]+' · '+((its[0]||{}).empresa||''),'tr[data-op="'+k+'"]');
+}
+function opxTodos(vista,ops,abrir){ ops.forEach(o=>opxTog(vista+'|'+o,!!abrir)); }
 function tablaPorOP(key,rows){
   const g=new Map(); rows.forEach(p=>{ const k=String(p.op); if(!g.has(k)) g.set(k,[]); g.get(k).push(p); });
   const groups=[...g.entries()]; const pg=pgSlice(key,groups);
-  const ops=groups.map(x=>x[0]); const todosAb=ops.length&&ops.every(o=>_OPX.has(key+'|'+o));
+  const ops=groups.map(x=>x[0]); const todosAb=false; _OPX.clear(); _PINS.length=0; pinRender();
   const body=pg.map(([op,its])=>{
-    const k=key+'|'+op, ab=_OPX.has(k); const a=its[0];
+    const k=key+'|'+op, ab=false; const a=its[0]; _OPXG[k]=its;
     const pact=its.map(x=>x.fecha_pactada).filter(Boolean).sort()[0];
     const av=its.reduce((s,x)=>s+(Number(x.avance)||0),0)/its.length;
     const diss=[...new Set(its.map(x=>x.disenador).filter(Boolean))];
-    const fila=`<tr onclick="opxTog('${k}')" style="cursor:pointer;background:${ab?'var(--bg,#f1f5f9)':'transparent'}"><td class="td-center"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" onclick="event.stopPropagation();opxTog('${k}')">${ab?'▾':'▸'}</button></td><td><b style="color:var(--purple)">OP-${esc(op)}</b></td><td>COT-${a.cot_num||'—'}</td><td style="font-weight:600">${esc(a.empresa||'—')}</td><td class="td-center"><span class="badge morado">${its.length} ítem${its.length!==1?'s':''}</span></td><td>${esc(a.asesor||'—')}</td><td>${esc(diss.join(', ')||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${av.toFixed(0)}%</div>${prog(av)}</td><td>${pact?fmtDate(pact):'—'}</td></tr>`;
-    const det=ab?`<tr><td></td><td colspan="8" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th></th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Estado</th><th>Avance</th><th>Pactada</th><th>Diseñador</th></tr></thead><tbody>${its.slice().sort((x,y)=>(x.item_num||0)-(y.item_num||0)).map(p=>`<tr onclick="detalleProd('${p.id}')" style="cursor:pointer"><td>${thumbProd(p,30)}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:320px">${esc(String(p.descripcion||'—').slice(0,140))}</td><td class="td-center">${p.unidades??'—'}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td style="min-width:80px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${pactadaTag(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}</tbody></table></td></tr>`:'';
-    return fila+det; }).join('');
-  return `<div style="display:flex;gap:8px;margin:0 0 6px"><button class="btn btn-sm btn-ghost" onclick="opxTodos('${key}',${JSON.stringify(ops).replace(/"/g,'&quot;')},${todosAb?'false':'true'})">${todosAb?'▾ Plegar todas':'▸ Desplegar todas'}</button><span style="font-size:11px;color:var(--muted);align-self:center">${groups.length} OP · toca una fila para ver sus ítems y elegir cuál trabajar</span></div><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:44px"></th><th>OP</th><th>COT</th><th>Empresa</th><th>Ítems</th><th>Asesor</th><th>Diseñador</th><th>Avance</th><th>Pactada</th></tr></thead><tbody>${body}</tbody></table></div></div>`+pgMore(key,groups);
+    const fila=`<tr data-op="${k}" onclick="opxTog('${k}')" style="cursor:pointer"><td class="td-center"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" onclick="event.stopPropagation();opxTog('${k}')">▸</button></td><td><b style="color:var(--purple)">OP-${esc(op)}</b></td><td>COT-${a.cot_num||'—'}</td><td style="font-weight:600">${esc(a.empresa||'—')}</td><td class="td-center"><span class="badge morado">${its.length} ítem${its.length!==1?'s':''}</span></td><td>${esc(a.asesor||'—')}</td><td>${esc(diss.join(', ')||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${av.toFixed(0)}%</div>${prog(av)}</td><td>${pact?fmtDate(pact):'—'}</td></tr>`;
+    return fila; }).join('');
+  return `<div style="display:flex;gap:8px;margin:0 0 6px"><button class="btn btn-sm btn-ghost" onclick="opxTodos('${key}',${JSON.stringify(ops).replace(/"/g,'&quot;')},true)">▸ Desplegar todas</button><button class="btn btn-sm btn-ghost" onclick="opxTodos('${key}',${JSON.stringify(ops).replace(/"/g,'&quot;')},false)">▾ Plegar todas</button><span style="font-size:11px;color:var(--muted);align-self:center">${groups.length} OP · toca una fila para ver sus ítems y elegir cuál trabajar</span></div><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:44px"></th><th>OP</th><th>COT</th><th>Empresa</th><th>Ítems</th><th>Asesor</th><th>Diseñador</th><th>Avance</th><th>Pactada</th></tr></thead><tbody>${body}</tbody></table></div></div>`+pgMore(key,groups);
 }
+
+// ── Barra fija «Trabajando en…»: lo que abres o despliegas queda anclado arriba para volver a ello ──
+window._PINS=window._PINS||[];
+function pinRender(){
+  let b=document.getElementById('pin-bar');
+  if(!_PINS.length){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='pin-bar'; b.style.cssText='position:fixed;left:0;right:0;z-index:900;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 12px;background:#fef3c7;border-bottom:2px solid #d97706;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:12px;color:#78350f'; document.body.appendChild(b); }
+  const t=document.getElementById('topbar'); b.style.top=(t?Math.round(t.getBoundingClientRect().bottom):0)+'px';
+  b.innerHTML='<b>📌 Trabajando en:</b>'+_PINS.map((p,i)=>`<span style="display:inline-flex;align-items:center;background:#fff;border:1px solid #d97706;border-radius:99px;overflow:hidden"><button style="border:0;background:none;padding:3px 10px;font-weight:700;cursor:pointer;color:#78350f" onclick="pinIr(${i})">${String(p.label).replace(/</g,'&lt;')}</button><button style="border:0;background:#fde68a;padding:3px 8px;cursor:pointer;font-weight:900" title="Quitar" onclick="pinQuitarI(${i})">✕</button></span>`).join('');
+}
+function pinFijar(k,label,sel){ if(!_PINS.some(p=>p.k===k)) _PINS.push({k,label,sel}); pinRender(); }
+function pinQuitar(k){ window._PINS=_PINS.filter(p=>p.k!==k); pinRender(); }
+function pinQuitarI(i){ _PINS.splice(i,1); pinRender(); }
+function pinIr(i){ const p=_PINS[i]; if(!p) return; const el=document.querySelector(p.sel); if(el){ const t=document.getElementById('pin-bar'); const off=(t?t.offsetHeight:0)+70; const y=el.getBoundingClientRect().top+window.scrollY-off; window.scrollTo({top:Math.max(0,y),behavior:'smooth'}); el.style.outline='3px solid #d97706'; setTimeout(()=>{ el.style.outline=''; },1600); } }
+(function(){ const n=window.nav; if(typeof n==='function'&&!n._pin){ window.nav=function(){ _PINS.length=0; pinRender(); _COTXC&&_COTXC(); return n.apply(this,arguments); }; window.nav._pin=1; } })();
 function tablaBk(rows){
   const fl=p=>[esNueva(p)?'<span class="badge morado">🆕 Nueva</span>':'',repAbierto(p)?'<span class="badge rojo">⚠️ Reproceso</span>':'',p.externo?'<span class="badge urg">🚚 Externo</span>':'',matsPend(p).length?`<span class="badge naranja">📨 ${matsPend(p).length}</span>`:''].join(' ');
   return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Empresa</th><th>Descripción</th><th>Cant</th><th>Etapa</th><th>Avance</th><th>Estado</th><th>Pactada</th><th>Prior.</th><th>Avisos</th><th>Diseñador</th></tr></thead><tbody>
