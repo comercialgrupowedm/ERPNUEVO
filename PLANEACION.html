@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-143000">
+<meta name="app-build" content="20261023-151500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -624,6 +624,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="ops" onclick="nav('ops')"><span class="nav-icon">🗂️</span>Control Producción</div>
     <div class="nav-item" data-m="control" onclick="nav('control')"><span class="nav-icon">🗃️</span>Control general</div>
     <div class="nav-item" data-m="historial" onclick="nav('historial')"><span class="nav-icon">📜</span>Historial</div>
+    <div class="nav-item" data-m="repetidas" onclick="nav('repetidas')"><span class="nav-icon">🧬</span>OPs repetidas</div>
     <div class="nav-item" data-m="produccion" onclick="nav('produccion')"><span class="nav-icon">🏭</span>En producción</div>
     <div class="nav-item" data-m="ruta" onclick="nav('ruta')"><span class="nav-icon">🧭</span>Ruta por máquina</div>
     <div class="nav-item" data-m="kanban" onclick="nav('kanban')"><span class="nav-icon">🧩</span>Kanban por máquina</div>
@@ -1150,7 +1151,7 @@ async function doLogin(){
 //  ERP PLANEACIÓN · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño, Compras y Remisiones
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
+const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',repetidas:'OPs repetidas',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const PROD_SEL_P='id,op,item_num,cot_num,precio_total,fecha_inicio,avance_pasos,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
@@ -2481,10 +2482,10 @@ addEventListener('resize',()=>{ if(_pl.open) plRender(true); });
 addEventListener('keydown',e=>{ if(!_pl.open) return; if(e.key==='Escape') plCerrar(); else if(e.key==='ArrowRight') {plNext();plTimer();} else if(e.key==='ArrowLeft') plPrev(); else if(e.key===' '){ e.preventDefault(); plPause(); } });
 setInterval(()=>{ if(_pl.open) plRender(true); },30000);
 
-const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['horario','📅','Horario 🆕'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
+const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['repetidas','🧬','OPs repetidas'],['horario','📅','Horario 🆕'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
 function menu(){ setContent(`<div class="mn-grid">${MENU_MODS.filter(x=>x[0]!=='horario'||(window.chatOn&&chatOn('pla_horario'))).map(([m,i,t])=>`<div class="mn-card" onclick="nav('${m}')"><div class="mn-img"><div class="mn-circle">${i}</div></div><div class="mn-t">${t}</div></div>`).join('')}</div>`); }
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,produccion,ruta,kanban,operarios,avances,riesgos,reportes,planta,horario:window.horario}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,repetidas,produccion,ruta,kanban,operarios,avances,riesgos,reportes,planta,horario:window.horario}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -2603,6 +2604,42 @@ function ayudaManual(abierto){
 
 // ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
 
+
+// ══ OPs REPETIDAS: para cuadrar con Planeación (Francisco) las OP duplicadas o mal asignadas ══
+const _REP={rows:null};
+async function repetidas(){
+  const banner=moduleBanner('🧬','OPs repetidas','Para cuadrarlas: separar, unir o corregir');
+  if(!puede('planeacion','administracion')){ setContent(banner+empty('Solo Planeación puede administrar las OP repetidas','🔒')); return; }
+  if(!_REP.rows){
+    setContent(banner+'<div style="padding:40px;text-align:center;color:var(--muted)">Revisando todas las OP…</div>');
+    try{ _REP.rows=await GETALL('produccion','select=id,op,cot_num,id_cotizacion,empresa,item_num,descripcion,es_garantia&op=not.is.null&order=op.desc,item_num.asc,id.asc'); }catch(e){ toast('❌ '+errMsg(e),'error'); return; }
+    if(MOD!=='repetidas') return;
+  }
+  const R=_REP.rows.filter(r=>!r.es_garantia); const maxOp=_REP.rows.reduce((m,r)=>Math.max(m,Number(r.op)||0),0);
+  const byOp={}, byCot={}, byItem={};
+  R.forEach(r=>{ (byOp[r.op]=byOp[r.op]||{})[r.cot_num]=((byOp[r.op]||{})[r.cot_num]||[]).concat(r); (byCot[r.cot_num]=byCot[r.cot_num]||{})[r.op]=((byCot[r.cot_num]||{})[r.op]||[]).concat(r); const k=r.op+'|'+r.item_num; (byItem[k]=byItem[k]||[]).push(r); });
+  const g1=Object.entries(byOp).filter(([op,c])=>Object.keys(c).length>1).sort((a,b)=>b[0]-a[0]);
+  const g2=Object.entries(byCot).filter(([c,o])=>Object.keys(o).length>1).sort((a,b)=>b[0]-a[0]);
+  const g3=Object.values(byItem).filter(a=>a.length>1).sort((a,b)=>b[0].op-a[0].op);
+  const card=(t,body)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px"><div style="font-weight:800;margin-bottom:6px">${t}</div>${body}</div>`;
+  const sec=(ic,t,sub,n,html)=>`<div class="dp-section" style="margin-top:14px"><h4>${ic} ${t} (${n})</h4><div style="font-size:12px;color:var(--muted);margin-bottom:8px">${sub}</div>${n?html:mutedP('✅ Nada por cuadrar aquí')}</div>`;
+  const h1=g1.map(([op,c])=>card('OP-'+op+' está en '+Object.keys(c).length+' cotizaciones distintas',Object.entries(c).map(([cot,rs])=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);flex-wrap:wrap"><div style="font-size:12.5px"><b>COT-${esc(String(cot))}</b> · ${esc(rs[0].empresa||'—')} · ${rs.length} ítem(s)</div><div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="repSeparar(${op},${cot},${maxOp+1})">✂️ Separar en OP nueva</button><button class="btn btn-ghost btn-sm" onclick="corregirOP(${op},${cot})">🔧 Corregir</button></div></div>`).join(''))).join('');
+  const h2=g2.map(([cot,o])=>{ const ops=Object.keys(o).map(Number).sort((a,b)=>a-b); const base=ops[0]; return card('COT-'+cot+' tiene '+ops.length+' OP: '+ops.map(x=>'OP-'+x).join(', ')+' · '+esc((Object.values(o)[0][0].empresa)||''),ops.slice(1).map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);flex-wrap:wrap"><div style="font-size:12.5px">OP-${x} · ${o[x].length} ítem(s)</div><div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="repUnir(${x},${base})">🔗 Unir en OP-${base}</button><button class="btn btn-ghost btn-sm" onclick="corregirOP(${x},${cot})">🔧 Corregir</button></div></div>`).join('')); }).join('');
+  const h3=g3.map(a=>card('OP-'+a[0].op+' · ítem '+a[0].item_num+' repetido '+a.length+' veces · COT-'+a[0].cot_num,a.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border)"><div style="font-size:12px;min-width:0">${esc(String(r.descripcion||'—').slice(0,90))}</div>${opDe(r.id)?`<button class="btn btn-ghost btn-sm" onclick="detailOP('${r.id}')">Abrir</button>`:''}</div>`).join(''))).join('');
+  setContent(banner+`<div style="padding:6px 0 80px">`
+    +sec('🔀','OP repetidas','Mismo número de OP en cotizaciones diferentes. Deja cada cotización con su propia OP (Separar) o corrige el número (Corregir).',g1.length,h1)+`</div>`);
+}
+async function _repFin(msg){ toast(msg); _REP.rows=null; try{ await recargar(); }catch(e){} repetidas(); }
+async function repSeparar(op,cot,sug){
+  const v=prompt('OP-'+op+' / COT-'+cot+'\n¿Con qué número de OP nueva quieres dejar los ítems de esta cotización?',String(sug)); if(v===null) return;
+  const nuevo=parseInt(v,10); if(!nuevo||nuevo<=0){ toast('Número no válido','error'); return; }
+  try{ await sb.rpc('plan_op_separar',{p_op:op,p_cot:cot,p_nuevo:nuevo}); await _repFin('✓ COT-'+cot+' quedó en OP-'+nuevo); }catch(e){ toast('❌ '+errMsg(e),'error'); }
+}
+async function repUnir(op,base){
+  if(!confirm('¿Unir OP-'+op+' dentro de OP-'+base+' en todo el sistema?')) return;
+  try{ await sb.rpc('plan_cambiar_op',{p_op:op,p_nuevo:base,p_forzar:true}); await _repFin('✓ OP-'+op+' unida en OP-'+base); }catch(e){ toast('❌ '+errMsg(e),'error'); }
+}
+
 // ══ CORREGIR OP (Planeación): renumerar la OP o moverla a otra cotización; se actualiza en todo el sistema ══
 function corregirOP(op,cot){
   openModal('🔧 Corregir OP-'+op,`${ayudaForm(`**Cambiar número:** escribe el número correcto de la OP; se actualiza en producción, remisiones, certificados, tiempos e historial. **Mover a otra cotización:** escribe el número de la cotización correcta; la OP y sus ítems pasan a esa cotización (los ítems se enlazan por número de ítem).`)}
@@ -2613,7 +2650,7 @@ function corregirOP(op,cot){
     <div class="field" style="align-self:end"><button class="btn btn-primary" onclick="corregirOpCot(${op})">📄 Mover a esa cotización</button></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
 }
-async function _corregirFin(msg){ toast(msg); closeModal(); try{ closeDetail(); }catch(e){} try{ await recargar(); }catch(e){} try{ refreshCurrentView(); }catch(e){} }
+async function _corregirFin(msg){ toast(msg); _REP.rows=null; closeModal(); try{ closeDetail(); }catch(e){} try{ await recargar(); }catch(e){} try{ refreshCurrentView(); }catch(e){} }
 async function corregirOpNum(op){
   const nuevo=parseInt(document.getElementById('co-op').value,10); if(!nuevo||nuevo<=0){ toast('Escribe un número de OP válido','error'); return; }
   if(nuevo===op){ toast('Es el mismo número','error'); return; }
