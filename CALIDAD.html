@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-090000">
+<meta name="app-build" content="20261023-110000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2384,7 +2384,7 @@ function docRemision(id){
 
 // ── BÚSQUEDA GLOBAL ─────────────────────────────────────────────────
 let _BQ='';
-function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
+function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input, #content input[id$="-q"]:not(#cb-q):not(#cc-q), #content input[placeholder^="🔍"]:not(#cb-q):not(#cc-q), #content input[placeholder^="Buscar"]:not([list])'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
 function onGlobalSearch(v){ if(MOD!=='buscar'&&_gsLocal(v)) return; _BQ=v; if(!String(v).trim()){ if(MOD==='buscar') nav('dashboard'); return; } if(MOD!=='buscar') nav('buscar',true); else buscar(); }
 function buscar(){
   const q=_BQ; const items=(DB.produccion||[]).concat(DB.extra||[]).filter(o=>buscaOP(o,q)).slice(0,40);

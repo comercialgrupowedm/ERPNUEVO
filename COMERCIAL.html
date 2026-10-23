@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-100000">
+<meta name="app-build" content="20261023-113000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -1739,6 +1739,7 @@ let _searchRaf = null, _searchTimer = null;
 // ══ SESIÓN ══════════════════════════════════════════════════════
 let _SESSION = null;
 try{ _SESSION = JSON.parse(localStorage.getItem('_wedm_s')||'null'); }catch(e){ _SESSION=null; }
+/*EMBED-BUSCAR*/try{ if(window.self!==window.top) window.addEventListener('message',function(e){ try{ if(e.origin===location.origin&&e.data&&e.data.t==='wedm-gs'&&typeof onSearch==='function') onSearch(e.data.v); }catch(_){} }); }catch(e){}
 /*EMBED-SESION*/try{ if(window.self!==window.top){ const _ps=JSON.parse(localStorage.getItem('_wedm_rem_s')||'null'); if(_ps&&_ps.token) _SESSION=_ps; } }catch(e){}   // incrustado en REMISIONES: usa la sesión ya iniciada allí
 if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
 const _esAdmin    = () => _SESSION?.rol === 'admin' || _SESSION?.rol === 'desarrollador';
@@ -2894,9 +2895,8 @@ function detailCot(id){
       <button class="cot-action-btn" onclick="window.open(DRIVE_COT_FOLDER_URL,'_blank','noopener')"><span class="cot-action-ic" style="background:#f9a825">📁</span><span class="cot-action-lbl">Carpeta PDFs</span></button>
       ${edit?`      <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
       <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button>`:''}
-      ${(()=>{ const o=opBtnInfo(id); return o?`<button class="cot-action-btn" onclick="formCrearOP('${id}')"><span class="cot-action-ic" style="background:#1565c0">🏭</span><span class="cot-action-lbl">${o.lbl}</span></button>`:''; })()}
     </div>
-    ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>
+    ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>${(_esMq(c)&&window.self!==window.top&&!cotTieneOp(c))?`<button class="btn btn-primary-soft btn-sm" onclick="try{parent.postMessage({t:'wedm-mq-edit',id:'${id}'},location.origin)}catch(e){}">🏷️ Editar marquilla</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="recalcularTotalesCotUI('${id}')" title="Vuelve a sumar el total con los ítems (IVA ${IVA_PCT}%)">🔄 Recalcular Total</button>
       <button class="btn btn-danger-soft btn-sm" onclick="deleteCot('${id}')" style="margin-left:auto">🗑</button></div>`:''}
     ${(()=>{ if((est!=='APROBADA'&&!_mqPorAprobar(c))||!puede('comercial','administracion')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}

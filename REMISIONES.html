@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-100000">
+<meta name="app-build" content="20261023-113000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1697,6 +1697,7 @@ function fitEmbed(){
   const t=f.getBoundingClientRect().top; f.style.height=Math.max(320,Math.floor(Math.min(window.innerHeight,nvT)-t-2))+'px';
 }
 window.addEventListener('resize',()=>{ try{ fitEmbed(); }catch(e){} });
+window.addEventListener('message',e=>{ try{ if(e.origin===location.origin&&e.data&&e.data.t==='wedm-mq-edit') mqEditar(e.data.id); }catch(_){} });
 function embedSalir(){ const c=document.getElementById('content'); if(c){ c.style.removeProperty('padding'); c.style.removeProperty('overflow'); } }
 function cotizaciones(){ const o=window._embOpen; window._embOpen=null; return embedVista('cot'+(o?'-'+o:''),'cotizaciones',o); }
 function cqAbrirCompleta(id){ closeDetail(); window._embOpen=id; if(MOD==='cotizaciones') MOD=''; nav('cotizaciones'); }
@@ -1722,6 +1723,7 @@ async function cqVista(soloMq){
   if(cur){ const i=document.getElementById('cq-q'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
 }
 async function cqDetalle(id){
+  cqAbrirCompleta(id); return;   // la marquilla es una cotización: se abre igual que en Cotizaciones (ítems, PDF, Crear OP)
   const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
   openDetail('COT-'+c.cotizacion,`<div style="padding:10px">${empty('Cargando…','⏳')}</div>`);
   let its=[]; try{ its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,precio_total,marquilla_html&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc'); }catch(e){ openDetail('COT-'+c.cotizacion,`<div class="callout">❌ ${esc(errMsg(e))}</div>`); return; }
@@ -1733,7 +1735,8 @@ async function cqDetalle(id){
   openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,`<button class="btn btn-primary" onclick="cqAbrirCompleta('${c.id}')">📄 PDF · 🏭 Crear OP</button>`+(puedeEd?`<button class="btn btn-ghost" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''));
 }
 async function mqEditar(id){
-  const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
+  if(!(_CQ.rows||[]).length){ try{ await cqCargar(true); }catch(e){} }
+  const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c){ toast('No se encontró la marquilla','error'); return; }
   try{
     const full=(await GET('cotizaciones','select=*&id=eq.'+encodeURIComponent(id)))[0]||c;
     const its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,marquilla_html,prcs&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc');
@@ -1762,8 +1765,8 @@ function nav(m,keep){
   if(!keep){ const gs=document.getElementById('globalSearch'); if(gs) gs.value=''; }
   refreshCurrentView();
 }
-function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
-function onGlobalSearch(v){ if(_gsLocal(v)) return; _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
+function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input, #content input[id$="-q"]:not(#cb-q):not(#cc-q), #content input[placeholder^="🔍"]:not(#cb-q):not(#cc-q), #content input[placeholder^="Buscar"]:not([list])'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
+function onGlobalSearch(v){ if(MOD==='cotizaciones'||MOD==='elementos'){ try{ const fr=document.getElementById('emb-frame'); if(fr&&fr.contentWindow) fr.contentWindow.postMessage({t:'wedm-gs',v:String(v||'')},location.origin); }catch(e){} return; } if(_gsLocal(v)) return; _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
   try{ if(MOD==='cotizaciones'||MOD==='elementos'){ const f=document.getElementById('emb-frame'); if(f&&f.contentWindow) f.contentWindow.location.reload(); toast('Datos actualizados'); return; }
