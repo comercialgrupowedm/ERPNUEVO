@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-213000">
+<meta name="app-build" content="20261023-220000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -4560,7 +4560,7 @@ function accionesProd(p){
     if(p.estado==='CALIDAD APROBADA') b.push(btn('↩️','#64748b','Devolver aprobación',`prodCalidadRev('${id}')`));
     if(p.calidad_estado==='APROBADA'&&dispProd(p)>0&&!remEnTramite(p.op)) b.push(btn('📦','#1565c0','Pedir remisión',`remPedirOp(${p.op})`));
   }
-  if(puede('comercial')&&!p.es_garantia) b.push(btn('🛡️','#ea580c','Crear garantía',`formGarantia('${id}')`));
+  if(puede('comercial','administracion','planeacion')&&!p.es_garantia) b.push(btn('🛡️','#ea580c','Crear garantía',`formGarantia('${id}')`));
   if(puede('diseno','comercial','produccion','calidad')) b.push(btn('📎','#475569','Subir plano',`prodSubirPlano('${id}')`));
   if(_esAdmin()) b.push(btn('🗑','#dc2626','Eliminar este ítem',`prodEliminarItem('${id}')`));
   return b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:'';
