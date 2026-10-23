@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-123000">
+<meta name="app-build" content="20261023-133000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -3270,7 +3270,7 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
 }
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
-  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));
+  const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(c.origen==='MARQUILLA'?'<span style="font-weight:700">'+cl(String(it.descripcion||'').split(/\r?\n/).map(x=>x.trim()).find(Boolean)||'')+'</span>':/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));
   const _mq=c.origen==='MARQUILLA';
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
@@ -3311,7 +3311,7 @@ function generarPDFCotizacion(id,soloGuardar){
       <td class="azul-light borde right" style="width:20%">SUBTOTAL</td><td class="borde right mono negrita" style="width:20%">${money(sub)}</td></tr>
       <tr><td class="azul-light borde right">I.V.A</td><td class="borde right mono">${money(iva)}</td></tr>
       ${descVal>0?`<tr><td class="azul-light borde right">DESCUENTO${descPct?` (${descPct}%)`:''}</td><td class="borde right mono">-${money(descVal)}</td></tr>`:''}
-      <tr><td class="total-row borde right">TOTAL</td><td class="total-row borde right mono negrita">${money(total)}</td></tr></table>
+      <tr><td class="total-row borde right">TOTAL</td><td class="borde right mono negrita" style="background:#fff!important;color:#000!important;font-weight:700">${money(total)}</td></tr></table>
     <p style="color:#434343;margin-bottom:14px;font-style:italic;line-height:1.5">Los anteriores precios están calculados con base en los actuales costos de producción y los de materiales. En caso de presentarse alguna modificación en dichos costos les avisaremos oportunamente la incidencia de los precios estipulados.</p>
     ${c.observaciones_especiales?`<p style="margin-bottom:12px">OBSERVACIONES: ${esc(c.observaciones_especiales)}</p>`:''}
     <table style="margin-top:8px"><tr><td style="width:60%;vertical-align:top"><table style="width:100%">
