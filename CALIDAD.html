@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-120000">
+<meta name="app-build" content="20261023-173000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2449,7 +2449,8 @@ function docHtmlRem(m,tipo){
   const L=en?{f:'DATE',s:'MESSRS.',n:'EIN',d:'ADDRESS',c:'CITY',e:'ATTENDANT',t:'PHONE',p:'PROJECT',r:'PACKING LIST',op:'PRODUCTION ORDER',q:'QUOTATION',po:'PURCHASE ORDER',i:'ITEM',qty:'QTY',ds:'DESCRIPTION',ob:'OBSERVATIONS',si:'SINCERELY',sin:'No items',pr:'Print / Save PDF'}
             :{f:'FECHA',s:'CLIENTE',n:'NIT',d:'DIRECCIÓN',c:'CIUDAD',e:'ENCARGADO',t:'TELÉFONO',p:'PROYECTO',r:des?'FORMATO DE DESPACHO':'REMISIÓN',op:'ORDEN DE PRODUCCIÓN',q:'COTIZACIÓN',po:'ORDEN DE COMPRA',i:'ITEM',qty:'CANT',ds:'DESCRIPCIÓN',ob:'OBSERVACIONES',si:'ATENTAMENTE',sin:'Sin ítems',pr:'Imprimir / Guardar PDF'};
   const ls=m.lineas||[];
-  const rows=ls.map((l,i)=>`<tr class="${i%2?'azul-row':''}"><td class="center borde" style="padding:16px 10px">${l.item??i+1}</td><td class="center borde" style="padding:16px 10px">${l.cantidad}</td><td class="borde" style="white-space:pre-wrap;padding:16px 10px">${cl(l.descripcion)}</td>${des?'<td class="center borde" style="width:7%;padding:16px 10px">☐</td>':''}</tr>`).join('');
+  const _rh=Math.max(64,Math.min(190,Math.floor(440/Math.max(ls.length,1))));
+  const rows=ls.map((l,i)=>`<tr style="height:${_rh}px" class="${i%2?'azul-row':''}"><td class="center borde" style="padding:22px 12px;font-size:11.5px">${l.item??i+1}</td><td class="center borde" style="padding:22px 12px;font-size:11.5px">${l.cantidad}</td><td class="borde" style="white-space:pre-wrap;padding:22px 12px;font-size:11.5px">${cl(l.descripcion)}</td>${des?'<td class="center borde" style="width:7%;padding:22px 12px;font-size:11.5px">☐</td>':''}</tr>`).join('');
   const cab=en
     ?`<div style="font-weight:900;font-size:20px;color:#1a3a6b;line-height:1;margin-bottom:8px">MOSAT GROUP INC<br><span style="font-size:9px;font-weight:400;color:#555">Advanced Metalwork</span></div><div style="color:#444;line-height:1.7">6710 MAIN STREET SUITE 233 MIAMI LAKES<br>FL - 33014<br>Cel: 3008860468<br>Email: m.garcia@mosatgroup.com<br>EIN: 93-4707595<br>MIAMI - FLORIDA - USA</div>`
     :`<div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div><div style="color:#444;line-height:1.7"><i>${esc(E.lema)}</i><br>${esc(E.dir)}<br>Tel: ${esc(E.tel)} &nbsp; Cel: ${esc(E.cel)}<br>Email: ${esc(E.email)}<br>NIT: ${esc(E.nit)}<br>${esc(E.ciudad)}</div>`;
