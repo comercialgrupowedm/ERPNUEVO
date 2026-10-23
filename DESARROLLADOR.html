@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-203000">
+<meta name="app-build" content="20261023-120000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -9441,6 +9441,20 @@ PLD.hojaruta={nombre:'Hoja de ruta (Diseño)',icono:'🗺️',
     };
     lista();
   };
+})();
+</script>
+<script id="gsfix">
+(function(){
+var SEL='#content input[data-fkey$="q"], #content .filter-search-wrap input, #content input[id$="-q"]:not(#cb-q):not(#cc-q)';
+function g(){return document.getElementById('globalSearch');}
+function upd(){try{var e=g(); if(!e||typeof MOD==='undefined')return; var t=(typeof TITLES!=='undefined'&&TITLES[MOD])||MOD; e.placeholder='🔍 Buscar en '+t+'…'; e.title='Busca en: '+t;}catch(_){}}
+function mirror(){try{var e=g(); if(!e||document.activeElement===e)return; var i=document.querySelector(SEL); if(i&&e.value!==i.value) e.value=i.value;}catch(_){}}
+var st=document.createElement('style'); st.textContent='#content .filter-search-wrap{display:none!important}'; document.head.appendChild(st);
+if(typeof window.nav==='function'){ var n=window.nav; window.nav=function(){ var r=n.apply(this,arguments); upd(); return r; }; }
+var t=null; function sched(){ clearTimeout(t); t=setTimeout(function(){upd();mirror();},150); }
+function boot(){ var c=document.getElementById('content'); if(c&&window.MutationObserver) new MutationObserver(sched).observe(c,{childList:true,subtree:false}); upd(); }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+setTimeout(upd,800);
 })();
 </script>
 <script id="updchk">
