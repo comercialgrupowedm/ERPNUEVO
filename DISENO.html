@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-165000">
+<meta name="app-build" content="20261023-171500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3742,6 +3742,26 @@ async function prodAsignarDisGuardar(id){
   if(ok){ closeModal(); afterAct(id); }
 }
 
+
+// ── Marquillas: todos los ítems de la OP, uno por uno, con descripción / medida / tipo ──
+function _mqPartir(d){ const L=String(d||'').split('\n').map(x=>x.trim()).filter(Boolean); const med=L.filter(x=>/tama[ñn]o|\bmm\b/i.test(x)); return {desc:L.filter(x=>!med.includes(x)).join(' · '), med:med.join(' · ')}; }
+function prodMarquillas(id){
+  const p=prodDe(id); if(!p) return;
+  const its=(DB.produccion||[]).filter(x=>x.op===p.op&&!x.es_garantia).sort((a,b)=>(a.item_num||0)-(b.item_num||0));
+  let tipos={}; try{ tipos=JSON.parse(localStorage.getItem('mq_tipos_'+p.op)||'{}'); }catch(e){}
+  window._MQL={op:p.op,its};
+  const inp="width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12.5px;background:var(--surface);color:var(--text)";
+  const rows=its.map((x,i)=>{ const q=_mqPartir(x.descripcion); return `<tr><td style="padding:6px;font-weight:800;text-align:center">${esc(x.item_num)}</td><td style="padding:4px"><input id="mql-d${i}" value="${esc(q.desc)}" style="${inp}"></td><td style="padding:4px"><input id="mql-m${i}" value="${esc(q.med)}" style="${inp}"></td><td style="padding:4px"><input id="mql-t${i}" value="${esc(tipos[x.id]||'')}" placeholder="Ej: tipo pies, cliché…" style="${inp}"></td></tr>`; }).join('');
+  openModal('🏷️ Marquillas · OP-'+p.op,`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${its.length} ítem(s) de la OP. Puedes corregir cualquier campo y escribir el <b>tipo</b>.</div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:560px"><thead><tr style="text-align:left;font-size:11px;color:var(--muted)"><th>Ítem</th><th>Descripción</th><th>Medida / tamaño de letra</th><th>Tipo</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="prodMarquillasImprimir()">🖨️ Imprimir / PDF</button>`);
+}
+function prodMarquillasImprimir(){
+  const M=window._MQL; if(!M) return; const g=i=>(document.getElementById(i)||{}).value||'';
+  const tipos={}; const rows=M.its.map((x,i)=>{ tipos[x.id]=g('mql-t'+i); return `<tr><td style="text-align:center;font-weight:700">${esc(x.item_num)}</td><td>${esc(g('mql-d'+i))}</td><td>${esc(g('mql-m'+i))}</td><td>${esc(g('mql-t'+i))}</td></tr>`; }).join('');
+  try{ localStorage.setItem('mq_tipos_'+M.op,JSON.stringify(tipos)); }catch(e){}
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Marquillas OP-${M.op}</title><style>@page{size:letter;margin:12mm}body{font-family:Arial,sans-serif;font-size:12px;color:#000}h2{margin:0 0 10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:6px 8px;vertical-align:top}th{background:#eee;text-align:left}</style></head><body><h2>MARQUILLAS · OP-${M.op}</h2><table><thead><tr><th style="width:40px">Ítem</th><th>Descripción</th><th>Medida / tamaño de letra</th><th style="width:130px">Tipo</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  closeModal(); setTimeout(()=>_abrirDocParaImprimir(html,`MARQUILLAS_OP-${M.op}.pdf`),300);
+}
 // ── Acciones de la OP (reemplaza a la versión anterior) ─────────
 function accionesProd(p){
   const id=p.id; const b=[]; const pend=matsPend(p).length;
@@ -3755,6 +3775,7 @@ function accionesProd(p){
   b.push(btn('🗺️','#0d9488','Hoja de ruta',`prodHojaRutaEditor('${id}')`));
   if(p.hoja_ruta||p._hrSaved) b.push(btn('🖨️','#0f766e','Imprimir hoja de ruta',`prodHojaRutaImprimir('${id}')`));
   b.push(btn('✅','#2563eb','Formato QA',`prodFormatoQA('${id}')`));
+  if((DB.produccion||[]).filter(x=>x.op===p.op&&!x.es_garantia).length>1) b.push(btn('🏷️','#0f766e','Marquillas',`prodMarquillas('${id}')`));
   b.push(btn('🖼️','#0284c7','Imagen del ítem',`prodPickImagen('${id}')`));
   b.push(btn('📎','#475569','Subir plano',`prodSubirPlano('${id}')`));
   b.push(btn('📄','#334155','Ver plano',`prodVerPlano('${id}')`));
