@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-133000">
+<meta name="app-build" content="20261023-143000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -1749,8 +1749,9 @@ const _esComercial= () => _SESSION?.rol === 'comercial';
 const _esLectura  = () => _SESSION?.rol === 'lectura';
 const _asesorActual = () => _SESSION?.asesor || '';
 const _esAdm = () => _SESSION?.rol === 'administracion';   // Administración (Adriana): trabaja igual que comercial en cotizaciones/ítems
-const _selAsesor = () => _esAdmin() || _esAdm();
-const canEdit = () => _esAdmin() || _esComercial() || _esAdm();
+const _esPlan = () => _misRoles().includes('planeacion');   // Planeación: puede corregir cotizaciones y OP
+const _selAsesor = () => _esAdmin() || _esAdm() || _esPlan();
+const canEdit = () => _esAdmin() || _esComercial() || _esAdm() || _esPlan();
 const capW = s => String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1);
 
 // ══ UTILIDADES ══════════════════════════════════════════════════
@@ -2896,7 +2897,7 @@ function detailCot(id){
       ${edit?`      <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
       <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button>`:''}
     </div>
-    ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>${(_esMq(c)&&window.self!==window.top&&!cotTieneOp(c))?`<button class="btn btn-primary-soft btn-sm" onclick="try{parent.postMessage({t:'wedm-mq-edit',id:'${id}'},location.origin)}catch(e){}">🏷️ Editar marquilla</button>`:''}
+    ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>${(puede('planeacion','administracion')&&opDeCot(id))?`<button class="btn btn-primary-soft btn-sm" style="background:#fef3c7;color:#92400e" onclick="corregirOP('${id}')">🔧 Corregir OP-${opDeCot(id)}</button>`:''}${(_esMq(c)&&window.self!==window.top&&!cotTieneOp(c))?`<button class="btn btn-primary-soft btn-sm" onclick="try{parent.postMessage({t:'wedm-mq-edit',id:'${id}'},location.origin)}catch(e){}">🏷️ Editar marquilla</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="recalcularTotalesCotUI('${id}')" title="Vuelve a sumar el total con los ítems (IVA ${IVA_PCT}%)">🔄 Recalcular Total</button>
       <button class="btn btn-danger-soft btn-sm" onclick="deleteCot('${id}')" style="margin-left:auto">🗑</button></div>`:''}
     ${(()=>{ if((est!=='APROBADA'&&!_mqPorAprobar(c))||!puede('comercial','administracion')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
@@ -3010,7 +3011,7 @@ function onBuscarCliente(val){
   if(cli.condicion_pago) set('fc',cli.condicion_pago);
   window._cotCliId=cli.id;
 }
-function cotNumLibre(){ try{ if(_SESSION&&_SESSION.rol==='desarrollador') return true; return !!(typeof F==='function'&&F('com_cot_numero_manual')&&typeof canEdit==='function'&&canEdit()); }catch(e){ return false; } }
+function cotNumLibre(){ try{ if(_SESSION&&_SESSION.rol==='desarrollador') return true; if(typeof _esPlan==='function'&&_esPlan()) return true; return !!(typeof F==='function'&&F('com_cot_numero_manual')&&typeof canEdit==='function'&&canEdit()); }catch(e){ return false; } }
 function formCot(c){
   c=c||{}; const isNew=!c.id; const tipoActual=c.tipo||'PE. Proyecto externo'; window._cotCliId=c.id_cliente||null; window._cotEditId=c.id||''; window._cotTab=0; window._ocFile=null;
   const asesores=_selAsesor()?asesoresLista():[_asesorActual()]; const its=isNew?[]:itemsDe(c.id);
@@ -4919,6 +4920,33 @@ function opBtnInfo(cotId){
   const its=itemsDe(cotId); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
   if(!its.some(it=>!enP.has(it.id))) return null; const op=opDeCot(cotId);
   return {op, lbl:op?'Agregar a OP-'+op:'Crear OP'};
+}
+
+// ══ CORREGIR OP (Planeación / Administración): renumerar la OP o moverla a otra cotización; todo se actualiza en el sistema ══
+function corregirOP(cotId){
+  const c=DB.cotizaciones.find(x=>x.id===cotId); const op=opDeCot(cotId); if(!c||!op){ toast('Esta cotización no tiene OP','error'); return; }
+  const rows=(DB.produccion||[]).filter(p=>p.id_cotizacion===cotId);
+  openModal('🔧 Corregir OP-'+op,`${ayudaForm(`**Cambiar número:** escribe el número correcto de la OP; se actualiza en producción, remisiones, certificados, tiempos e historial. **Mover a otra cotización:** escribe el número de la cotización correcta; la OP y sus ítems pasan a esa cotización (los ítems se enlazan por número de ítem).`)}
+    <div class="callout" style="margin-bottom:10px">OP-${op} · COT-${c.cotizacion} · ${esc(c.empresa||'')} · ${rows.length} ítem(s)</div>
+    <div class="form-grid"><div class="field"><label>Número de OP correcto</label><input id="co-op" type="number" inputmode="numeric" value="${op}"></div>
+    <div class="field" style="align-self:end"><button class="btn btn-primary" onclick="corregirOpNum(${op})">🔢 Cambiar número de OP</button></div>
+    <div class="field"><label>Mover la OP a la cotización N°</label><input id="co-cot" type="number" inputmode="numeric" placeholder="Ej: ${c.cotizacion}"></div>
+    <div class="field" style="align-self:end"><button class="btn btn-primary" onclick="corregirOpCot(${op})">📄 Mover a esa cotización</button></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
+}
+async function _corregirFin(msg){ toast(msg); closeModal(); try{ closeDetail(); }catch(e){} try{ await cargarTodo(); }catch(e){} try{ await prodRefreshAll(); }catch(e){} try{ updateBadges(); refreshCurrentView(); }catch(e){} }
+async function corregirOpNum(op){
+  const nuevo=parseInt(document.getElementById('co-op').value,10); if(!nuevo||nuevo<=0){ toast('Escribe un número de OP válido','error'); return; }
+  if(nuevo===op){ toast('Es el mismo número','error'); return; }
+  if(!confirm('¿Cambiar OP-'+op+' por OP-'+nuevo+' en todo el sistema?')) return;
+  try{ await sb.rpc('plan_cambiar_op',{p_op:op,p_nuevo:nuevo,p_forzar:false}); await _corregirFin('✓ OP-'+op+' ahora es OP-'+nuevo); }
+  catch(e){ const m=errMsg(e); if(/Ya existe la OP/.test(m)){ if(confirm(m+'\n\n¿Unir de todos modos las dos OP?')){ try{ await sb.rpc('plan_cambiar_op',{p_op:op,p_nuevo:nuevo,p_forzar:true}); await _corregirFin('✓ OP unida en OP-'+nuevo); }catch(e2){ toast('❌ '+errMsg(e2),'error'); } } } else toast('❌ '+m,'error'); }
+}
+async function corregirOpCot(op){
+  const cot=parseInt(document.getElementById('co-cot').value,10); if(!cot||cot<=0){ toast('Escribe el número de la cotización','error'); return; }
+  if(!confirm('¿Mover OP-'+op+' a la cotización '+cot+'?')) return;
+  try{ const r=await sb.rpc('plan_reasignar_op_cot',{p_op:op,p_cot:cot}); await _corregirFin('✓ OP-'+op+' movida a COT-'+cot+((r&&r.sin_vinculo_item)?' ('+r.sin_vinculo_item+' ítem(s) sin ítem equivalente)':'')); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
 }
 function opCotHtml(cotId){
   const rows=(DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).sort((a,b)=>Number(a.item_num)-Number(b.item_num)); if(!rows.length) return '';

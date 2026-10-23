@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-120000">
+<meta name="app-build" content="20261023-143000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2162,7 +2162,7 @@ function detailOP(id){
   const ruta=`<div class="dp-section"><h4>🧭 Ruta de producción</h4>${rutaPasosHtml(op).replace(externoAviso(op),'')}</div>`;
   const simple=`<div style="text-align:center;margin:6px 0 30px"><button class="btn btn-ghost btn-sm" onclick="formAvance('${j}')">✏️ Formulario simple (% global, estado, prioridad)</button></div>`;
   const hist=`<div class="dp-section"><h4>📜 Historial — quién hizo qué y cuándo</h4><div id="hist-box" data-id="${esc(op.id)}">${mutedP('Cargando…')}</div></div>`;
-  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+mqBox()+hist+simple); histCargar(op.id); mqCargarProd(op.id);
+  openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+mqBox()+hist+simple,puede('planeacion','administracion')&&op.op?`<button class="btn btn-ghost btn-sm" style="background:#fef3c7;color:#92400e" onclick="corregirOP(${Number(op.op)},${Number(op.cot_num)||0})">🔧 Corregir OP</button>`:''); histCargar(op.id); mqCargarProd(op.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
 }
 // Formulario simple de respaldo: % global, estado y prioridad en un solo paso
@@ -2602,6 +2602,31 @@ function ayudaManual(abierto){
 }
 
 // ── Ayuda dentro de los formularios: un cuadro plegable arriba del formulario, sin salir de él ──
+
+// ══ CORREGIR OP (Planeación): renumerar la OP o moverla a otra cotización; se actualiza en todo el sistema ══
+function corregirOP(op,cot){
+  openModal('🔧 Corregir OP-'+op,`${ayudaForm(`**Cambiar número:** escribe el número correcto de la OP; se actualiza en producción, remisiones, certificados, tiempos e historial. **Mover a otra cotización:** escribe el número de la cotización correcta; la OP y sus ítems pasan a esa cotización (los ítems se enlazan por número de ítem).`)}
+    <div class="callout" style="margin-bottom:10px">OP-${op}${cot?' · COT-'+cot:''}</div>
+    <div class="form-grid"><div class="field"><label>Número de OP correcto</label><input id="co-op" type="number" inputmode="numeric" value="${op}"></div>
+    <div class="field" style="align-self:end"><button class="btn btn-primary" onclick="corregirOpNum(${op})">🔢 Cambiar número de OP</button></div>
+    <div class="field"><label>Mover la OP a la cotización N°</label><input id="co-cot" type="number" inputmode="numeric" placeholder="Ej: ${cot||''}"></div>
+    <div class="field" style="align-self:end"><button class="btn btn-primary" onclick="corregirOpCot(${op})">📄 Mover a esa cotización</button></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`);
+}
+async function _corregirFin(msg){ toast(msg); closeModal(); try{ closeDetail(); }catch(e){} try{ await recargar(); }catch(e){} try{ refreshCurrentView(); }catch(e){} }
+async function corregirOpNum(op){
+  const nuevo=parseInt(document.getElementById('co-op').value,10); if(!nuevo||nuevo<=0){ toast('Escribe un número de OP válido','error'); return; }
+  if(nuevo===op){ toast('Es el mismo número','error'); return; }
+  if(!confirm('¿Cambiar OP-'+op+' por OP-'+nuevo+' en todo el sistema?')) return;
+  try{ await sb.rpc('plan_cambiar_op',{p_op:op,p_nuevo:nuevo,p_forzar:false}); await _corregirFin('✓ OP-'+op+' ahora es OP-'+nuevo); }
+  catch(e){ const m=errMsg(e); if(/Ya existe la OP/.test(m)){ if(confirm(m+'\n\n¿Unir de todos modos las dos OP?')){ try{ await sb.rpc('plan_cambiar_op',{p_op:op,p_nuevo:nuevo,p_forzar:true}); await _corregirFin('✓ OP unida en OP-'+nuevo); }catch(e2){ toast('❌ '+errMsg(e2),'error'); } } } else toast('❌ '+m,'error'); }
+}
+async function corregirOpCot(op){
+  const cot=parseInt(document.getElementById('co-cot').value,10); if(!cot||cot<=0){ toast('Escribe el número de la cotización','error'); return; }
+  if(!confirm('¿Mover OP-'+op+' a la cotización '+cot+'?')) return;
+  try{ const r=await sb.rpc('plan_reasignar_op_cot',{p_op:op,p_cot:cot}); await _corregirFin('✓ OP-'+op+' movida a COT-'+cot+((r&&r.sin_vinculo_item)?' ('+r.sin_vinculo_item+' ítem(s) sin ítem equivalente)':'')); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
+}
 function ayudaForm(texto){
   return `<div class="ay-form"><button type="button" class="ay-form-tog" onclick="this.parentElement.classList.toggle('open')"><span>❓ Cómo llenar este formulario</span><span class="ay-form-car">▾</span></button><div class="ay-form-body">${_ay(texto)}</div></div>`;
 }
