@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-162500">
+<meta name="app-build" content="20261023-165000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2987,14 +2987,18 @@ function qaFormatoQA(opId){
     observaciones: saved.observaciones||'',
     firmaInspector: saved.firmaInspector||''
   };
-  // Marquilla: si es la primera vez, pregunta; Sí → fase 1 (CNC) y fase 2 (EDM) con las máquinas de la OP
+  // Marquilla: si es la primera vez, pregunta. Sí → cada pieza = un ítem de la OP (con su descripción completa)
+  // y cada fase = una máquina de la ruta (instrumento CNC / EDM en las dos primeras)
   if(!(saved.kc&&saved.kc.length)){
-    let esMq=false; try{ esMq=confirm('¿Este ítem es una MARQUILLA?\n\nAceptar = Sí (llena fase 1 CNC y fase 2 EDM con las máquinas de la OP)\nCancelar = No'); }catch(e){}
+    let esMq=false; try{ esMq=confirm('¿Este formato es de una MARQUILLA?\n\nAceptar = Sí (pieza = ítem de la OP, con su descripción; fases con las máquinas)\nCancelar = No'); }catch(e){}
     if(esMq){
-      const F=window._QAFMT, mq=F.header.mq||[], desc=String(F.header.descripcion||'').split('\n')[0].slice(0,60);
-      [['FASE 1','CNC',0],['FASE 2','EDM',1]].forEach(([nom,ins,i])=>{ const k=F.kc[i]; if(!k) return;
-        k.nombre=nom; k.medida=desc||('CON '+(i+1)); k.instrumento=ins;
-        if(k.piezas&&k.piezas[0]) k.piezas[0].dato=mq[i]||''; });
+      const F=window._QAFMT, nOp=op.OP;
+      const its=(DB.produccion||[]).filter(x=>x.op===nOp&&!x.es_garantia).sort((a,b)=>(a.item_num||0)-(b.item_num||0)).slice(0,QA_FMT_MAX_PZ);
+      const mqs=(F.header.mq||[]).filter(Boolean).slice(0,QA_FMT_MAX_KC);
+      if(its.length){ F.numPiezas=its.length; F.header.mqItems=its.map(x=>({n:x.item_num,d:String(x.descripcion||'').trim()})); }
+      (mqs.length?mqs:['','']).forEach((m,i)=>{ const k=F.kc[i]; if(!k) return;
+        k.nombre='FASE '+(i+1); k.medida=m; k.instrumento=i===0?'CNC':i===1?'EDM':'';
+        (F.header.mqItems||[]).forEach((it,j)=>{ if(k.piezas[j]) k.piezas[j].dato=it.d; }); });
     }
   }
   // Asegurar que cada KC tenga siempre 10 piezas (por si el JSON guardado es antiguo)
@@ -3305,7 +3309,7 @@ function _qaFmtUpdatePreview(){
 // Construye el HTML del formato (imprimible o editable en vivo dentro del
 // panel, según qa.editable) replicando el formato en papel (bordes tipo tabla)
 function _qaFmtBuildPDFHtml(op, qa){
-  if(!(qa&&qa.editable)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return o; }catch(e){} }
+  if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return o; }catch(e){} }
   return _qaFmtBuildPDFHtmlOrig(op,qa);
 }
 function _qaFmtBuildPDFHtmlOrig(op, qa){
@@ -3503,7 +3507,7 @@ function _qaFmtBuildPDFHtmlOrig(op, qa){
   const pzW = Math.max(34, Math.floor((710-38-60-52)/numPiezas));
 
   const pzH = Array.from({length:numPiezas},(_,p)=>
-    `<th class="t-hdr" style="width:${pzW}px">Pieza ${p+1}</th>`).join('');
+    `<th class="t-hdr" style="width:${pzW}px">${(h.mqItems&&h.mqItems[p])?'Ítem '+h.mqItems[p].n:'Pieza '+(p+1)}</th>`).join('');
 
   const kcRows = (qa.kc||[]).map((k,i)=>{
     const pz = (j,key)=>{
@@ -3511,7 +3515,7 @@ function _qaFmtBuildPDFHtmlOrig(op, qa){
       if(editable) return `<td class="kc-pz" contenteditable="true" data-qapath="kc.${i}.piezas.${j}.${key}" oninput="parent._qaFmtPreviewInput(this)" style="outline:none">${v}</td>`;
       return `<td class="kc-pz">${v}</td>`;
     };
-    const r1 = Array.from({length:numPiezas},(_,j)=>pz(j,'dato')).join('');
+    const r1 = Array.from({length:numPiezas},(_,j)=>pz(j,'dato')).join('').replace(/class="kc-pz"/g,h.mqItems?'class="kc-pz" style="font-size:5px;text-align:left;word-break:break-word;white-space:pre-line"':'class="kc-pz"');
     const r2 = Array.from({length:numPiezas},(_,j)=>pz(j,'firma')).join('');
     const r3 = Array.from({length:numPiezas},(_,j)=>pz(j,'liberacion')).join('');
     return `
