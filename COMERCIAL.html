@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-203000">
+<meta name="app-build" content="20261023-081500">
+<script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1720,6 +1721,7 @@ let _searchRaf = null, _searchTimer = null;
 // ══ SESIÓN ══════════════════════════════════════════════════════
 let _SESSION = null;
 try{ _SESSION = JSON.parse(localStorage.getItem('_wedm_s')||'null'); }catch(e){ _SESSION=null; }
+/*EMBED-SESION*/try{ if(window.self!==window.top){ const _ps=JSON.parse(localStorage.getItem('_wedm_rem_s')||'null'); if(_ps&&_ps.token) _SESSION=_ps; } }catch(e){}   // incrustado en REMISIONES: usa la sesión ya iniciada allí
 if(_SESSION && _SESSION.token) sb.tok = _SESSION.token;
 const _esAdmin    = () => _SESSION?.rol === 'admin' || _SESSION?.rol === 'desarrollador';
 const _misRoles = () => (_SESSION&&_SESSION.roles&&_SESSION.roles.length)?_SESSION.roles:[_SESSION?.rol].filter(Boolean);   // rol principal + roles adicionales
@@ -1727,7 +1729,9 @@ const _esDev      = () => _SESSION?.rol === 'desarrollador';
 const _esComercial= () => _SESSION?.rol === 'comercial';
 const _esLectura  = () => _SESSION?.rol === 'lectura';
 const _asesorActual = () => _SESSION?.asesor || '';
-const canEdit = () => _esAdmin() || _esComercial();
+const _esAdm = () => _SESSION?.rol === 'administracion';   // Administración (Adriana): trabaja igual que comercial en cotizaciones/ítems
+const _selAsesor = () => _esAdmin() || _esAdm();
+const canEdit = () => _esAdmin() || _esComercial() || _esAdm();
 const capW = s => String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1);
 
 // ══ UTILIDADES ══════════════════════════════════════════════════
@@ -2349,6 +2353,7 @@ async function iniciarApp(){
   const h=(location.hash||'').replace('#','').replace('-detail','');
   const inicio=(typeof modInicial==='function')?modInicial():'dashboard';
   nav(TITLES[h]&&(typeof modPermitido!=='function'||modPermitido(h))?h:inicio);
+  try{ const _o=new URLSearchParams(location.search).get('open'); if(_o&&window.self!==window.top&&typeof detailCot==='function') setTimeout(()=>{ try{ detailCot(_o); }catch(e){} },300); }catch(e){}
 }
 
 // ══ DASHBOARD ═══════════════════════════════════════════════════
@@ -2874,7 +2879,7 @@ function detailCot(id){
     ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>
       <button class="btn btn-ghost btn-sm" onclick="recalcularTotalesCotUI('${id}')" title="Vuelve a sumar el total con los ítems (IVA ${IVA_PCT}%)">🔄 Recalcular Total</button>
       <button class="btn btn-danger-soft btn-sm" onclick="deleteCot('${id}')" style="margin-left:auto">🗑</button></div>`:''}
-    ${(()=>{ if(est!=='APROBADA'||!puede('comercial')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
+    ${(()=>{ if(est!=='APROBADA'||!puede('comercial','administracion')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
     ${opCotHtml(id)}
     <div id="cot-rel"></div>
     <div class="dp-tabs"><div class="dp-tab active" onclick="switchDpTab(this,'resumen')">📋 Resumen</div><div class="dp-tab" onclick="switchDpTab(this,'items')">🔩 Ítems (${its.length})</div>${(window.chatOn&&chatOn('com_detalle_vs_real')&&(DB.produccion||[]).some(p=>p.id_cotizacion===id))?`<div class="dp-tab" onclick="switchDpTab(this,'vs')">📊 Cotizado vs Real <span class="nuevo-b">NUEVO</span></div>`:''}</div>
@@ -2988,7 +2993,7 @@ function onBuscarCliente(val){
 function cotNumLibre(){ try{ if(_SESSION&&_SESSION.rol==='desarrollador') return true; return !!(typeof F==='function'&&F('com_cot_numero_manual')&&typeof canEdit==='function'&&canEdit()); }catch(e){ return false; } }
 function formCot(c){
   c=c||{}; const isNew=!c.id; const tipoActual=c.tipo||'PE. Proyecto externo'; window._cotCliId=c.id_cliente||null; window._cotEditId=c.id||''; window._cotTab=0; window._ocFile=null;
-  const asesores=_esAdmin()?asesoresLista():[_asesorActual()]; const its=isNew?[]:itemsDe(c.id);
+  const asesores=_selAsesor()?asesoresLista():[_asesorActual()]; const its=isNew?[]:itemsDe(c.id);
   openModal(isNew?'Nueva Cotización':'Editar COT-'+c.cotizacion,`
     ${ayudaForm(`Se llena en tres pasos: **📅 Inicio** (tipo, asesor y descripción), **🏢 Empresa** (cliente, lead time y fecha pactada) y **✅ Estado**. **Crear Cotización** aparece solo cuando ya están los datos obligatorios; si falta alguno, un aviso naranja te lleva al paso correcto. El precio no se escribe aquí: se forma con los ítems que agregues después.`)}
     <div class="wiz-tabs" id="wiz-cot-tabs"><div class="wiz-tab active" onclick="wizTab('wiz-cot',0)">📅 Inicio</div><div class="wiz-tab" onclick="wizTab('wiz-cot',1)">🏢 Empresa</div><div class="wiz-tab" onclick="wizTab('wiz-cot',2)">✅ Estado</div></div>
@@ -2998,7 +3003,7 @@ function formCot(c){
         <input type="date" id="fe" value="${toISODate(c.fecha_emision)||hoyISO()}" ${isNew?'oninput="if(document.getElementById(\'fd\')?.value) calcFechaEntrega()"':'disabled style="opacity:.6;background:var(--card2)"'}></div>
       <div class="field span2"><label>Tipo</label><select id="f1" onchange="onTipoCot(this.value)" style="font-weight:700">${tiposElegibles(tipoActual).map(t=>`<option value="${esc(t)}" ${tipoActual===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="field span2"><div id="tipo-info"></div></div>
-      <div class="field span2"><label>Asesor</label><select id="f5" ${_esAdmin()?'':'disabled'}>${_esAdmin()?'<option value="">-- Seleccionar --</option>':''}${asesores.map(a=>`<option ${(c.asesor||_asesorActual())===a?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
+      <div class="field span2"><label>Asesor</label><select id="f5" ${_selAsesor()?'':'disabled'}>${_selAsesor()?'<option value="">-- Seleccionar --</option>':''}${asesores.map(a=>`<option ${(c.asesor||_asesorActual())===a?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
       <div class="field span2"><label>Descripción del Proyecto</label><textarea id="f7" style="min-height:110px" placeholder="Describe el proyecto…">${esc(c.descripcion_proyecto||'')}</textarea></div></div></div>
     <div class="wiz-step" id="wiz-cot-1" style="display:none"><div class="form-grid">
       <div class="field span2"><label>Empresa ★</label><input id="f2" list="f2-list" placeholder="Buscar empresa..." value="${esc(c.empresa||'')}" oninput="onBuscarCliente(this.value)" style="width:100%">
@@ -3157,7 +3162,7 @@ async function actualizarItemsCot(cotId){
 }
 function duplicarCot(id){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c) return; const its=itemsDe(id);
-  const asesores=_esAdmin()?asesoresLista():[_asesorActual()];
+  const asesores=_selAsesor()?asesoresLista():[_asesorActual()];
   openModal('⧉ Duplicar COT-'+c.cotizacion,`
     <div style="background:linear-gradient(135deg,rgba(37,99,235,.07),rgba(37,99,235,.03));border:1px solid rgba(37,99,235,.2);border-radius:12px;padding:14px;margin-bottom:16px">
       <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:4px">📋 Origen: COT-${c.cotizacion}</div><div style="font-size:13px;font-weight:600">${esc(c.empresa||'Sin empresa')}</div>
@@ -3165,7 +3170,7 @@ function duplicarCot(id){
     <div class="form-grid"><div class="field"><label>Estado inicial</label><select id="dup-est"><option>EN ESPERA</option><option>APROBADA</option></select></div>
       <div class="field"><label>Fecha Emisión</label><input type="date" id="dup-fec" value="${hoyISO()}"></div>
       <div class="field span2"><label>Empresa</label><input id="dup-emp" value="${esc(c.empresa||'')}" list="lcli-dup"><datalist id="lcli-dup">${DB.clientes.map(x=>`<option value="${esc(x.empresa)}">`).join('')}</datalist></div>
-      <div class="field span2"><label>Asesor</label><select id="dup-ase" ${_esAdmin()?'':'disabled'}>${asesores.map(a=>`<option ${c.asesor===a?'selected':''}>${esc(a)}</option>`).join('')}</select></div></div>`,
+      <div class="field span2"><label>Asesor</label><select id="dup-ase" ${_selAsesor()?'':'disabled'}>${asesores.map(a=>`<option ${c.asesor===a?'selected':''}>${esc(a)}</option>`).join('')}</select></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="ejecutarDuplicar('${id}')">⧉ Crear COT con ${its.length} ítem(s)</button>`);
 }
 async function ejecutarDuplicar(id){
@@ -4077,7 +4082,7 @@ const MODS_ROL={
   comercial:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
   lectura:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
   diseno:['produccion'], compras:['produccion'], produccion:['produccion'],
-  calidad:['produccion','remisiones'], administracion:['remisiones','produccion'],
+  calidad:['produccion','remisiones'], administracion:['remisiones','produccion','cotizaciones','items'],
 };
 const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
 const rolActual=()=>_SESSION?.rol||'';
@@ -4340,7 +4345,7 @@ async function cargarPlanosItem(itemId){
   try{
     const pr=prodDeItem(itemId);
     const rows=await GET('prod_archivos',ARCH_COLS+`&or=(id_item.eq.${itemId}${pr?`,id_prod.eq.${pr.id}`:''})&order=created_at.desc`);
-    el.innerHTML=archivosHtml(rows,`itemSubirPlano('${itemId}')`,puede('comercial'));
+    el.innerHTML=archivosHtml(rows,`itemSubirPlano('${itemId}')`,puede('comercial','administracion'));
   }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
 }
 function itemSubirPlano(itemId){
@@ -4663,7 +4668,7 @@ async function prodMatDevolver(mid,pid){ if(!confirm('¿Devolver este material a
 
 // ── CREAR OP desde la cotización ────────────────────────────────
 function opBtnInfo(cotId){
-  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||_normEstado(c.estado)!=='APROBADA'||!puede('comercial')) return null;
+  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||_normEstado(c.estado)!=='APROBADA'||!puede('comercial','administracion')) return null;
   const its=itemsDe(cotId); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
   if(!its.some(it=>!enP.has(it.id))) return null; const op=opDeCot(cotId);
   return {op, lbl:op?'Agregar a OP-'+op:'Crear OP'};
@@ -5164,6 +5169,9 @@ if(document.readyState!=='loading')init();else document.addEventListener('DOMCon
 #tb-fb{display:none;align-items:center;gap:5px;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:inherit;font-weight:700}
 #tb-clr{display:none;align-items:center;cursor:pointer;border:1.5px solid #fca5a5;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:11px;height:28px;padding:3px 10px;border-radius:8px;white-space:nowrap}
 #tb-clr:hover{background:#fee2e2}
+html.embed #sidebar,html.embed #sidebar-overlay,html.embed #qa-bar,html.embed #bottom-nav,html.embed #menu-btn,html.embed #topbar-logo,html.embed #page-title,html.embed #help-btn{display:none!important}
+html.embed #topbar{padding-top:4px!important;padding-bottom:4px!important;min-height:0!important}
+html.embed #home-btn,html.embed #dens-btn,html.embed #mayus-btn,html.embed #sync0-btn{display:none!important}
 #sidebar .nav-item{padding:14px 16px!important;font-size:15.5px!important;margin:3px 8px!important}
 #sidebar .nav-icon{font-size:22px!important;width:30px!important}
 #sidebar .nav-section{font-size:11px!important}

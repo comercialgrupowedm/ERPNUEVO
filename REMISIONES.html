@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261022-203000">
+<meta name="app-build" content="20261023-081500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -588,6 +588,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="marquillas" onclick="nav('marquillas')"><span class="nav-icon">🏷️</span>Cotizar marquillas</div>
     <div class="nav-item" data-m="mqlista" onclick="nav('mqlista')"><span class="nav-icon">🗂️</span>Ver / editar marquillas</div>
     <div class="nav-item" data-m="cotizaciones" onclick="nav('cotizaciones')"><span class="nav-icon">📄</span>Cotizaciones</div>
+    <div class="nav-item" data-m="elementos" onclick="nav('elementos')"><span class="nav-icon">🧩</span>Elementos / Ítems</div>
     <div class="nav-item" data-m="porpedir" onclick="nav('porpedir')"><span class="nav-icon">📥</span>Por pedir<span class="nav-badge" id="b-pp" style="display:none">0</span></div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
@@ -605,6 +606,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div class="bn-item active" data-m="dashboard" onclick="nav('dashboard')"><div class="bn-icon">📊</div><div>Inicio</div></div>
   <div class="bn-item" data-m="remisiones" onclick="nav('remisiones')"><div class="bn-icon">🚚</div><div>Remisiones</div><span class="bn-badge" id="bb-rem" style="display:none">0</span></div>
   <div class="bn-item" data-m="marquillas" onclick="nav('marquillas')"><div class="bn-icon">🏷️</div><div>Marquillas</div></div>
+  <div class="bn-item" data-m="cotizaciones" onclick="nav('cotizaciones')"><div class="bn-icon">📄</div><div>Cotizaciones</div></div>
   <div class="bn-item" data-m="porpedir" onclick="nav('porpedir')"><div class="bn-icon">📥</div><div>Por pedir</div><span class="bn-badge" id="bb-pp" style="display:none">0</span></div>
 </div>
 
@@ -1075,7 +1077,7 @@ async function doLogin(){
 //  Flujo: Calidad PIDE → Comercial SELECCIONA → Administración GENERA → Calidad DESPACHA
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones'};
+const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones',elementos:'Elementos / Ítems'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
 const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
@@ -1560,11 +1562,14 @@ async function mqCargarListas(){
 }
 const MQ_VAL=13500, MQ_MIN=130000, MQ_CNC=0.3, MQ_EDM=0.5;
 function mqFormHtml(){
-  return `<datalist id="mq-dl"></datalist><datalist id="mq-sizes">${['1.6','2.0','2.2','2.4','2.5','2.6','2.8','3.0','3.2','3.5','4.0'].map(x=>`<option value="${x}">`).join('')}</datalist>
-  <div class="callout" style="margin:10px 0">Escribe el <b>texto que se graba</b> y el <b>tamaño de letra</b>: el sistema cuenta los caracteres (sin espacios), calcula el <b>precio</b> y carga solo los procesos <b>CNC + EDM</b>. Si el cliente mandó una tabla o imagen, pégala en el ítem: queda tal cual en la cotización.</div>
+  return `<datalist id="mq-dl"></datalist><datalist id="mq-dlc"></datalist><datalist id="mq-dlt"></datalist><datalist id="mq-sizes">${['1.6','2.0','2.2','2.4','2.5','2.6','2.8','3.0','3.2','3.5','4.0'].map(x=>`<option value="${x}">`).join('')}</datalist>
+  ${ayudaForm(`**1.** Escribe o elige el **cliente**. **2.** Elige el **encargado**: aparecen los contactos que ya usaste con ese cliente (toca uno y el **teléfono** se llena solo). Si es una persona nueva, escribe el nombre y el teléfono: queda guardado para la próxima. **3.** Por cada ítem escribe el **texto que se graba** y el **tamaño**: el precio se calcula solo. **4.** Toca **✅ Crear cotización**. Luego, en **Marquillas**, ábrela para ver el **PDF** y, cuando el cliente apruebe, **Crear OP**.`)}<div class="callout" style="margin:10px 0">Escribe el <b>texto que se graba</b> y el <b>tamaño de letra</b>: el sistema cuenta los caracteres (sin espacios), calcula el <b>precio</b> y carga solo los procesos <b>CNC + EDM</b>. Si el cliente mandó una tabla o imagen, pégala en el ítem: queda tal cual en la cotización.</div>
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
     <div class="form-grid">
       <div class="field span2"><label>Cliente (busca o escribe)</label><input id="mq-cli" list="mq-dl" autocomplete="off" oninput="mqCli()" onchange="mqCli()" placeholder="Empresa…"><div id="mq-cli-i" style="font-size:12px;color:var(--muted);margin-top:3px"></div></div>
+      <div class="field"><label>👤 Encargado (contacto)</label><input id="mq-enc" list="mq-dlc" autocomplete="off" oninput="mqEnc()" onchange="mqEnc()" placeholder="Nombre de quien recibe"></div>
+      <div class="field"><label>📞 Teléfono</label><input id="mq-tel" list="mq-dlt" inputmode="tel" autocomplete="off" oninput="this.dataset.auto=''" placeholder="Celular"></div>
+      <div class="field span2" id="mq-cts" style="margin-top:-4px"></div>
       <div class="field"><label>Tipo</label><select id="mq-tipo"><option>—</option></select></div>
       <div class="field"><label>Asesor</label><select id="mq-ase"><option>Mauricio García</option></select></div>
       <div class="field span2"><label>Proyecto / referencia</label><input id="mq-proy" placeholder="Ej: Marcación en pies 2026" autocomplete="off"></div>
@@ -1621,7 +1626,30 @@ async function mqPaste(ev,ed){
   if(html){ ev.preventDefault(); let s=mqSan(html.replace(/<!--[\s\S]*?-->/g,'')); document.execCommand('insertHTML',false,s); }
   setTimeout(()=>{ ed.querySelectorAll('img').forEach(im=>{ if(/^(file|cid):/i.test(im.getAttribute('src')||'')) { im.remove(); toast('Una imagen no se pudo pegar: súbela con «📷 Subir imagen»','warn'); } }); },50);
 }
+function mqCtRender(){
+  const L=_MQ.cts||[]; const dc=document.getElementById('mq-dlc'); if(dc) dc.innerHTML=L.map(x=>`<option value="${esc(x.n)}">`).join('');
+  const dt=document.getElementById('mq-dlt'); if(dt) dt.innerHTML=[...new Set(L.map(x=>x.t).filter(Boolean))].map(t=>`<option value="${esc(t)}">`).join('');
+  const el=document.getElementById('mq-cts'); if(el) el.innerHTML=L.length?`<div style="font-size:11.5px;color:var(--muted);margin-bottom:4px">Contactos guardados de este cliente (toca para elegir):</div><div style="display:flex;gap:6px;flex-wrap:wrap">${L.slice(0,8).map((x,i)=>`<button type="button" class="btn btn-sm btn-ghost" onclick="mqPickCt(${i})">👤 ${esc(x.n)}${x.t?' · '+esc(x.t):''}</button>`).join('')}</div>`:'';
+}
+function mqPickCt(i){ const x=(_MQ.cts||[])[i]; if(!x) return; const e=document.getElementById('mq-enc'), t=document.getElementById('mq-tel'); if(e) e.value=x.n; if(t){ t.value=x.t||''; t.dataset.auto='1'; } }
+function mqEnc(){
+  const e=document.getElementById('mq-enc'), t=document.getElementById('mq-tel'); if(!e||!t) return; const v=e.value.trim().toLowerCase();
+  const x=(_MQ.cts||[]).find(y=>y.n.toLowerCase()===v);
+  if(x){ t.value=x.t||''; t.dataset.auto='1'; } else if(t.dataset.auto==='1'){ t.value=''; t.dataset.auto=''; }
+}
+async function mqContactos(){
+  const emp=((document.getElementById('mq-cli')||{}).value||'').trim(); const ed=!!_MQ.edit;
+  if(!emp){ _MQ.cts=[]; mqCtRender(); return; }
+  const m=new Map(); const add=(n,t)=>{ n=String(n||'').trim(); if(!n) return; const k=n.toLowerCase(); const o=m.get(k); if(!o) m.set(k,{n,t:String(t||'').trim()}); else if(!o.t&&t) o.t=String(t).trim(); };
+  try{ const r=await GET('cotizaciones','select=encargado,telefono&empresa=eq.'+encodeURIComponent(emp)+'&encargado=not.is.null&order=fecha_emision.desc,cotizacion.desc&limit=120'); (r||[]).forEach(x=>add(x.encargado,x.telefono)); }catch(e){}
+  const c=_MQ.cli; if(c) add(c.contacto,c.telefono);
+  if((document.getElementById('mq-cli')||{}).value.trim()!==emp) return;
+  _MQ.cts=[...m.values()]; mqCtRender();
+  const en=document.getElementById('mq-enc'), te=document.getElementById('mq-tel');
+  if(!ed&&en&&!en.value.trim()&&_MQ.cts.length){ en.value=_MQ.cts[0].n; if(te&&!te.value.trim()){ te.value=_MQ.cts[0].t||''; te.dataset.auto='1'; } }
+}
 function mqCli(){ const v=document.getElementById('mq-cli').value.trim().toLowerCase(); const c=(_MQ.clientes||[]).find(x=>String(x.empresa||'').toLowerCase()===v); _MQ.cli=c||null;
+  { const _v=document.getElementById('mq-cli').value.trim(); if(_MQ.ctEmp!==_v){ _MQ.ctEmp=_v; clearTimeout(window._mqCtT); window._mqCtT=setTimeout(mqContactos,350); } }
   document.getElementById('mq-cli-i').innerHTML=c?`✅ Cliente registrado${c.nit?' · NIT '+esc(c.nit):''}${c.ciudad?' · '+esc(c.ciudad):''}${c.contacto?' · '+esc(c.contacto):''}`:(v?'Cliente nuevo (no está en la lista): se escribirá tal cual.':''); }
 function mqTot(){ const t=mqEstado().reduce((s,x)=>s+(Number(x.u)||0)*(Number(x.p)||0),0); const el=document.getElementById('mq-tot'); if(el) el.textContent='Subtotal: $'+Math.round(t).toLocaleString('es-CO')+' + IVA 19% = $'+Math.round(t*1.19).toLocaleString('es-CO'); }
 async function mqTarifas(){
@@ -1639,7 +1667,7 @@ async function mqCrear(){
   if(!its.length){ toast('Agrega al menos un ítem con texto o imagen/tabla','error'); return; }
   if(its.some(x=>!(x.precio_unit>0))&&!confirm('Hay ítems sin precio. ¿Crear la cotización de todos modos?')) return;
   if(its.some(x=>x.marquilla_html.length>900000)){ toast('Una imagen/tabla pesa demasiado; usa una imagen más pequeña','error'); return; }
-  const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const _ed=_MQ.edit; const r=await rpcR(_ed?'cot_marquilla_editar':'cot_marquilla_crear',{p:{id:_ed?_ed.id:undefined,empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:c.contacto||null,telefono:c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
+  const c=_MQ.cli||{}; const tipo=g('mq-tipo'); const _ed=_MQ.edit; const r=await rpcR(_ed?'cot_marquilla_editar':'cot_marquilla_crear',{p:{id:_ed?_ed.id:undefined,empresa,id_cliente:c.id||null,nit:c.nit||null,direccion:c.direccion||null,ciudad:c.ciudad||null,encargado:g('mq-enc').trim()||c.contacto||null,telefono:g('mq-tel').trim()||c.telefono||null,tipo:tipo&&tipo!=='—'?tipo:null,asesor:g('mq-ase'),proyecto:g('mq-proy'),lead_time:g('mq-lead'),forma_pago:g('mq-pago'),observaciones:g('mq-obs'),items:its}});
   if(!r) return; const num=(r&&r.cotizacion)||''; _MQ.its=[mqNuevoItem()]; _MQ.edit=null;
   setContent(moduleBanner('✅',_ed?'Cotización actualizada':'Cotización creada','Ya la puede ver Mauricio en Comercial')+`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px;text-align:center"><div style="font-size:34px;font-weight:900;color:var(--accent)">COT-${esc(String(num))}</div><div style="margin:6px 0 14px;color:var(--muted)">${its.length} ítem(s) · total con IVA $${Math.round(Number(r.total||0)).toLocaleString('es-CO')}</div><button class="btn btn-primary" onclick="nav('marquillas')">➕ Crear otra</button></div>`);
 }
@@ -1653,7 +1681,26 @@ async function cqCargar(force){
   return _CQ.rows;
 }
 function cqEstBadge(e){ const c={APROBADO:'verde',APROBADA:'verde','EN ESPERA':'warn',CANCELADO:'rojo',RECHAZADA:'rojo'}[String(e||'').toUpperCase()]||'gris'; return `<span class="badge ${c}">${esc(e||'—')}</span>`; }
-async function cotizaciones(){ return cqVista(false); }
+// Cotizaciones y Elementos: la MISMA pantalla de COMERCIAL (incrustada), para trabajar igual: crear, editar, ítems, marquillas, PDF
+function embedVista(key,hash,open){
+  const content=document.getElementById('content'); if(!content) return;
+  content.style.setProperty('padding','0','important'); content.style.setProperty('overflow','hidden','important');
+  const cur=document.getElementById('emb-frame');
+  if(cur&&cur.dataset.key===key){ fitEmbed(); return; }
+  const build=(document.querySelector('meta[name="app-build"]')||{}).content||'';
+  setContent('<iframe id="emb-frame" data-key="'+key+'" src="COMERCIAL.html?embed=1&v='+encodeURIComponent(build)+(open?'&open='+encodeURIComponent(open):'')+'#'+hash+'" style="width:100%;border:0;display:block;background:var(--bg,#fff)" allow="clipboard-read; clipboard-write"></iframe>');
+  fitEmbed();
+}
+function fitEmbed(){
+  const f=document.getElementById('emb-frame'); if(!f) return;
+  const nvE=document.getElementById('bottom-nav'); const nvT=(nvE&&nvE.offsetParent!==null)?nvE.getBoundingClientRect().top:window.innerHeight;
+  const t=f.getBoundingClientRect().top; f.style.height=Math.max(320,Math.floor(Math.min(window.innerHeight,nvT)-t-2))+'px';
+}
+window.addEventListener('resize',()=>{ try{ fitEmbed(); }catch(e){} });
+function embedSalir(){ const c=document.getElementById('content'); if(c){ c.style.removeProperty('padding'); c.style.removeProperty('overflow'); } }
+function cotizaciones(){ const o=window._embOpen; window._embOpen=null; return embedVista('cot'+(o?'-'+o:''),'cotizaciones',o); }
+function cqAbrirCompleta(id){ closeDetail(); window._embOpen=id; if(MOD==='cotizaciones') MOD=''; nav('cotizaciones'); }
+function elementos(){ return embedVista('items','items'); }
 async function mqlista(){ return cqVista(true); }
 async function cqVista(soloMq){
   const banner=moduleBanner(soloMq?'🗂️':'📄',soloMq?'Marquillas':'Cotizaciones',soloMq?'Todas las cotizaciones de marquilla · toca una para verla o editarla':'Todas las cotizaciones · toca una para ver sus ítems',
@@ -1682,7 +1729,7 @@ async function cqDetalle(id){
   const body=`<div class="dp-section"><h4>📄 Cotización</h4>${dr('Cliente',esc(c.empresa||'—'))}${dr('Proyecto',esc(c.descripcion_proyecto||'—'))}${dr('Asesor',esc(c.asesor||'—'))}${dr('Estado',cqEstBadge(c.estado))}${dr('Tipo',esc(c.tipo||'—'))}${dr('Fecha',esc(String(c.fecha_emision||'').slice(0,10)))}${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('Total',fmt(c.precio_total))}</div>
     <div class="dp-section"><h4>📦 Ítems (${its.length})</h4>${its.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted)">Ítem ${i.item} · ${Number(i.unidades||1)} und × ${fmt(i.precio_unit)} = <b style="color:var(--text)">${fmt(i.precio_total)}</b></div><div style="white-space:pre-wrap;font-size:13px">${esc(i.descripcion||'')}</div>${i.marquilla_html?`<div style="margin-top:4px">${mqRender(i.marquilla_html)}</div>`:''}</div>`).join('')||mutedP('Sin ítems')}</div>`;
   const puedeEd=c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador');
-  openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,puedeEd?`<button class="btn btn-primary" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:'');
+  openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,`<button class="btn btn-primary" onclick="cqAbrirCompleta('${c.id}')">📄 PDF · Estado · 🏭 Crear OP</button>`+(puedeEd?`<button class="btn btn-ghost" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''));
 }
 async function mqEditar(id){
   const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
@@ -1699,12 +1746,12 @@ function mqAplicarEdit(){
   set('mq-cli',c.empresa||''); mqCli(); if(!_MQ.cli&&c.empresa) _MQ.cli={empresa:c.empresa,nit:c.nit,direccion:c.direccion,ciudad:c.ciudad,contacto:c.encargado,telefono:c.telefono,id:c.id_cliente};
   const ts=document.getElementById('mq-tipo'); if(ts&&c.tipo){ if(![...ts.options].some(o=>o.value===c.tipo||o.text===c.tipo)) ts.add(new Option(c.tipo,c.tipo)); ts.value=c.tipo; }
   const as=document.getElementById('mq-ase'); if(as&&c.asesor){ if(![...as.options].some(o=>o.value===c.asesor)) as.add(new Option(c.asesor,c.asesor)); as.value=c.asesor; }
-  set('mq-proy',c.descripcion_proyecto||''); set('mq-lead',c.lead_time_dias==null?'':c.lead_time_dias); set('mq-pago',c.forma_de_pago||''); set('mq-obs',c.observaciones_especiales||'');
+  set('mq-enc',c.encargado||''); set('mq-tel',c.telefono||''); set('mq-proy',c.descripcion_proyecto||''); set('mq-lead',c.lead_time_dias==null?'':c.lead_time_dias); set('mq-pago',c.forma_de_pago||''); set('mq-obs',c.observaciones_especiales||'');
   const h=(it,n)=>{ const p=(Array.isArray(it.prcs)?it.prcs:[]).find(x=>new RegExp(n,'i').test(x.nombre||'')); return p&&p.tiempo!=null?p.tiempo:0; };
   const est=E.its.map(it=>({id:it.id,t:'',s:'',u:it.unidades||1,pies:false,d:it.descripcion||'',dm:'1',p:it.precio_unit==null?'':it.precio_unit,pm:'1',cnc:h(it,'CENTRO'),edm:h(it,'EDM'),h:it.marquilla_html||''}));
   E.ids=E.its.map(i=>i.id); mqRepintar(est);
 }
-function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones,elementos}; if(MOD!=='cotizaciones'&&MOD!=='elementos') embedSalir(); if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -1718,7 +1765,8 @@ function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q
 function onGlobalSearch(v){ if(_gsLocal(v)) return; _RM.q=v; pgReset(); if(MOD!=='remisiones'){ if(!String(v).trim()) return; _RM.f='todas'; _RM.per='todo'; nav('remisiones',true); } else remisiones(); }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
-  try{ await recargar(); avisarNuevas(); refreshCurrentView(); toast('Datos actualizados'); }catch(e){ toast(errMsg(e),'error'); }
+  try{ if(MOD==='cotizaciones'||MOD==='elementos'){ const f=document.getElementById('emb-frame'); if(f&&f.contentWindow) f.contentWindow.location.reload(); toast('Datos actualizados'); return; }
+    await recargar(); avisarNuevas(); refreshCurrentView(); toast('Datos actualizados'); }catch(e){ toast(errMsg(e),'error'); }
   finally{ if(btn) btn.classList.remove('spinning'); }
 }
 let _seenR=null;
@@ -1757,7 +1805,7 @@ setInterval(async()=>{
     await cargarTodo(); avisarNuevas(); updateBadges();
     if(antes===JSON.stringify((DB.remisiones||[]).map(m=>[m.id,m.estado,m.updated_at]))) return;
     const a=document.activeElement; const typing=a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); const modal=document.getElementById('modal-overlay')?.classList.contains('open');
-    if(MOD!=='marquillas'&&!_detailOpen&&!modal&&!typing&&Date.now()-(window._lastTouch||0)>10000) refreshCurrentView();
+    if(MOD!=='marquillas'&&MOD!=='cotizaciones'&&MOD!=='elementos'&&!_detailOpen&&!modal&&!typing&&Date.now()-(window._lastTouch||0)>10000) refreshCurrentView();
   }catch(e){}
 },60000);
 
@@ -1950,6 +1998,33 @@ porpedir:{icono:'📥',titulo:'Por pedir',
   pasos:[{t:'Pedir una remisión',items:['Cada tarjeta muestra la OP, la empresa, los ítems y cuántas unidades hay por despachar, con una etiqueta que indica si calidad ya aprobó ese ítem.','Toca **📦 Pedir remisión** y confirma. La remisión pasa al comercial para que elija qué se despacha.']}],
   reglas:['Se puede pedir en cualquier momento, aunque calidad todavía no haya aprobado los ítems.'],
   consejos:['Si una OP no aparece, revisa que tenga unidades pendientes y que no tenga ya una remisión pedida o seleccionada en trámite.']},
+marquillas:{icono:'🏷️',titulo:'Cotizar marquillas',
+  que:'Aquí creas la cotización de una marquilla (texto grabado). Es una cotización normal: la ve Mauricio en Comercial, tiene su PDF y de ella sale la OP.',
+  quien:'Administración (Adriana, Cristian), comercial y calidad.',
+  pasos:[
+   {t:'Crear la cotización, clic por clic',items:['Menú izquierdo → **Cotizar marquillas**.','En **Cliente** escribe las primeras letras y elige de la lista. Si no existe, escríbelo completo.','En **Encargado** toca uno de los **contactos guardados** (botones debajo) o escribe uno nuevo. El **Teléfono** se llena solo; si lo cambias, queda guardado para la próxima vez.','Elige **Tipo**, **Asesor** y escribe el **Proyecto / referencia**. Completa **Entrega (días)** y **Forma de pago**.','En el **Ítem 1** escribe el **Texto que se graba** y el **Tamaño de letra**. El sistema cuenta los caracteres y pone el **Precio unitario** solo. Cambia la **Cantidad**.','Si el cliente mandó una tabla o imagen: toca el recuadro punteado y pega con **Ctrl+V**, o toca **📷 Subir imagen**.','Para más ítems toca **➕ Agregar otro ítem**. Para borrar uno toca **🗑️ Quitar**.','Revisa el **Subtotal** y toca **✅ Crear cotización**. Te muestra el número COT-####.']},
+   {t:'Los contactos con memoria',items:['Cada vez que guardas una cotización, el encargado y su teléfono quedan recordados para ese cliente.','Al elegir el cliente aparece el último contacto usado; toca otro botón para cambiarlo.','Si escribes un encargado que ya existe, su teléfono aparece solo. Si es nuevo, escribe el teléfono tú.']}],
+  reglas:['Si falta el precio de un ítem, el sistema te pregunta antes de crear.','Mientras la cotización no tenga OP la puedes editar desde **Marquillas → abrir → ✏️ Editar marquilla**.']},
+mqlista:{icono:'🗂️',titulo:'Marquillas (ver, PDF, aprobar y crear OP)',
+  que:'Lista de todas las cotizaciones de marquilla. Desde aquí ves el detalle, sacas el PDF, cambias el estado y creas la OP.',
+  quien:'Administración y comercial.',
+  pasos:[
+   {t:'Ver y buscar',items:['Menú → **Marquillas**. Escribe en 🔍 número, cliente o asesor; filtra por **estado**. Cambia entre tarjetas y tabla.','Toca una cotización: se abre el detalle con ítems, tablas e imágenes.']},
+   {t:'Sacar el PDF',items:['En el detalle toca **📄 PDF · Estado · 🏭 Crear OP**. Se abre la cotización completa, igual que en Comercial.','Toca **🖨️ Imprimir / PDF** para verla e imprimirla, o **💾 Guardar PDF** para dejarla en Drive.']},
+   {t:'Aprobar la cotización',items:['En la cotización completa busca la barra de estado y toca **✔ Aprobada** cuando el cliente confirme. Confirma el aviso.']},
+   {t:'Crear la OP, clic por clic',items:['Con la cotización en **Aprobada**, en la cotización completa toca **🏭 Crear OP**.','Marca los **ítems** que van a producción, elige el **diseñador**, la **prioridad** y la **fecha pactada** (si la cambias, escribe el motivo).','Toca **Crear OP**. Los **materiales y servicios** del ítem viajan solos a la OP para gestionar los pedidos.','Cuando ya existe la OP aparece el botón para abrirla y ver su avance.']},
+   {t:'Editar una marquilla',items:['En el detalle toca **✏️ Editar marquilla**, cambia lo necesario y **💾 Guardar cambios**.']}],
+  reglas:['Una marquilla con OP ya no se puede editar.','Crear OP solo funciona con la cotización **Aprobada**.']},
+cotizaciones:{icono:'📄',titulo:'Cotizaciones',
+  que:'Todas las cotizaciones, igual que en Comercial: crear, editar, ver ítems, PDF, estado y Crear OP.',
+  quien:'Administración y comercial.',
+  pasos:[
+   {t:'Ver y cotizar',items:['Menú → **Cotizaciones**. Busca con 🔍 y toca una para abrir su detalle.','Para una nueva toca **➕ Nueva cotización**, elige el cliente y agrega los ítems con materiales, servicios y procesos.']},
+   {t:'PDF, estado y OP',items:['En el detalle: **🖨️ Imprimir / PDF** o **💾 Guardar PDF**; cambia el estado en la barra superior; con **Aprobada** toca **🏭 Crear OP**.']}]},
+elementos:{icono:'🧩',titulo:'Elementos / Ítems',
+  que:'Los ítems de todas las cotizaciones, con sus materiales y servicios.',
+  quien:'Administración y comercial.',
+  pasos:[{t:'Usarlo',items:['Menú → **Elementos / Ítems**. Busca el ítem y tócalo para ver o editar materiales, servicios y precio.','Los materiales y servicios del ítem siempre viajan a la OP al crearla.']}]},
 docs:{icono:'🖨️',titulo:'Documentos para imprimir',
   que:'Cada remisión generada o despachada tiene sus documentos, listos para imprimir o guardar en PDF.',
   pasos:[{t:'Imprimir',items:['Abre la remisión y toca **📄 Remisión (PDF)**: el documento para el cliente, con su número, cliente, proyecto, orden de compra, ítems y observaciones.','Si el cliente es **MOSAT**, también aparece **🌐 Packing List (EN)**: el mismo documento en inglés, con fecha MM/DD/AAAA y los datos de MOSAT.','La remisión trae al final las líneas de firma **Entregado por / Recibido por / Fecha recibido** para que el cliente firme el recibo.','Las remisiones del **formulario libre** tienen sus documentos desde que se guardan (salvo las anuladas).','**🖨️ Formato de despacho**: para verificar lo que sale; trae casillas para marcar cada ítem y líneas de firma (despachó / recibió).','En el celular elige **Guardar como PDF** en la ventana de impresión.']}],
