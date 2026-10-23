@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-190000">
+<meta name="app-build" content="20261023-200000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1157,9 +1157,34 @@ function remCard(m){
     <div class="lc-meta" style="font-size:11.5px;color:var(--muted);gap:10px"><span>${opR(m)}</span><span>COT-${m.cot_num||'—'}</span><span>📅 ${fmtDate(fFecha(m))||'—'}</span><span>📦 ${ls.length} ítem${ls.length!==1?'s':''} · ${remUnd(m)} und</span>${m.pedida_por?`<span>🙋 Pidió: ${esc(m.pedida_por)}${m.pedida_unidades!=null?' · '+Number(m.pedida_unidades)+' und pedidas':''}</span>`:''}</div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap" onclick="event.stopPropagation()">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?`<button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄 ${esMosat(m)?'Packing List':'PDF'}</button>`:''}${puedeLibre()&&!esFinal(m)?`<button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️ Editar</button>`:''}${m.estado==='PEDIDA'||m.estado==='SELECCIONADA'?`<span style="font-size:11px;color:var(--muted);align-self:center">Espera a ${rolAccion(m)}</span>`:''}</div></div>`;
 }
+
+// Fila desplegable de ítems en la tabla de remisiones (se abre en su sitio, sin repintar)
+function _COTXC(){}
+function remxTog(id){
+  const tr=document.querySelector('tr[data-rid="'+id+'"]'); if(!tr) return; const btn=tr.querySelector('button'); const nx=tr.nextElementSibling;
+  if(nx&&nx.dataset.rx===id){ nx.remove(); if(btn) btn.textContent='▸'; pinQuitar('rem-'+id); return; }
+  const m=remDe(id); if(!m) return; const ls=m.lineas||[];
+  const det=ls.length?`<table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th></tr></thead><tbody>${ls.map((l,i)=>`<tr onclick="detalleRem('${m.id}')" style="cursor:pointer" title="Abrir la remisión"><td class="td-center"><b>${l.item??i+1}</b></td><td class="td-center">${esc(String(l.cantidad??''))}</td><td style="white-space:pre-wrap;max-width:520px">${esc(String(l.descripcion||'—').slice(0,260))}</td></tr>`).join('')}</tbody></table>`:'<span style="color:var(--muted);font-size:12px">Esta remisión no tiene ítems.</span>';
+  tr.insertAdjacentHTML('afterend',`<tr data-rx="${id}"><td></td><td colspan="12" style="padding:4px 0 10px">${det}</td></tr>`); if(btn) btn.textContent='▾';
+  pinFijar('rem-'+id,(m.numero?'REM-'+m.numero:'Remisión')+' · '+(m.empresa||''),'tr[data-rid="'+id+'"]');
+}
+// ── Barra fija «Trabajando en…»: lo que abres o despliegas queda anclado arriba para volver a ello ──
+window._PINS=window._PINS||[];
+function pinRender(){
+  let b=document.getElementById('pin-bar');
+  if(!_PINS.length){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='pin-bar'; b.style.cssText='position:fixed;left:0;right:0;z-index:900;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 12px;background:#fef3c7;border-bottom:2px solid #d97706;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:12px;color:#78350f'; document.body.appendChild(b); }
+  const t=document.getElementById('topbar'); b.style.top=(t?Math.round(t.getBoundingClientRect().bottom):0)+'px';
+  b.innerHTML='<b>📌 Trabajando en:</b>'+_PINS.map((p,i)=>`<span style="display:inline-flex;align-items:center;background:#fff;border:1px solid #d97706;border-radius:99px;overflow:hidden"><button style="border:0;background:none;padding:3px 10px;font-weight:700;cursor:pointer;color:#78350f" onclick="pinIr(${i})">${String(p.label).replace(/</g,'&lt;')}</button><button style="border:0;background:#fde68a;padding:3px 8px;cursor:pointer;font-weight:900" title="Quitar" onclick="pinQuitarI(${i})">✕</button></span>`).join('');
+}
+function pinFijar(k,label,sel){ if(!_PINS.some(p=>p.k===k)) _PINS.push({k,label,sel}); pinRender(); }
+function pinQuitar(k){ window._PINS=_PINS.filter(p=>p.k!==k); pinRender(); }
+function pinQuitarI(i){ _PINS.splice(i,1); pinRender(); }
+function pinIr(i){ const p=_PINS[i]; if(!p) return; const el=document.querySelector(p.sel); if(el){ const t=document.getElementById('pin-bar'); const off=(t?t.offsetHeight:0)+70; const y=el.getBoundingClientRect().top+window.scrollY-off; window.scrollTo({top:Math.max(0,y),behavior:'smooth'}); el.style.outline='3px solid #d97706'; setTimeout(()=>{ el.style.outline=''; },1600); } }
+(function(){ const n=window.nav; if(typeof n==='function'&&!n._pin){ window.nav=function(){ _PINS.length=0; pinRender();  return n.apply(this,arguments); }; window.nav._pin=1; } })();
 function remTabla(rows){
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>REM #</th><th>Acciones</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Pidió</th><th>Pedidas</th><th>Ítems</th><th>Und</th></tr></thead><tbody>
-  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr onclick="detalleRem('${m.id}')"><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td onclick="event.stopPropagation()" style="white-space:nowrap;overflow:visible">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td style="font-size:11.5px;white-space:nowrap">${esc(m.pedida_por||'—')}</td><td class="td-center"><b>${m.pedida_unidades!=null?Number(m.pedida_unidades):'—'}</b></td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td></tr>`; }).join('')}
+  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:36px"></th><th>REM #</th><th>Acciones</th><th>Fecha</th><th>OP</th><th>COT</th><th>Empresa</th><th>Proyecto</th><th>Estado</th><th>Pidió</th><th>Pedidas</th><th>Ítems</th><th>Und</th></tr></thead><tbody>
+  ${rows.map(m=>{ const ap=accionPrincipal(m); return `<tr data-rid="${m.id}" onclick="detalleRem('${m.id}')"><td class="td-center" onclick="event.stopPropagation()"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" title="Ver los ítems de esta remisión" onclick="remxTog('${m.id}')">▸</button></td><td><b style="color:var(--accent)">${m.numero?'REM-'+m.numero:'—'}</b></td><td onclick="event.stopPropagation()" style="white-space:nowrap;overflow:visible">${ap?`<button class="btn btn-sm" style="background:${ap[2]};color:#fff" onclick="${ap[1]}">${ap[0]}</button>`:''}${m.numero?` <button class="btn btn-sm btn-ghost" onclick="docRemision('${m.id}','${esMosat(m)?'packing':'remision'}')">📄</button>`:''}${puedeLibre()&&!esFinal(m)?` <button class="btn btn-sm btn-ghost" onclick="formLibreRem('${m.id}')">✏️</button>`:''}</td><td>${fmtDate(fFecha(m))||'—'}</td><td>${opR(m)}</td><td>COT-${m.cot_num||'—'}</td><td style="font-weight:600;max-width:170px">${esc(m.empresa||'—')}${esMosat(m)?' <span class="badge gris" style="font-size:9px">EN</span>':''}</td><td style="max-width:200px;font-size:11px">${esc(m.proyecto||'')}</td><td>${bRem(m.estado)}${remPendiente(m)?' 🔔':''}</td><td style="font-size:11.5px;white-space:nowrap">${esc(m.pedida_por||'—')}</td><td class="td-center"><b>${m.pedida_unidades!=null?Number(m.pedida_unidades):'—'}</b></td><td class="td-center">${(m.lineas||[]).length}</td><td class="td-center">${remUnd(m)}</td></tr>`; }).join('')}
   </tbody></table></div></div>`;
 }
 function remisiones(){

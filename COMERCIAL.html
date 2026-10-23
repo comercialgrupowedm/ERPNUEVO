@@ -3283,7 +3283,7 @@ function cotxTog(id){
 function cotxItems(c){
   const its=(typeof itemsDe==='function'?itemsDe(c.id):[])||[];
   if(!its.length) return `<tr data-cx="${c.id}"><td></td><td colspan="16" style="padding:8px 12px;color:var(--muted);font-size:12px">Esta cotización no tiene ítems.</td></tr>`;
-  return `<tr data-cx="${c.id}"><td></td><td colspan="16" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th><th>P. unit.</th><th>Total</th></tr></thead><tbody>${its.map((it,i)=>`<tr onclick="detailCot('${c.id}')" style="cursor:pointer"><td class="td-center"><b>${it.item??i+1}</b></td><td class="td-center">${it.unidades||1}</td><td style="max-width:420px;white-space:pre-wrap">${esc(String(it.descripcion||'—').slice(0,220))}</td><td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num"><b>${fmt(totalItem(it))}</b></td></tr>`).join('')}</tbody></table></td></tr>`;
+  return `<tr data-cx="${c.id}"><td></td><td colspan="16" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th><th>P. unit.</th><th>Total</th></tr></thead><tbody>${its.map((it,i)=>`<tr onclick="detailItem('${it.id}')" style="cursor:pointer" title="Abrir el detalle del ítem"><td class="td-center"><b>${it.item??i+1}</b></td><td class="td-center">${it.unidades||1}</td><td style="max-width:420px;white-space:pre-wrap">${esc(String(it.descripcion||'—').slice(0,220))}</td><td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num"><b>${fmt(totalItem(it))}</b></td></tr>`).join('')}</tbody></table></td></tr>`;
 }
 
 // ── Barra fija «Trabajando en…»: lo que abres o despliegas queda anclado arriba para volver a ello ──
