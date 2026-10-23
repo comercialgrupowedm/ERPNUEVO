@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-120000">
+<meta name="app-build" content="20261023-160000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1193,7 +1193,7 @@ function pdEst(k){ pdSet('est',k); }
 let _pdT=null; function pdSetQ(v){ clearTimeout(_pdT); _pdT=setTimeout(()=>{ _PD.q=v; pgReset(); pedidos(); },220); }
 function pedidosFiltrados(){
   const q=_norm(_PD.q); const oc=id=>{ const o=(DB.ocs||[]).find(x=>x.id===id); return o?ocNum(o):''; };
-  return (DB.lineas||[]).filter(m=>(_PD.est==='TODOS'||m.estado===_PD.est)&&(!_PD.tipo||m.tipo===_PD.tipo)&&(!q||_norm([m.material,m.detalle,m.proveedor,m.obs_compras,m.factura,oc(m.id_oc),prodDe(m.id_prod)&&('op-'+prodDe(m.id_prod).op),prodDe(m.id_prod)&&prodDe(m.id_prod).empresa,prodDe(m.id_prod)&&prodDe(m.id_prod).descripcion].join(' ')).includes(q)))
+  return (DB.lineas||[]).filter(m=>(_PD.est==='TODOS'||m.estado===_PD.est||(_PD.est==='SOLICITADO'&&m.estado==='ALMACEN'))&&(!_PD.tipo||m.tipo===_PD.tipo)&&(!q||_norm([m.material,m.detalle,m.proveedor,m.obs_compras,m.factura,oc(m.id_oc),prodDe(m.id_prod)&&('op-'+prodDe(m.id_prod).op),prodDe(m.id_prod)&&prodDe(m.id_prod).empresa,prodDe(m.id_prod)&&prodDe(m.id_prod).descripcion].join(' ')).includes(q)))
     .sort((a,b)=>{
       if(_PD.est==='SOLICITADO'){ const da=diasPactada(prodDe(a.id_prod)||{}), db=diasPactada(prodDe(b.id_prod)||{}); return ((da==null?9999:da)-(db==null?9999:db))||String(a.created_at).localeCompare(String(b.created_at)); }
       return String(b.created_at).localeCompare(String(a.created_at));
@@ -1289,8 +1289,8 @@ function lineaCard(m){
     ${btns.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${btns.join('')}</div>`:''}</div></div>`;
 }
 function pedidos(){
-  const all=DB.lineas||[]; const cnt=e=>all.filter(m=>m.estado===e).length;
-  const porC=all.filter(m=>m.estado==='SOLICITADO');
+  const all=DB.lineas||[]; const cnt=e=>all.filter(m=>m.estado===e||(e==='SOLICITADO'&&m.estado==='ALMACEN')).length;
+  const porC=all.filter(m=>m.estado==='SOLICITADO'||m.estado==='ALMACEN');
   const chips=chipsH([['SOLICITADO','Por comprar',cnt('SOLICITADO')],['COMPRADO','Comprados',cnt('COMPRADO')],['RECIBIDO','Recibidos',cnt('RECIBIDO')],['RECHAZADO','Rechazados',cnt('RECHAZADO')],['TODOS','Todos',all.length]],_PD.est,'pdEst');
   const banner=moduleBanner('🛒','Pedidos de compra','Material y servicios que piden diseño y las OP',chips+'');
   const venc=porC.filter(m=>{ const d=diasPactada(prodDe(m.id_prod)||{}); return d!=null&&d<0; }).length;
@@ -1873,14 +1873,14 @@ async function refreshCurrent(){
 }
 let _seenC=null;
 function avisarNuevas(){
-  const ids=new Set((DB.lineas||[]).filter(m=>m.estado==='SOLICITADO').map(m=>m.id));
+  const ids=new Set((DB.lineas||[]).filter(m=>m.estado==='SOLICITADO'||m.estado==='ALMACEN').map(m=>m.id));
   if(_seenC){ const nuevas=[...ids].filter(i=>!_seenC.has(i)); if(nuevas.length){ const ops=[...new Set(nuevas.map(i=>{ const p=prodDe((linDe(i)||{}).id_prod); return p?'OP-'+p.op:''; }).filter(Boolean))]; toast(`🆕 ${nuevas.length} pedido(s) nuevo(s) por comprar${ops.length?' ('+ops.slice(0,4).join(', ')+')':''}`,'ok'); } }
   _seenC=ids;
 }
 function updateBadges(){
   try{ opmBadge(); }catch(e){}
   try{ const na=(DB.lineas||[]).filter(m=>m.estado==='ALMACEN'&&m.tipo!=='SERVICIO EXTERNO').length; const el=document.getElementById('b-alm'); if(el){ el.textContent=na; el.style.display=na?'':'none'; } }catch(e){}
-  const n=(DB.lineas||[]).filter(m=>m.estado==='SOLICITADO').length;
+  const n=(DB.lineas||[]).filter(m=>m.estado==='SOLICITADO'||m.estado==='ALMACEN').length;
   ['b-ped','bb-ped'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n?'':'none'; } });
   const o=(DB.ocs||[]).filter(x=>x.estado==='EMITIDA').length;
   ['b-oc','bb-oc'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=o; el.style.display=o?'':'none'; } });
