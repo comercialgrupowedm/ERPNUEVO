@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-180000">
+<meta name="app-build" content="20261023-210000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -5220,5 +5220,36 @@ setTimeout(upd,800);
   wrapH2C(); document.addEventListener('DOMContentLoaded',wrapH2C); window.addEventListener('load',wrapH2C);
 })();
 </script>
+<!-- WEDM-IMGEDIT -->
+<script>
+// ── Editor de imagen en sitio: toca una imagen pegada para reducirla o recortarla ──
+function imgEdit(img){
+  if(!img||!img.src) return; const old=document.getElementById('imged-ov'); if(old) old.remove();
+  const W=Math.min(560,Math.floor(window.innerWidth*0.88)), nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height; if(!nw||!nh) return;
+  const k=Math.min(1,W/nw,380/nh), dw=Math.round(nw*k), dh=Math.round(nh*k);
+  const ov=document.createElement('div'); ov.id='imged-ov'; ov.style.cssText='position:fixed;inset:0;z-index:6000;background:rgba(15,23,42,.7);display:flex;align-items:center;justify-content:center;padding:10px';
+  ov.innerHTML=`<div style="background:#fff;color:#111;border-radius:14px;padding:14px;max-width:96vw;max-height:96vh;overflow:auto;font-family:Arial,sans-serif"><div style="font-weight:800;margin-bottom:6px">✂️ Editar imagen</div><div style="font-size:12px;color:#555;margin-bottom:8px">Arrastra sobre la imagen para <b>recortar</b> esa zona. Usa el control para <b>reducir el tamaño</b>.</div><div id="ie-w" style="position:relative;width:${dw}px;height:${dh}px;margin:0 auto;touch-action:none;cursor:crosshair;background:#eee"><canvas id="ie-c" width="${dw}" height="${dh}" style="display:block"></canvas><div id="ie-r" style="position:absolute;border:2px dashed #ea580c;background:rgba(234,88,12,.15);display:none"></div></div><div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap"><label style="font-size:12px;font-weight:700">Tamaño <input id="ie-s" type="range" min="10" max="100" value="100" style="vertical-align:middle"> <b id="ie-sv">100%</b></label><span id="ie-i" style="font-size:11px;color:#555"></span></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap"><button id="ie-q" style="padding:8px 12px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer">Quitar recorte</button><button id="ie-x" style="padding:8px 12px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer">Cancelar</button><button id="ie-ok" style="padding:8px 14px;border:0;background:#1a3a6b;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">✓ Aplicar</button></div></div>`;
+  document.body.appendChild(ov);
+  const cv=ov.querySelector('#ie-c'), cx=cv.getContext('2d'), box=ov.querySelector('#ie-w'), rc=ov.querySelector('#ie-r'), sl=ov.querySelector('#ie-s');
+  cx.drawImage(img,0,0,dw,dh); let R=null, st=null;
+  const info=()=>{ const f=Number(sl.value)/100, cw=R?R.w/k:nw, ch=R?R.h/k:nh; ov.querySelector('#ie-sv').textContent=sl.value+'%'; ov.querySelector('#ie-i').textContent='Resultado: '+Math.max(1,Math.round(cw*f))+' × '+Math.max(1,Math.round(ch*f))+' px'; };
+  const pos=e=>{ const b=box.getBoundingClientRect(); return {x:Math.max(0,Math.min(dw,e.clientX-b.left)),y:Math.max(0,Math.min(dh,e.clientY-b.top))}; };
+  const paint=()=>{ if(!R){ rc.style.display='none'; return; } rc.style.display='block'; rc.style.left=R.x+'px'; rc.style.top=R.y+'px'; rc.style.width=R.w+'px'; rc.style.height=R.h+'px'; };
+  box.onpointerdown=e=>{ st=pos(e); R=null; paint(); try{ box.setPointerCapture(e.pointerId); }catch(x){} };
+  box.onpointermove=e=>{ if(!st) return; const p=pos(e); R={x:Math.min(st.x,p.x),y:Math.min(st.y,p.y),w:Math.abs(p.x-st.x),h:Math.abs(p.y-st.y)}; paint(); info(); };
+  box.onpointerup=()=>{ st=null; if(R&&(R.w<8||R.h<8)){ R=null; paint(); } info(); };
+  sl.oninput=info; info();
+  ov.querySelector('#ie-q').onclick=()=>{ R=null; paint(); info(); };
+  ov.querySelector('#ie-x').onclick=()=>ov.remove();
+  ov.querySelector('#ie-ok').onclick=()=>{
+    const f=Number(sl.value)/100, sx=R?R.x/k:0, sy=R?R.y/k:0, sw=R?R.w/k:nw, sh=R?R.h/k:nh;
+    const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(sw*f)); c.height=Math.max(1,Math.round(sh*f)); const g=c.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+    const host=img.closest('[contenteditable]'); img.removeAttribute('width'); img.removeAttribute('height'); img.src=c.toDataURL('image/png'); ov.remove();
+    if(host) host.dispatchEvent(new Event('input',{bubbles:true}));
+  };
+}
+document.addEventListener('click',function(e){ var im=e.target; if(im&&im.tagName==='IMG'&&im.closest('[contenteditable]')) imgEdit(im); });
+</script>
+<!-- /WEDM-IMGEDIT -->
 </body>
 </html>
