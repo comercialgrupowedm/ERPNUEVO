@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-210000">
+<meta name="app-build" content="20261023-211500">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -7737,7 +7737,32 @@ function imgEdit(img){
     if(host) host.dispatchEvent(new Event('input',{bubbles:true}));
   };
 }
-document.addEventListener('click',function(e){ var im=e.target; if(im&&im.tagName==='IMG'&&im.closest('[contenteditable]')) imgEdit(im); });
+
+// Barra flotante sobre la imagen seleccionada: reducir / ampliar / recortar / quitar
+function imgBarQuitar(){ var b=document.getElementById('imgbar'); if(b) b.remove(); document.querySelectorAll('img[data-imgsel]').forEach(function(x){ x.removeAttribute('data-imgsel'); x.style.outline=''; }); }
+function imgEscalar(img,f){
+  var nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height; if(!nw||!nh) return;
+  var c=document.createElement('canvas'); c.width=Math.max(8,Math.round(nw*f)); c.height=Math.max(8,Math.round(nh*f)); var g=c.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(img,0,0,c.width,c.height);
+  var host=img.closest('[contenteditable]'); img.removeAttribute('width'); img.removeAttribute('height'); img.src=c.toDataURL('image/png');
+  img.onload=function(){ img.onload=null; imgBar(img); if(host) host.dispatchEvent(new Event('input',{bubbles:true})); };
+}
+function imgBar(img){
+  imgBarQuitar(); img.setAttribute('data-imgsel','1'); img.style.outline='3px solid #2563eb';
+  var r=img.getBoundingClientRect(); var b=document.createElement('div'); b.id='imgbar';
+  b.style.cssText='position:fixed;z-index:6500;background:#111827;color:#fff;border-radius:10px;padding:5px 6px;display:flex;gap:5px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.4);font:700 12px Arial,sans-serif';
+  var btn=function(t,fn,ti){ var x=document.createElement('button'); x.type='button'; x.textContent=t; x.title=ti||''; x.style.cssText='background:#374151;color:#fff;border:0;border-radius:7px;padding:6px 10px;cursor:pointer;font:700 12px Arial,sans-serif'; x.onmousedown=function(e){ e.preventDefault(); }; x.onclick=function(e){ e.stopPropagation(); fn(); }; b.appendChild(x); };
+  var nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
+  var lab=document.createElement('span'); lab.textContent=nw+'×'+nh+' px'; lab.style.cssText='opacity:.8;padding:0 4px'; b.appendChild(lab);
+  btn('➖ Reducir',function(){ imgEscalar(img,0.8); },'Reduce la imagen un 20%');
+  btn('➕ Ampliar',function(){ imgEscalar(img,1.25); },'Amplía la imagen un 25%');
+  btn('✂️ Recortar / tamaño',function(){ imgBarQuitar(); imgEdit(img); },'Abre el editor completo');
+  btn('🗑 Quitar',function(){ var h=img.closest('[contenteditable]'); img.remove(); imgBarQuitar(); if(h) h.dispatchEvent(new Event('input',{bubbles:true})); },'Elimina la imagen');
+  document.body.appendChild(b);
+  var top=r.top-b.offsetHeight-6; if(top<4) top=r.bottom+6; b.style.top=Math.max(4,top)+'px'; b.style.left=Math.max(4,Math.min(window.innerWidth-b.offsetWidth-4,r.left))+'px';
+}
+(function(){ var st=document.createElement('style'); st.textContent='[contenteditable] img{cursor:pointer;max-width:100%}[contenteditable] img:hover{outline:2px dashed #2563eb}'; document.head.appendChild(st); })();
+document.addEventListener('click',function(e){ var im=e.target; if(im&&im.tagName==='IMG'&&im.closest('[contenteditable]')){ imgBar(im); } else if(!(im&&im.closest&&im.closest('#imgbar'))) imgBarQuitar(); });
+document.addEventListener('scroll',function(){ imgBarQuitar(); },true);
 </script>
 <!-- /WEDM-IMGEDIT -->
 </body>
