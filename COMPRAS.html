@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-160000">
+<meta name="app-build" content="20261023-161500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3092,7 +3092,7 @@ function opmTogD(id,o){ if(o) _OPM.abiertos.add(id); else _OPM.abiertos.delete(i
 
 // ═══ ALMACÉN · INVENTARIO · SERVICIO EXTERNO ══════════════════════════════
 const _mny=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO');
-const puedeAlm=()=>puede('almacen');
+const puedeAlm=()=>puede('almacen','compras');
 const puedeAlmC=()=>puede('almacen','compras');
 const _ALM={f:'rev',q:''}, _INV={q:'',f:'todo',rows:null}, _SX={f:'por',q:'',rows:null};
 const _normM=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,' ').trim();
@@ -3124,7 +3124,7 @@ async function almacen(){
     return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${imgSrcOP(p,120)?imgTag(p,120,'','lc-thumb'):'<div class="lc-thumb ph">🪨</div>'}<div style="min-width:0"><div class="lc-id">OP-${esc(p.op??'—')} · ÍTEM ${esc(p.item_num??'—')}</div><div class="lc-title" style="white-space:normal">${esc(m.material||'—')}</div><div class="lc-sub" style="white-space:normal">${esc(cantTxt(m))}${m.detalle?' · '+esc(m.detalle):''}</div></div></div><div style="text-align:right;flex-shrink:0"><span class="badge ${e[1]}">${e[0]}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${fmtDTs(m.solicitado_at)}</div></div></div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px">${esc(p.empresa||'')}${p.descripcion?' · '+esc(String(p.descripcion).slice(0,70)):''}${m.solicitado_por?' · pidió '+esc(m.solicitado_por):''}${p.fecha_pactada?' · entrega '+fmtDate(p.fecha_pactada):''}</div>
       ${m.alm_estado==='SALIO'?`<div style="font-size:11.5px;margin-top:4px">📦 Entregó ${esc(m.alm_por||'')} · ${fmtDT(m.alm_at)}</div>`:stock}
-      ${can&&puedeAlmC()?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">${m.alm_estado==='NO HAY'?'':`<button class="btn btn-ghost btn-sm" onclick="almNoHay('${esc(m.id)}')">🛒 No hay · pasar a compras</button>`}${puedeAlm()?`<button class="btn btn-primary btn-sm" onclick="almEntregar('${esc(m.id)}')">📦 Sí hay · entregar y recibir</button>`:''}</div>`:''}</div>`; };
+      ${can&&puedeAlmC()?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">${m.alm_estado==='NO HAY'?'':`<button class="btn btn-ghost btn-sm" onclick="almNoHay('${esc(m.id)}')">🛒 No hay · pasar a compras</button>`}${puedeAlm()?`<button class="btn btn-primary btn-sm" onclick="almEntregar('${esc(m.id)}')">✅ Sí hay en planta · recibir</button>`:''}</div>`:''}</div>`; };
   setContent(banner+chips+_srch('alm',_ALM.q,'almQ','Buscar OP, material, cliente, quién pidió…')+(rows.length?`<div class="card-list" style="display:grid;grid-template-columns:1fr;gap:10px">${pg.map(card).join('')}</div>`+pgMore('alm',rows):empty(_ALM.f==='rev'?'No hay materiales por revisar 🎉':'Sin resultados','🏪')));
 }
 function almSet(k){ _ALM.f=k; pgReset(); almacen(); }
