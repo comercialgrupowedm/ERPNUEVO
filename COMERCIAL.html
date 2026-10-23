@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-081500">
+<meta name="app-build" content="20261023-100000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -1426,6 +1426,24 @@ details.ay-det>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
 details.ay-det[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
 details.ay-det[open]>summary::after{content:'▴'}
 details.ay-det[open]{padding-bottom:10px}
+.cmp-item-row{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px}
+.cmp-item-row select,.cmp-item-row input,.cmp-item-row textarea{border:1.5px solid var(--border);border-radius:8px;
+  padding:7px 9px;font-size:12px;background:var(--surface);color:var(--text);width:100%;font-family:var(--sans);margin-top:4px}
+.cmp-item-row.fused{border-color:var(--purple);box-shadow:0 0 0 2px rgba(124,58,237,.12)}
+.cmp-ref-box{background:#eef2ff;border-left:4px solid var(--purple);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:11.5px;color:#4c1d95;line-height:1.5}
+.cmp-ref-box b{color:var(--purple)}
+.cmp-cost-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.cmp-cost-row input{max-width:130px;text-align:right;font-weight:700;color:var(--gold);border-color:#f0d9a8!important;background:#fffbeb!important}
+.cmp-total-row{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:10px 0}
+.cmp-total-row b{font-size:17px;color:var(--gold);font-family:var(--mono)}
+.cmp-ref-files{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.cmp-ref-drop{border:2px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;
+  cursor:pointer;background:var(--card2);position:relative;font-size:11px;color:var(--muted);font-weight:600}
+.cmp-ref-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.cmp-ref-drop .ic{font-size:20px;display:block;margin-bottom:4px}
+.cmp-ref-uploaded{grid-column:1/-1;display:flex;align-items:center;gap:8px;background:#eef2ff;
+  border:1.5px solid var(--purple);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;color:var(--purple)}
+.cmp-ref-uploaded .eye{margin-left:auto;background:none;border:none;cursor:pointer;font-size:15px}
 .ay-form{margin-bottom:14px;border:1px solid rgba(37,99,235,.25);border-radius:10px;overflow:hidden;background:rgba(37,99,235,.05)}
 .ay-form-tog{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:none;border:none;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent,#2563eb);text-align:left}
 .ay-form-car{transition:transform .15s}
@@ -1806,8 +1824,10 @@ async function _doEstadoCot(cotId, nuevo){
 }
 // Botones rápidos de estado por fila (como en AppSheet): ⏸ EN ESPERA · ✔ APROBADA · ✕ CANCELADO.
 // Usan _doEstadoCot, así que conservan la confirmación y el bloqueo 🔒 cuando la cotización ya tiene OP.
+const _esMq=c=>!!c&&c.origen==='MARQUILLA';
+const _mqPorAprobar=c=>_esMq(c)&&_normEstado(c.estado)==='EN ESPERA';
 function btnsEstCot(c){
-  if(!canEdit()) return '';
+  if(!canEdit()||_esMq(c)) return '';
   const est=_normEstado(c.estado), lock=cotTieneOp(c);
   const B=[['EN ESPERA','⏸','esp'],['APROBADA','✔','apr'],['CANCELADO','✕','can']];
   return `<div class="est-btns" onclick="event.stopPropagation()">${B.map(([s,ic,k])=>{
@@ -2879,7 +2899,7 @@ function detailCot(id){
     ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>
       <button class="btn btn-ghost btn-sm" onclick="recalcularTotalesCotUI('${id}')" title="Vuelve a sumar el total con los ítems (IVA ${IVA_PCT}%)">🔄 Recalcular Total</button>
       <button class="btn btn-danger-soft btn-sm" onclick="deleteCot('${id}')" style="margin-left:auto">🗑</button></div>`:''}
-    ${(()=>{ if(est!=='APROBADA'||!puede('comercial','administracion')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
+    ${(()=>{ if((est!=='APROBADA'&&!_mqPorAprobar(c))||!puede('comercial','administracion')) return ''; const opEx=opDeCot(id); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const libres=its.filter(it=>!enP.has(it.id)).length; if(!libres) return ''; return `<div style="padding:0 14px 10px"><button class="btn btn-primary" style="width:100%;background:#1565c0" onclick="formCrearOP('${id}')">🏭 ${opEx?'Agregar ítems a OP-'+opEx:'Crear orden de producción'}</button></div>`; })()}
     ${opCotHtml(id)}
     <div id="cot-rel"></div>
     <div class="dp-tabs"><div class="dp-tab active" onclick="switchDpTab(this,'resumen')">📋 Resumen</div><div class="dp-tab" onclick="switchDpTab(this,'items')">🔩 Ítems (${its.length})</div>${(window.chatOn&&chatOn('com_detalle_vs_real')&&(DB.produccion||[]).some(p=>p.id_cotizacion===id))?`<div class="dp-tab" onclick="switchDpTab(this,'vs')">📊 Cotizado vs Real <span class="nuevo-b">NUEVO</span></div>`:''}</div>
@@ -4484,6 +4504,10 @@ function accionesProd(p){
     b.push(btn('🖼️','#0284c7','Imagen del ítem',`prodPickImagen('${id}')`));
     if(mats.some(m=>m.estado==='PENDIENTE')) b.push(btn('📨','#d97706','Enviar materiales a compras',`prodMatSolicitar('${id}')`));
   }
+  if(puede('diseno','comercial','administracion')){
+    b.push(btn('🧱','#b45309',mats.some(m=>m.estado==='PENDIENTE')?'Pedido de material':'Pedir material / servicios',`pedidoMaterial('${id}')`));
+    if(!puede('diseno')&&mats.some(m=>m.estado==='PENDIENTE')) b.push(btn('📨','#d97706','Enviar materiales a compras',`prodMatSolicitar('${id}')`));
+  }
   if(puede('compras')){
     if(!p.mp_ok&&mats.every(m=>m.estado==='COMPRADO')) b.push(btn('🛒','#059669','Compras completas',`prodCompras('${id}',true)`));
     else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver compras',`prodCompras('${id}',false)`));
@@ -4550,9 +4574,9 @@ function pdProcesos(p){
 }
 function pdMateriales(p){
   const mats=matsDe(p.id); const cot=mats.reduce((s,m)=>s+Number(m.costo_cotizado||0),0); const real=mats.reduce((s,m)=>s+Number(m.costo_real||0),0);
-  const estCol={PENDIENTE:'gris',SOLICITADO:'naranja',COMPRADO:'verde'}; const dis=puede('diseno'); const com=puede('compras');
+  const estCol={PENDIENTE:'gris',SOLICITADO:'naranja',COMPRADO:'verde'}; const dis=puede('diseno','comercial','administracion'); const com=puede('compras');
   return `<div class="dp-section"><h4>🧱 Materiales de la OP</h4>
-    ${dis?`<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="formMatProd('${p.id}')">＋ Agregar material</button>${mats.some(m=>m.estado==='PENDIENTE')?`<button class="btn btn-ghost btn-sm" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button>`:''}</div>`:''}
+    ${dis?`<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" style="background:#b45309" onclick="pedidoMaterial('${p.id}')">🧱 Pedido de material / servicios</button><button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}')">＋ Agregar material</button>${mats.some(m=>m.estado==='PENDIENTE')?`<button class="btn btn-ghost btn-sm" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button>`:''}</div>`:''}
     ${mats.some(m=>m.estado==='PENDIENTE')?`<div style="background:#fef3c7;border:1.5px solid #d97706;color:#78350f;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px"><b>⚠️ ${mats.filter(m=>m.estado==='PENDIENTE').length} material(es) SIN enviar a compras.</b> Mientras estén «PENDIENTE», compras no los ve.<div style="margin-top:8px"><button class="btn btn-primary btn-sm" style="background:#d97706" onclick="prodMatSolicitar('${p.id}')">📨 Enviar a compras</button></div></div>`:''}
     ${mats.length?mats.map(m=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(m.material)}</b>${m.detalle?`<div style="font-size:11px;color:var(--muted)">${esc(m.detalle)}</div>`:''}<div style="font-size:11px;color:var(--muted)">${cantMat(m)}${m.proveedor?' · '+esc(m.proveedor):''}</div></div><span class="badge ${estCol[m.estado]||'gris'}">${m.estado}</span></div>
       <div style="display:flex;gap:14px;margin-top:6px;font-size:12px;font-family:var(--mono)"><span>Cotizado: <b>${fmt(m.costo_cotizado)}</b></span><span>Real: <b style="color:${m.costo_real!=null&&Number(m.costo_real)>Number(m.costo_cotizado)?'var(--danger)':'var(--text)'}">${m.costo_real!=null?fmt(m.costo_real):'—'}</b></span></div>
@@ -4631,6 +4655,228 @@ function prodPickImagen(id){
   const pp=prodDe(id); if(pp&&window.imgSugAbrir) imgSugAbrir(pp,up,r=>{ pp.imagen_thumb=r.thumb; pp.imagen_drive_id=r.drive; afterAct(id); }); else up();
 }
 // materiales
+// ══ PEDIDO DE MATERIAL / SERVICIOS (igual que en Diseño; comercial y administración también pueden pedir) ══
+var _norm = (typeof _norm==='function')?_norm:(s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' '));
+const _PM={pid:null,items:[],fused:false,backup:null,und:1,missing:[],tec:null,tecErr:''};
+const SVC_PFX='SERVICIO: ';
+const _pmNew=t=>t==='svc'
+  ?{tipo:'svc',nombre:'',dias:1,precio:0,notas:'',dureza:'',detalle:'',_sel:false}
+  :{tipo:'mat',nombre:'',geometria:'Cilindro',dim1:'',largo:'',ancho:'',cant:0,unidad:'kg',precio:0,notas:'',detalle:'',_sel:true};
+const _money=n=>'$'+Number(n||0).toLocaleString('es-CO');
+const _isEsp=it=>!!it.especial||it.nombre==='ESPECIAL';
+
+// Texto descriptivo que leerá compras (columna "detalle")
+function _pmTexto(it){
+  if(it.tipo==='fusion'||it.tipo==='fusion_svc') return it.fusedDesc||'';
+  if(it.tipo==='svc') return ['(TRABAJO EXTERNO)',it.dias?it.dias+' día'+(Number(it.dias)!==1?'s':''):'',it.dureza||'',it.notas||''].filter(Boolean).join(' · ');
+  if(_isEsp(it)) return String(it.notas||'').trim();
+  const g=it.geometria==='Platina'
+    ?(it.dim1||it.ancho||it.largo?`Platina ${it.dim1||'?'} × ${it.ancho||'?'} × L${it.largo||'?'} mm`:'Platina')
+    :(it.dim1||it.largo?`Cilindro${it.dim1?' Ø'+it.dim1:''}${it.largo?' × L'+it.largo:''} mm`:'Cilindro');
+  return [g,_PM.und?_PM.und+' und':'',it.notas||''].filter(Boolean).join(' · ');
+}
+// Recalcula kg y costo con la misma fórmula del cotizador (densidad × volumen; $/kg × 1.3)
+function _pmCalc(it){
+  if(it.tipo!=='mat'||_isEsp(it)) return;
+  const cat=(DB.materiales||[]).find(x=>x.material===it.nombre); if(!cat||!Number(cat.densidad)) return;
+  const d=Number(it.dim1)||0, l=Number(it.largo)||0, a=Number(it.ancho)||0;
+  const vol=it.geometria==='Platina'?d*l*a:Math.PI*Math.pow(d/2,2)*l; if(!vol) return;
+  const kg=Number(cat.densidad)*vol*(Number(_PM.und)||1)/1000; it.cant=Math.round(kg*1000)/1000;
+  if(!it._cm) it.precio=Math.round(kg*Number(cat.precio||0)*1.3);
+}
+
+// Empareja filas de la OP con lo cotizado: primero por nombre + kg, luego solo por nombre
+function _pmEmparejar(rows,quoted){
+  const usada=new Set(), res=new Array(rows.length).fill(-1);
+  [true,false].forEach(estricto=>{ rows.forEach((r,ri)=>{
+    if(res[ri]>=0) return;
+    const j=quoted.findIndex((q,k)=>!usada.has(k)&&_norm(q.nombre)===_norm(r.material)&&(!estricto||Math.abs(Number(q.kg||0)-Number(r.cantidad_kg||0))<0.01));
+    if(j>=0){ usada.add(j); res[ri]=j; }
+  }); });
+  return {res,usada};
+}
+// Construye las líneas: filas PENDIENTES ya creadas con la OP + datos técnicos de la cotización + servicios
+function _pmArmar(p,tec){
+  const quoted=(tec&&tec.mats||[]).filter(q=>q&&q.nombre); const svcs=(tec&&tec.svcs||[]).filter(s=>s&&s.nombre);
+  const todas=matsDe(p.id); const {res,usada}=_pmEmparejar(todas,quoted);
+  const lines=[];
+  todas.forEach((r,ri)=>{
+    if(r.estado!=='PENDIENTE') return;
+    const q=res[ri]>=0?quoted[res[ri]]:null;
+    const it={tipo:'mat',id:r.id,nombre:r.material,geometria:q&&q.geo==='Platina'?'Platina':'Cilindro',dim1:q?q.dim1||'':'',largo:q?q.largo||'':'',ancho:q?q.ancho||'':'',
+      cant:Number(r.cantidad_kg||0),unidad:'kg',precio:Number(r.costo_cotizado||0),especial:!!(q&&q.especial),notas:q&&q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true};
+    it.detalle=r.detalle||_pmTexto(it); it._dm=!!r.detalle; lines.push(it);
+  });
+  // cotizado sin fila (se borró o nunca se creó). Si ya hubo una fusión (texto "1. …") no se ofrece, para no duplicar.
+  const fusionado=todas.some(r=>/^1\. /.test(String(r.detalle||'')));
+  _PM.missing=fusionado?[]:quoted.filter((q,k)=>!usada.has(k));
+  // servicios cotizados que aún no se han pedido (no van marcados por defecto, como en el sistema anterior)
+  svcs.forEach(s=>{
+    if(todas.some(r=>_norm(r.material)===_norm(SVC_PFX+s.nombre)||_norm(r.material)===_norm(SVC_PFX+'VARIOS'))) return;
+    const it={tipo:'svc',nombre:s.nombre,dias:s.dias||1,precio:Number(s.costo||0),notas:s.desc||'',dureza:s.dureza||'',ref:s,_sel:false};
+    it.detalle=_pmTexto(it); lines.push(it);
+  });
+  return lines;
+}
+function _pmDeCotizado(q){
+  const it={tipo:'mat',nombre:q.nombre,geometria:q.geo==='Platina'?'Platina':'Cilindro',dim1:q.dim1||'',largo:q.largo||'',ancho:q.ancho||'',cant:Number(q.kg||0),unidad:'kg',
+    precio:Number(q.costo||0),especial:!!q.especial,notas:q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true}; it.detalle=_pmTexto(it); return it;
+}
+
+async function pedidoMaterial(id){
+  const p=prodDe(id); if(!p) return; 
+  Object.assign(_PM,{pid:id,items:[],fused:false,backup:null,und:Number(p.unidades)||1,missing:[],tec:null,tecErr:''});
+  openModal(`🧱 Pedido de material — OP-${p.op} · Ítem ${p.item_num??''}`,`<div style="font-size:12px">
+    ${ayudaForm(`Agrega cada material con su descripción, medidas y cantidad. Cuando estén todos, toca **🧱 Confirmar y enviar a compras**: el pedido queda **Solicitado** y compras lo ve al instante.`)}<div style="background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--purple)">
+      <div style="display:flex;justify-content:space-between"><b style="color:var(--purple)">OP-${p.op} · ÍTEM ${p.item_num??'—'}</b><span style="color:var(--muted)">COT-${p.cot_num||'—'}</span></div>
+      <div>${esc(p.empresa||'—')}</div><div style="color:var(--muted)">${esc(p.descripcion||'—')} · ×${p.unidades}</div>
+      <div id="pm-estado" style="color:var(--purple);margin-top:4px;font-size:11px">⏳ Cargando lo cotizado…</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer"><input type="checkbox" id="pm-sel-all" checked onchange="_pmSelAll(this.checked)" style="width:15px;height:15px;accent-color:var(--purple)">📦 LÍNEAS DEL PEDIDO</label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="_pmAdd('mat')">🪨 +Material</button><button type="button" class="btn btn-ghost btn-sm" onclick="_pmAdd('svc')">🛠 +Servicio</button><button type="button" id="pm-fusion-btn" class="btn btn-ghost btn-sm" onclick="_pmFusion()">🧲 Fusionar</button></div></div>
+    <div id="pm-lista" style="text-align:center;padding:20px 0;color:var(--muted)">⏳ Cargando…</div>
+    <div class="cmp-total-row"><span>Total cotizado (seleccionado)</span><b id="pm-total">$0</b></div>
+    <div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">📁 Plano de referencia</div><div id="pm-planos">${mutedP('Cargando…')}</div></div>
+    ${(F('dis_parecidos')&&typeof simCargar==='function')?`<div style="margin-top:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">💡 Ítems parecidos (guía)</div><div id="pm-sim">${mutedP('Buscando parecidos…')}</div></div>`:''}
+    <div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">📝 Observaciones para compras</div>
+      <textarea id="pm-obs" rows="2" placeholder="Especificaciones, tolerancias, notas de fabricación…" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--surface);color:var(--text);font-family:var(--sans)"></textarea></div>
+    <datalist id="pm-mats">${(DB.materiales||[]).map(x=>`<option value="${esc(x.material)}">`).join('')}</datalist>
+    <datalist id="pm-svcs">${(DB.servicios||[]).map(x=>`<option value="${esc(x.servicio)}">`).join('')}</datalist></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="pm-btn" style="background:#b45309" onclick="_pmConfirmar()">🧱 Confirmar y enviar a compras</button>`);
+  if(!DB.servicios){ try{ DB.servicios=await GETALL('servicios','select=*&activo=eq.true&order=servicio.asc,id.asc'); const dl=document.getElementById('pm-svcs'); if(dl) dl.innerHTML=DB.servicios.map(x=>`<option value="${esc(x.servicio)}">`).join(''); }catch(e){ DB.servicios=[]; } }
+  try{ _PM.tec=await sb.rpc('prod_item_tecnico',{p_id:id}); }catch(e){ _PM.tecErr=errMsg(e); }
+  if(_PM.pid!==id||!document.getElementById('pm-lista')) return;
+  _PM.items=_pmArmar(prodDe(id)||p,_PM.tec);
+  if(!_PM.items.length) _PM.items=[_pmNew('mat')];
+  const est=document.getElementById('pm-estado'); const nMat=_PM.items.filter(x=>x.ref&&x.tipo==='mat').length, nSvc=_PM.items.filter(x=>x.tipo==='svc'&&x.ref).length;
+  if(est){
+    if(_PM.tecErr){ est.style.color='var(--warn)'; est.textContent='⚠ No se pudo leer lo cotizado ('+_PM.tecErr.slice(0,80)+'). Puedes armar el pedido a mano.'; }
+    else if(!nMat&&!nSvc&&matsDe(id).some(m=>m.estado!=='PENDIENTE')){ est.style.color='var(--purple)'; est.innerHTML='✓ Este ítem ya tiene '+matsDe(id).filter(m=>m.estado!=='PENDIENTE').length+' material(es) <b>enviado(s) a compras</b> (míralos en la pestaña Materiales). Aquí solo agregas materiales adicionales.'; }
+    else{ est.style.color='var(--purple)'; est.innerHTML=`✓ Precargado desde la cotización: ${nMat} material${nMat!==1?'es':''}${nSvc?` · ${nSvc} servicio${nSvc!==1?'s':''} externo${nSvc!==1?'s':''} (sin marcar)`:''}${_PM.tec&&_PM.tec.no_lleva_mp?' · <b style="color:var(--warn)">⚠ el ítem está marcado como “no lleva materia prima”</b>':''}${_PM.missing.length?` · <a href="#" onclick="_pmTraerFaltantes();return false" style="color:var(--info);font-weight:700">↺ traer ${_PM.missing.length} cotizado(s) que falta(n)</a>`:''}`; }
+  }
+  _pmRender(); pmCargarPlanos(id); if(F('dis_parecidos')&&typeof simCargar==='function') setTimeout(()=>simCargar(id,'pm-sim'),50);
+}
+async function pmCargarPlanos(id){
+  const el=document.getElementById('pm-planos'); if(!el) return;
+  try{
+    const p=prodDe(id); const rows=await GET('prod_archivos',ARCH_COLS+`&tipo=eq.plano&or=(id_prod.eq.${id}${p&&p.id_item?`,id_item.eq.${p.id_item}`:''})&order=created_at.desc`);
+    if(!document.getElementById('pm-planos')) return;
+    el.innerHTML=(rows.length?rows.map(a=>`<div class="cmp-ref-uploaded" style="margin-bottom:6px">📄 ${esc(a.nombre||'Plano')} <span style="opacity:.7;font-weight:400">Ya subido</span><button type="button" class="eye" title="Ver plano" onclick="verArchivo('${a.id}')">👁</button></div>`).join(''):'<div style="font-size:12px;color:var(--warn);margin-bottom:6px">⚠ Esta OP aún no tiene plano</div>')+
+      `<button type="button" class="btn btn-ghost btn-sm" onclick="pmSubirPlano('${id}')">📎 Subir plano</button>`;
+  }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
+}
+function pmSubirPlano(id){ pickFile('image/*,application/pdf',f=>subirArchivo({id_prod:id},'plano',f,()=>{ DB.archMeta=null; pmCargarPlanos(id); })); }
+function _pmTraerFaltantes(){
+  if(!_PM.missing.length) return;
+  _PM.items=_PM.items.filter(x=>!(x.tipo==='mat'&&!x.id&&!x.nombre)).concat(_PM.missing.map(_pmDeCotizado)); _PM.missing=[];
+  const est=document.getElementById('pm-estado'); if(est) est.textContent='✓ Se agregaron las líneas cotizadas que faltaban';
+  _pmRender();
+}
+function _pmAdd(t){ if(_PM.fused){ toast('Desfusiona primero para agregar líneas','error'); return; } _PM.items.push(_pmNew(t)); _pmRender(); }
+function _pmDel(i){ if(_PM.fused) return; _PM.items.splice(i,1); if(!_PM.items.length) _PM.items.push(_pmNew('mat')); _pmRender(); }
+function _pmSelAll(v){ _PM.items.forEach(x=>{ x._sel=v; }); _pmRender(); }
+function _pmSel(i,v){ _PM.items[i]._sel=v; const all=_PM.items.every(x=>x._sel!==false); const c=document.getElementById('pm-sel-all'); if(c) c.checked=all; _pmTotal(); }
+// Cambio de un campo: mantiene el texto descriptivo al día mientras no se haya editado a mano
+function _pmUpd(i,f,v,rerender){
+  const it=_PM.items[i]; if(!it) return;
+  const num=['dim1','largo','ancho','cant','precio','dias'].includes(f);
+  it[f]=num?(v===''?'':Number(v)):v;
+  if(f==='precio') it._cm=true;
+  if(f==='nombre'&&it.tipo==='mat'){ it.especial=(v==='ESPECIAL'); if(!it.ref) it._cm=false; }
+  if(['nombre','geometria','dim1','largo','ancho'].includes(f)) _pmCalc(it);
+  if(!it._dm) it.detalle=_pmTexto(it);
+  if(rerender||['nombre','geometria','dim1','largo','ancho'].includes(f)) _pmRender(); else _pmTotal();
+}
+function _pmDet(i,v){ const it=_PM.items[i]; it.detalle=v; it._dm=true; }
+function _pmTotal(){ const t=_PM.items.filter(x=>x._sel!==false).reduce((s,x)=>s+(Number(x.precio)||0),0); const el=document.getElementById('pm-total'); if(el) el.textContent=_money(t); }
+
+// Fusionar: un bloque editable para materiales y otro para servicios (se puede deshacer)
+function _pmFusion(){
+  if(!_PM.fused){
+    const mats=_PM.items.filter(x=>x.tipo==='mat'), svcs=_PM.items.filter(x=>x.tipo==='svc');
+    if(mats.length<2&&svcs.length<2){ toast('Agrega al menos 2 materiales (o 2 servicios) para fusionar','error'); return; }
+    _PM.backup=JSON.parse(JSON.stringify(_PM.items)); const out=[];
+    const txt=(it,n)=>`${n+1}. ${_isEsp(it)?(it.notas||'ESPECIAL'):it.nombre||'—'}${it.tipo==='mat'&&!_isEsp(it)?': '+_pmTexto(it):it.tipo==='svc'?' — '+_pmTexto(it):''} — ${_money(it.precio)}`;
+    if(mats.length) out.push({tipo:'fusion',nombre:'ESPECIAL',fusedDesc:mats.map(txt).join('\n'),cant:mats.reduce((s,x)=>s+(Number(x.cant)||0),0),precio:mats.reduce((s,x)=>s+(Number(x.precio)||0),0),_sel:true});
+    if(svcs.length) out.push({tipo:'fusion_svc',nombre:'VARIOS',fusedDesc:svcs.map(txt).join('\n'),cant:0,precio:svcs.reduce((s,x)=>s+(Number(x.precio)||0),0),_sel:true});
+    _PM.items=out; _PM.fused=true;
+  }else{ _PM.items=_PM.backup||_PM.items; _PM.backup=null; _PM.fused=false; }
+  const b=document.getElementById('pm-fusion-btn'); if(b) b.textContent=_PM.fused?'🔓 Desfusionar':'🧲 Fusionar';
+  _pmRender();
+}
+function _pmRender(){
+  const c=document.getElementById('pm-lista'); if(!c) return;
+  c.style.textAlign='left'; c.style.padding='0';
+  c.innerHTML=_PM.items.map((it,i)=>{
+    const op=it._sel!==false?1:.5;
+    if(it.tipo==='fusion'||it.tipo==='fusion_svc'){
+      const sv=it.tipo==='fusion_svc', col=sv?'#0d9488':'var(--purple)';
+      return `<div class="cmp-item-row fused" style="opacity:${op};${sv?'border-color:#0d9488':''}"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px"><input type="checkbox" ${it._sel!==false?'checked':''} onchange="_pmSel(${i},this.checked);_pmRender()" style="width:15px;height:15px"><span style="font-size:10px;font-weight:700;color:${col}">${sv?'🔧 SERVICIOS FUSIONADOS':'🧲 MATERIALES FUSIONADOS'} — EDITABLE</span></label>
+        <textarea rows="${sv?4:5}" onchange="_pmUpd(${i},'fusedDesc',this.value)" style="font-family:var(--mono);font-size:11px;width:100%;border:1.5px solid ${col};border-radius:8px;padding:8px;background:var(--card);color:var(--text);resize:vertical">${esc(it.fusedDesc||'')}</textarea>
+        ${sv?'':`<div class="cmp-cost-row"><span>Cantidad total (kg)</span><input type="number" value="${it.cant||0}" onchange="_pmUpd(${i},'cant',this.value)" style="max-width:100px"></div>`}
+        <div class="cmp-cost-row"><span>💰 Costo cotizado $</span><input type="number" value="${it.precio||0}" onchange="_pmUpd(${i},'precio',this.value)"></div></div>`;
+    }
+    const mat=it.tipo==='mat', esp=_isEsp(it), plat=it.geometria==='Platina';
+    const ref=it.ref&&mat?`<div class="cmp-ref-box">📐 ${it.ref.geo==='Platina'?`${esc(it.ref.dim1||'—')}×${esc(it.ref.ancho||'—')}×${esc(it.ref.largo||'—')}`:`Ø${esc(it.ref.dim1||'—')}×L${esc(it.ref.largo||'—')}`} mm &nbsp; <b>Peso:</b> ${Number(it.ref.kg||0).toFixed(2)} kg &nbsp; <b>Est:</b> ${_money(it.ref.costo)}</div>`
+      :(it.ref&&!mat?`<div class="cmp-ref-box">📐 Cotizado: ${esc(it.ref.dias||'—')} día(s) · ${_money(it.ref.costo)}${it.ref.dureza?' · '+esc(it.ref.dureza):''}</div>`:'');
+    const inp=(f,ph,val,t='number')=>`<input type="${t}" placeholder="${ph}" value="${esc(val??'')}" onchange="_pmUpd(${i},'${f}',this.value)">`;
+    const geo=mat&&!esp?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${['Cilindro','Platina'].map(g=>`<button type="button" onclick="_pmUpd(${i},'geometria','${g}')" style="padding:9px;border-radius:8px;border:1.5px solid ${it.geometria===g?'var(--purple)':'var(--border)'};font-weight:700;font-size:12px;cursor:pointer;background:${it.geometria===g?'var(--purple)':'var(--surface)'};color:${it.geometria===g?'#fff':'var(--muted)'}">${g==='Cilindro'?'⬤ Cilindro':'▬ Platina'}</button>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:${plat?'1fr 1fr 1fr':'1fr 1fr'};gap:6px;margin-top:6px">${plat?inp('dim1','Espesor (mm)',it.dim1)+inp('ancho','Ancho (mm)',it.ancho)+inp('largo','Largo (mm)',it.largo):inp('dim1','Diámetro (mm)',it.dim1)+inp('largo','Largo (mm)',it.largo)}</div>`:'';
+    const especial=mat&&esp?`<div style="margin-top:6px"><div style="font-size:10px;color:var(--warn);text-transform:uppercase;font-weight:700;margin-bottom:3px">⚡ Descripción del material especial</div><textarea rows="2" placeholder="Ej: LÁMINA ALUMINIO 3MM 1200×2400" onchange="_pmUpd(${i},'notas',this.value)" style="width:100%;border:1.5px solid var(--warn);border-radius:8px;padding:8px;font-size:12px;background:var(--surface);color:var(--text)">${esc(it.notas||'')}</textarea></div>`:'';
+    const svcF=!mat?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${inp('dias','Días',it.dias)}${inp('dureza','Dureza / especificación',it.dureza,'text')}</div><div style="margin-top:6px">${inp('notas','Descripción del servicio…',it.notas,'text')}</div>`:'';
+    const notas=mat&&!esp?`<div style="margin-top:6px">${inp('notas','Notas / dureza…',it.notas,'text')}</div>`:'';
+    const cant=mat?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${inp('cant','Cantidad (kg)',it.cant)}<div style="display:flex;align-items:center;font-size:11px;color:var(--muted)">kg totales del ítem</div></div>`:'';
+    return `<div class="cmp-item-row" style="opacity:${op}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${it._sel!==false?'checked':''} onchange="_pmSel(${i},this.checked);this.closest('.cmp-item-row').style.opacity=this.checked?1:.5" style="width:15px;height:15px"><span style="font-size:10px;font-weight:700;color:var(--muted)">${mat?'🪨 MATERIAL':'🛠 SERVICIO'} #${i+1}${it.ref?' · de cotización':''}${it.id?'':it.ref?'':' · nuevo'}</span></label>
+      <button type="button" onclick="_pmDel(${i})" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer">✕</button></div>
+      <input list="${mat?'pm-mats':'pm-svcs'}" placeholder="— ${mat?'Material (elige o escribe ESPECIAL)':'Servicio externo'} —" value="${esc(it.nombre||'')}" onchange="_pmUpd(${i},'nombre',this.value)">
+      ${ref}${especial}${geo}${svcF}${notas}${cant}
+      <div class="cmp-cost-row"><span>💰 Costo cotizado $</span><input type="number" value="${it.precio||0}" onchange="_pmUpd(${i},'precio',this.value)"></div>
+      <div style="margin-top:6px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:3px">📋 Lo que verá compras</div>
+      <textarea id="pm-det-${i}" rows="2" onchange="_pmDet(${i},this.value)" style="width:100%;font-family:var(--mono);font-size:11.5px;border:1.5px solid ${mat?'var(--purple)':'#0d9488'};border-radius:8px;padding:8px;background:var(--surface);color:var(--text);resize:vertical">${esc(it.detalle||'')}</textarea></div></div>`;
+  }).join('');
+  const all=document.getElementById('pm-sel-all'); if(all) all.checked=_PM.items.every(x=>x._sel!==false);
+  _pmTotal();
+}
+
+async function _pmConfirmar(){
+  const p=prodDe(_PM.pid); if(!p) return;
+  const items=_PM.items; const sel=items.filter(x=>x._sel!==false&&(x.nombre||x.tipo==='fusion'||x.tipo==='fusion_svc'));
+  if(!sel.length){ toast('Marca al menos una línea con material o servicio','error'); return; }
+  const falta=sel.find(x=>(x.tipo==='mat'||x.tipo==='svc')&&!x.nombre); if(falta){ toast('Hay una línea sin nombre','error'); return; }
+  const espSin=sel.find(x=>x.tipo==='mat'&&_isEsp(x)&&!String(x.notas||x.detalle||'').trim()); if(espSin){ toast('Describe el material especial','error'); return; }
+  const obs=(document.getElementById('pm-obs')?.value||'').trim();
+  // Líneas ya creadas con la OP que NO se piden: quedarían pendientes y se irían a compras → se quitan del pedido
+  const fusMat=items.some(x=>x.tipo==='fusion'), fusSvc=items.some(x=>x.tipo==='fusion_svc');
+  const quitar=[]; 
+  if(_PM.fused){ (_PM.backup||[]).forEach(x=>{ if(x.id&&((x.tipo==='mat'&&fusMat)||(x.tipo==='svc'&&fusSvc))) quitar.push(x); }); }
+  items.filter(x=>x.id&&x._sel===false).forEach(x=>quitar.push(x));
+  const sinPedir=items.filter(x=>x.id&&x._sel===false);
+  if(sinPedir.length&&!confirm(`${sinPedir.length} línea(s) sin marcar NO se pedirán y se quitarán de esta OP:\n\n${sinPedir.map(x=>'• '+x.nombre).join('\n')}\n\n¿Continuar?`)) return;
+  if(!confirm(`¿Enviar a compras ${sel.length} línea(s) por ${_money(sel.reduce((s,x)=>s+(Number(x.precio)||0),0))}?`)) return;
+  const btn=document.getElementById('pm-btn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Enviando…'; }
+  const conObs=t=>obs?`${t}${t?' · ':''}Obs: ${obs}`:t;
+  try{
+    for(const x of quitar) await DELETE('prod_materiales',x.id);
+    for(const it of sel){
+      const svc=it.tipo==='svc'||it.tipo==='fusion_svc';
+      const nombre=it.tipo==='fusion'?'ESPECIAL':it.tipo==='fusion_svc'?SVC_PFX+'VARIOS':svc?SVC_PFX+it.nombre:it.nombre;
+      const base=it.tipo==='fusion'||it.tipo==='fusion_svc'?(it.fusedDesc||''):(it.detalle||_pmTexto(it));
+      const row={material:nombre,detalle:(it.tipo==='fusion'||it.tipo==='fusion_svc')?base:conObs(base)||null,cantidad_kg:svc?0:(Number(it.cant)||0),costo_cotizado:Number(it.precio)||0};
+      if(it.id&&!_PM.fused) await PATCH('prod_materiales',it.id,row); else await POST('prod_materiales',{...row,id_prod:_PM.pid,estado:'PENDIENTE'});
+    }
+    await prodRefreshAll();
+    const r=await rpcAct('prod_mat_solicitar',{p_id:_PM.pid},'📨 Pedido enviado a compras');
+    if(!r){ if(btn){ btn.disabled=false; btn.textContent='🧱 Confirmar y enviar a compras'; } return; }
+    closeModal(); afterAct(_PM.pid);
+  }catch(e){
+    toast('❌ '+errMsg(e),'error'); await prodRefreshAll().catch(()=>{});
+    if(btn){ btn.disabled=false; btn.textContent='🧱 Confirmar y enviar a compras'; }
+  }
+}
+
+
+// ══ LOGIN (PIN validado en el servidor · interfaz de Diseño) ══
 async function prodMatSolicitar(id,sinConfirmar){ if(!sinConfirmar&&!confirm('¿Enviar los materiales pendientes a compras?')) return; if(await rpcAct('prod_mat_solicitar',{p_id:id},'📨 Materiales enviados a compras')) afterAct(id); }
 function pmCalc(){
   const nom=gv('pm1'), kg=gn('pm2'), c=document.getElementById('pm3'); if(!c) return;
@@ -4668,7 +4914,7 @@ async function prodMatDevolver(mid,pid){ if(!confirm('¿Devolver este material a
 
 // ── CREAR OP desde la cotización ────────────────────────────────
 function opBtnInfo(cotId){
-  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||_normEstado(c.estado)!=='APROBADA'||!puede('comercial','administracion')) return null;
+  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c||(_normEstado(c.estado)!=='APROBADA'&&!_mqPorAprobar(c))||!puede('comercial','administracion')) return null;
   const its=itemsDe(cotId); const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
   if(!its.some(it=>!enP.has(it.id))) return null; const op=opDeCot(cotId);
   return {op, lbl:op?'Agregar a OP-'+op:'Crear OP'};
@@ -4795,6 +5041,8 @@ async function crearOP(cotId){
   if(cambio&&motivo.length<5){ toast('Escribe el motivo del cambio de fecha','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
   const obs=rteValue();
   if(obs&&obs.length>1500000){ toast('Las observaciones pesan demasiado (muchas imágenes). Reduce o quita alguna.','error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; }
+  const _mqAp=_mqPorAprobar(_cotN);
+  if(_mqAp){ try{ await PATCH('cotizaciones',cotId,{estado:'APROBADA'}); _cotN.estado='APROBADA'; }catch(e){ toast('❌ '+errMsg(e),'error'); if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } return; } }
   const r=await rpcAct('prod_crear_op',{p_cot:cotId,p_items:ids,p_disenador:(gv('op1')||gv('op6'))||null,p_prioridad:gv('op2')||'Media',p_obs:obs,p_fecha_pactada:cambio?fp:null,p_motivo_fecha:cambio?motivo:null,p_tipo:gv('op5')||null});
   if(r&&r!==true){
     if(_dis) wedmAvisar({disenador:_dis,para:'diseno',op:r.op,ref:'OP-'+r.op,texto:'🆕 Nueva orden asignada: OP-'+r.op+' · COT-'+_cotN.cotizacion+' · '+(_cotN.empresa||'')+' · ítem(s) '+_itN+(gv('op2')?' · prioridad '+gv('op2'):'')+(gv('op3')?' · entrega '+gv('op3'):'')});
@@ -4805,7 +5053,7 @@ async function crearOP(cotId){
       `<div style="text-align:center;padding:8px 0 4px"><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase">Número asignado</div><div style="font-size:42px;font-weight:800;font-family:var(--mono);color:var(--accent);margin:6px 0;line-height:1.1">OP-${esc(String(r.op))}</div><div style="font-size:13px;color:var(--muted)">${esc(String(r.n))} ítem(s) enviados a producción</div></div>`,
       `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${verProd?`<button class="btn btn-primary" onclick="closeModal();qaGo('produccion')">Ver en producción</button>`:''}`);
   }
-  else if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; }
+  else{ if(_mqAp){ try{ await PATCH('cotizaciones',cotId,{estado:'EN ESPERA'}); _cotN.estado='EN ESPERA'; }catch(e){} } if(btn){ btn.disabled=false; btn.textContent='🏭 Crear OP'; } }
 }
 
 // ── REMISIONES ──────────────────────────────────────────────────

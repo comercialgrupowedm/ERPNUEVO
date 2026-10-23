@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-084500">
+<meta name="app-build" content="20261023-100000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1726,11 +1726,11 @@ async function cqDetalle(id){
   openDetail('COT-'+c.cotizacion,`<div style="padding:10px">${empty('Cargando…','⏳')}</div>`);
   let its=[]; try{ its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,precio_total,marquilla_html&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc'); }catch(e){ openDetail('COT-'+c.cotizacion,`<div class="callout">❌ ${esc(errMsg(e))}</div>`); return; }
   const dr=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">${k}</span><b style="text-align:right">${v}</b></div>`;
-  const _bar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px"><button class="btn btn-primary" style="flex:1;min-width:210px" onclick="cqAbrirCompleta('${c.id}')">📄 Ver PDF · 🏭 Crear OP · Estado</button>${(c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador'))?`<button class="btn btn-ghost" style="flex:1;min-width:140px" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''}</div>`;
+  const _bar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px"><button class="btn btn-primary" style="flex:1;min-width:210px" onclick="cqAbrirCompleta('${c.id}')">📄 Ver PDF · 🏭 Crear OP</button>${(c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador'))?`<button class="btn btn-ghost" style="flex:1;min-width:140px" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''}</div>`;
   const body=_bar+`<div class="dp-section"><h4>📄 Cotización</h4>${dr('Cliente',esc(c.empresa||'—'))}${dr('Proyecto',esc(c.descripcion_proyecto||'—'))}${dr('Asesor',esc(c.asesor||'—'))}${dr('Estado',cqEstBadge(c.estado))}${dr('Tipo',esc(c.tipo||'—'))}${dr('Fecha',esc(String(c.fecha_emision||'').slice(0,10)))}${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('Total',fmt(c.precio_total))}</div>
     <div class="dp-section"><h4>📦 Ítems (${its.length})</h4>${its.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted)">Ítem ${i.item} · ${Number(i.unidades||1)} und × ${fmt(i.precio_unit)} = <b style="color:var(--text)">${fmt(i.precio_total)}</b></div><div style="white-space:pre-wrap;font-size:13px">${esc(i.descripcion||'')}</div>${i.marquilla_html?`<div style="margin-top:4px">${mqRender(i.marquilla_html)}</div>`:''}</div>`).join('')||mutedP('Sin ítems')}</div>`;
   const puedeEd=c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador');
-  openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,`<button class="btn btn-primary" onclick="cqAbrirCompleta('${c.id}')">📄 PDF · Estado · 🏭 Crear OP</button>`+(puedeEd?`<button class="btn btn-ghost" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''));
+  openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,`<button class="btn btn-primary" onclick="cqAbrirCompleta('${c.id}')">📄 PDF · 🏭 Crear OP</button>`+(puedeEd?`<button class="btn btn-ghost" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''));
 }
 async function mqEditar(id){
   const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c) return;
@@ -2011,17 +2011,16 @@ mqlista:{icono:'🗂️',titulo:'Marquillas (ver, PDF, aprobar y crear OP)',
   quien:'Administración y comercial.',
   pasos:[
    {t:'Ver y buscar',items:['Menú → **Marquillas**. Escribe en 🔍 número, cliente o asesor; filtra por **estado**. Cambia entre tarjetas y tabla.','Toca una cotización: se abre el detalle con ítems, tablas e imágenes.']},
-   {t:'Sacar el PDF',items:['En el detalle toca **📄 PDF · Estado · 🏭 Crear OP**. Se abre la cotización completa, igual que en Comercial.','Toca **🖨️ Imprimir / PDF** para verla e imprimirla, o **💾 Guardar PDF** para dejarla en Drive.']},
-   {t:'Aprobar la cotización',items:['En la cotización completa busca la barra de estado y toca **✔ Aprobada** cuando el cliente confirme. Confirma el aviso.']},
-   {t:'Crear la OP, clic por clic',items:['Con la cotización en **Aprobada**, en la cotización completa toca **🏭 Crear OP**.','Marca los **ítems** que van a producción, elige el **diseñador**, la **prioridad** y la **fecha pactada** (si la cambias, escribe el motivo).','Toca **Crear OP**. Los **materiales y servicios** del ítem viajan solos a la OP para gestionar los pedidos.','Cuando ya existe la OP aparece el botón para abrirla y ver su avance.']},
+   {t:'Sacar el PDF',items:['En el detalle toca **📄 PDF · 🏭 Crear OP**. Se abre la cotización completa, igual que en Comercial.','Toca **🖨️ Imprimir / PDF** para verla e imprimirla, o **💾 Guardar PDF** para dejarla en Drive.']},
+   {t:'Crear la OP, clic por clic',items:['En la cotización completa toca **🏭 Crear OP**. En las marquillas **no hay que aprobar**: al crear la OP la cotización se aprueba sola.','Marca los **ítems** que van a producción, elige el **diseñador**, la **prioridad** y la **fecha pactada** (si la cambias, escribe el motivo).','Toca **Crear OP**. Los **materiales y servicios** del ítem viajan solos a la OP para gestionar los pedidos.','Cuando ya existe la OP aparece el botón para abrirla y ver su avance.']},
    {t:'Editar una marquilla',items:['En el detalle toca **✏️ Editar marquilla**, cambia lo necesario y **💾 Guardar cambios**.']}],
-  reglas:['Una marquilla con OP ya no se puede editar.','Crear OP solo funciona con la cotización **Aprobada**.']},
+  reglas:['Una marquilla con OP ya no se puede editar.','En las marquillas no existen los botones Aprobar/Pausar/Cancelar: se crea la OP directamente.']},
 cotizaciones:{icono:'📄',titulo:'Cotizaciones',
   que:'Todas las cotizaciones, igual que en Comercial: crear, editar, ver ítems, PDF, estado y Crear OP.',
   quien:'Administración y comercial.',
   pasos:[
    {t:'Ver y cotizar',items:['Menú → **Cotizaciones**. Busca con 🔍 y toca una para abrir su detalle.','Para una nueva toca **➕ Nueva cotización**, elige el cliente y agrega los ítems con materiales, servicios y procesos.']},
-   {t:'PDF, estado y OP',items:['En el detalle: **🖨️ Imprimir / PDF** o **💾 Guardar PDF**; cambia el estado en la barra superior; con **Aprobada** toca **🏭 Crear OP**.']}]},
+   {t:'PDF, estado y OP',items:['En el detalle: **🖨️ Imprimir / PDF** o **💾 Guardar PDF**; cambia el estado en la barra superior; con **Aprobada** toca **🏭 Crear OP** (las marquillas se aprueban solas al crear la OP).']}]},
 elementos:{icono:'🧩',titulo:'Elementos / Ítems',
   que:'Los ítems de todas las cotizaciones, con sus materiales y servicios.',
   quien:'Administración y comercial.',
