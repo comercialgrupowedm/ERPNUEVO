@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-143000">
+<meta name="app-build" content="20261023-193000">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -2820,13 +2820,14 @@ function cotizaciones(){
   if(!base.length){ window._opmRender=null; setContent(banner+empty('Sin cotizaciones — toca ＋ para crear la primera')); return; }
   const sorted=sortData('cotizaciones',data);
   if(getView('cotizaciones')==='table'){
-    setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr>
+    setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="tbl-wrap"><table class="data-tbl"><thead><tr><th style="width:36px"></th>
       ${thSort('cotizaciones','_semTxt','Semáforo de avance')}${thSort('cotizaciones','_opNum','OP')}${thSort('cotizaciones','cotizacion','COT #')}${thSort('cotizaciones','estado','Estado')}${thSort('cotizaciones','tipo','Tipo')}
       ${thSort('cotizaciones','empresa','Empresa')}${thSort('cotizaciones','descripcion_proyecto','Descripción')}${thSort('cotizaciones','asesor','Asesor')}
       ${thSort('cotizaciones','encargado','Encargado')}${thSort('cotizaciones','ciudad','Ciudad')}${thSort('cotizaciones','fecha_emision','Fecha Emisión')}
       ${thSort('cotizaciones','fecha_entrega_pactada','Entrega Pactada')}${thSort('cotizaciones','lead_time_dias','Lead Time')}
       ${thSort('cotizaciones','precio_sin_iva','Sin IVA')}${thSort('cotizaciones','precio_total','Total')}${thSort('cotizaciones','forma_de_pago','Forma Pago')}</tr></thead><tbody>
       ${sorted.length?pgSlice('cot',sorted).map(c=>`<tr onclick="detailCot('${c.id}')">
+        <td class="td-center" onclick="event.stopPropagation()"><button class="btn btn-sm btn-ghost" style="padding:2px 9px;font-weight:900" title="Ver los ítems de esta cotización" onclick="cotxTog('${c.id}')">${_COTX.has(c.id)?'▾':'▸'}</button></td>
         <td style="white-space:nowrap">${bSem(c._sem)}</td>
         <td title="${esc(c._opTip)}" style="white-space:nowrap"><span style="color:var(--accent);font-weight:700">${c._op?esc(c._op):'—'}</span></td>
         <td><span style="color:var(--accent);font-weight:700">COT-${c.cotizacion||'—'}</span></td>
@@ -2834,8 +2835,8 @@ function cotizaciones(){
         <td style="max-width:180px;font-weight:600">${esc(c.empresa||'—')}</td><td style="max-width:220px">${esc(c.descripcion_proyecto||'—')}</td>
         <td>${esc(c.asesor||'—')}</td><td>${esc(c.encargado||'—')}</td><td>${esc(c.ciudad||'—')}</td>
         <td>${fmtDate(c.fecha_emision)}</td><td>${fmtDate(c.fecha_entrega_pactada)}</td><td class="td-num">${c.lead_time_dias??0}d</td>
-        <td class="td-num">${fmt(c.precio_sin_iva)}</td><td class="td-num">${fmt(c.precio_total)}</td><td>${esc(c.forma_de_pago||'—')}</td></tr>`).join('')
-        :'<tr><td colspan="16" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
+        <td class="td-num">${fmt(c.precio_sin_iva)}</td><td class="td-num">${fmt(c.precio_total)}</td><td>${esc(c.forma_de_pago||'—')}</td></tr>${_COTX.has(c.id)?cotxItems(c):''}`).join('')
+        :'<tr><td colspan="17" style="text-align:center;padding:20px;color:var(--muted)">Sin resultados</td></tr>'}</tbody></table></div>`);
   }else{
     setContent(banner+fb+viewToggleBtns('cotizaciones')+`<div class="card-list" style="padding:0 14px 80px">${sorted.length?pgSlice('cot',sorted).map(c=>`
       <div class="list-card" onclick="detailCot('${c.id}')"><div class="lc-top"><div><div class="lc-id">${c._op?esc(c._op)+' · ':''}COT-${c.cotizacion}</div>
@@ -3268,6 +3269,15 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
   }catch(e){}
   const w=window.open('','_blank','width=900,height=1200'); if(!w){ toast('Permite ventanas emergentes para generar el PDF','error'); return; }
   w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500);
+}
+
+// Fila desplegable de ítems en la tabla de cotizaciones
+const _COTX=new Set();
+function cotxTog(id){ if(_COTX.has(id)) _COTX.delete(id); else _COTX.add(id); refreshCurrentView(); }
+function cotxItems(c){
+  const its=(typeof itemsDe==='function'?itemsDe(c.id):[])||[];
+  if(!its.length) return `<tr><td></td><td colspan="16" style="padding:8px 12px;color:var(--muted);font-size:12px">Esta cotización no tiene ítems.</td></tr>`;
+  return `<tr><td></td><td colspan="16" style="padding:4px 0 10px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th><th>P. unit.</th><th>Total</th></tr></thead><tbody>${its.map((it,i)=>`<tr onclick="detailCot('${c.id}')" style="cursor:pointer"><td class="td-center"><b>${it.item??i+1}</b></td><td class="td-center">${it.unidades||1}</td><td style="max-width:420px;white-space:pre-wrap">${esc(String(it.descripcion||'—').slice(0,220))}</td><td class="td-num">${fmt(it.precio_unit)}</td><td class="td-num"><b>${fmt(totalItem(it))}</b></td></tr>`).join('')}</tbody></table></td></tr>`;
 }
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
