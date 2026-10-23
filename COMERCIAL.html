@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-220000">
+<meta name="app-build" content="20261023-221500">
 <script>try{if(window.self!==window.top)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}</script>
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
@@ -5072,7 +5072,7 @@ function formCrearOP(cotId){
       return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);${ya?'opacity:.5':'cursor:pointer'}"><input type="checkbox" class="cop-chk" value="${it.id}" ${ya?'disabled':'checked'} onchange="_opUpdateItemCount()" style="margin-top:3px"><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Ítem ${it.item??'—'} · ×${it.unidades||1}${ya?' <span class="badge gris">ya en OP</span>':''}</div><div style="font-size:12px;color:var(--muted)">${esc((it.descripcion||'—').slice(0,140))}</div><div style="font-size:11px;font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px"><span>${fmt(pu)} c/u${pct>0?' (con desc.)':''}</span>${hrs>0?`<span>⏱ ${hrs.toFixed(1)} h</span>`:''}</div><div style="font-size:10px;color:var(--muted)">${esc(rutaItem(it))}</div></div></label>`; }).join('')}</div>
     <div class="form-grid" style="margin-top:10px">
     <div class="field"><label>Nº OP</label><input value="${opEx?'OP-'+opEx:'Se asigna al guardar'}" readonly style="opacity:.7"></div>
-    <div class="field span2"><label>Diseñador</label>${disChips('op1',dis,dis.includes(disActual)?disActual:'')}</div>
+    <div class="field span2"><label>Diseñador <span style="color:#dc2626">*</span></label>${disChips('op1',dis,dis.includes(disActual)?disActual:'')}</div>
     <div class="field span2"><label>Ingeniero</label>${disChips('op6',ingNombres(),ingNombres().includes(disActual)?disActual:'')}</div>
     <input type="hidden" id="op2" value="Media">
     <div class="field span2"><label>Entrega pactada</label><input id="op3" type="date" value="${esc(fpCalc)}" readonly style="opacity:.75">
@@ -5094,6 +5094,7 @@ function opCalcPrio(){
 }
 async function crearOP(cotId){
   const ids=[...document.querySelectorAll('.cop-chk:checked')].map(x=>x.value); if(!ids.length){ toast('Selecciona al menos un ítem','error'); return; }
+  if(!(gv('op1')||gv('op6'))){ toast('Debes seleccionar el diseñador para crear la OP','error'); try{ document.getElementById('op1').scrollIntoView({block:'center'}); }catch(e){} return; }
   const btn=document.querySelector('#modal-foot .btn-primary'); if(btn){ btn.disabled=true; btn.textContent='⏳ Creando…'; }
   const _dis=gv('op1')||gv('op6')||'', _cotN=(DB.cotizaciones.find(x=>x.id===cotId)||{}), _itN=ids.map(i=>(DB.items.find(x=>x.id===i)||{}).item).filter(v=>v!=null).join(', ');
   const fp=gv('op3'), cambio=!!fp&&fp!==(DB.cotizaciones.find(x=>x.id===cotId)||{}).fecha_entrega_pactada, motivo='Fecha calculada automáticamente: hoy + plazo de la cotización';
