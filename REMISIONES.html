@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-081500">
+<meta name="app-build" content="20261023-084500">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1726,7 +1726,8 @@ async function cqDetalle(id){
   openDetail('COT-'+c.cotizacion,`<div style="padding:10px">${empty('Cargando…','⏳')}</div>`);
   let its=[]; try{ its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,precio_total,marquilla_html&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc'); }catch(e){ openDetail('COT-'+c.cotizacion,`<div class="callout">❌ ${esc(errMsg(e))}</div>`); return; }
   const dr=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">${k}</span><b style="text-align:right">${v}</b></div>`;
-  const body=`<div class="dp-section"><h4>📄 Cotización</h4>${dr('Cliente',esc(c.empresa||'—'))}${dr('Proyecto',esc(c.descripcion_proyecto||'—'))}${dr('Asesor',esc(c.asesor||'—'))}${dr('Estado',cqEstBadge(c.estado))}${dr('Tipo',esc(c.tipo||'—'))}${dr('Fecha',esc(String(c.fecha_emision||'').slice(0,10)))}${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('Total',fmt(c.precio_total))}</div>
+  const _bar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px"><button class="btn btn-primary" style="flex:1;min-width:210px" onclick="cqAbrirCompleta('${c.id}')">📄 Ver PDF · 🏭 Crear OP · Estado</button>${(c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador'))?`<button class="btn btn-ghost" style="flex:1;min-width:140px" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''}</div>`;
+  const body=_bar+`<div class="dp-section"><h4>📄 Cotización</h4>${dr('Cliente',esc(c.empresa||'—'))}${dr('Proyecto',esc(c.descripcion_proyecto||'—'))}${dr('Asesor',esc(c.asesor||'—'))}${dr('Estado',cqEstBadge(c.estado))}${dr('Tipo',esc(c.tipo||'—'))}${dr('Fecha',esc(String(c.fecha_emision||'').slice(0,10)))}${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('Total',fmt(c.precio_total))}</div>
     <div class="dp-section"><h4>📦 Ítems (${its.length})</h4>${its.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted)">Ítem ${i.item} · ${Number(i.unidades||1)} und × ${fmt(i.precio_unit)} = <b style="color:var(--text)">${fmt(i.precio_total)}</b></div><div style="white-space:pre-wrap;font-size:13px">${esc(i.descripcion||'')}</div>${i.marquilla_html?`<div style="margin-top:4px">${mqRender(i.marquilla_html)}</div>`:''}</div>`).join('')||mutedP('Sin ítems')}</div>`;
   const puedeEd=c.origen==='MARQUILLA'&&puede('administracion','admin','desarrollador');
   openDetail('COT-'+c.cotizacion+(c.origen==='MARQUILLA'?' 🏷️':''),body,`<button class="btn btn-primary" onclick="cqAbrirCompleta('${c.id}')">📄 PDF · Estado · 🏭 Crear OP</button>`+(puedeEd?`<button class="btn btn-ghost" onclick="mqEditar('${c.id}')">✏️ Editar marquilla</button>`:''));
