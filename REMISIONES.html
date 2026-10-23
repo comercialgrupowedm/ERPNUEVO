@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-183000">
+<meta name="app-build" content="20261023-190000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1579,12 +1579,17 @@ function mqFormHtml(){
       <div class="field"><label>Entrega (días)</label><input id="mq-lead" type="number" min="0" inputmode="numeric"></div>
       <div class="field"><label>Forma de pago <span style="color:#dc2626">*</span></label><input id="mq-pago" oninput="this.dataset.auto='0'" list="mq-pago-l" placeholder="Ej: 30 días" autocomplete="off"><datalist id="mq-pago-l"><option value="Contado"><option value="30 días"><option value="45 días"><option value="60 días"><option value="50% anticipo - 50% contra entrega"></datalist></div>
     </div></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px"><b style="font-size:13px">Tipo de todas las marquillas:</b><button type="button" class="btn btn-sm btn-ghost" onclick="mqTpTodas('CLICHÉ')">🔲 Todas Cliché</button><button type="button" class="btn btn-sm btn-ghost" onclick="mqTpTodas('PIE')">🦶 Todas Pie</button></div>
   <div id="mq-its">${_MQ.its.map(mqItemHtml).join('')}</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="mqAddItem()">➕ Agregar otro ítem</button></div>
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px"><div class="field"><label>Observaciones (opcional)</label><textarea id="mq-obs" style="min-height:52px"></textarea></div>
     <div id="mq-tot" style="font-size:13px;margin:8px 0;font-weight:700"></div>
     <button class="btn btn-primary" style="width:100%" onclick="mqCrear()">${_MQ.edit?'💾 Guardar cambios':'✅ Crear cotización'}</button></div>`;
 }
+function mqTpBtns(v){ const b=(k,l)=>`<button type="button" class="btn btn-sm ${v===k?'btn-primary':'btn-ghost'}" data-tp="${k}" onclick="mqTp(this,'${k}')">${l}</button>`; return `<div class="mq-tpb" style="display:flex;gap:8px">${b('CLICHÉ','🔲 Cliché')}${b('PIE','🦶 Pie')}</div>`; }
+function mqTpSet(box,v){ const h=box.querySelector('.mq-tp'); h.value=v; box.querySelectorAll('.mq-tpb button').forEach(b=>{ const on=b.dataset.tp===v; b.classList.toggle('btn-primary',on); b.classList.toggle('btn-ghost',!on); }); }
+function mqTp(btn,v){ const box=btn.closest('.mq-it'); mqTpSet(box,box.querySelector('.mq-tp').value===v?'':v); }
+function mqTpTodas(v){ document.querySelectorAll('.mq-it').forEach(b=>mqTpSet(b,v)); }
 function mqItemHtml(it,i){
   return `<div class="mq-it" data-id="${it.id}" style="background:var(--card);border:1px solid var(--border);border-top:4px solid #ea580c;border-radius:12px;padding:12px 14px;margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Ítem ${i+1}</b>${_MQ.its.length>1?`<button class="btn btn-sm btn-ghost" onclick="mqDelItem('${it.id}')">🗑️ Quitar</button>`:''}</div>
@@ -1592,6 +1597,7 @@ function mqItemHtml(it,i){
       <div class="field span2"><label>Texto que se graba <span class="mq-n" style="font-weight:700;color:var(--accent)"></span></label><textarea class="mq-t" style="min-height:44px" oninput="mqCalc(this)" placeholder="Ej: 1/0 AWG (53,5 mm2)"></textarea></div>
       <div class="field"><label>Tamaño de letra (mm)</label><input class="mq-s" list="mq-sizes" inputmode="decimal" value="2.8" oninput="mqCalc(this)"></div>
       <div class="field"><label>Cantidad</label><input class="mq-u" type="number" min="1" inputmode="numeric" value="1" oninput="mqCalc(this)"></div>
+      <div class="field span2"><label>Tipo de marquilla</label><input type="hidden" class="mq-tp" value="">${mqTpBtns('')}</div>
       <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none"><input type="checkbox" class="mq-pies" checked onchange="mqCalc(this)" style="-webkit-appearance:checkbox;appearance:auto;width:20px;height:20px"> Marcación en pies</label></div>
       <div class="field span2"><label>Descripción <span style="font-weight:500;color:var(--muted)">(se arma sola; puedes editarla)</span></label><textarea class="mq-d" style="min-height:60px" oninput="this.dataset.man='1'"></textarea></div>
       <div class="field"><label>Precio unitario ($)</label><input class="mq-p" type="number" min="0" step="any" inputmode="decimal" oninput="this.dataset.man='1';mqCalc(this)"><div class="mq-pc" style="font-size:11px;color:var(--muted);margin-top:3px"></div></div>
@@ -1611,10 +1617,10 @@ function mqCalc(el){
   mqTot();
 }
 function mqRecalcTodo(){ document.querySelectorAll('.mq-it').forEach(b=>mqCalc(b.querySelector('.mq-t'))); }
-function mqEstado(){ return [...document.querySelectorAll('.mq-it')].map(el=>({id:el.dataset.id,t:el.querySelector('.mq-t').value,s:el.querySelector('.mq-s').value,u:el.querySelector('.mq-u').value,pies:el.querySelector('.mq-pies').checked,d:el.querySelector('.mq-d').value,dm:el.querySelector('.mq-d').dataset.man||'',p:el.querySelector('.mq-p').value,pm:el.querySelector('.mq-p').dataset.man||'',cnc:el.querySelector('.mq-cnc').value,edm:el.querySelector('.mq-edm').value,h:el.querySelector('.mq-ed').innerHTML})); }
+function mqEstado(){ return [...document.querySelectorAll('.mq-it')].map(el=>({id:el.dataset.id,t:el.querySelector('.mq-t').value,s:el.querySelector('.mq-s').value,u:el.querySelector('.mq-u').value,pies:el.querySelector('.mq-pies').checked,tp:el.querySelector('.mq-tp').value,d:el.querySelector('.mq-d').value,dm:el.querySelector('.mq-d').dataset.man||'',p:el.querySelector('.mq-p').value,pm:el.querySelector('.mq-p').dataset.man||'',cnc:el.querySelector('.mq-cnc').value,edm:el.querySelector('.mq-edm').value,h:el.querySelector('.mq-ed').innerHTML})); }
 function mqRepintar(est){ const keep=['mq-cli','mq-tipo','mq-ase','mq-proy','mq-val','mq-min','mq-lead','mq-pago','mq-obs'].map(id=>[id,(document.getElementById(id)||{}).value]);
   document.getElementById('mq-its').innerHTML=_MQ.its.map(mqItemHtml).join('');
-  document.querySelectorAll('.mq-it').forEach(el=>{ const e=(est||[]).find(x=>x.id===el.dataset.id); if(e){ el.querySelector('.mq-t').value=e.t; el.querySelector('.mq-s').value=e.s; el.querySelector('.mq-u').value=e.u; el.querySelector('.mq-pies').checked=e.pies; const d=el.querySelector('.mq-d'); d.value=e.d; if(e.dm) d.dataset.man='1'; const p=el.querySelector('.mq-p'); p.value=e.p; if(e.pm) p.dataset.man='1'; el.querySelector('.mq-cnc').value=e.cnc; el.querySelector('.mq-edm').value=e.edm; el.querySelector('.mq-ed').innerHTML=e.h; mqCalc(el.querySelector('.mq-t')); } }); mqTot(); }
+  document.querySelectorAll('.mq-it').forEach(el=>{ const e=(est||[]).find(x=>x.id===el.dataset.id); if(e){ el.querySelector('.mq-t').value=e.t; el.querySelector('.mq-s').value=e.s; el.querySelector('.mq-u').value=e.u; el.querySelector('.mq-pies').checked=e.pies; mqTpSet(el,e.tp||''); const d=el.querySelector('.mq-d'); d.value=e.d; if(e.dm) d.dataset.man='1'; const p=el.querySelector('.mq-p'); p.value=e.p; if(e.pm) p.dataset.man='1'; el.querySelector('.mq-cnc').value=e.cnc; el.querySelector('.mq-edm').value=e.edm; el.querySelector('.mq-ed').innerHTML=e.h; mqCalc(el.querySelector('.mq-t')); } }); mqTot(); }
 function mqAddItem(){ const e=mqEstado(); _MQ.its.push(mqNuevoItem()); mqRepintar(e); }
 function mqDelItem(id){ const e=mqEstado().filter(x=>x.id!==id); _MQ.its=_MQ.its.filter(x=>x.id!==id); mqRepintar(e); }
 function mqLimpiar(b){ b.closest('.mq-it').querySelector('.mq-ed').innerHTML=''; }
@@ -1665,7 +1671,7 @@ async function mqCrear(){
   const its=mqEstado().map(x=>{ const u=Number(x.u)||1, pu=Number(x.p)||0; const prcs=[]; const mk=(nombre,tarifa,h)=>{ if(h>0) prcs.push({nombre,tarifa,tiempo:h,costo:R(tarifa*h*u),peri:0,esp:0,matH:'ALUMINIO',costo_manual:0,modo:'unidad'}); };
       mk('CENTRO DE MECANIZADO',tar.cnc,Number(x.cnc)||0); mk('EDM SIMPLE',tar.edm,Number(x.edm)||0);
       const ct=prcs.reduce((s,p)=>s+p.costo,0); const pres=u?R(ct/u):0;
-      return {id:(_MQ.edit&&(_MQ.edit.ids||[]).includes(x.id))?x.id:undefined,descripcion:x.d.trim(),unidades:u,precio_unit:pu,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,'')),prcs,costo_total:ct,presup_unit:pres,margen_pct:pres>0?Math.round((pu/pres-1)*10000)/100:0}; }).filter(x=>x.descripcion||x.marquilla_html);
+      return {id:(_MQ.edit&&(_MQ.edit.ids||[]).includes(x.id))?x.id:undefined,tipo_mq:x.tp||null,descripcion:x.d.trim(),unidades:u,precio_unit:pu,marquilla_html:mqSan(x.h.replace(/<br\s*\/?>\s*$/,'')),prcs,costo_total:ct,presup_unit:pres,margen_pct:pres>0?Math.round((pu/pres-1)*10000)/100:0}; }).filter(x=>x.descripcion||x.marquilla_html);
   if(!its.length){ toast('Agrega al menos un ítem con texto o imagen/tabla','error'); return; }
   if(!g('mq-pago').trim()){ toast('Falta la forma de pago (sale en el PDF de la cotización)','error'); try{ document.getElementById('mq-pago').focus(); }catch(e){} return; }
   if(its.some(x=>!(x.precio_unit>0))&&!confirm('Hay ítems sin precio. ¿Crear la cotización de todos modos?')) return;
@@ -1742,7 +1748,7 @@ async function mqEditar(id){
   const c=(_CQ.rows||[]).find(x=>x.id===id); if(!c){ toast('No se encontró la marquilla','error'); return; }
   try{
     const full=(await GET('cotizaciones','select=*&id=eq.'+encodeURIComponent(id)))[0]||c;
-    const its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,marquilla_html,prcs&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc');
+    const its=await GETALL('items','select=id,item,descripcion,unidades,precio_unit,marquilla_html,prcs,tipo_mq&id_cotizacion=eq.'+encodeURIComponent(id)+'&order=item.asc,id.asc');
     _MQ.edit={id,cotizacion:c.cotizacion,c:full,its}; _MQ.its=its.map(i=>({id:i.id}));
   }catch(e){ toast('❌ '+errMsg(e),'error'); return; }
   closeDetail(); MOD=''; nav('marquillas');
@@ -1755,7 +1761,7 @@ function mqAplicarEdit(){
   const as=document.getElementById('mq-ase'); if(as&&c.asesor){ if(![...as.options].some(o=>o.value===c.asesor)) as.add(new Option(c.asesor,c.asesor)); as.value=c.asesor; }
   set('mq-enc',c.encargado||''); set('mq-tel',c.telefono||''); set('mq-proy',c.descripcion_proyecto||''); set('mq-lead',c.lead_time_dias==null?'':c.lead_time_dias); set('mq-pago',c.forma_de_pago||''); set('mq-obs',c.observaciones_especiales||'');
   const h=(it,n)=>{ const p=(Array.isArray(it.prcs)?it.prcs:[]).find(x=>new RegExp(n,'i').test(x.nombre||'')); return p&&p.tiempo!=null?p.tiempo:0; };
-  const est=E.its.map(it=>({id:it.id,t:'',s:'',u:it.unidades||1,pies:false,d:it.descripcion||'',dm:'1',p:it.precio_unit==null?'':it.precio_unit,pm:'1',cnc:h(it,'CENTRO'),edm:h(it,'EDM'),h:it.marquilla_html||''}));
+  const est=E.its.map(it=>({id:it.id,t:'',s:'',u:it.unidades||1,pies:false,tp:it.tipo_mq||'',d:it.descripcion||'',dm:'1',p:it.precio_unit==null?'':it.precio_unit,pm:'1',cnc:h(it,'CENTRO'),edm:h(it,'EDM'),h:it.marquilla_html||''}));
   E.ids=E.its.map(i=>i.id); mqRepintar(est);
 }
 function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones,elementos}; if(MOD!=='cotizaciones'&&MOD!=='elementos') embedSalir(); if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
