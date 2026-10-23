@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-120000">
+<meta name="app-build" content="20261023-123000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -3197,13 +3197,14 @@ function _abrirDocParaImprimir(html,nombre,carpeta){
 function generarPDFCotizacion(id,soloGuardar){
   const c=DB.cotizaciones.find(x=>x.id===id); if(!c){ toast('Cotización no encontrada','error'); return; }
   const cli=clienteDe(c)||{}; const its=itemsDe(id); const cl=(v,f='—')=>{ const s=String(v??'').trim(); return s&&s!=='null'?esc(s):f; }; const clp=v=>'<span style="white-space:pre-wrap">'+cl(v)+'</span>'; const dscIt=it=>(/^\s*<!--wd-->/.test(it.marquilla_html||'')?mqRender(it.marquilla_html):clp(it.descripcion)+(it.marquilla_html?'<div style="margin-top:4px">'+mqRender(it.marquilla_html)+'</div>':''));
+  const _mq=c.origen==='MARQUILLA';
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
   const iva=its.length?Math.round(sub*IVA_PCT/100):(Number(c.iva||0)||Math.round(sub*IVA_PCT/100)); const descPct=Number(c.descuento_pct||0); const descVal=(its.length&&descPct>0)?Math.round((sub+iva)*descPct/100):Number(c.descuento||0);
   const total=(its.length?sub+iva:(Number(c.precio_total||0)||sub+iva))-descVal; const money=v=>fmt(Math.round(Number(v)||0));
   if(its.length&&typeof recalcularTotalesCot==='function'&&(Math.round(Number(c.precio_sin_iva)||0)!==sub||Math.round(Number(c.iva)||0)!==iva)){ try{ Promise.resolve(recalcularTotalesCot(id)).catch(()=>{}); }catch(e){} }
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
-    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde">${dscIt(it)}</td>
+    <tr class="azul-row"><td class="center borde">${it.item??i+1}</td><td class="center borde">${it.unidades||1}</td><td class="borde${_mq?' mqw':''}">${dscIt(it)}</td>
     <td class="right borde mono">${money(it.precio_unit)}</td><td class="right borde mono negrita">${money(totalItem(it))}</td></tr>`).join('');
   const pago=c.forma_de_pago?(/^\d+$/.test(c.forma_de_pago)?c.forma_de_pago+' días':c.forma_de_pago):'—';
   let _plh=null; try{ if(window.PL&&PL.has('cotizacion')){ const _E=EMPRESA_WEDM; _plh=PL.render('cotizacion',{titulo:'COT-'+c.cotizacion,logo:LOGO_WEDM_URL,marca:MARCA_AGUA_COT,lema:esc(_E.lema||''),dir:esc(_E.dir||''),tel:esc(_E.tel||''),cel:esc(_E.cel||''),email:esc(_E.email||''),nit_emp:esc(_E.nit||''),ciudad_emp:esc(_E.ciudad||''),
@@ -3215,7 +3216,7 @@ function generarPDFCotizacion(id,soloGuardar){
     *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#000;padding:20px 28px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative}
     table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;vertical-align:middle}.azul{background:#366092!important;color:#fff!important}.azul-light{background:#366092!important;color:#fff!important}
     .azul-row{background:#f3f3f3!important}.borde{border:1px solid #999}.borde-azul{border:1px solid #366092}.negrita{}.right{text-align:right}.center{text-align:center}.mono{font-family:inherit}
-    .total-row{background:#366092!important;color:#fff!important}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
+    .total-row{background:#366092!important;color:#fff!important}${_mq?'.mqw{overflow:hidden}.mqw table{width:100%!important;max-width:100%!important;table-layout:auto!important}.mqw td,.mqw th{width:auto!important;white-space:normal!important}.mqw img{max-width:100%!important;height:auto!important}':''}@page{size:letter portrait;margin:10mm 18mm}@media print{body{padding:0;max-width:100%}.no-print{display:none!important}}</style></head><body>
     <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="background:#366092;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
     <div style="text-align:right;margin:0 0 6px;padding:6px 8px 2px 0;line-height:0;overflow:visible"><img src="${MARCA_AGUA_COT}" style="width:124px;height:auto;opacity:.3;pointer-events:none"></div>
     <table style="margin-bottom:16px"><tr><td style="width:55%;vertical-align:top;padding-right:16px"><div style="margin-bottom:8px"><img src="${LOGO_WEDM_URL}" alt="GRUPO WEDM" style="height:52px;width:auto"></div>
@@ -3230,7 +3231,7 @@ function generarPDFCotizacion(id,soloGuardar){
         <div><span style="color:#366092">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
         <table style="margin-top:10px;width:100%"><tr><td class="azul-row borde" style="padding:5px 10px;color:#366092;font-weight:700">PROYECTO:</td><td class="azul-row borde negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
     <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita azul-row" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
-    <table style="margin-bottom:4px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:7%">CANT</th><th class="borde" style="width:55%">DESCRIPCIÓN</th><th class="borde right" style="width:16%">VALOR UND</th><th class="borde right" style="width:16%">VALOR TOTAL</th></tr></thead>
+    <table style="margin-bottom:4px${_mq?';table-layout:fixed':''}"><thead><tr class="azul"><th class="borde center" style="width:${_mq?5:6}%">ITEM</th><th class="borde center" style="width:${_mq?6:7}%">CANT</th><th class="borde" style="width:${_mq?62:55}%">DESCRIPCIÓN</th><th class="borde right" style="width:${_mq?13.5:16}%">VALOR UND</th><th class="borde right" style="width:${_mq?13.5:16}%">VALOR TOTAL</th></tr></thead>
       <tbody>${rows}</tbody></table>
     <table style="margin-bottom:12px"><tr><td rowspan="${descVal>0?5:4}" style="width:60%;vertical-align:top;line-height:1.6;color:#434343;border:1px solid #999;padding:8px"><i>${numeroALetras(total)}</i></td>
       <td class="azul-light borde right" style="width:20%">SUBTOTAL</td><td class="borde right mono negrita" style="width:20%">${money(sub)}</td></tr>
