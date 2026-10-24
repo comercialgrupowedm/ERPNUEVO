@@ -1847,14 +1847,12 @@ function tpRotulo(id){
   const pv=tpProvDe(gv('tp-prov'))||{nombre:gv('tp-prov')}; const del=!!document.getElementById('tp-del').checked;
   const k=Math.min(w/100,h/60); const fs=v=>(v*Math.max(.6,k)).toFixed(1)+'pt';
   const dir=[pv.direccion,pv.ciudad].filter(Boolean).join(' · '), tel=pv.telefono||pv.celular||'';
-  const una=`<div class="l" style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
-    ${del?`<div style="background:#000;color:#fff;text-align:center;font-weight:900;font-size:${fs(13)};padding:1mm 0;letter-spacing:.5px">⚠ DELICADO · MANEJAR CON CUIDADO</div>`:''}
-    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:.4mm solid #000;padding-bottom:.8mm"><b style="font-size:${fs(18)}">OP-${esc(String(o.op))} · Ítem ${esc(String(o.item_num??''))}</b><span style="font-size:${fs(9)}">${esc(gv('tp-cant')||'')} und · ${fmtDate(gv('tp-fecha')||hoyISO())}</span></div>
+  const una=`<div class="l" style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;border:.3mm solid #000;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
+    ${del?`<div style="border:.9mm solid #dc2626;color:#dc2626;text-align:center;font-weight:900;font-size:${fs(24)};line-height:1.05;padding:1mm 0;letter-spacing:.3px">⚠ DELICADO<div style="font-size:${fs(12)};font-weight:800;letter-spacing:0">MANEJAR CON CUIDADO</div></div>`:''}
     <div style="font-size:${fs(13)};font-weight:900;line-height:1.1">${esc(x.nombre||'Servicio externo')}</div>
     <div style="font-size:${fs(10)};line-height:1.15;flex:1;overflow:hidden">${esc(gv('tp-obs')||'')}${gv('tp-mat')?`<br><b>Material:</b> ${esc(gv('tp-mat'))}`:''}${gv('tp-dur')?` · <b>${esc(gv('tp-dur'))}</b>`:''}</div>
-    <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fs(10)};line-height:1.15"><b style="font-size:${fs(12)}">PARA: ${esc(pv.nombre||'—')}</b><br>${esc(dir)}${tel?' · '+esc(tel):''}${pv.contacto?' · '+esc(pv.contacto):''}</div>
-    <div style="font-size:${fs(8)};opacity:.8">${esc(o.empresa||'')} · WEDM</div></div>`;
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo OP-${esc(String(o.op))}</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}</style></head><body>${Array(n).fill(una).join('')}</body></html>`;
+    <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fs(10)};line-height:1.15"><b style="font-size:${fs(12)}">PARA: ${esc(pv.nombre||'—')}</b><br>${esc(dir)}${tel?' · '+esc(tel):''}${pv.contacto?' · '+esc(pv.contacto):''}</div></div>`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${Array(n).fill(una).join('')}</body></html>`;
   _abrirDocParaImprimir(html,'');
 }
 async function guardarTemple(id){
@@ -3275,14 +3273,12 @@ window.feSolRotulo=function(){ const o=opDe(S.id); if(!o){ toast('Elige una OP e
   try{ localStorage.setItem('wedm_rotulo_mm',JSON.stringify({w,h})); }catch(e){}
   const pv=(typeof tpProvDe==='function'&&tpProvDe(c.proveedor))||{nombre:c.proveedor}; const k=Math.min(w/100,h/60), fz=v=>(v*Math.max(.6,k)).toFixed(1)+'pt';
   const dir=[pv.direccion,pv.ciudad].filter(Boolean).join(' · '), tel=pv.telefono||pv.celular||'';
-  const una=`<div style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
-   ${c.delicado?`<div style="background:#000;color:#fff;text-align:center;font-weight:900;font-size:${fz(13)};padding:1mm 0">⚠ DELICADO · MANEJAR CON CUIDADO</div>`:''}
-   <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:.4mm solid #000;padding-bottom:.8mm"><b style="font-size:${fz(18)}">OP-${E(String(o.op))} · Ítem ${E(String(o.item_num??''))}</b><span style="font-size:${fz(9)}">${E(f.cantidad||'')} und · ${fmtDate(c.fecha_envio||hoyISO())}</span></div>
+  const una=`<div style="width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;border:.3mm solid #000;padding:${(2.5*Math.max(.6,k)).toFixed(1)}mm;font-family:Arial,Helvetica,sans-serif;color:#000;display:flex;flex-direction:column;gap:${(1*k).toFixed(1)}mm">
+   ${c.delicado?`<div style="border:.9mm solid #dc2626;color:#dc2626;text-align:center;font-weight:900;font-size:${fz(24)};line-height:1.05;padding:1mm 0;letter-spacing:.3px">⚠ DELICADO<div style="font-size:${fz(12)};font-weight:800;letter-spacing:0">MANEJAR CON CUIDADO</div></div>`:''}
    <div style="font-size:${fz(13)};font-weight:900;line-height:1.1">${E(f.tipo_servicio||'Servicio externo')}</div>
    <div style="font-size:${fz(10)};line-height:1.15;flex:1;overflow:hidden">${E(f.descripcion||'')}${f.material?`<br><b>Material:</b> ${E(f.material)}`:''}${f.dureza?` · <b>${E(f.dureza)}</b>`:''}</div>
-   <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fz(10)};line-height:1.15"><b style="font-size:${fz(12)}">PARA: ${E(pv.nombre||'—')}</b><br>${E(dir)}${tel?' · '+E(tel):''}${pv.contacto?' · '+E(pv.contacto):''}</div>
-   <div style="font-size:${fz(8)};opacity:.8">${E(o.empresa||'')} · WEDM</div></div>`;
-  _abrirDocParaImprimir(`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo OP-${E(String(o.op))}</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}</style></head><body>${Array(n).fill(una).join('')}</body></html>`,''); };
+   <div style="border-top:.4mm solid #000;padding-top:.8mm;font-size:${fz(10)};line-height:1.15"><b style="font-size:${fz(12)}">PARA: ${E(pv.nombre||'—')}</b><br>${E(dir)}${tel?' · '+E(tel):''}${pv.contacto?' · '+E(pv.contacto):''}</div></div>`;
+  _abrirDocParaImprimir(`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${Array(n).fill(una).join('')}</body></html>`,''); };
 async function feSvcsDe(o){
   const arr=v=>{ if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ v=null; } } return Array.isArray(v)?v.filter(x=>x&&x.nombre):[]; };
   let sv=[];
