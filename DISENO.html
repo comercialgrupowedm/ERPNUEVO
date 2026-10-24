@@ -3186,6 +3186,7 @@ function _qaFmtPanelHTML(){
             <div class="field qafmt-field" style="margin-bottom:10px"><label>Tolerancia a usar (se aplica sola al escribir la medida nominal)</label>
               <select id="qf-tolsel" onchange="_qaFmtTolSel(this.value)" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;background:var(--surface);color:var(--text)">
                 <option value="">Manual (yo la escribo)</option>${Object.keys(QA_TOLS).map(k=>`<option value="${k}" ${window._QAFMT.header.tolSel===k?'selected':''}>${QA_TOLS[k].nombre}</option>`).join('')}</select></div>
+            <div style="margin-bottom:10px"><button type="button" class="btn btn-ghost btn-sm" onclick="_qaFmtLeerKC()">📐 Leer KC del plano</button> <span style="font-size:11px;color:var(--muted)">Lee KC1, KC2… del PDF del plano y los pone como medida nominal</span></div>
             <div class="qafmt-piezas-ctrl">
               <span style="font-size:11px;color:var(--muted);font-weight:700">Piezas a medir:</span>
               <button type="button" onclick="_qaFmtPiezas(-1)">−</button>
@@ -3269,6 +3270,54 @@ function _qaFmtToggleKC(i){
   chev.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
+// ── Leer los KC del plano (PDF) ──
+let _pdfjsP=null;
+function _pdfjs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(_pdfjsP) return _pdfjsP;
+  _pdfjsP=new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload=()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(window.pdfjsLib); };
+    sc.onerror=()=>{ _pdfjsP=null; rej(new Error('No se pudo cargar el lector de PDF (revisa internet)')); }; document.head.appendChild(sc); });
+  return _pdfjsP;
+}
+async function _kcDePdf(buf){
+  const lib=await _pdfjs(); const pdf=await lib.getDocument({data:buf}).promise; const out={};
+  for(let pn=1;pn<=pdf.numPages;pn++){
+    const tc=await (await pdf.getPage(pn)).getTextContent();
+    const it=tc.items.map(t=>{ const a=t.transform[0],b=t.transform[1],h=Math.hypot(a,b)||1,w=t.width||0; return {s:String(t.str||'').trim(),x:t.transform[4]+w/2*a/h,y:t.transform[5]+w/2*b/h}; }).filter(t=>t.s);
+    const d=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
+    const esNum=t=>/^[Ø⌀∅]?\s*\d+(?:[.,]\d+)?$/.test(t.s);
+    it.forEach(k=>{
+      let n=null, nt=null; let m=k.s.match(/^KC\s*(\d{1,2})$/i);
+      if(m){ n=+m[1]; nt=k; }
+      else if(/^KC$/i.test(k.s)){ const c=it.filter(t=>t!==k&&/^\d{1,2}$/.test(t.s)&&d(t,k)<30).sort((p,q)=>d(p,k)-d(q,k))[0]; if(c){ n=+c.s; nt=c; } }
+      if(!n||n>10) return;
+      if(it.some(t=>t!==k&&t!==nt&&(/^:/.test(t.s)||/CARACTER/i.test(t.s))&&d(t,k)<45)) return;   // la nota «KC 1: característica clave»
+      const v=it.filter(t=>t!==k&&t!==nt&&esNum(t)&&d(t,nt)<80).sort((p,q)=>d(p,nt)-d(q,nt))[0];
+      if(v&&!out[n]) out[n]=v.s.replace(/\s+/g,'');
+    });
+  }
+  return out;
+}
+function _qaFmtAplicarKC(map){
+  const st=window._QAFMT; let n=0;
+  Object.keys(map).forEach(k=>{ const i=+k-1; const kc=st.kc[i]; if(!kc) return; kc.medida=map[k]; n++;
+    const el=document.getElementById('qf-kc'+i+'-medida'); if(el) el.value=map[k];
+    _qaFmtSyncPreviewCell('kc.'+i+'.medida',map[k]); _qaFmtAutoTol(i); _qaFmtKCSpecChange(i); });
+  return n;
+}
+async function _qaFmtLeerKC(){
+  const st=window._QAFMT; if(!st) return; showBusy();
+  try{
+    let map=null; const p=prodDe(st.opId);
+    try{ const r=await GET('prod_archivos','select=mime,data&tipo=eq.plano&or=(id_prod.eq.'+st.opId+(p&&p.id_item?',id_item.eq.'+p.id_item:'')+')&order=created_at.desc&limit=1');
+      const a=r&&r[0]; if(a&&/pdf/i.test(a.mime||'')&&/^data:/.test(a.data||'')){ const bin=atob(a.data.split(',')[1]); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); map=await _kcDePdf(u); } }catch(e){}
+    hideBusy();
+    if(map&&Object.keys(map).length){ const n=_qaFmtAplicarKC(map); toast('✅ '+n+' KC leídos del plano guardado'); return; }
+    toast('No encontré KC en el plano guardado. Elige el PDF del plano.');
+    pickFile('application/pdf',async f=>{ showBusy(); try{ const m=await _kcDePdf(await f.arrayBuffer()); if(!Object.keys(m).length) toast('No encontré KC en ese PDF','error'); else toast('✅ '+_qaFmtAplicarKC(m)+' KC leídos del plano'); }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); } });
+  }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
 function _qaFmtKCSpecChange(i){
   const resumen = [
     document.getElementById(`qf-kc${i}-medida`)?.value,
