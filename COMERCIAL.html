@@ -2908,7 +2908,7 @@ function detailCot(id){
     <div class="dp-tabpanel active" data-panel="resumen">
       <div class="dp-section"><h4>🏢 Cliente</h4>${dr('Empresa',`<strong>${esc(c.empresa||'—')}</strong>`)}${dr('NIT',esc(c.nit||'—'))}${dr('Dirección',esc(c.direccion||cli?.direccion||'—'))}${dr('Ciudad',esc(c.ciudad||'—'))}
         ${dr('Encargado',esc(c.encargado||'—'))}${dr('Teléfono',esc(c.telefono||cli?.telefono||'—'))}${cli?.correo?dr('Correo',esc(cli.correo)):''}</div>
-      <div class="dp-section"><h4>📌 Proyecto</h4>${dr('Descripción',`<span style="white-space:pre-wrap">${esc(c.descripcion_proyecto||'—')}</span>`)}${dr('Asesor',esc(c.asesor||'—'))}
+      <div class="dp-section"><h4>📌 Proyecto</h4>${dr('Descripción',c.descripcion_html?mqRender(String(c.descripcion_html).replace(/^\s*<!--wd-->/,'')):`<span style="white-space:pre-wrap">${esc(c.descripcion_proyecto||'—')}</span>`)}${dr('Asesor',esc(c.asesor||'—'))}
         ${dr('Lead Time',c.lead_time_dias!=null?c.lead_time_dias+' días':'—')}${dr('Entrega pactada',`<strong style="color:${colorPlazo}">${fmtDate(c.fecha_entrega_pactada)}</strong>`)}${dr('Fecha emisión',fmtDate(c.fecha_emision))}${dr('Validez',(c.validez_dias||30)+' días')}</div>
       <div class="dp-section"><h4>💵 Financiero</h4>${dr('Sin IVA',fmt(c.precio_sin_iva))}${dr('IVA',fmt(c.iva))}
         ${dr('Total',`<strong style="color:var(--gold);font-size:15px;font-family:var(--mono)">${fmt(c.precio_total)}</strong>`)}
@@ -3026,7 +3026,7 @@ function formCot(c){
       <div class="field span2"><label>Tipo</label><select id="f1" onchange="onTipoCot(this.value)" style="font-weight:700">${tiposElegibles(tipoActual).map(t=>`<option value="${esc(t)}" ${tipoActual===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="field span2"><div id="tipo-info"></div></div>
       <div class="field span2"><label>Asesor</label><select id="f5" ${_selAsesor()?'':'disabled'}>${_selAsesor()?'<option value="">-- Seleccionar --</option>':''}${asesores.map(a=>`<option ${(c.asesor||_asesorActual())===a?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
-      <div class="field span2"><label>Descripción del Proyecto</label><textarea id="f7" style="min-height:110px" placeholder="Describe el proyecto…">${esc(c.descripcion_proyecto||'')}</textarea></div></div></div>
+      <div class="field span2"><label>Descripción del Proyecto</label><textarea id="f7" style="min-height:110px" placeholder="Describe el proyecto…">${esc(c.descripcion_proyecto||'')}</textarea>${typeof wdBoxCot==='function'?wdBoxCot(c):''}</div></div></div>
     <div class="wiz-step" id="wiz-cot-1" style="display:none"><div class="form-grid">
       <div class="field span2"><label>Empresa ★</label><input id="f2" list="f2-list" placeholder="Buscar empresa..." value="${esc(c.empresa||'')}" oninput="onBuscarCliente(this.value)" style="width:100%">
         <datalist id="f2-list">${DB.clientes.map(x=>`<option value="${esc(x.empresa)}">`).join('')}</datalist>
@@ -3121,7 +3121,7 @@ async function saveCot(exist){
   const sin=gn('f8'), iva=gn('f9'), total=sin+iva, pct=gn('fdpct'); const desc=Math.round(total*pct/100)||gn('fb');
   const cli=DB.clientes.find(x=>x.id===window._cotCliId)||DB.clientes.find(x=>String(x.empresa||'').toLowerCase()===empresa.toLowerCase());
   const row={tipo:gv('f1'),empresa,nit:gv('f3')||null,direccion:gv('fdir')||null,ciudad:gv('f4')||null,encargado:gv('fenc')||null,telefono:gv('ftel')||null,asesor,
-    estado:_normEstado(gv('f6')||'EN ESPERA'),descripcion_proyecto:gv('f7')||null,precio_sin_iva:sin,iva,precio_total:total,descuento_pct:pct,descuento:desc,
+    estado:_normEstado(gv('f6')||'EN ESPERA'),descripcion_proyecto:gv('f7')||null,descripcion_html:(typeof wdFinalCot==='function'?wdFinalCot():null),precio_sin_iva:sin,iva,precio_total:total,descuento_pct:pct,descuento:desc,
     forma_de_pago:gv('fc')||null,lead_time_dias:gv('fd')===''?null:gn('fd'),fecha_entrega_pactada:gv('ff')||null,observaciones_especiales:gv('fobs')||null,
     validez_dias:gn('fval')||30,id_cliente:cli?cli.id:null};
   if(row.estado==='APROBADA') row.orden_de_compra=gv('foc')||null;
@@ -3335,7 +3335,7 @@ function generarPDFCotizacion(id,soloGuardar){
         <div><span style="color:#366092">CIUDAD:</span> ${cl(c.ciudad||cli.ciudad)}</div>
         <div><span style="color:#366092">ENCARGADO:</span> ${cl(c.encargado||cli.contacto)}</div>
         <div><span style="color:#366092">TELÉFONO:</span> ${cl(c.telefono||cli.telefono)}</div></div>
-        <table style="margin-top:10px;width:100%"><tr><td class="azul-row borde" style="padding:5px 10px;color:#366092;font-weight:700">PROYECTO:</td><td class="azul-row borde negrita" style="padding:5px 10px">${cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
+        <table style="margin-top:10px;width:100%"><tr><td class="azul-row borde" style="padding:5px 10px;color:#366092;font-weight:700">PROYECTO:</td><td class="azul-row borde negrita" style="padding:5px 10px">${c.descripcion_html?mqRender(String(c.descripcion_html).replace(/^\s*<!--wd-->/,'')):cl(c.descripcion_proyecto)}</td></tr></table></td></tr></table>
     <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">COTIZACIÓN</td><td class="borde negrita azul-row" style="width:50%;text-align:center;padding:8px">${c.cotizacion}</td></tr></table>
     <table style="margin-bottom:4px${_mq?';table-layout:fixed':''}"><thead><tr class="azul"><th class="borde center" style="width:${_mq?5:6}%">ITEM</th><th class="borde center" style="width:${_mq?6:7}%">CANT</th><th class="borde" style="width:${_mq?62:55}%">DESCRIPCIÓN</th><th class="borde right" style="width:${_mq?13.5:16}%">VALOR UND</th><th class="borde right" style="width:${_mq?13.5:16}%">VALOR TOTAL</th></tr></thead>
       <tbody>${rows}</tbody></table>
@@ -7637,6 +7637,7 @@ setTimeout(upd,800);
 /* Descripción del ítem tipo Word: texto con formato, imágenes (Ctrl+V) y tablas -> items.marquilla_html */
 (function(){
   var $=function(i){ return document.getElementById(i); };
+  var isC=function(){ return window._wdTgt==='f7'; }, gH=function(){ return (isC()?window._CTH:window._ITH)||''; }, sH=function(v){ if(isC()) window._CTH=v; else window._ITH=v; }, tx=function(){ return $(window._wdTgt||'i4'); };
   var big=function(){ var d=$('i4'); if(!d) return false; var v=d.value||''; return v.length>350||v.split('\n').length>7||!!window._ITH; };
   window.wdEstado=function(){
     var box=$('wd-box'); if(!box) return; var h=window._ITH||'';
@@ -7652,8 +7653,8 @@ setTimeout(upd,800);
   function cmd(c,v){ var ed=$('wd-ed'); if(ed){ ed.focus(); document.execCommand(c,false,v||null); } }
   async function addImg(f){ try{ var d=await imgFromFile(f,900,0.72); var ed=$('wd-ed'); ed.focus(); document.execCommand('insertHTML',false,'<img src="'+d+'" style="max-width:100%"><br>'); }catch(e){ if(window.toast) toast('❌ '+(e.message||e),'error'); } }
   function tabla(){ var r=parseInt(prompt('Filas',3)||0), c=parseInt(prompt('Columnas',3)||0); if(!(r>0&&c>0)) return; var h='<table style="border-collapse:collapse"><tbody>'; for(var i=0;i<r;i++){ h+='<tr>'; for(var j=0;j<c;j++) h+='<td style="border:1px solid #999;padding:4px 8px;min-width:50px">&nbsp;</td>'; h+='</tr>'; } h+='</tbody></table><br>'; cmd('insertHTML',h); }
-  window.wdAbrir=function(file){
-    if($('wd-ov')) return;
+  window.wdAbrir=function(file,tgt){
+    if($('wd-ov')) return; window._wdTgt=tgt||'i4';
     var ov=document.createElement('div'); ov.id='wd-ov';
     ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:10px';
     var B=function(t,a,ti){ return '<button type="button" title="'+(ti||'')+'" onmousedown="event.preventDefault();'+a+'" style="min-width:36px;height:34px;border:1px solid var(--border,#cbd5e1);background:var(--surface,#fff);color:var(--text,#111);border-radius:7px;cursor:pointer;font-size:13px;padding:0 9px">'+t+'</button>'; };
@@ -7663,11 +7664,11 @@ setTimeout(upd,800);
      +B('<b>N</b>',"wdCmd('bold')",'Negrita')+B('<i>K</i>',"wdCmd('italic')",'Cursiva')+B('<u>S</u>',"wdCmd('underline')",'Subrayado')
      +B('• Lista',"wdCmd('insertUnorderedList')")+B('1. Lista',"wdCmd('insertOrderedList')")+B('🖼 Imagen',"wdImg()",'Insertar imagen')+B('▦ Tabla',"wdTabla()")+B('Limpiar formato',"wdCmd('removeFormat')")+'</div>'
      +'<div id="wd-ed" contenteditable="true" data-ph="Escribe aquí, o pega imágenes y tablas (Ctrl+V)…" style="flex:1;min-height:340px;overflow:auto;padding:14px 18px;font-size:14px;line-height:1.55;outline:none;word-break:break-word"></div>'
-     +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span style="flex:1;font-size:11.5px;color:var(--muted,#64748b);min-width:200px">Es la <b>misma descripción del ítem</b>: lo que escribas aquí se refleja en el cuadro de texto y en la cotización. Las imágenes se pegan con Ctrl+V.</span><button type="button" class="btn btn-ghost" onclick="wdCerrar()">Cancelar</button><button type="button" class="btn btn-primary" onclick="wdAplicar()">Aplicar</button></div></div>';
+     +'<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span style="flex:1;font-size:11.5px;color:var(--muted,#64748b);min-width:200px">Es la <b>misma descripción</b>: lo que escribas aquí se refleja en el cuadro de texto y en la cotización. Las imágenes se pegan con Ctrl+V.</span><button type="button" class="btn btn-ghost" onclick="wdCerrar()">Cancelar</button><button type="button" class="btn btn-primary" onclick="wdAplicar()">Aplicar</button></div></div>';
     document.body.appendChild(ov);
-    var ed=$('wd-ed'); var prev=(window._ITH||'').replace(/^\s*<!--wd-->/,''); var d4=$('i4'), txt=d4?d4.value:'';
+    var ed=$('wd-ed'); var prev=gH().replace(/^\s*<!--wd-->/,''); var d4=tx(), txt=d4?d4.value:'';
     var txtH=txt.trim()?'<div>'+txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').split('\n').join('</div><div>').replace(/<div><\/div>/g,'<div><br></div>')+'</div>':'';
-    ed.innerHTML=typeof mqSan==='function'?mqSan((/^\s*<!--wd-->/.test(window._ITH||'')?'':txtH)+prev):((/^\s*<!--wd-->/.test(window._ITH||'')?'':txtH)+prev);
+    ed.innerHTML=typeof mqSan==='function'?mqSan((/^\s*<!--wd-->/.test(gH())?'':txtH)+prev):((/^\s*<!--wd-->/.test(gH())?'':txtH)+prev);
     ed.querySelectorAll('img').forEach(function(i){ i.style.maxWidth='100%'; });
     ed.addEventListener('paste',function(e){
       var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
@@ -7681,9 +7682,9 @@ setTimeout(upd,800);
   window.wdCmd=cmd; window.wdImg=function(){ if(window.pickFile) pickFile('image/*',addImg); }; window.wdTabla=tabla;
   window.wdCerrar=function(){ var o=$('wd-ov'); if(o) o.remove(); var s=$('wd-st'); if(s) s.remove(); };
   window.wdAplicar=function(){ var ed=$('wd-ed'); var h=typeof mqSan==='function'?mqSan(ed.innerHTML):ed.innerHTML;
-    var ok=ed.textContent.trim()||ed.querySelector('img,table'); window._ITH=ok?'<!--wd-->'+h:'';
-    var d4=$('i4'); if(d4&&ok){ var t=wdTexto(ed); d4.value=t; window._wdTxt=t; d4.dispatchEvent(new Event('input',{bubbles:true})); }
-    wdCerrar(); window.wdEstado(); };
+    var ok=ed.textContent.trim()||ed.querySelector('img,table'); sH(ok?'<!--wd-->'+h:'');
+    var d4=tx(); if(d4&&ok){ var t=wdTexto(ed); d4.value=t; if(isC()) window._wdTxtC=t; else window._wdTxt=t; d4.dispatchEvent(new Event('input',{bubbles:true})); }
+    var c=isC(); wdCerrar(); if(c) window.wdEstadoCot(); else window.wdEstado(); };
   function wdTexto(ed){ var c=ed.cloneNode(true);
     [].slice.call(c.querySelectorAll('div,p')).forEach(function(d){ if(d.childNodes.length===1&&d.firstChild.nodeName==='BR') d.firstChild.remove(); });
     [].slice.call(c.querySelectorAll('br')).forEach(function(b){ b.replaceWith('\n'); });
@@ -7704,6 +7705,28 @@ setTimeout(upd,800);
     var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
     if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f);
   },true);
+
+  /* Descripción del PROYECTO de la cotización (campo f7 -> cotizaciones.descripcion_html) */
+  window.wdEstadoCot=function(){
+    var h=window._CTH||'', e=$('wd-estc'), p=$('wd-prevc');
+    if(e) e.textContent=h?'✓ Descripción con formato / imágenes / tablas':'Texto con formato, imágenes y tablas';
+    if(p){ p.innerHTML=h&&typeof mqRender==='function'?mqRender(h.replace(/^\s*<!--wd-->/,'')):''; p.style.display=h?'':'none'; }
+  };
+  window.wdBoxCot=function(c){
+    window._CTH=(c&&c.descripcion_html)||''; window._wdTxtC=(c&&c.descripcion_proyecto)||'';
+    setTimeout(function(){ window.wdEstadoCot(); var d=$('f7'); if(d&&!d._wdp){ d._wdp=1; d.addEventListener('paste',function(e){
+      var it=[].slice.call(e.clipboardData&&e.clipboardData.items||[]), im=it.find(function(x){ return x.kind==='file'&&/^image\//.test(x.type); });
+      if(!im) return; e.preventDefault(); var f=im.getAsFile(); if(f) window.wdAbrir(f,'f7'); }); } },0);
+    return '<div style="margin-top:6px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="wdAbrir(null,\'f7\')">📝 Descripción tipo Word</button><span id="wd-estc" style="font-size:11.5px;color:var(--muted)"></span></div><div id="wd-prevc" style="display:none;margin-top:8px;border:1px dashed var(--border);border-radius:8px;padding:8px;max-height:220px;overflow:auto;font-size:12px"></div></div>';
+  };
+  window.wdFinalCot=function(){
+    var h=window._CTH||''; if(!/^\s*<!--wd-->/.test(h)) return h||null;
+    var d=$('f7'), t=d?d.value.trim():'', base=(window._wdTxtC||'').trim(); if(t===base) return h;
+    var tmp=document.createElement('div'); tmp.innerHTML=h.replace(/^\s*<!--wd-->/,'');
+    var ric=[].slice.call(tmp.querySelectorAll('img,table')).map(function(n){ return n.tagName==='TABLE'?n.outerHTML:(n.closest('table')?'':n.outerHTML); }).join('<br>');
+    if(!ric) return null;
+    var esc=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').split('\n').join('<br>');
+    return '<!--wd-->'+(t?'<div>'+esc+'</div>':'')+ric; };
 })();
 </script>
 
