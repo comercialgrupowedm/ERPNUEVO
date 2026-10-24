@@ -745,7 +745,7 @@ const esMia = p => { const d=_normNom(p.disenador); return !!d && _misNombres().
 let USUARIOS = [];
 /*WEDM-GRANT*/function _wedmGrant(u,roles,key){ if(u.modulos!=null&&!u.modulos.includes(key)) return 'no'; const ex=u.roles_extra||[]; const own={comercial:['comercial'],diseno:['diseno'],compras:['compras'],remisiones:['administracion'],planeacion:['planeacion'],calidad:['calidad']}[key]||[]; if(ex.some(r=>r==='admin'||own.includes(r))) return 'si'; if(u.modulos!=null&&[u.rol,...ex].some(r=>roles.includes(r))) return 'si'; return ''; }
 let USUARIOS_DIS = [];
-const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
+const NOMBRE_MOSTRAR={'F. GIRALDO':'Francisco Giraldo','M. HERRERA':'Miguel Herrera','A. MEZA':'Andrés Meza','M. GÓMEZ':'Michael Gómez','D. Ramírez':'Daniel Ramírez','S. Barcias':'Sebastián Barcias','admin':'Admin'};
 const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
