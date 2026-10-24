@@ -3434,18 +3434,25 @@ function mqItPanel(cot,it){
         <div class="field"><label>Mínimo ($)</label><input type="number" id="imq-min" value="${r.m}" oninput="mqItCalc()" onchange="mqRateSave()"></div>
       </div>
       <div id="imq-res" style="font-family:var(--mono);font-size:12px;margin-top:6px"></div>
-      <div id="imq-note" style="font-size:10.5px;color:var(--muted);margin-top:4px">Tarifa editable: se recuerda para esta cotización. CNC 0.3 h + EDM 0.5 h se agregan solos.</div>
+      <div id="imq-note" style="font-size:10.5px;color:var(--muted);margin-top:4px">Tarifa editable: se recuerda para esta cotización. CNC y EDM se agregan solos con horas según los caracteres (1-9: 0.5/0.5 · 10-20: 0.75/1 · 21-40: 1.25/1.5 · 41-60: 1.5/2 · 61-80: 2/2.5); puedes editarlas.</div>
     </div></div>`;
 }
 function mqItInit(cot,it,isNew){
   const d=document.getElementById('i4'); if(d){ if(!isNew&&d.value) d.dataset.man='1'; d.addEventListener('input',()=>{ d.dataset.man='1'; d.dataset.mq=''; }); }
   if(!isNew&&it.precio_unit){ /* ítem existente: no pisar hasta que escriban el texto */ }
 }
-function mqItProc(){
-  const tar=(n,def)=>nOr((DB.procesos.find(p=>String(p.proceso).toUpperCase()===n)||{}).precio)||def;
-  const mk=(n,t,def)=>({..._PRC0(),nombre:n,tarifa:tar(n,def),tiempo:t,modo:'unidad',tu:'h'});
+function mqHoras(n){ const T=[[9,.5,.5],[20,.75,1],[40,1.25,1.5],[60,1.5,2],[80,2,2.5]]; for(const x of T) if(n<=x[0]) return {c:x[1],e:x[2]}; return {c:2,e:2.5}; }
+function mqItProc(n){
+  const h=mqHoras(n||0);
+  const tar=(nm,def)=>nOr((DB.procesos.find(p=>String(p.proceso).toUpperCase()===nm)||{}).precio)||def;
+  const mk=(nm,t,def)=>({..._PRC0(),nombre:nm,tarifa:tar(nm,def),tiempo:t,modo:'unidad',tu:'h'});
+  const cncRow=_IT.prcs.find(p=>/^CENTRO DE MECANIZADO$/i.test(p.nombre||'')), edmRow=_IT.prcs.find(p=>/^EDM SIMPLE$/i.test(p.nombre||''));
+  // el tiempo se pone solo según los caracteres; si lo editas a mano se respeta
+  const auto=(row,t,leg)=>{ if(!row) return t; const cur=Number(row.tiempo)||0; if(row._mqAuto!=null) return cur===Number(row._mqAuto)?t:cur; return (!cur||cur===leg)?t:cur; };
+  const cnc=cncRow||mk('CENTRO DE MECANIZADO',h.c,210897), edm=edmRow||mk('EDM SIMPLE',h.e,140600);
+  cnc.tiempo=auto(cncRow,h.c,0.3); edm.tiempo=auto(edmRow,h.e,0.5); cnc._mqAuto=h.c; edm._mqAuto=h.e;
   const keep=_IT.prcs.filter(p=>p.nombre&&!/^(CENTRO DE MECANIZADO|EDM SIMPLE)$/i.test(p.nombre));
-  _IT.prcs=[mk('CENTRO DE MECANIZADO',MQ_CNC0,210897),mk('EDM SIMPLE',MQ_EDM0,140600),...keep];
+  _IT.prcs=[cnc,edm,...keep];
   _IT.prcs.forEach((_,i)=>prcCalc(i)); itRenderRows('prc');
 }
 function mqItCalc(){
@@ -3456,7 +3463,7 @@ function mqItCalc(){
   if(!n) return;
   const d=document.getElementById('i4'); const sz=String(gv('imq-mm')||'').trim();
   if(d&&!d.dataset.man||d&&d.dataset.mq==='1'){ d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',String(gv('imq-ley')||'').trim()].filter(Boolean).join('\n'); d.dataset.mq='1'; d.dataset.man=''; }
-  mqItProc();
+  mqItProc(n);
   _IT.precioManual=true; const ip=document.getElementById('ipunit'); if(ip) ip.value=pc; onPrecioInput();
 }
 function itemFooterHtml(idx){
