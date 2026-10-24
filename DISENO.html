@@ -3031,7 +3031,7 @@ function qaFormatoQA(opId){
       qr: op.IDQR||'', comercial: op.ASESOR||'', cot: op.COT||'', opNum: op.OP||'',
       cliente: op.CLIENTE||'', descripcion: op.DESCRIPCION||'', disenador: op.DISEÑADOR||'',
       item: op.ITEM||'', cant: op.CANT||'', material: '', tratamiento: '',
-      fechaEntrega: (op['FECHA PACTADA']||'').slice(0,10), tipo: op.TIPO||'', rev: '',
+      fechaEntrega: (op['FECHA PACTADA']||'').slice(0,10), tipo: op.TIPO||'', rev: '', tolSel: '',
       mq: mqAuto
     }, saved.header||{}),
     kc: saved.kc && saved.kc.length ? saved.kc : Array.from({length:QA_FMT_MAX_KC}, (_,i)=>({
@@ -3183,6 +3183,9 @@ function _qaFmtPanelHTML(){
 
           <div class="qafmt-sec">
             <div class="qafmt-sec-title">Características clave (KC)</div>
+            <div class="field qafmt-field" style="margin-bottom:10px"><label>Tolerancia a usar (se aplica sola al escribir la medida nominal)</label>
+              <select id="qf-tolsel" onchange="_qaFmtTolSel(this.value)" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;background:var(--surface);color:var(--text)">
+                <option value="">Manual (yo la escribo)</option>${Object.keys(QA_TOLS).map(k=>`<option value="${k}" ${window._QAFMT.header.tolSel===k?'selected':''}>${QA_TOLS[k].nombre}</option>`).join('')}</select></div>
             <div class="qafmt-piezas-ctrl">
               <span style="font-size:11px;color:var(--muted);font-weight:700">Piezas a medir:</span>
               <button type="button" onclick="_qaFmtPiezas(-1)">−</button>
@@ -3305,13 +3308,42 @@ function _qaFmtSetPath(path, value){
 // Un campo del panel izquierdo cambió: actualiza el estado y refleja el
 // cambio en la celda correspondiente de la vista previa (sin redibujarla
 // entera, para no perder el foco si el usuario está escribiendo ahí).
+// ── Tolerancias predefinidas (WED / Colombina / Hadatech) ──
+const QA_TOLS={
+  wed:{nombre:'Tolerancias WED',tabla:[[3,'0.05'],[6,'0.10'],[30,'0.20'],[120,'0.30'],[400,'0.50']]},
+  colombina:{nombre:'Tolerancia Colombina',dec:{m:[0.1,0.1,0.05,0.001],i:[0.01,0.01,0.005,0.001]},ang:"±0°30'"},
+  carvajal:{nombre:'Tolerancia Carvajal',fijo:'±0,1 mm',ang:"0°-15'"},
+  hada:{nombre:'Tolerancia Hadatech',tabla:[[6,'0.1'],[30,'0.2'],[100,'0.25'],[300,'0.5'],[1000,'0.8'],[2000,'1.3'],[3000,'1.8']],ang:'±0.5°'}
+};
+function _qaTolDe(sel,medida){
+  const T=QA_TOLS[sel]; const t=String(medida||'').trim(); if(!T||!t) return '';
+  const m=t.match(/-?\d+(?:[.,]\d+)?/); if(!m) return '';
+  const num=m[0].replace(',','.'); const v=Math.abs(parseFloat(num)); const dec=(num.split('.')[1]||'').length;
+  if(/°|grad|º/i.test(t)) return T.ang||'';
+  if(T.fijo) return T.fijo;
+  const f=x=>'±'+String(x);
+  if(T.dec){ const ing=/["”]|\bin\b|pulg/i.test(t); const a=T.dec[ing?'i':'m']; return f(a[Math.min(dec,3)])+(ing?'"':' mm'); }
+  for(const [lim,tol] of T.tabla){ if(v<=lim) return f(tol)+' mm'; }
+  return f(T.tabla[T.tabla.length-1][1])+' mm';
+}
+function _qaFmtAutoTol(i){
+  const st=window._QAFMT; if(!st||!st.header.tolSel) return; const k=st.kc[i]; if(!k) return;
+  const v=_qaTolDe(st.header.tolSel,k.medida); if(!v) return; k.tolerancia=v;
+  const el=document.getElementById('qf-kc'+i+'-tol'); if(el) el.value=v;
+  _qaFmtSyncPreviewCell('kc.'+i+'.tolerancia',v);
+}
+function _qaFmtTolSel(v){
+  const st=window._QAFMT; st.header.tolSel=v;
+  st.kc.forEach((k,i)=>{ if(v&&k.medida){ _qaFmtAutoTol(i); _qaFmtKCSpecChange(i); } });
+  toast(v?'✅ '+QA_TOLS[v].nombre+': se aplica al escribir cada medida':'Tolerancia manual');
+}
 function _qaFmtLeftInputChanged(el){
   const path = el.dataset.qapath;
   if(!path) return;
   const val = el.type === 'checkbox' ? el.checked : el.value;
   _qaFmtSetPath(path, val);
   const m = path.match(/^kc\.(\d+)\.(nombre|medida|tolerancia|instrumento)$/);
-  if(m) _qaFmtKCSpecChange(+m[1]);
+  if(m){ if(path.endsWith('.medida')) _qaFmtAutoTol(+m[1]); _qaFmtKCSpecChange(+m[1]); }
   _qaFmtSyncPreviewCell(path, val);
 }
 function _qaFmtSyncPreviewCell(path, val){
@@ -3333,7 +3365,7 @@ window._qaFmtPreviewInput = function(el){
   const val = el.innerText;
   _qaFmtSetPath(path, val);
   const m = path.match(/^kc\.(\d+)\.(nombre|medida|tolerancia|instrumento)$/);
-  if(m) _qaFmtKCSpecChange(+m[1]);
+  if(m){ if(path.endsWith('.medida')) _qaFmtAutoTol(+m[1]); _qaFmtKCSpecChange(+m[1]); }
   const leftEl = document.querySelector(`[data-qapath="${path}"]`);
   if(leftEl && document.activeElement !== leftEl) leftEl.value = val;
 };
