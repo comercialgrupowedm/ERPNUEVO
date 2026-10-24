@@ -3276,11 +3276,31 @@ function _pdfjs(){
     sc.onerror=()=>{ _pdfjsP=null; rej(new Error('No se pudo cargar el lector de PDF (revisa internet)')); }; document.head.appendChild(sc); });
   return _pdfjsP;
 }
+// Círculos pequeños dibujados en el plano (símbolo Ø de las cotas)
+async function _circulosPdf(lib,pg){
+  const out=[]; try{
+    const O=lib.OPS, ol=await pg.getOperatorList(); let ctm=[1,0,0,1,0,0]; const stk=[];
+    const mul=(m,n)=>[m[0]*n[0]+m[2]*n[1],m[1]*n[0]+m[3]*n[1],m[0]*n[2]+m[2]*n[3],m[1]*n[2]+m[3]*n[3],m[0]*n[4]+m[2]*n[5]+m[4],m[1]*n[4]+m[3]*n[5]+m[5]];
+    ol.fnArray.forEach((fn,i)=>{ const a=ol.argsArray[i];
+      if(fn===O.save) stk.push(ctm.slice());
+      else if(fn===O.restore) ctm=stk.pop()||ctm;
+      else if(fn===O.transform) ctm=mul(ctm,a);
+      else if(fn===O.paintFormXObjectBegin){ stk.push(ctm.slice()); if(a&&a[0]) ctm=mul(ctm,a[0]); }
+      else if(fn===O.paintFormXObjectEnd) ctm=stk.pop()||ctm;
+      else if(fn===O.constructPath){ const co=a[1]; if(!co||co.length<4) return;
+        let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(let j=0;j+1<co.length;j+=2){ const X=ctm[0]*co[j]+ctm[2]*co[j+1]+ctm[4], Y=ctm[1]*co[j]+ctm[3]*co[j+1]+ctm[5]; if(X<x0)x0=X; if(X>x1)x1=X; if(Y<y0)y0=Y; if(Y>y1)y1=Y; }
+        const w=x1-x0,h=y1-y0,hi=Math.max(w,h),lo=Math.min(w,h); const nn=(a[0]||[]).length, cur=(a[0]||[]).filter(o=>o===O.curveTo).length;
+        if(hi>=5&&hi<=14&&lo/hi>=0.55&&(nn>=20||cur>=4)) out.push({x:(x0+x1)/2,y:(y0+y1)/2}); }
+    });
+  }catch(e){}
+  return out;
+}
 async function _kcDePdf(buf){
   const lib=await _pdfjs(); const pdf=await lib.getDocument({data:buf}).promise; const out={};
   for(let pn=1;pn<=pdf.numPages;pn++){
-    const tc=await (await pdf.getPage(pn)).getTextContent();
-    const it=tc.items.map(t=>{ const a=t.transform[0],b=t.transform[1],h=Math.hypot(a,b)||1,w=t.width||0; return {s:String(t.str||'').trim(),x:t.transform[4]+w/2*a/h,y:t.transform[5]+w/2*b/h,dx:a/h,dy:b/h,w}; }).filter(t=>t.s);
+    const pg_=await pdf.getPage(pn); const tc=await pg_.getTextContent();
+    const it=tc.items.map(t=>{ const a=t.transform[0],b=t.transform[1],h=Math.hypot(a,b)||1,w=t.width||0; return {s:String(t.str||'').trim(),x:t.transform[4]+w/2*a/h,y:t.transform[5]+w/2*b/h,dx:a/h,dy:b/h,w,ox:t.transform[4],oy:t.transform[5]}; }).filter(t=>t.s);
+    const circ=await _circulosPdf(lib,pg_);
     const d=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
     const esNum=t=>/^[Ø⌀∅]?\s*\d+(?:[.,]\d+)?$/.test(t.s);
     // posición de q respecto a p en la dirección en que se lee p: pr = hacia delante, pp = lateral
@@ -3307,7 +3327,10 @@ async function _kcDePdf(buf){
           else if(/^±$/.test(x)&&ex[i+1]&&/^\d+(?:[.,]\d+)?$/.test(ex[i+1].s)){ partes.push('±'+ex[i+1].s); i++; } }
         const pr2=partes.slice(0,2); if(pr2.length===2&&/^-/.test(pr2[0])&&/^\+/.test(pr2[1])) pr2.reverse(); tol=pr2.join('/');
       }
-      out[n]={v:valor.replace(/\s+/g,''),tol:tol.replace(/\s+/g,'').replace(/−/g,'-')};
+      // el símbolo Ø suele ser dibujo (círculo), no texto: se busca un círculo justo antes del número
+      valor=valor.replace(/\s+/g,'');
+      if(!/^[Ø⌀∅]/.test(valor)){ const P={x:v.ox,y:v.oy,dx:v.dx,dy:v.dy}; if(circ.some(c=>{ const r=rel(P,c); return r.pr>-14&&r.pr<2&&r.pp<10; })) valor='Ø'+valor; }
+      out[n]={v:valor,tol:tol.replace(/\s+/g,'').replace(/−/g,'-')};
     });
   }
   return out;
@@ -3401,7 +3424,7 @@ const QA_TOLS={
   wed:{nombre:'Tolerancias WED',tabla:[[3,'0.05'],[6,'0.10'],[30,'0.20'],[120,'0.30'],[400,'0.50']]},
   colombina:{nombre:'Tolerancia Colombina',dec:{m:[0.1,0.1,0.05,0.001],i:[0.01,0.01,0.005,0.001]},ang:"±0°30'"},
   carvajal:{nombre:'Tolerancia Carvajal',fijo:'±0,1 mm',ang:"0°-15'"},
-  hada:{nombre:'Tolerancia Hadatech',tabla:[[6,'0.1'],[30,'0.2'],[100,'0.25'],[300,'0.5'],[1000,'0.8'],[2000,'1.3'],[3000,'1.8']],ang:'±0.5°'}
+  hada:{nombre:'Tolerancia HADA',tabla:[[6,'0.1'],[30,'0.2'],[100,'0.25'],[300,'0.5'],[1000,'0.8'],[2000,'1.3'],[3000,'1.8']],ang:'±0.5°'}
 };
 function _qaTolDe(sel,medida){
   const T=QA_TOLS[sel]; const t=String(medida||'').trim(); if(!T||!t) return '';
