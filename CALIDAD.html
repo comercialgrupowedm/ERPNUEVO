@@ -1933,8 +1933,8 @@ function despacho(){
   }).sort((a,b)=>String(a.calidad_fecha||'').localeCompare(String(b.calidad_fecha||'')));
   const banner=moduleBanner('📦','Pendiente Despacho','Aprobados por calidad que aún no salen · las aprobaciones más antiguas primero',
     chipsH([['todas','Todos',cnt.todas],['sinrem','Sin remisión',cnt.sinrem],['conrem','Remisión en trámite',cnt.conrem],['sincert','Sin certificado',cnt.sincert],...(cnt.hered?[['hered','Heredadas por confirmar',cnt.hered]]:[])],_desF.chip,'desChip'));
-  const nota=`<div class="callout">ℹ️ Calidad <b>pide</b> la remisión de la OP (📦 Pedir remisión); luego comercial elige qué sale y administración la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
-  const fb=filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
+  const nota=`<div class="callout">ℹ️ Calidad <b>solicita</b> la remisión por OP (📦 Solicitar remisión): eliges los ítems y cantidades, y administración solo la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
+  const fb=`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`+filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+nota+fb+empty('Sin ítems pendientes de despacho','📦')); return; }
   const desA=o=>{ const j=idq(o); const c=certVigente(o.id);
     const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
@@ -1955,30 +1955,54 @@ function despacho(){
 
 // Pedir la remisión de una OP: mismo RPC que «Por pedir» del módulo Remisiones (remision_pedir: calidad, comercial o administración).
 // No se duplica nada de Remisiones: la selección, la generación y el número los siguen haciendo comercial y administración allá.
-function pedirRemision(op){
-  if(!soloCal()) return;
-  const its=(DB.produccion||[]).filter(o=>o.op===op&&pendDesp(o)); const tot=(DB.produccion||[]).filter(o=>o.op===op&&vivo(o)).length;
-  const disp=its.reduce((s,o)=>s+dispDe(o),0);
-  if(!disp){ toast('No hay unidades aprobadas por despachar en esta OP','warn'); return; }
-  openModal(`📦 Pedir remisión — OP-${op}`,
-    `<div class="callout" style="margin:0 0 12px">${its.length} de ${tot} ítem(s) activos de la OP están aprobados por calidad, con <b>${disp} und</b> por despachar. Indica <b>cuántas unidades se van a despachar en esta remisión</b>; el comercial elige los ítems y administración la genera.</div>
-    <div class="form-grid"><div class="field"><label>Unidades a despachar</label><input id="pr-und" type="number" inputmode="numeric" min="1" max="${disp}" value="${disp}"></div>
-    <div class="field span2"><label>Nota para comercial / administración (opcional)</label><input id="pr-nota" placeholder="Ej: salida parcial, el cliente las recoge…"></div></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">Queda registrado quién la pidió: ${esc(_SESSION&&_SESSION.nombre||'')}.</div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="pedirRemisionOk(${Number(op)},${disp})">📦 Pedir remisión</button>`);
+// ── Pedir remisión: se eligen ítems y cantidades de una vez (mismo formato que al armar la remisión) ──
+window._RSP=null;
+function remSelPedirModal(op,rows,cfg,sel){
+  rows=rows.sort((a,b)=>Number(a.item)-Number(b.item));
+  if(!rows.some(r=>r.disp>0&&!r.bloq)){ toast('No hay ítems aprobados por calidad con cantidad por despachar','warn'); return; }
+  window._RSP={op,cfg};
+  openModal('📦 Pedir remisión — OP-'+op,
+    `${sel?`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Orden de producción</label><select onchange="${sel.fn}(this.value)" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;font-weight:700">${sel.ops.map(x=>`<option value="${x.v}" ${String(x.v)===String(op)?'selected':''}>${esc(x.l)}</option>`).join('')}</select></div>`:''}<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Elige el <b>ítem</b> y la <b>cantidad</b> que sale (solo lo aprobado por calidad; puede ser parcial). Así administración solo tiene que generar la remisión.</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsp:not([disabled])').forEach(i=>i.value=i.dataset.max)">Todo lo disponible</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsp').forEach(i=>i.value='')">Limpiar</button></div>
+    ${rows.map(r=>r.bloq?`<div style="border:1.5px solid #dc2626;background:rgba(220,38,38,.08);border-radius:12px;padding:10px;margin-bottom:8px"><div style="font-weight:800;color:#b91c1c">Ítem ${esc(String(r.item??'—'))}${r.gar?' 🛡️':''} · 🔒 ${esc(r.bloq)}</div><div style="font-size:12px;color:#b91c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.descripcion||'—')}</div><input type="number" class="rsp" disabled data-p="${esc(r.id)}" data-max="0" style="display:none"></div>`
+      :`<div style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px"><div style="font-weight:800">Ítem ${esc(String(r.item??'—'))}${r.gar?' 🛡️':''}${r.parcial?' <span style="font-size:11px;font-weight:700;color:#b45309">· ya salió parte</span>':''}</div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.descripcion||'—')}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><input type="number" class="rsp" data-p="${esc(r.id)}" data-max="${r.disp}" min="0" max="${r.disp}" step="1" inputmode="numeric" placeholder="0" oninput="remSelClamp(this)" style="width:96px"><span style="font-size:12px;color:var(--muted)">de ${r.disp} por despachar (total ${r.total??'—'})</span><button class="btn btn-ghost btn-sm" onclick="var i=this.parentNode.querySelector('.rsp');i.value=${r.disp}">Todo</button></div></div>`).join('')}
+    <div style="margin-top:6px"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Nota (opcional)</label><input id="rsp-nota" placeholder="Ej: salida parcial, el cliente las recoge…" style="width:100%;box-sizing:border-box"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="remSelPedirOk()">📦 Pedir remisión</button>`);
 }
-async function pedirRemisionOk(op,max){
-  const u=Number(document.getElementById('pr-und').value), nota=(document.getElementById('pr-nota').value||'').trim();
-  if(!(u>0)){ toast('Escribe cuántas unidades se van a despachar','error'); return; }
-  if(u>max){ toast('No puedes pedir más de '+max+' und (lo aprobado por despachar)','error'); return; }
+function remSelClamp(i){ const mx=Number(i.dataset.max), v=Number(i.value); if(v>mx){ i.value=mx; toast('Solo faltan '+mx+' und por remisionar de este ítem','warn'); } else if(v<0) i.value=''; }
+async function remSelPedirOk(){
+  const S=window._RSP; if(!S) return; const ls=[]; let bad=false;
+  document.querySelectorAll('.rsp').forEach(i=>{ const v=Number(i.value)||0; if(v>Number(i.dataset.max)) bad=true; if(v>0) ls.push({id_prod:i.dataset.p,cantidad:v}); });
+  if(bad){ toast('Una cantidad supera lo disponible','error'); return; }
+  if(!ls.length){ toast('Selecciona al menos un ítem y su cantidad','error'); return; }
+  const nota=((document.getElementById('rsp-nota')||{}).value||'').trim()||null;
   closeModal();
-  let ok=false;
-  try{ await sb.rpc('remision_pedir_u',{p_op:op,p_unidades:u,p_nota:nota||null}); ok=true; toast('📦 Remisión pedida: '+u+' und — el comercial elige qué se despacha'); await recargar(); }
-  catch(e){ const m=String(e&&e.message||e);
-    if(/remision_pedir_u|schema cache|does not exist/i.test(m)){ const r=await rpcC('remision_pedir',{p_op:op},'📦 Remisión pedida (sin cantidad: falta correr remision_pedir_unidades.sql)'); ok=!!r; }
-    else toast('❌ '+m,'error'); }
-  if(ok) refreshCurrentView();
+  const r=await S.cfg.rpc('remision_pedir_sel',{p_op:Number(S.op),p_lineas:ls,p_nota:nota},'📦 Remisión pedida con sus ítems — administración ya puede generarla');
+  if(r&&S.cfg.after) S.cfg.after(r);
 }
+async function remRowsOP(op){
+  let its=[]; try{ its=await GET('produccion','select=id,op,item_num,descripcion,unidades,cant_despachada,despachado,calidad_estado,calidad_ok,es_garantia&op=eq.'+op+'&estado=neq.CANCELADO&order=item_num.asc,id.asc')||[]; }catch(e){ its=(DB.produccion||[]).filter(o=>o.op===op); }
+  const rems=remsDeOP(op).filter(m=>m.estado!=='CANCELADA');
+  return its.map(o=>{
+    const res=rems.filter(m=>['SELECCIONADA','GENERADA'].includes(m.estado)).reduce((s,m)=>s+(m.lineas||[]).filter(l=>l.id_prod===o.id).reduce((a,l)=>a+Number(l.cantidad||0),0),0);
+    const sale=(Number(o.cant_despachada)||0)+res, disp=Math.max(0,(Number(o.unidades)||0)-sale);
+    const nums=[...new Set(rems.filter(m=>(m.lineas||[]).some(l=>l.id_prod===o.id)).map(m=>m.numero?'REM-'+m.numero:'en trámite'))];
+    let bloq=''; if(disp<=0) bloq='Ya remisionado completo'+(nums.length?' ('+nums.join(', ')+')':''); else if(!(o.calidad_estado==='APROBADA'||o.calidad_ok)) bloq='Aún no aprobado por calidad';
+    return {id:o.id,item:o.item_num,descripcion:o.descripcion,disp,total:o.unidades,gar:o.es_garantia,bloq,parcial:sale>0};
+  });
+}
+async function solicitarRemisionOP(op){
+  if(!soloCal()) return;
+  const lst=(DB.produccion||[]).filter(o=>pendDesp(o)&&dispDe(o)>0&&!remTramite(o.op));
+  const ops=[...new Set(lst.map(o=>o.op))].sort((a,b)=>b-a);
+  if(!ops.length){ toast('No hay OP con ítems aprobados por despachar y sin remisión en trámite','warn'); return; }
+  if(!op||!ops.includes(Number(op))) op=ops[0]; op=Number(op);
+  showBusy(); let rows; try{ rows=await remRowsOP(op); } finally{ hideBusy(); }
+  const lbl=n=>{ const o=lst.find(x=>x.op===n); return 'OP-'+n+(o&&o.empresa?' · '+o.empresa:''); };
+  remSelPedirModal(op,rows,{rpc:rpcC,after:async()=>{ await recargar(); refreshCurrentView(); }},{ops:ops.map(n=>({v:n,l:lbl(n)})),fn:'solicitarRemisionOP'});
+}
+async function pedirRemision(op){ return solicitarRemisionOP(op); }
 
 // ── PESTAÑA: SOLICITUDES EXTERNAS (formato COMPRAS-FO-002) ─────────────
 // Decisión: en el sistema nuevo un servicio externo que se le pide a Compras es una línea de prod_materiales con tipo
@@ -2322,8 +2346,8 @@ function remisiones(){
   const sinRem=[...new Set((DB.produccion||[]).filter(pendDesp).filter(o=>!remTramite(o.op)&&dispDe(o)>0).map(o=>o.op))];
   const banner=moduleBanner('📄','Remisiones','Estado de las remisiones y despacho de las generadas',
     chipsH([['despachar','Generadas (por despachar)',cnt.despachar],['tramite','En trámite',cnt.tramite],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',cnt.todas],['libres','📝 Formulario libre',libres]],_remF.chip,'remChip'));
-  const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se pide desde <b>📦 Pendiente Despacho</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}</div>`;
-  const nuevo='';
+  const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se solicita con el botón <b>📦 Solicitar remisión</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}</div>`;
+  const nuevo=`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`;
   const fb=nuevo+filtroBusqueda('rem-q',_remF.q,"remSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar REM, OP, cliente, proyecto, OC…');
   if(!data.length){ setContent(banner+nota+fb+empty('Sin remisiones en esta vista','📄')); return; }
   const card=m=>{ const ls=m.lineas||[]; const und=ls.reduce((a,l)=>a+(Number(l.cantidad)||0),0);

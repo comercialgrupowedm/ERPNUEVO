@@ -4824,9 +4824,34 @@ function detalleRem(id){
     <div class="dp-section"><h4>🕘 Trazabilidad</h4>${dr('Pedida',fmtDT(m.pedida_fecha)+(m.pedida_por?' · '+esc(m.pedida_por):''))}${dr('Selección',m.seleccion_fecha?fmtDT(m.seleccion_fecha)+' · '+esc(m.seleccion_por||''):'—')}${dr('Generada',m.generada_fecha?fmtDT(m.generada_fecha)+' · '+esc(m.generada_por||''):'—')}${dr('Despachada',m.despachada_fecha?fmtDT(m.despachada_fecha)+' · '+esc(m.despachada_por||''):'—')}</div>`,'');
 }
 async function afterRem(id){ updateBadges(); refreshCurrentView(); if(id) detalleRem(id); }
-async function remPedirOp(op){
-  if(!confirm('¿Pedir la remisión de la OP-'+op+' a la administración?')) return;
-  if(await rpcAct('remision_pedir',{p_op:op},'📦 Remisión solicitada — el comercial debe seleccionar qué se despacha')){ updateBadges(); if(modPermitido('remisiones')) qaGo('remisiones'); else refreshCurrentView(); }
+// ── Pedir remisión: se eligen ítems y cantidades de una vez (mismo formato que al armar la remisión) ──
+window._RSP=null;
+function remSelPedirModal(op,rows,cfg){
+  rows=rows.filter(r=>r.disp>0).sort((a,b)=>Number(a.item)-Number(b.item));
+  if(!rows.length){ toast('No hay ítems aprobados por calidad con cantidad por despachar','warn'); return; }
+  window._RSP={op,cfg};
+  openModal('📦 Pedir remisión — OP-'+op,
+    `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Elige el <b>ítem</b> y la <b>cantidad</b> que sale (solo lo aprobado por calidad; puede ser parcial). Así administración solo tiene que generar la remisión.</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsp').forEach(i=>i.value=i.dataset.max)">Todo lo disponible</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsp').forEach(i=>i.value='')">Limpiar</button></div>
+    ${rows.map(r=>`<div style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px"><div style="font-weight:800">Ítem ${esc(String(r.item??'—'))}${r.gar?' 🛡️':''}</div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.descripcion||'—')}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><input type="number" class="rsp" data-p="${esc(r.id)}" data-max="${r.disp}" data-item="${esc(String(r.item??''))}" min="0" max="${r.disp}" step="1" inputmode="numeric" placeholder="0" oninput="remSelClamp(this)" style="width:96px"><span style="font-size:12px;color:var(--muted)">de ${r.disp} por despachar (total ${r.total??'—'})</span><button class="btn btn-ghost btn-sm" onclick="var i=this.parentNode.querySelector('.rsp');i.value=${r.disp}">Todo</button></div></div>`).join('')}
+    <div style="margin-top:6px"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Nota (opcional)</label><input id="rsp-nota" placeholder="Ej: salida parcial, el cliente las recoge…" style="width:100%;box-sizing:border-box"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="remSelPedirOk()">📦 Pedir remisión</button>`);
+}
+function remSelClamp(i){ const mx=Number(i.dataset.max), v=Number(i.value); if(v>mx){ i.value=mx; toast('Solo faltan '+mx+' und por remisionar de este ítem','warn'); } else if(v<0) i.value=''; }
+async function remSelPedirOk(){
+  const S=window._RSP; if(!S) return; const ls=[]; let bad=false;
+  document.querySelectorAll('.rsp').forEach(i=>{ const v=Number(i.value)||0; if(v>Number(i.dataset.max)) bad=true; if(v>0) ls.push({id_prod:i.dataset.p,cantidad:v}); });
+  if(bad){ toast('Una cantidad supera lo disponible','error'); return; }
+  if(!ls.length){ toast('Selecciona al menos un ítem y su cantidad','error'); return; }
+  const nota=((document.getElementById('rsp-nota')||{}).value||'').trim()||null;
+  closeModal();
+  const r=await S.cfg.rpc('remision_pedir_sel',{p_op:Number(S.op),p_lineas:ls,p_nota:nota},'📦 Remisión pedida con sus ítems — administración ya puede generarla');
+  if(r&&S.cfg.after) S.cfg.after(r);
+}
+function remPedirOp(op){
+  const rows=(DB.produccion||[]).filter(p=>p.op===op&&p.calidad_estado==='APROBADA').map(p=>({id:p.id,item:p.item_num,descripcion:p.descripcion,disp:dispProd(p),total:p.unidades,gar:p.es_garantia}));
+  remSelPedirModal(op,rows,{rpc:rpcAct,after:()=>{ updateBadges(); if(modPermitido('remisiones')) qaGo('remisiones'); else refreshCurrentView(); }});
 }
 function remPedirModal(){
   const ops=[...new Set((DB.produccion||[]).filter(p=>p.calidad_estado==='APROBADA'&&dispProd(p)>0&&!remEnTramite(p.op)).map(p=>p.op))].sort((a,b)=>b-a);
