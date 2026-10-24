@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261024-090000">
+<meta name="app-build" content="20261024-081851">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2802,7 +2802,7 @@ function detailCot(id){
       <div class="cot-hero-id">COT-${c.cotizacion}<button class="cot-hero-copy" onclick="copyText('COT-${c.cotizacion}')" title="Copiar ID">⧉</button></div>
       <div class="cot-hero-empresa">${esc(c.empresa||'Sin empresa')}</div><div class="cot-hero-sub">${esc(c.descripcion_proyecto||'—')}</div></div>
       <div class="cot-hero-right"><div class="cot-hero-total-label">Total COT</div><div class="cot-hero-total-value">${fmt(c.precio_total)}</div></div></div>
-      <div class="cot-hero-badges">${bTipo(c.tipo)} ${bEst(c.estado)} ${bSem(semProd(rowsDeCot(c)))}${c.asesor?`<span class="cot-hero-asesor">👤 ${esc(c.asesor)}</span>`:''}${c.fecha_emision?`<span style="font-size:10px;opacity:.7;margin-left:auto">📅 ${fmtDate(c.fecha_emision)}</span>`:''}</div></div>
+      <div class="cot-hero-badges">${bTipo(c.tipo)} ${bEstCot(id,c.estado)} ${bSem(semProd(rowsDeCot(c)))}${c.asesor?`<span class="cot-hero-asesor">👤 ${esc(c.asesor)}</span>`:''}${c.fecha_emision?`<span style="font-size:10px;opacity:.7;margin-left:auto">📅 ${fmtDate(c.fecha_emision)}</span>`:''}</div></div>
     ${timelineH(COT_STEPS,est,{'EN ESPERA':c.fecha_emision,'APROBADA':c.fecha_entrega_pactada})}
     <div class="cot-kpis">
       <div class="kpi-mini gold-kpi"><span class="ki">💰</span><div class="kv gold">${fmt(c.precio_total)}</div><div class="kl">Valor Total</div></div>
@@ -9906,5 +9906,57 @@ document.addEventListener('scroll',function(){ imgBarQuitar(); },true);
  }catch(e){ console.warn('manuales',e); } })();
 </script>
 <!-- /WEDM-MANUALES-2 -->
+<!-- WEDM-COMBO -->
+<style id="wedm-combo-css">
+#wcb{position:fixed;z-index:2147483000;background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--border,#c9d1dc);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.28);overflow-y:auto;overscroll-behavior:contain;display:none;-webkit-overflow-scrolling:touch}
+#wcb .wo{padding:11px 14px;font-size:15px;line-height:1.25;border-bottom:1px solid var(--border,#eef1f5);cursor:pointer}
+#wcb .wo:last-child{border-bottom:0}
+#wcb .wo.on,#wcb .wo:active{background:#0f2443;color:#fff}
+#wcb .wo small{display:block;opacity:.65;font-size:12px}
+#wcb .wn{padding:10px 14px;font-size:13px;opacity:.7}
+</style>
+<script id="wedm-combo-js">
+(function(){
+var box=document.createElement('div');box.id='wcb';document.body.appendChild(box);
+var cur=null,items=[],act=-1;
+function nz(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function opts(inp){var id=inp.getAttribute('data-wlist');var dl=id&&document.getElementById(id);if(!dl)return[];
+ return Array.prototype.map.call(dl.options||dl.querySelectorAll('option'),function(o){return{v:o.value,l:(o.label&&o.label!==o.value)?o.label:(o.textContent&&o.textContent!==o.value?o.textContent:'')};});}
+function pos(){if(!cur)return;var r=cur.getBoundingClientRect();var vv=window.visualViewport;var vh=vv?vv.height:innerHeight,vt=vv?vv.offsetTop:0,vl=vv?vv.offsetLeft:0;
+ var below=vt+vh-r.bottom-8,above=r.top-vt-8;var w=Math.max(r.width,220);
+ var left=Math.max(vl+6,Math.min(r.left,vl+(vv?vv.width:innerWidth)-w-6));
+ box.style.left=left+'px';box.style.width=w+'px';
+ if(below>=170||below>=above){box.style.top=(r.bottom+3)+'px';box.style.bottom='auto';box.style.maxHeight=Math.max(120,Math.min(300,below))+'px';}
+ else{box.style.top='auto';box.style.bottom=(innerHeight-r.top+3)+'px';box.style.maxHeight=Math.max(120,Math.min(300,above))+'px';}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function show(){if(!cur)return;var q=nz(cur.value).trim();var all=opts(cur);
+ var f=all.filter(function(o){return !q||nz(o.v+' '+o.l).indexOf(q)>=0;});
+ f.sort(function(a,b){var A=nz(a.v).indexOf(q)===0?0:1,B=nz(b.v).indexOf(q)===0?0:1;return A-B;});
+ items=f.slice(0,60);act=-1;
+ if(!all.length||(!items.length&&!q)){hide();return;}
+ box.innerHTML=items.length?items.map(function(o,i){return'<div class="wo" data-i="'+i+'">'+esc(o.v)+(o.l?'<small>'+esc(o.l)+'</small>':'')+'</div>';}).join(''):'<div class="wn">Sin coincidencias — puedes escribirlo tal cual</div>';
+ box.style.display='block';pos();}
+function hide(){box.style.display='none';items=[];act=-1;}
+function pick(i){var o=items[i];if(!o||!cur)return;var inp=cur;inp.value=o.v;
+ inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));hide();}
+function prep(t){if(t&&t.tagName==='INPUT'&&t.hasAttribute('list')){t.setAttribute('data-wlist',t.getAttribute('list'));t.removeAttribute('list');t.setAttribute('autocomplete','off');}
+ return t&&t.tagName==='INPUT'&&t.hasAttribute('data-wlist')?t:null;}
+document.addEventListener('focusin',function(e){var t=prep(e.target);if(t){cur=t;show();}else if(!box.contains(e.target)){hide();cur=null;}});
+document.addEventListener('input',function(e){var t=prep(e.target);if(t){cur=t;show();}},true);
+document.addEventListener('click',function(e){var t=prep(e.target);if(t&&t===document.activeElement){cur=t;show();}});
+box.addEventListener('mousedown',function(e){e.preventDefault();});
+box.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+box.addEventListener('click',function(e){var d=e.target.closest('.wo');if(d)pick(+d.getAttribute('data-i'));});
+document.addEventListener('keydown',function(e){if(box.style.display!=='block')return;
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();act=Math.max(0,Math.min(items.length-1,act+(e.key==='ArrowDown'?1:-1)));
+  Array.prototype.forEach.call(box.children,function(c,i){c.classList.toggle('on',i===act);if(i===act)c.scrollIntoView({block:'nearest'});});}
+ else if(e.key==='Enter'&&act>=0){e.preventDefault();e.stopPropagation();pick(act);}
+ else if(e.key==='Escape'||e.key==='Tab'){hide();}},true);
+document.addEventListener('focusout',function(e){if(e.target===cur)setTimeout(function(){if(document.activeElement!==cur)hide();},180);});
+window.addEventListener('scroll',function(e){if(box.style.display==='block'&&!box.contains(e.target))pos();},true);
+window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.addEventListener('resize',pos);visualViewport.addEventListener('scroll',pos);}
+})();
+</script>
+
 </body>
 </html>
