@@ -3046,15 +3046,7 @@ function qaFormatoQA(opId){
   // y cada fase = una máquina de la ruta (instrumento CNC / EDM en las dos primeras)
   if(!(saved.kc&&saved.kc.length)){
     let esMq=false; try{ esMq=confirm('¿Este formato es de una MARQUILLA?\n\nAceptar = Sí (pieza = ítem de la OP, con su descripción; fases con las máquinas)\nCancelar = No'); }catch(e){}
-    if(esMq){
-      const F=window._QAFMT, nOp=op.OP;
-      const its=(DB.produccion||[]).filter(x=>x.op===nOp&&!x.es_garantia).sort((a,b)=>(a.item_num||0)-(b.item_num||0)).slice(0,QA_FMT_MAX_PZ);
-      const mqs=(F.header.mq||[]).filter(Boolean).slice(0,QA_FMT_MAX_KC);
-      if(its.length){ F.numPiezas=its.length; F.header.mqItems=its.map(x=>({n:x.item_num,d:String(x.descripcion||'').trim()})); }
-      (mqs.length?mqs:['','']).forEach((m,i)=>{ const k=F.kc[i]; if(!k) return;
-        k.nombre='FASE '+(i+1); k.medida=m; k.instrumento=i===0?'CNC':i===1?'EDM':'';
-        (F.header.mqItems||[]).forEach((it,j)=>{ if(k.piezas[j]) k.piezas[j].dato=it.d; }); });
-    }
+    if(esMq) _qaFmtModoMq();
   }
   // Asegurar que cada KC tenga siempre 10 piezas (por si el JSON guardado es antiguo)
   window._QAFMT.kc.forEach(k=>{
@@ -3153,6 +3145,14 @@ function _qaFmtPanelHTML(){
       <div id="qafmt-editor-col">
         <div id="qafmt-body">
 
+          <div class="qafmt-sec" style="background:var(--card2);border-radius:10px;padding:10px">
+            <div class="qafmt-sec-title">Tolerancia y KC</div>
+            <div class="field qafmt-field" style="margin-bottom:10px"><label>Tolerancia a usar — se pone sola según la medida nominal de cada KC</label>
+              <select id="qf-tolsel" onchange="_qaFmtTolSel(this.value)" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;background:var(--surface);color:var(--text)">
+                <option value="">Manual (yo la escribo)</option>${Object.keys(QA_TOLS).map(k=>`<option value="${k}" ${window._QAFMT.header.tolSel===k?'selected':''}>${QA_TOLS[k].nombre}</option>`).join('')}</select></div>
+            <div style="margin-bottom:10px"><button type="button" class="btn btn-ghost btn-sm" onclick="_qaFmtLeerKC()">📐 Leer KC del plano</button> <button type="button" class="btn btn-ghost btn-sm" onclick="_qaFmtBtnMq()">🏷️ Es marquilla</button> <span style="font-size:11px;color:var(--muted)">Lee KC1, KC2… del PDF del plano y los pone como medida nominal</span></div>
+          </div>
+
           <div class="qafmt-sec">
             <div class="qafmt-sec-title">Datos generales</div>
             <div class="form-grid">
@@ -3183,10 +3183,6 @@ function _qaFmtPanelHTML(){
 
           <div class="qafmt-sec">
             <div class="qafmt-sec-title">Características clave (KC)</div>
-            <div class="field qafmt-field" style="margin-bottom:10px"><label>Tolerancia a usar (se aplica sola al escribir la medida nominal)</label>
-              <select id="qf-tolsel" onchange="_qaFmtTolSel(this.value)" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;background:var(--surface);color:var(--text)">
-                <option value="">Manual (yo la escribo)</option>${Object.keys(QA_TOLS).map(k=>`<option value="${k}" ${window._QAFMT.header.tolSel===k?'selected':''}>${QA_TOLS[k].nombre}</option>`).join('')}</select></div>
-            <div style="margin-bottom:10px"><button type="button" class="btn btn-ghost btn-sm" onclick="_qaFmtLeerKC()">📐 Leer KC del plano</button> <span style="font-size:11px;color:var(--muted)">Lee KC1, KC2… del PDF del plano y los pone como medida nominal</span></div>
             <div class="qafmt-piezas-ctrl">
               <span style="font-size:11px;color:var(--muted);font-weight:700">Piezas a medir:</span>
               <button type="button" onclick="_qaFmtPiezas(-1)">−</button>
@@ -3284,38 +3280,66 @@ async function _kcDePdf(buf){
   const lib=await _pdfjs(); const pdf=await lib.getDocument({data:buf}).promise; const out={};
   for(let pn=1;pn<=pdf.numPages;pn++){
     const tc=await (await pdf.getPage(pn)).getTextContent();
-    const it=tc.items.map(t=>{ const a=t.transform[0],b=t.transform[1],h=Math.hypot(a,b)||1,w=t.width||0; return {s:String(t.str||'').trim(),x:t.transform[4]+w/2*a/h,y:t.transform[5]+w/2*b/h}; }).filter(t=>t.s);
+    const it=tc.items.map(t=>{ const a=t.transform[0],b=t.transform[1],h=Math.hypot(a,b)||1,w=t.width||0; return {s:String(t.str||'').trim(),x:t.transform[4]+w/2*a/h,y:t.transform[5]+w/2*b/h,dx:a/h,dy:b/h,w}; }).filter(t=>t.s);
     const d=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
     const esNum=t=>/^[Ø⌀∅]?\s*\d+(?:[.,]\d+)?$/.test(t.s);
+    // posición de q respecto a p en la dirección en que se lee p: pr = hacia delante, pp = lateral
+    const rel=(p,q)=>{ const vx=q.x-p.x,vy=q.y-p.y; return {pr:vx*p.dx+vy*p.dy,pp:Math.abs(-vx*p.dy+vy*p.dx)}; };
     it.forEach(k=>{
       let n=null, nt=null; let m=k.s.match(/^KC\s*(\d{1,2})$/i);
       if(m){ n=+m[1]; nt=k; }
       else if(/^KC$/i.test(k.s)){ const c=it.filter(t=>t!==k&&/^\d{1,2}$/.test(t.s)&&d(t,k)<30).sort((p,q)=>d(p,k)-d(q,k))[0]; if(c){ n=+c.s; nt=c; } }
-      if(!n||n>10) return;
+      if(!n||n>10||out[n]) return;
       if(it.some(t=>t!==k&&t!==nt&&(/^:/.test(t.s)||/CARACTER/i.test(t.s))&&d(t,k)<45)) return;   // la nota «KC 1: característica clave»
-      const v=it.filter(t=>t!==k&&t!==nt&&esNum(t)&&d(t,nt)<80).sort((p,q)=>d(p,nt)-d(q,nt))[0];
-      if(v&&!out[n]) out[n]=v.s.replace(/\s+/g,'');
+      // el valor está al FRENTE de la flecha (en el sentido en que se lee el KC)
+      const base=nt, dir=k;
+      let cand=it.filter(t=>t!==k&&t!==nt).map(t=>({t,...rel({x:base.x,y:base.y,dx:dir.dx,dy:dir.dy},t)})).filter(o=>o.pr>0&&o.pr<90&&o.pp<14&&(esNum(o.t)||/^[Ø⌀∅]?\s*\d+(?:[.,]\d+)?\s*[±+\-−]/.test(o.t.s))).sort((p,q)=>p.pr-q.pr);
+      let v=cand[0]&&cand[0].t;
+      if(!v) v=it.filter(t=>t!==k&&t!==nt&&esNum(t)&&d(t,nt)<60).sort((p,q)=>d(p,nt)-d(q,nt))[0];
+      if(!v) return;
+      let valor=v.s, tol='';
+      const mv=v.s.match(/^([Ø⌀∅]?\s*\d+(?:[.,]\d+)?)\s*(.*)$/);
+      if(mv){ valor=mv[1]; if(/[±+\-−]/.test(mv[2])) tol=mv[2]; }
+      if(!tol){   // tolerancia escrita a continuación del número (mismo renglón o apilada)
+        const ex=it.filter(t=>t!==k&&t!==nt&&t!==v).map(t=>({t,...rel(v,t)})).filter(o=>o.pr>-5&&o.pr<75&&o.pp<22).sort((p,q)=>p.pr-q.pr||p.pp-q.pp).map(o=>o.t);
+        const partes=[]; for(let i=0;i<ex.length;i++){ const x=ex[i].s;
+          if(/^[±+\-−]\s*\d+(?:[.,]\d+)?$/.test(x)) partes.push(x);
+          else if(/^±$/.test(x)&&ex[i+1]&&/^\d+(?:[.,]\d+)?$/.test(ex[i+1].s)){ partes.push('±'+ex[i+1].s); i++; } }
+        const pr2=partes.slice(0,2); if(pr2.length===2&&/^-/.test(pr2[0])&&/^\+/.test(pr2[1])) pr2.reverse(); tol=pr2.join('/');
+      }
+      out[n]={v:valor.replace(/\s+/g,''),tol:tol.replace(/\s+/g,'').replace(/−/g,'-')};
     });
   }
   return out;
 }
 function _qaFmtAplicarKC(map){
   const st=window._QAFMT; let n=0;
-  Object.keys(map).forEach(k=>{ const i=+k-1; const kc=st.kc[i]; if(!kc) return; kc.medida=map[k]; n++;
-    const el=document.getElementById('qf-kc'+i+'-medida'); if(el) el.value=map[k];
-    _qaFmtSyncPreviewCell('kc.'+i+'.medida',map[k]); _qaFmtAutoTol(i); _qaFmtKCSpecChange(i); });
+  Object.keys(map).forEach(k=>{ const i=+k-1; const kc=st.kc[i]; if(!kc) return; const o=map[k]; kc.medida=o.v; n++;
+    const el=document.getElementById('qf-kc'+i+'-medida'); if(el) el.value=o.v;
+    _qaFmtSyncPreviewCell('kc.'+i+'.medida',o.v);
+    if(o.tol){ kc.tolerancia=o.tol; const te=document.getElementById('qf-kc'+i+'-tol'); if(te) te.value=o.tol; _qaFmtSyncPreviewCell('kc.'+i+'.tolerancia',o.tol); }
+    else _qaFmtAutoTol(i);
+    _qaFmtKCSpecChange(i); });
   return n;
 }
 async function _qaFmtLeerKC(){
   const st=window._QAFMT; if(!st) return; showBusy();
   try{
-    let map=null; const p=prodDe(st.opId);
-    try{ const r=await GET('prod_archivos','select=mime,data&tipo=eq.plano&or=(id_prod.eq.'+st.opId+(p&&p.id_item?',id_item.eq.'+p.id_item:'')+')&order=created_at.desc&limit=1');
-      const a=r&&r[0]; if(a&&/pdf/i.test(a.mime||'')&&/^data:/.test(a.data||'')){ const bin=atob(a.data.split(',')[1]); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); map=await _kcDePdf(u); } }catch(e){}
+    const p=prodDe(st.opId); let map=null, nom='';
+    // planos de ESTA OP (más nuevo primero); solo si no hay, los del ítem cotizado
+    const cols='select=id,nombre,mime,created_at';
+    let lst=[]; try{ lst=await GET('prod_archivos',cols+'&tipo=eq.plano&id_prod=eq.'+st.opId+'&order=created_at.desc&limit=8')||[]; }catch(e){}
+    if(!lst.length&&p&&p.id_item){ try{ lst=await GET('prod_archivos',cols+'&tipo=eq.plano&id_item=eq.'+p.id_item+'&order=created_at.desc&limit=8')||[]; }catch(e){} }
+    const pdfs=lst.filter(a=>/pdf/i.test(a.mime||'')||/\.pdf$/i.test(a.nombre||''));
+    for(const a of pdfs){
+      try{ const r=await GET('prod_archivos','select=data&id='+eq(a.id)); const dd=r&&r[0]&&r[0].data; if(!/^data:/.test(dd||'')) continue;
+        const bin=atob(dd.split(',')[1]); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+        const m=await _kcDePdf(u); if(Object.keys(m).length){ map=m; nom=a.nombre||'plano'; break; } }catch(e){}
+    }
     hideBusy();
-    if(map&&Object.keys(map).length){ const n=_qaFmtAplicarKC(map); toast('✅ '+n+' KC leídos del plano guardado'); return; }
-    toast('No encontré KC en el plano guardado. Elige el PDF del plano.');
-    pickFile('application/pdf',async f=>{ showBusy(); try{ const m=await _kcDePdf(await f.arrayBuffer()); if(!Object.keys(m).length) toast('No encontré KC en ese PDF','error'); else toast('✅ '+_qaFmtAplicarKC(m)+' KC leídos del plano'); }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); } });
+    if(map){ const n=_qaFmtAplicarKC(map); toast('✅ '+n+' KC leídos de «'+nom+'»'); return; }
+    toast(lst.length?(pdfs.length?'No encontré KC en el plano subido a esta OP. Elige el PDF.':'El plano subido a esta OP no es PDF (no se puede leer). Elige el PDF.'):'Esta OP no tiene plano subido. Elige el PDF.');
+    pickFile('application/pdf',async f=>{ showBusy(); try{ const m=await _kcDePdf(await f.arrayBuffer()); if(!Object.keys(m).length) toast('No encontré KC en ese PDF','error'); else toast('✅ '+_qaFmtAplicarKC(m)+' KC leídos de «'+f.name+'»'); }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); } });
   }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
 function _qaFmtKCSpecChange(i){
@@ -3329,6 +3353,21 @@ function _qaFmtKCSpecChange(i){
 }
 
 // Cambia el número de columnas "Pieza N" visibles (1 a 10), guardando lo ya escrito
+// Modo marquilla: pieza = ítem de la OP (con su descripción); fases = máquinas de la ruta
+function _qaFmtModoMq(){
+  const F=window._QAFMT; if(!F) return; const nOp=F.op.OP;
+  const its=(DB.produccion||[]).filter(x=>x.op===nOp&&!x.es_garantia).sort((a,b)=>(a.item_num||0)-(b.item_num||0)).slice(0,QA_FMT_MAX_PZ);
+  const mqs=(F.header.mq||[]).filter(Boolean).slice(0,QA_FMT_MAX_KC);
+  if(its.length){ F.numPiezas=its.length; F.header.mqItems=its.map(x=>({n:x.item_num,d:String(x.descripcion||'').trim()})); }
+  (mqs.length?mqs:['','']).forEach((m,i)=>{ const k=F.kc[i]; if(!k) return;
+    k.nombre='FASE '+(i+1); k.medida=m; k.instrumento=i===0?'CNC':i===1?'EDM':'';
+    (F.header.mqItems||[]).forEach((it,j)=>{ if(k.piezas[j]) k.piezas[j].dato=it.d; }); });
+  if(document.getElementById('qafmt-kc-list')){
+    const n=document.getElementById('qafmt-npz'); if(n) n.textContent=F.numPiezas;
+    document.getElementById('qafmt-kc-list').innerHTML=_qaFmtRenderKCList(); _qaFmtUpdatePreview();
+  }
+}
+function _qaFmtBtnMq(){ if(confirm('Se llenarán los KC como marquilla (pieza = ítem de la OP, fases = máquinas de la ruta). Lo que ya escribiste en los KC se reemplaza. ¿Continuar?')){ _qaFmtModoMq(); toast('✅ Modo marquilla aplicado'); } }
 function _qaFmtPiezas(delta){
   const st = window._QAFMT;
   st.numPiezas = Math.min(QA_FMT_MAX_PZ, Math.max(1, st.numPiezas + delta));
