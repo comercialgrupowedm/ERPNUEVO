@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261023-213000">
+<meta name="app-build" content="20261024-090000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -4776,5 +4776,17 @@ document.addEventListener('click',function(e){ var im=e.target; if(im&&im.tagNam
 document.addEventListener('scroll',function(){ imgBarQuitar(); },true);
 </script>
 <!-- /WEDM-IMGEDIT -->
+<!-- WEDM-MANUALES-2 -->
+<script>
+(function(){ try{ if(typeof AYUDA==='undefined') return;
+ var ADD={"general": {"pasos": [{"t": "Editar imágenes pegadas (todos los campos de texto)", "items": ["Pega la imagen con **Ctrl+V** (o mantén pulsado → Pegar en el celular) dentro del campo de texto.", "**Toca la imagen**: se marca en azul y sale una barra negra con **➖ Reducir, ➕ Ampliar, ✂️ Recortar / tamaño y 🗑 Quitar**.", "También puedes **arrastrar el cuadrito azul** de la esquina inferior derecha para agrandarla o achicarla.", "Con **✂️ Recortar / tamaño** arrastras sobre la imagen para elegir la zona que quieres conservar y mueves el control de tamaño.", "Para **moverla**, arrástrala dentro del texto y suéltala donde la quieras."]}, {"t": "El buscador de arriba", "items": ["La barra de búsqueda de **arriba** es la única: busca **en la pantalla donde estás parado** (cotizaciones, remisiones, pedidos…). Su texto de fondo te dice qué busca.", "Al cambiar de pantalla se limpia sola."]}]}, "pedidos": {"pasos": [{"t": "Pedidos nuevos y aviso", "items": ["Cada pedido que envían Diseño, Comercial o Administración aparece **al instante** en **Por comprar** y suma al **contador rojo** del menú, y sale el aviso **🆕 pedido(s) nuevo(s)**, sin importar quién esté logueado.", "Los que todavía los revisa almacén salen con la etiqueta **En almacén (por revisar)**."]}, {"t": "Revisar en almacén: Sí hay / No hay", "items": ["En un pedido por revisar toca **✅ Sí hay en planta · recibir**: eliges de qué inventario sale, la cantidad y queda **recibido**.", "Si no hay, toca **🛒 No hay · pasar a compras**: el pedido queda **por comprar**.", "Solo Almacén y Compras ven estos botones."]}], "reglas": ["Mientras un pedido esté en **PENDIENTE** (nadie lo ha enviado) Compras no lo ve."]}};
+ Object.keys(ADD).forEach(function(k){ var o=ADD[k], m=AYUDA[k];
+  if(!m){ AYUDA[k]=o; return; }
+  if(o.pasos) m.pasos=(m.pasos||[]).concat(o.pasos);
+  if(o.reglas) m.reglas=(m.reglas||[]).concat(o.reglas);
+  if(o.consejos) m.consejos=(m.consejos||[]).concat(o.consejos); });
+ }catch(e){ console.warn('manuales',e); } })();
+</script>
+<!-- /WEDM-MANUALES-2 -->
 </body>
 </html>
