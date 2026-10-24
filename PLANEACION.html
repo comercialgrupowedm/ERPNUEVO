@@ -629,6 +629,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="ruta" onclick="nav('ruta')"><span class="nav-icon">🧭</span>Ruta por máquina</div>
     <div class="nav-item" data-m="kanban" onclick="nav('kanban')"><span class="nav-icon">🧩</span>Kanban por máquina</div>
     <div class="nav-item" data-m="operarios" onclick="nav('operarios')"><span class="nav-icon">👷</span>Operarios</div>
+    <div class="nav-item" data-m="planorden" onclick="nav('planorden')"><span class="nav-icon">🗓️</span>Plan por operario <span class="nuevo-b">NUEVO</span></div>
     <div class="nav-item" data-m="horario" id="nav-horario" style="display:none" onclick="nav('horario')"><span class="nav-icon">📅</span>Horario <span class="nuevo-b">NUEVO</span></div>
     <div class="nav-item" data-m="avances" onclick="nav('avances')"><span class="nav-icon">📈</span>Avances</div>
     <div class="nav-item" data-m="riesgos" onclick="nav('riesgos')"><span class="nav-icon">🚦</span>Riesgos y carga</div>
@@ -1151,7 +1152,7 @@ async function doLogin(){
 //  ERP PLANEACIÓN · GRUPO WEDM — misma base, sesión y estructura que Comercial, Diseño, Compras y Remisiones
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',repetidas:'OPs repetidas',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
+const TITLES={menu:'Menú',horario:'Horario',dashboard:'Inicio',ops:'Control Producción',control:'Control general',historial:'Historial',repetidas:'OPs repetidas',produccion:'En producción',ruta:'Ruta por máquina',kanban:'Kanban por máquina',operarios:'Operarios',planorden:'Plan por operario',avances:'Avances',riesgos:'Riesgos y carga',reportes:'Reportes',planta:'Vista planta'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const PROD_SEL_P='id,op,item_num,cot_num,precio_total,fecha_inicio,avance_pasos,empresa,descripcion,unidades,cant_despachada,estado,prioridad,avance,semana,fecha_pactada,fecha_entrega_prod,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,ruta_tiempos,disenador,asesor,despachado,tipo,es_garantia,updated_at'
   +',avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria'
@@ -2507,10 +2508,10 @@ addEventListener('resize',()=>{ if(_pl.open) plRender(true); });
 addEventListener('keydown',e=>{ if(!_pl.open) return; if(e.key==='Escape') plCerrar(); else if(e.key==='ArrowRight') {plNext();plTimer();} else if(e.key==='ArrowLeft') plPrev(); else if(e.key===' '){ e.preventDefault(); plPause(); } });
 setInterval(()=>{ if(_pl.open) plRender(true); },30000);
 
-const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['repetidas','🧬','OPs repetidas'],['horario','📅','Horario 🆕'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
+const MENU_MODS=[['ops','🗂️','Control Producción'],['produccion','🏭','En proceso'],['ruta','🧭','Ruta por máquina'],['kanban','🧩','Kanban por máquina'],['operarios','👷','Operarios'],['planorden','🗓️','Plan por operario 🆕'],['repetidas','🧬','OPs repetidas'],['horario','📅','Horario 🆕'],['avances','📈','Avances'],['riesgos','🚦','Riesgos y carga'],['reportes','📉','Reportes'],['dashboard','📊','Inicio'],['planta','📺','Vista planta']];
 function menu(){ setContent(`<div class="mn-grid">${MENU_MODS.filter(x=>x[0]!=='horario'||(window.chatOn&&chatOn('pla_horario'))).map(([m,i,t])=>`<div class="mn-card" onclick="nav('${m}')"><div class="mn-img"><div class="mn-circle">${i}</div></div><div class="mn-t">${t}</div></div>`).join('')}</div>`); }
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,repetidas,produccion,ruta,kanban,operarios,avances,riesgos,reportes,planta,horario:window.horario}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={menu,dashboard,ops,control,historial,repetidas,produccion,ruta,kanban,operarios,planorden:window.planOrden,avances,riesgos,reportes,planta,horario:window.horario}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -5553,6 +5554,68 @@ document.addEventListener('focusout',function(e){if(e.target===cur)setTimeout(fu
 window.addEventListener('scroll',function(e){if(box.style.display==='block'&&!box.contains(e.target))pos();},true);
 window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.addEventListener('resize',pos);visualViewport.addEventListener('scroll',pos);}
 })();
+</script>
+
+<script id="planorden">
+/* Plan por operario: orden de tareas por día y semana (tabla plan_orden). El operario lo ve en su app de planta. */
+var _PO={ope:'',sem:null,map:null,cur:[]};
+function _iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _lunes(d){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; }
+function _addD(d,n){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()+n); return x; }
+var _DS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+function _fd(iso){ var p=iso.split('-'); var d=new Date(+p[0],+p[1]-1,+p[2]); return _DS[d.getDay()]+' '+p[2]+'/'+p[1]; }
+function poTareas(ope){ var out=[]; (DB.produccion||[]).filter(enCurso).forEach(function(o){ pasosDe(o).forEach(function(s){ if(s.oper===ope&&s.b!=='externo'&&(s.pct||0)<100) out.push({o:o,s:s,key:o.id+'|'+s.i}); }); }); return out; }
+async function poCargar(){
+  try{ var r=await sb.rpc('plan_orden_listar'); _PO.map={}; (r||[]).forEach(function(x){ _PO.map[x.id_prod+'|'+x.paso]={dia:x.dia,pos:x.pos,col:x.colaborador}; }); }
+  catch(e){ _PO.map={}; toast('❌ '+errMsg(e),'error'); }
+}
+async function planOrden(){
+  if(!_PO.sem) _PO.sem=_iso(_lunes(new Date()));
+  if(!_PO.map){ setContent(moduleBanner('🗓️','Plan por operario','Cargando…')); await poCargar(); }
+  var nomb=operariosConocidos().filter(function(n){ return poTareas(n).length; });
+  if(!_PO.ope||nomb.indexOf(_PO.ope)<0) _PO.ope=nomb[0]||'';
+  var banner=moduleBanner('🗓️','Plan por operario','Define el orden de trabajo de cada operario: qué hace de primero, cada día y en la semana. Él lo ve así en su app.',
+    '<div class="chips">'+nomb.map(function(n){ var t=poTareas(n); var pr=t.filter(function(x){ return _PO.map[x.key]&&_PO.map[x.key].dia; }).length; return '<button class="chip '+(_PO.ope===n?'on':'')+'" onclick="poOpe(this.dataset.n)" data-n="'+esc(n)+'">👷 '+esc(n)+' <b>'+t.length+'</b>'+(pr<t.length?' <span style="opacity:.7">· '+(t.length-pr)+' sin día</span>':'')+'</button>'; }).join('')+'</div>');
+  if(!nomb.length){ setContent(banner+empty('Aún no hay pasos asignados a operarios. Asígnalos en «Operarios».','👷')); return; }
+  var tareas=poTareas(_PO.ope), lun=new Date(_PO.sem+'T00:00:00'), hoy=_iso(new Date());
+  var dias=[0,1,2,3,4,5].map(function(i){ return _iso(_addD(lun,i)); });
+  var fin=_iso(_addD(lun,6));
+  var inf=function(t){ return _PO.map[t.key]||null; };
+  var grupos={}; dias.forEach(function(d){ grupos[d]=[]; }); var sin=[], otras=[];
+  tareas.forEach(function(t){ var p=inf(t); if(!p||!p.dia) sin.push(t); else if(grupos[p.dia]) grupos[p.dia].push(t); else otras.push(t); });
+  var byPos=function(a,b){ return (inf(a).pos||0)-(inf(b).pos||0); };
+  dias.forEach(function(d){ grupos[d].sort(byPos); }); otras.sort(function(a,b){ return (inf(a).dia>inf(b).dia?1:-1)||byPos(a,b); });
+  sin.sort(function(a,b){ return String(a.o.fecha_pactada||'9').localeCompare(String(b.o.fecha_pactada||'9')); });
+  _PO.cur=[];
+  var opts=function(sel){ return '<option value="">Sin programar</option>'+dias.map(function(d){ return '<option value="'+d+'" '+(sel===d?'selected':'')+'>'+_fd(d)+(d===hoy?' (hoy)':'')+'</option>'; }).join('')+'<option value="'+_iso(_addD(lun,7))+'">Sem. siguiente · Lun</option>'; };
+  var card=function(t,i,n,esDia){ var idx=_PO.cur.push(t)-1, p=inf(t)||{}, m=MAQ[t.s.b]||{ic:'⚙️',c:'#64748b'};
+    return '<div class="list-card" style="margin-bottom:8px;'+(esDia&&i===0?'border-left:4px solid var(--accent,#2563eb)':'')+'"><div class="lc-top"><div style="min-width:0;flex:1">'
+      +'<div class="lc-id">'+(esDia?'<b style="color:var(--accent,#2563eb)">'+(i+1)+'°</b> ':'')+opTitulo(t.o)+'</div><div class="lc-title">'+esc(t.o.empresa||'—')+'</div>'
+      +'<div class="lc-sub">'+esc(String(t.o.descripcion||'').slice(0,70))+'</div>'
+      +'<div style="margin-top:4px;font-size:12px"><span class="rp-num" style="width:20px;height:20px;font-size:10px;background:'+m.c+'">'+t.s.i+'</span> '+m.ic+' <b>'+esc(t.s.raw)+'</b> · '+(t.s.pct||0)+'% · '+diasBadge(t.o)+'</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">'
+      +'<select onchange="poDia('+idx+',this.value)" style="font-size:12px;max-width:150px">'+opts(p.dia||'')+'</select>'
+      +(esDia?'<div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" title="Subir" '+(i===0?'disabled':'')+' onclick="poMover('+idx+',-1)">▲</button><button class="btn btn-ghost btn-sm" title="Bajar" '+(i===n-1?'disabled':'')+' onclick="poMover('+idx+',1)">▼</button>'+(i>0?'<button class="btn btn-ghost btn-sm" title="Poner de primero" onclick="poTop('+idx+')">⭐ Primero</button>':'')+'</div>':'<button class="btn btn-ghost btn-sm" onclick="poDia('+idx+',\''+hoy+'\')">➜ Hoy</button>')
+      +'</div></div></div>'; };
+  var sec=function(tit,lista,esDia,extra){ return '<div class="dash-card" style="margin-top:12px'+(extra||'')+'"><div class="cm-h">'+tit+' <span style="opacity:.6;font-weight:500">· '+lista.length+' tarea(s)</span></div>'+(lista.length?lista.map(function(t,i){ return card(t,i,lista.length,esDia); }).join(''):'<div style="font-size:12px;color:var(--muted);padding:6px 2px">— vacío —</div>')+'</div>'; };
+  var nav='<div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="poSem(-7)">◀ Semana anterior</button><b style="font-size:13px">Semana del '+_fd(_PO.sem)+' al '+_fd(_iso(_addD(lun,5)))+'</b><button class="btn btn-ghost btn-sm" onclick="poSem(7)">Semana siguiente ▶</button><button class="btn btn-ghost btn-sm" onclick="poSem(0)">Esta semana</button></div>';
+  var html=banner+nav+sec('📥 Sin programar',sin,false)+(otras.length?sec('📆 Otras semanas',otras,false):'')
+    +dias.map(function(d){ return sec((d===hoy?'🔆 ':'📅 ')+_fd(d)+(d===hoy?' · HOY':''),grupos[d],true,d===hoy?';border:2px solid var(--accent,#2563eb)':''); }).join('');
+  setContent(html);
+}
+function poOpe(n){ _PO.ope=n; planOrden(); }
+function poSem(n){ var b=_lunes(new Date()); _PO.sem=_iso(n===0?b:_addD(new Date(_PO.sem+'T00:00:00'),n)); planOrden(); }
+async function poGuardar(){
+  var filas=[]; poTareas(_PO.ope).forEach(function(t){ var p=_PO.map[t.key]; if(p&&p.dia) filas.push({id_prod:t.o.id,paso:t.s.i,dia:p.dia,pos:p.pos||0}); });
+  try{ await sb.rpc('plan_orden_guardar',{p_colab:_PO.ope,p_filas:filas}); }catch(e){ toast('❌ '+errMsg(e),'error'); await poCargar(); planOrden(); }
+}
+function _poRenum(dia){ var l=poTareas(_PO.ope).filter(function(t){ var p=_PO.map[t.key]; return p&&p.dia===dia; }).sort(function(a,b){ return (_PO.map[a.key].pos||0)-(_PO.map[b.key].pos||0); }); l.forEach(function(t,i){ _PO.map[t.key].pos=i; }); return l; }
+function poDia(idx,dia){ var t=_PO.cur[idx]; if(!t) return; var ant=_PO.map[t.key]&&_PO.map[t.key].dia;
+  if(!dia){ delete _PO.map[t.key]; } else { _PO.map[t.key]={dia:dia,pos:9999,col:_PO.ope}; _poRenum(dia); }
+  if(ant) _poRenum(ant); planOrden(); poGuardar(); }
+function poMover(idx,dir){ var t=_PO.cur[idx]; if(!t) return; var p=_PO.map[t.key]; if(!p) return; var l=_poRenum(p.dia); var i=l.findIndex(function(x){ return x.key===t.key; }), j=i+dir; if(j<0||j>=l.length) return;
+  var a=_PO.map[l[i].key], b=_PO.map[l[j].key], tp=a.pos; a.pos=b.pos; b.pos=tp; planOrden(); poGuardar(); }
+function poTop(idx){ var t=_PO.cur[idx]; if(!t) return; var p=_PO.map[t.key]; if(!p) return; p.pos=-1; _poRenum(p.dia); planOrden(); poGuardar(); }
 </script>
 
 </body>
