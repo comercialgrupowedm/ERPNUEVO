@@ -1762,7 +1762,19 @@ async function fileToData(file){
     const d=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error('No se pudo leer el PDF')); fr.readAsDataURL(file); });
     return {data:d,mime:'application/pdf',size:file.size};
   }
-  throw new Error('Solo se aceptan imágenes o PDF');
+  if(/\.(dwg|dxf|step|stp|igs|iges|zip)$/i.test(file.name||'')){
+    if(file.size>5*1024*1024) throw new Error('El archivo pesa más de 5 MB');
+    const d=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error('No se pudo leer el archivo')); fr.readAsDataURL(file); });
+    return {data:d,mime:'application/octet-stream',size:file.size};
+  }
+  throw new Error('Solo se aceptan imágenes, PDF o DWG');
+}
+async function descargarArchivo(id){
+  showBusy();
+  try{
+    const r=await GET('prod_archivos','select=nombre,data&id='+eq(id)); const a=r&&r[0]; if(!a||!a.data){ toast('Archivo no disponible','error'); return; }
+    const u=/^https?:/i.test(a.data)?a.data:dataUrlToBlobUrl(a.data); const l=document.createElement('a'); l.href=u; l.download=a.nombre||'archivo'; l.target='_blank'; document.body.appendChild(l); l.click(); l.remove();
+  }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
 }
 async function insertarArchivo(row){
   const h={...sb.h,'Prefer':'return=representation'};
@@ -2005,12 +2017,15 @@ async function pedidoMaterial(id){
 async function pmCargarPlanos(id){
   const el=document.getElementById('pm-planos'); if(!el) return;
   try{
-    const p=prodDe(id); const rows=await GET('prod_archivos',ARCH_COLS+`&tipo=eq.plano&or=(id_prod.eq.${id}${p&&p.id_item?`,id_item.eq.${p.id_item}`:''})&order=created_at.desc`);
+    const p=prodDe(id); const all=await GET('prod_archivos',ARCH_COLS+`&tipo=in.(plano,dwg)&or=(id_prod.eq.${id}${p&&p.id_item?`,id_item.eq.${p.id_item}`:''})&order=created_at.desc`);
     if(!document.getElementById('pm-planos')) return;
+    const rows=all.filter(a=>a.tipo==='plano'), dw=all.filter(a=>a.tipo==='dwg');
     el.innerHTML=(rows.length?rows.map(a=>`<div class="cmp-ref-uploaded" style="margin-bottom:6px">📄 ${esc(a.nombre||'Plano')} <span style="opacity:.7;font-weight:400">Ya subido</span><button type="button" class="eye" title="Ver plano" onclick="verArchivo('${a.id}')">👁</button></div>`).join(''):'<div style="font-size:12px;color:var(--warn);margin-bottom:6px">⚠ Esta OP aún no tiene plano</div>')+
-      `<button type="button" class="btn btn-ghost btn-sm" onclick="pmSubirPlano('${id}')">📎 Subir plano</button>`;
+      dw.map(a=>`<div class="cmp-ref-uploaded" style="margin-bottom:6px">📐 ${esc(a.nombre||'DWG')} <span style="opacity:.7;font-weight:400">DWG subido</span><button type="button" class="eye" title="Descargar" onclick="descargarArchivo('${a.id}')">⬇</button></div>`).join('')+
+      `<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="pmSubirPlano('${id}')">📎 Subir plano</button><button type="button" class="btn btn-ghost btn-sm" onclick="pmSubirDwg('${id}')">📐 Subir DWG</button></div>`;
   }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
 }
+function pmSubirDwg(id){ pickFile('.dwg,.dxf,.step,.stp,.igs,.iges,.zip',f=>subirArchivo({id_prod:id},'dwg',f,()=>{ DB.archMeta=null; pmCargarPlanos(id); })); }
 function pmSubirPlano(id){ pickFile('image/*,application/pdf',f=>subirArchivo({id_prod:id},'plano',f,()=>{ DB.archMeta=null; pmCargarPlanos(id); })); }
 function _pmTraerFaltantes(){
   if(!_PM.missing.length) return;
@@ -3349,8 +3364,10 @@ function _qaFmtUpdatePreview(){
 // Construye el HTML del formato (imprimible o editable en vivo dentro del
 // panel, según qa.editable) replicando el formato en papel (bordes tipo tabla)
 function _qaFmtBuildPDFHtml(op, qa){
-  if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return o; }catch(e){} }
-  return _qaFmtBuildPDFHtmlOrig(op,qa);
+  // Letras más grandes para que se lea al imprimir (el formato original usaba 5–7 px)
+  const _k=h=>String(h).replace(/font-size:\s*([\d.]+)px/g,(m,n)=>'font-size:'+(Math.round(parseFloat(n)*1.5*10)/10)+'px').replace(/(\.kc-table tbody tr\.kc-group\{ height:|\.kc-table tbody tr\.kc-group td\{ height:)20px; min-height:20px/g,(m,x)=>x+'27px; min-height:27px').replace(/height:60px; min-height:60px/g,'height:81px; min-height:81px').replace(/\.kc-table tbody tr\.kc-group\{ height:20px/g,'.kc-table tbody tr.kc-group{ height:27px');
+  if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return _k(o); }catch(e){} }
+  return _k(_qaFmtBuildPDFHtmlOrig(op,qa));
 }
 function _qaFmtBuildPDFHtmlOrig(op, qa){
   const h        = qa.header||{};
