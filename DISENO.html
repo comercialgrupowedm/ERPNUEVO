@@ -3846,6 +3846,7 @@ function prodMarquillasImprimir(){
 function accionesProd(p){
   const id=p.id; const b=[]; const pend=matsPend(p).length;
   const btn=(ic,bg,lbl,fn)=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${bg}">${ic}</span><span class="cot-action-lbl">${lbl}</span></button>`;
+  b.push(btn('💬','#e11d48','Observaciones',`prodObsTodas('${id}')`));
   if(!p.diseno_ok) b.push(btn('🎨','#7b1fa2','Diseño terminado',`prodDiseno('${id}',true)`));
   else if(!p.terminado) b.push(btn('↩️','#64748b','Devolver diseño',`prodDiseno('${id}',false)`));
   b.push(btn('🧱','#b45309',pend?'Pedido de material':'Pedir más material',`pedidoMaterial('${id}')`));
@@ -4047,6 +4048,17 @@ function notasDisHtml(p){
   return `<div class="dp-section"><h4>📝 Notas y observaciones del diseñador</h4>
     ${t?`<div style="font-size:13px;line-height:1.55;white-space:pre-wrap;background:var(--card2);border-left:4px solid var(--purple);border-radius:8px;padding:10px 12px">${esc(t)}</div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">${p.notas_diseno_por?esc(p.notas_diseno_por)+' · ':''}${p.notas_diseno_at?fmtDT(p.notas_diseno_at):''}</div>`:mutedP('Sin notas del diseñador')}
     ${puede('diseno')?`<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="prodNotasDis('${p.id}')">${t?'✏️ Editar notas':'➕ Agregar notas'}</button></div>`:''}</div>`;
+}
+// Todas las observaciones del ítem: comercial + diseñador
+async function prodObsTodas(id){
+  const p=prodDe(id); if(!p) return;
+  if(!p._full){ try{ const r=await GET('produccion','select=imagen_thumb,observaciones&id='+eq(p.id)); if(r&&r[0]){ p.imagen_thumb=r[0].imagen_thumb; p.observaciones=r[0].observaciones; } p._full=true; }catch(e){} }
+  const t=String(p.notas_diseno||'').trim();
+  const com=p.observaciones?`<div class="obs-html" style="font-size:13px;line-height:1.55;background:var(--card2);border-left:4px solid #e11d48;border-radius:8px;padding:10px 12px">${obsHtml(p.observaciones)}</div>`:mutedP('Sin observaciones del comercial');
+  const dis=t?`<div style="font-size:13px;line-height:1.55;white-space:pre-wrap;background:var(--card2);border-left:4px solid var(--purple);border-radius:8px;padding:10px 12px">${esc(t)}</div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">${p.notas_diseno_por?esc(p.notas_diseno_por)+' · ':''}${p.notas_diseno_at?fmtDT(p.notas_diseno_at):''}</div>`:mutedP('Sin notas del diseñador');
+  openModal('💬 Observaciones · OP-'+p.op+' ítem '+(p.item_num??''),
+    `<div class="dp-section"><h4>🧑‍💼 Comercial</h4>${com}</div><div class="dp-section"><h4>📝 Diseñador</h4>${dis}</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${puede('diseno')?`<button class="btn btn-primary" onclick="closeModal();prodNotasDis('${id}')">✏️ ${t?'Editar':'Agregar'} mis notas</button>`:''}`);
 }
 function prodNotasDis(id){
   const p=prodDe(id); if(!p||!okAjena(p)) return; const t=p.notas_diseno||'';
