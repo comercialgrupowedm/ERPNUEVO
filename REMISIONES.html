@@ -3400,8 +3400,8 @@ const E=window.feE, $=id=>document.getElementById(id);
 let R=null, tSel=null;
 const sumQ=()=>R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0);
 function lineasHtml(){
-  return R.lineas.map((l,i)=>{ const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null;
-    return `<tr class="${i%2?'azul-row':''}"><td class="center borde" style="width:6%">${i+1}<div><button class="x nop" title="Quitar" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;font-size:9px;cursor:pointer;margin-top:3px" onclick="feRemQuitar(${i})">✕</button></div></td><td class="center borde" style="width:9%"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700;border-bottom:1px dotted #94a3b8" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:8px;text-align:center;color:#64748b">de ${E(it.unidades)} pend.</div>`:''}</td><td class="borde"><textarea rows="2" style="resize:vertical;border:1px dotted #94a3b8" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td></tr>`; }).join('')
+  return R.lineas.map((l,i)=>{ const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null; const tt=it?(R.todos||[]).find(p=>p.id===l.id_prod):null; const num=l.item!=null?l.item:(it?it.item:null);
+    return `<tr class="${i%2?'azul-row':''}"><td class="center borde" style="width:6%">${l.id_prod?E(num!=null?num:i+1):`<input type="number" min="1" style="width:38px;text-align:center" value="${E(l.item!=null?l.item:'')}" placeholder="${i+1}" oninput="feRemItem(${i},this.value)">`}<div><button class="x nop" title="Quitar" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;font-size:9px;cursor:pointer;margin-top:3px" onclick="feRemQuitar(${i})">✕</button></div></td><td class="center borde" style="width:9%"><input type="number" min="0" ${it?`max="${E(it.unidades)}"`:''} style="text-align:center;font-weight:700;border-bottom:1px dotted #94a3b8" value="${E(l.cantidad)}" oninput="feRemCant(${i},this.value)">${it?`<div style="font-size:8px;text-align:center;color:#64748b">faltan ${E(it.unidades)}${tt?' de '+E(tt.unidades):''}</div>`:''}</td><td class="borde"><textarea rows="2" style="resize:vertical;border:1px dotted #94a3b8" oninput="feRemDesc(${i},this.value)">${E(l.descripcion)}</textarea></td></tr>`; }).join('')
    ||`<tr><td class="borde center" colspan="3" style="padding:16px;color:#888">Sin ítems todavía — busca una OP o cotización arriba, o agrega uno manual</td></tr>`;
 }
 function yaHtml(){
@@ -3422,9 +3422,10 @@ function itemsHtml0(){
 function espejo(){ const a=$('fr-op-v'),b=$('fr-cot-v'); if(a) a.textContent=gv('fr-op')||'—'; if(b) b.textContent=gv('fr-cot')||'—'; }
 function refrescar(){ espejo(); const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); tot(); }
 function tot(){ const t=$('fr-tot'); if(t) t.textContent=R.lineas.length+' ítem(s) · '+sumQ()+' und'; }
-window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
-window.feRemTodos=ck=>{ R.items.forEach(it=>{ const ya=R.lineas.some(l=>l.id_prod===it.id_prod); if(ck&&!ya) R.lineas.push({id_prod:it.id_prod,descripcion:'OP-'+it.op+' · ÍTEM '+it.item+' — '+it.descripcion,cantidad:Number(it.unidades)||1}); }); if(!ck) R.lineas=R.lineas.filter(l=>!l.id_prod); refrescar(); };
-window.feRemCant=(i,v)=>{ R.lineas[i].cantidad=Number(v)||0; tot(); };
+window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,item:it.item,descripcion:it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
+window.feRemTodos=ck=>{ R.items.forEach(it=>{ const ya=R.lineas.some(l=>l.id_prod===it.id_prod); if(ck&&!ya) R.lineas.push({id_prod:it.id_prod,item:it.item,descripcion:it.descripcion,cantidad:Number(it.unidades)||1}); }); if(!ck) R.lineas=R.lineas.filter(l=>!l.id_prod); refrescar(); };
+window.feRemItem=(i,v)=>{ R.lineas[i].item=v===''?null:Number(v); };
+window.feRemCant=(i,v)=>{ const l=R.lineas[i]; let n=Number(v)||0; const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null; if(it&&n>Number(it.unidades)){ n=Number(it.unidades); toast('Solo faltan '+n+' und por remisionar de este ítem','warn'); const a=document.activeElement; if(a&&a.tagName==='INPUT') a.value=n; } l.cantidad=n; tot(); };
 window.feRemDesc=(i,v)=>{ R.lineas[i].descripcion=v; };
 window.feRemQuitar=i=>{ R.lineas.splice(i,1); refrescar(); };
 window.feRemManual=()=>{ R.lineas.push({id_prod:null,descripcion:'',cantidad:1}); refrescar(); };
@@ -3449,13 +3450,13 @@ window.feRemBuscar=async force=>{
   }catch(e){ toast('❌ '+errMsg(e),'error'); }
 };
 function datos(){
-  return {op:gv('fr-op')||null,cot_num:gv('fr-cot')||null,empresa:gv('fr-emp'),nit:gv('fr-nit'),direccion:gv('fr-dir'),ciudad:gv('fr-ciu'),contacto:gv('fr-con'),telefono:gv('fr-tel'),oc_cliente:gv('fr-oc'),proyecto:gv('fr-pro'),observaciones:gv('fr-obs'),fecha:gv('fr-fec'),lineas:R.lineas.filter(l=>String(l.descripcion||'').trim()&&Number(l.cantidad)>0)};
+  return {op:gv('fr-op')||null,cot_num:gv('fr-cot')||null,empresa:gv('fr-emp'),nit:gv('fr-nit'),direccion:gv('fr-dir'),ciudad:gv('fr-ciu'),contacto:gv('fr-con'),telefono:gv('fr-tel'),oc_cliente:gv('fr-oc'),proyecto:gv('fr-pro'),observaciones:gv('fr-obs'),fecha:gv('fr-fec'),lineas:R.lineas.filter(l=>String(l.descripcion||'').trim()&&Number(l.cantidad)>0).map(l=>{ const it=l.id_prod?(R.items||[]).find(x=>x.id_prod===l.id_prod):null; return {...l,item:l.item!=null?l.item:(it?it.item:null)}; })};
 }
 const f=(l,id,v,extra)=>`<div style="padding:2px 4px;border-right:1px solid #cbd5e1"><label style="display:block;font-size:8px;font-weight:700;color:#1a3a6b;text-transform:uppercase;padding:2px 3px 0">${l}</label><input id="${id}" value="${E(v||'')}" ${extra||''}></div>`;
 window.formLibreRem=function(id){
   if(!puedeLibre()){ toast('Tu rol no puede crear remisiones','error'); return; }
   const m=id?remDe(id):null;
-  R={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>({id_prod:l.id_prod||null,descripcion:l.descripcion||'',cantidad:Number(l.cantidad)||1})):[]};
+  R={id:id||null,items:[],lineas:m?(m.lineas||[]).map(l=>{ let d=l.descripcion||'', it=l.item!=null?Number(l.item):null; const mm=d.match(/^OP-\d+\s*·\s*ÍTEM\s*(\d+)\s*—\s*/i); if(mm){ if(it==null) it=Number(mm[1]); d=d.slice(mm[0].length); } return {id_prod:l.id_prod||null,item:it,descripcion:d,cantidad:Number(l.cantidad)||1}; }):[]};
   _RL={id:R.id,items:[],lineas:R.lineas};
   const paso=m&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado);
   const EM=(typeof EMPRESA_WEDM!=='undefined'?EMPRESA_WEDM:{});
@@ -3502,7 +3503,7 @@ window.feRemGuardar=async()=>{
   const d=datos(); if(!d.empresa){ toast('Escribe el cliente','error'); return; }
   if(!d.lineas.length){ toast('Agrega al menos un ítem con cantidad','error'); return; }
   const over=d.lineas.find(l=>{ const it=l.id_prod&&(R.items||[]).find(x=>x.id_prod===l.id_prod); return it&&Number(l.cantidad)>Number(it.unidades); });
-  if(over&&!confirm('Una cantidad supera lo pendiente por despachar. ¿Guardar de todos modos?')) return;
+  if(over){ toast('Una cantidad supera lo que falta por remisionar; ajústala','error'); return; }
   const r=await rpcR('remision_guardar_libre',{p_id:R.id,p_data:d},'✅ Remisión guardada');
   if(r){ feCerrar(); _RM.f='todas'; nav('remisiones'); try{ detalleRem(r.id||R.id); }catch(e){} }
 };
