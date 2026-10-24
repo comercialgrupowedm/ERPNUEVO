@@ -1230,6 +1230,7 @@ function detalleRem(id){
     if(esMosat(m)) b.push(btn('🌐','#1a3a6b','Packing List (EN)',`docRemision('${id}','packing')`));
     b.push(btn('🖨️','#7b1fa2','Formato de despacho',`docRemision('${id}','despacho')`));
   }
+  b.push(btn('📁','#0d9488','Ver carpeta',`window.open('https://drive.google.com/drive/folders/1OKNbxd2Iru9CjY3LAMBYPZVkXv9nRGhx','_blank')`));
   if(puede('administracion')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
   if(puedeLibre()&&!esFinal(m)) b.push(btn('📝','#7c3aed','Formulario libre',`formLibreRem('${id}')`));
   if(puede('administracion')&&!esFinal(m)&&['PEDIDA','SELECCIONADA','GENERADA'].includes(m.estado)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
