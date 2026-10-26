@@ -3139,7 +3139,7 @@ async function almEntregar(id){
   const m=linDe(id); if(!m) return; await _invCargar(); const mt=_invMatch(m); const cant=Number(m.cantidad_kg)||Number(m.cantidad)||1;
   const opts=(DB.inv||[]).slice().sort((a,b)=>(mt.includes(b)?1:0)-(mt.includes(a)?1:0)||a.material.localeCompare(b.material,'es')).map(i=>`<option value="${esc(i.id)}" ${mt[0]&&mt[0].id===i.id?'selected':''}>${esc(i.material)}${i.detalle?' · '+esc(i.detalle):''} — hay ${Number(i.cantidad)} ${esc(i.unidad)}</option>`).join('');
   openModal('📦 Entregar desde almacén',`<div style="font-size:13px;margin-bottom:8px"><b>${esc(m.material)}</b> · pide ${esc(cantTxt(m))}<br><span style="color:var(--muted)">Al guardar descuenta del inventario y la línea pasa directo a <b>Recibido</b>.</span></div>
-    <div class="form-grid"><div class="field span2"><label>Material en inventario</label><select id="ae-inv"><option value="">— No está en el inventario (no descontar) —</option>${opts}</select></div>
+    <div class="form-grid"><div class="field span2"><label>🔫 Escanear QR del material (lector)</label><input id="ae-scan" autocomplete="off" placeholder="Haz clic y escanea" onkeydown="if(event.key==='Enter'){almScan(this)}"></div><div class="field span2"><label>Material en inventario</label><select id="ae-inv"><option value="">— No está en el inventario (no descontar) —</option>${opts}</select></div>
     <div class="field"><label>Cantidad que sale</label><input id="ae-cant" type="number" step="any" inputmode="decimal" value="${cant}"></div>
     <div class="field"><label>Valor (opcional)</label><input id="ae-costo" type="number" step="any" inputmode="decimal" placeholder="$"></div>
     <div class="field span2"><label>Datos / medidas del material</label><input id="ae-det" value="${esc(m.detalle||'')}" placeholder="Ej: Ø200 × L100 mm"></div>
@@ -3160,17 +3160,19 @@ async function inventario(){
   const q=_INV.q.trim().toLowerCase().split(/\s+/).filter(Boolean); if(q.length) rows=rows.filter(i=>{ const t=[i.material,i.detalle,i.ubicacion].join(' ').toLowerCase(); return q.every(w=>t.includes(w)); });
   const chips=_kchips([['todo','Todo',I.length],['bajo','⚠ Bajo mínimo',I.filter(bajo).length],['sin','Sin stock',I.filter(sin).length]],_INV.f,'invSet');
   const can=puedeAlmC(); const pg=pgSlice('inv',rows);
-  const tbl=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Material</th><th>Medidas / detalle</th><th>Hay</th><th>Ubicación</th><th>Mínimo</th><th>Actualizado</th><th></th></tr></thead><tbody>${pg.map(i=>`<tr><td><b>${esc(i.material)}</b></td><td style="white-space:normal;min-width:140px">${esc(i.detalle||'—')}</td><td><b style="font-family:var(--mono);${bajo(i)?'color:#b45309':''}">${Number(i.cantidad)} ${esc(i.unidad)}</b>${sin(i)?' <span class="badge rojo">Sin stock</span>':bajo(i)?' <span class="badge naranja">Bajo</span>':''}</td><td>${esc(i.ubicacion||'—')}</td><td>${i.stock_min!=null?Number(i.stock_min):'—'}</td><td style="font-size:11px">${fmtDTs(i.updated_at)}${i.updated_por?'<br>'+esc(i.updated_por):''}</td><td style="white-space:nowrap">${can?`<button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','ENTRADA')">➕</button> <button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','SALIDA')">➖</button> <button class="btn btn-ghost btn-sm" onclick="invForm('${esc(i.id)}')">✏️</button> `:''}<button class="btn btn-ghost btn-sm" onclick="invHist('${esc(i.id)}')">🕘</button></td></tr>`).join('')}</tbody></table></div></div>`;
-  setContent(banner+(can?`<div style="margin-top:10px"><button class="btn btn-primary" onclick="invForm()">＋ Nuevo material</button></div>`:'')+chips+_srch('inv',_INV.q,'invQ','Buscar material, medidas, ubicación…')+(rows.length?tbl+pgMore('inv',rows):empty('Aún no hay materiales en el inventario','📦')));
+  const tbl=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Material</th><th>Medidas / detalle</th><th>Hay</th><th>Ubicación</th><th>Mínimo</th><th>Actualizado</th><th></th></tr></thead><tbody>${pg.map(i=>`<tr><td style="white-space:nowrap">${i.foto?`<img src="${esc(i.foto)}" onclick="invFoto('${esc(i.id)}')" style="width:38px;height:38px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:8px;cursor:zoom-in">`:''}<b>${esc(i.material)}</b></td><td style="white-space:normal;min-width:140px">${esc(i.detalle||'—')}</td><td><b style="font-family:var(--mono);${bajo(i)?'color:#b45309':''}">${Number(i.cantidad)} ${esc(i.unidad)}</b>${sin(i)?' <span class="badge rojo">Sin stock</span>':bajo(i)?' <span class="badge naranja">Bajo</span>':''}</td><td>${esc(i.ubicacion||'—')}</td><td>${i.stock_min!=null?Number(i.stock_min):'—'}</td><td style="font-size:11px">${fmtDTs(i.updated_at)}${i.updated_por?'<br>'+esc(i.updated_por):''}</td><td style="white-space:nowrap">${can?`<button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','ENTRADA')">➕</button> <button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','SALIDA')">➖</button> <button class="btn btn-ghost btn-sm" onclick="invForm('${esc(i.id)}')">✏️</button> `:''}<button class="btn btn-ghost btn-sm" onclick="invEtiquetas(['${esc(i.id)}'])" title="Etiqueta QR">🏷</button> <button class="btn btn-ghost btn-sm" onclick="invHist('${esc(i.id)}')">🕘</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  setContent(banner+`<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${can?'<button class="btn btn-primary" onclick="invForm()">＋ Nuevo material</button>':''}<button class="btn btn-primary" onclick="invCamara()">📷 Escanear QR</button><button class="btn btn-ghost" onclick="invEtiquetas(${esc(JSON.stringify(rows.map(x=>x.id)))})">🏷 Etiquetas QR (${rows.length})</button><input placeholder="🔫 Lector: haz clic y escanea" autocomplete="off" style="flex:1 1 200px;max-width:280px;padding:8px 10px;border:1px solid var(--border);border-radius:10px" onkeydown="if(event.key==='Enter'){invLector(this)}"></div>`+chips+_srch('inv',_INV.q,'invQ','Buscar material, medidas, ubicación…')+(rows.length?tbl+pgMore('inv',rows):empty('Aún no hay materiales en el inventario','📦')));
 }
 function invSet(k){ _INV.f=k; pgReset(); inventario(); }
 function invQ(v){ _INV.q=v; clearTimeout(window._invT); window._invT=setTimeout(()=>{ pgReset(); inventario().then(_keepFocus); },350); }
 async function invForm(id){
   const i=id?(DB.inv||[]).find(x=>x.id===id):null;
   if(!DB.matcat){ try{ DB.matcat=await GET('materiales','select=material,unidad&activo=eq.true&order=material.asc'); }catch(e){ DB.matcat=[]; } }
+  window._ivFoto=undefined;
   openModal(i?'✏️ Editar material':'＋ Nuevo material en inventario',`<datalist id="inv-mats">${(DB.matcat||[]).map(m=>`<option value="${esc(m.material)}">`).join('')}</datalist><div class="form-grid">
     <div class="field span2"><label>Material</label><input id="iv-mat" list="inv-mats" value="${esc(i?.material||'')}" placeholder="Buscar en el catálogo o escribir" autocomplete="off"></div>
     <div class="field span2"><label>Medidas / detalle</label><input id="iv-det" value="${esc(i?.detalle||'')}" placeholder="Ej: Ø200 × L100 mm"></div>
+    <div class="field span2"><label>📷 Foto del material</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><img id="iv-fimg" src="${i&&i.foto?esc(i.foto):''}" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border);background:#f1f5f9;${i&&i.foto?'':'display:none'}"><input type="file" accept="image/*" onchange="invFotoSel(this)" style="flex:1;min-width:150px"><button type="button" class="btn btn-ghost btn-sm" onclick="invFotoQuitar()">Quitar</button></div></div>
     <div class="field"><label>Cantidad que hay</label><input id="iv-cant" type="number" step="any" inputmode="decimal" value="${i?Number(i.cantidad):''}"></div>
     <div class="field"><label>Unidad</label><select id="iv-uni">${['kg','und','m','mm','lámina','barra'].map(u=>`<option ${(i?.unidad||'kg')===u?'selected':''}>${u}</option>`).join('')}</select></div>
     <div class="field"><label>Ubicación</label><input id="iv-ubi" value="${esc(i?.ubicacion||'')}" placeholder="Estante / zona"></div>
@@ -3180,7 +3182,7 @@ async function invForm(id){
 }
 async function invGuardar(id){
   const g=x=>(document.getElementById(x)||{}).value||''; if(!g('iv-mat').trim()){ toast('Escribe el material','error'); return; }
-  const d={id:id||null,material:g('iv-mat'),detalle:g('iv-det'),cantidad:g('iv-cant')===''?0:Number(g('iv-cant')),unidad:g('iv-uni'),ubicacion:g('iv-ubi'),stock_min:g('iv-min')===''?null:Number(g('iv-min')),nota:g('iv-nota')};
+  const d={id:id||null,material:g('iv-mat'),detalle:g('iv-det'),cantidad:g('iv-cant')===''?0:Number(g('iv-cant')),unidad:g('iv-uni'),ubicacion:g('iv-ubi'),stock_min:g('iv-min')===''?null:Number(g('iv-min')),nota:g('iv-nota')}; if(window._ivFoto!==undefined) d.foto=window._ivFoto;
   closeModal(); if(await rpcC('inv_guardar',{p_data:d},'✅ Inventario guardado')) inventario();
 }
 function invMov(id,tipo){
@@ -3193,6 +3195,79 @@ async function invHist(id){
   const i=(DB.inv||[]).find(x=>x.id===id); openModal('🕘 Movimientos · '+(i?i.material:''),'<div style="padding:20px;text-align:center;color:var(--muted)">⏳ Cargando…</div>');
   try{ const r=await GET('inv_movimientos','select=*&id_inv=eq.'+encodeURIComponent(id)+'&order=at.desc&limit=100');
     document.getElementById('modal-body').innerHTML=(r&&r.length)?r.map(x=>`<div style="padding:7px 0;border-top:1px solid var(--border);font-size:12.5px"><b style="color:${x.cantidad>=0?'#16a34a':'#b91c1c'}">${x.cantidad>=0?'+':''}${Number(x.cantidad)}</b> · saldo ${Number(x.saldo)} <span class="badge gris">${esc(x.tipo)}</span>${x.op?` <b>OP-${x.op}</b>`:''}<div style="color:var(--muted);font-size:11px">${fmtDT(x.at)} · ${esc(x.usuario||'')}${x.nota?' · '+esc(x.nota):''}</div></div>`).join(''):mutedP('Sin movimientos.'); }catch(e){ document.getElementById('modal-body').innerHTML=errorView(e); }
+}
+// ── FOTO INVENTARIO ──
+function invFotoSel(el){ const f=el.files&&el.files[0]; if(!f) return; const im=new Image(), u=URL.createObjectURL(f);
+  im.onload=()=>{ const M=320, k=Math.min(1,M/Math.max(im.width,im.height)), c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u); window._ivFoto=c.toDataURL('image/jpeg',0.7); const t=document.getElementById('iv-fimg'); if(t){ t.src=window._ivFoto; t.style.display=''; } };
+  im.onerror=()=>{ URL.revokeObjectURL(u); toast('No se pudo leer la imagen','error'); }; im.src=u; }
+function invFotoQuitar(){ window._ivFoto=''; const t=document.getElementById('iv-fimg'); if(t){ t.removeAttribute('src'); t.style.display='none'; } }
+// ── QR INVENTARIO ──
+const _QRP='WEDM-INV|', _QRLIB='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js', _JSQR='https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+function _loadJs(u){ return new Promise((ok,ko)=>{ if(document.querySelector('script[data-l="'+u+'"]')){ ok(); return; } const s=document.createElement('script'); s.src=u; s.dataset.l=u; s.onload=()=>ok(); s.onerror=()=>ko(new Error('No cargó '+u)); document.head.appendChild(s); }); }
+function _qrSvg(t){ const q=qrcode(0,'M'); q.addData(t); q.make(); return q.createSvgTag({cellSize:4,margin:0,scalable:true}); }
+function invOpMenu(code){
+  const k=String(code).split('|'), op=Number(String(k[1]||'').replace(/\D/g,'')), it=Number(String(k[2]||'').replace(/\D/g,''))||1;
+  let p=prodDe(k[3]); if(!p&&DB.prods) for(const x of DB.prods.values()) if(Number(x.op)===op&&Number(x.item_num)===it){ p=x; break; }
+  if(!p){ toast('OP-'+op+' ítem '+it+' no está en la lista activa','error'); return; }
+  const L=(DB.lineas||[]).filter(m=>m.id_prod===p.id);
+  const est=m=>m.alm_estado==='SALIO'?'Salió de almacén':m.estado==='ALMACEN'?'Por revisar en almacén':m.estado||'—';
+  openModal('OP-'+p.op+' · Ítem '+p.item_num,`<div style="font-size:13px;margin-bottom:8px"><b>${esc(p.empresa||'')}</b><br>${esc(p.descripcion||'')}${p.fecha_pactada?'<br>Entrega '+fmtDate(p.fecha_pactada):''}</div><div style="font-weight:800;margin:6px 0">🧱 Materiales del ítem (${L.length})</div>`+(L.length?L.map(m=>`<div style="padding:6px 0;border-top:1px solid var(--border);font-size:12.5px"><b>${esc(m.material||'—')}</b> · ${esc(cantTxt(m))}<div style="color:var(--muted);font-size:11px">${esc(est(m))}${m.proveedor?' · '+esc(m.proveedor):''}</div></div>`).join(''):mutedP('Sin materiales pedidos.')),
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="invCamara()">📷 Otro</button><button class="btn btn-primary" onclick="closeModal();_ALM.q='${esc(String(p.op))}';_ALM.f='rev';nav('almacen')">🏪 Ver en Almacén</button>`);
+}
+async function invScanCode(raw){
+  let c=String(raw||'').trim(); if(!c) return null; if(c.indexOf('WEDM|OP-')===0){ invOpMenu(c); return null; } if(c.indexOf(_QRP)===0) c=c.slice(_QRP.length);
+  await _invCargar(); let i=(DB.inv||[]).find(x=>x.id===c);
+  if(!i){ await _invCargar(true); i=(DB.inv||[]).find(x=>x.id===c); }
+  if(!i){ toast('Código no reconocido: '+c.slice(0,30),'error'); return null; }
+  return i;
+}
+async function invLector(el){ const v=el.value; el.value=''; const i=await invScanCode(v); if(i) invFicha(i); }
+async function almScan(el){ const v=el.value; el.value=''; const i=await invScanCode(v); const s=document.getElementById('ae-inv'); if(i&&s){ s.value=i.id; toast('✅ '+i.material,'ok'); } }
+function invFoto(id){ const i=(DB.inv||[]).find(x=>x.id===id); if(i&&i.foto) openModal('🖼 '+i.material,`<img src="${esc(i.foto)}" style="width:100%;border-radius:12px">`); }
+function invFicha(i){
+  const can=puedeAlmC(), id=esc(i.id);
+  openModal('📦 '+i.material,`${i.foto?`<img src="${esc(i.foto)}" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:#f1f5f9;margin-bottom:8px">`:''}<div style="font-size:13px;line-height:1.6">${i.detalle?esc(i.detalle)+'<br>':''}Hay <b style="font-size:20px;font-family:var(--mono)">${Number(i.cantidad)} ${esc(i.unidad)}</b>${i.ubicacion?'<br>📍 '+esc(i.ubicacion):''}${i.stock_min!=null?'<br>Mínimo: '+Number(i.stock_min):''}</div>`+(can?`<div class="form-grid" style="margin-top:10px"><div class="field"><label>Cantidad (${esc(i.unidad)})</label><input id="qs-c" type="number" step="any" inputmode="decimal"></div><div class="field"><label>Nota / OP</label><input id="qs-n" placeholder="Ej: OP-13500"></div></div>`:''),
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="invCamara()">📷 Otro</button>`+(can?`<button class="btn btn-ghost" onclick="invScanMov('${id}','SALIDA')">➖ Salida</button><button class="btn btn-primary" onclick="invScanMov('${id}','ENTRADA')">➕ Entrada</button>`:''));
+  setTimeout(()=>{ const e=document.getElementById('qs-c'); if(e) e.focus(); },80);
+}
+async function invScanMov(id,tipo){
+  const c=Number((document.getElementById('qs-c')||{}).value)||0; if(c<=0){ toast('Escribe la cantidad','error'); return; }
+  const n=(document.getElementById('qs-n')||{}).value||''; closeModal();
+  if(await rpcC('inv_movimiento',{p_id:id,p_tipo:tipo,p_cant:c,p_nota:n},'✅ '+(tipo==='ENTRADA'?'Entrada':'Salida')+' registrada')){ await _invCargar(true); if(MOD==='inventario') inventario(); const i=(DB.inv||[]).find(x=>x.id===id); if(i) invFicha(i); }
+}
+async function invCamRes(code){ closeModal(); const i=await invScanCode(code); if(i) invFicha(i); }
+async function invCamara(){
+  openModal('📷 Escanear QR','<video id="qr-vid" playsinline muted style="width:100%;border-radius:12px;background:#000;max-height:55vh"></video><div id="qr-msg" style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px">Apunta al QR de la etiqueta…</div><div class="field" style="margin-top:8px"><label>🔫 ¿Lector de código? Escanea aquí</label><input id="qr-kb" autocomplete="off" onkeydown="if(event.key===\'Enter\'){invCamRes(this.value)}"></div>','<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>');
+  const msg=t=>{ const m=document.getElementById('qr-msg'); if(m) m.textContent=t; };
+  if(!matchMedia('(pointer:coarse)').matches) setTimeout(()=>{ const k=document.getElementById('qr-kb'); if(k) k.focus(); },80);
+  let stream; try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }catch(e){ msg('No se pudo abrir la cámara ('+(e.name||'error')+'). Permite la cámara o usa el lector.'); return; }
+  const v=document.getElementById('qr-vid'); if(!v){ stream.getTracks().forEach(t=>t.stop()); return; }
+  v.srcObject=stream; try{ await v.play(); }catch(e){}
+  let det=null; if('BarcodeDetector' in window){ try{ det=new BarcodeDetector({formats:['qr_code']}); }catch(e){} }
+  if(!det){ try{ await _loadJs(_JSQR); }catch(e){ msg('No se pudo cargar el lector de QR'); } }
+  const cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true}); let done=false;
+  const stop=()=>{ done=true; stream.getTracks().forEach(t=>t.stop()); };
+  const tick=async()=>{
+    if(done) return;
+    if(!document.getElementById('qr-vid')||!document.getElementById('modal-overlay').classList.contains('open')||document.getElementById('qr-vid')!==v){ stop(); return; }
+    let code=null;
+    if(v.readyState>=2){ try{
+      if(det){ const r=await det.detect(v); if(r.length) code=r[0].rawValue; }
+      else if(window.jsQR){ cv.width=v.videoWidth; cv.height=v.videoHeight; cx.drawImage(v,0,0); const d=cx.getImageData(0,0,cv.width,cv.height); const r=jsQR(d.data,d.width,d.height); if(r) code=r.data; }
+    }catch(e){} }
+    if(code){ stop(); invCamRes(code); return; }
+    setTimeout(tick,150);
+  };
+  tick();
+}
+async function invEtiquetas(ids){
+  const w=window.open('','_blank'); if(!w){ toast('El navegador bloqueó la ventana. Permite ventanas emergentes.','error'); return; }
+  w.document.write('<p style="font-family:sans-serif">Generando etiquetas…</p>');
+  try{ await _loadJs(_QRLIB); await _invCargar(); }catch(e){ w.close(); toast('No se pudo cargar el generador de QR','error'); return; }
+  const L=(DB.inv||[]).filter(i=>!ids||ids.includes(i.id));
+  if(!L.length){ w.close(); toast('No hay materiales','error'); return; }
+  const lab=i=>`<div class="et"><div class="q">${_qrSvg(_QRP+i.id)}</div><div class="t"><b>${esc(i.material)}</b>${i.detalle?'<br>'+esc(i.detalle):''}${i.ubicacion?'<br>📍 '+esc(i.ubicacion):''}<br><small>${esc(i.id)}</small></div></div>`;
+  w.document.open(); w.document.write(`<!doctype html><meta charset="utf-8"><title>Etiquetas QR</title><style>@page{margin:8mm}body{font-family:Arial,sans-serif;margin:0}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:4mm}.et{display:flex;gap:3mm;align-items:center;border:1px dashed #888;padding:3mm;height:30mm;box-sizing:border-box;page-break-inside:avoid}.q{width:24mm;height:24mm;flex:none}.q svg{width:100%;height:100%}.t{font-size:10pt;line-height:1.25;overflow:hidden}.t small{font-size:7pt;color:#555}@media screen{body{padding:10px}}</style><div class="g">${L.map(lab).join('')}</div><script>setTimeout(function(){print()},400)<\/script>`); w.document.close();
 }
 // ── SERVICIO EXTERNO ──
 async function _sxDatos(){
