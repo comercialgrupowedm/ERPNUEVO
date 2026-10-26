@@ -2782,7 +2782,7 @@ function _hrBuildPDFHtmlOrig(op, hrData) {
   const contenido = hrData.contenido || {};
   const editable  = !!hrData.editable;
   const hoy = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('WEDM|OP-'+op.OP+'|ITEM-'+(op.ITEM||1)+'|'+String(op.IDQR))}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?ecc=L&size=100x100&data=${encodeURIComponent('https://comercialgrupowedm.github.io/ERPNUEVO/PLANEACION.html?q='+String(op.IDQR))}`;
 
   // Celda escribible: en modo editable (preview dentro del panel) permite
   // escribir directamente sobre el documento y guarda el valor en tiempo real
@@ -3531,7 +3531,7 @@ function _qaFmtBuildPDFHtmlOrig(op, qa){
   function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   const qrUrl = op.IDQR
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent('WEDM|OP-'+op.OP+'|ITEM-'+(op.ITEM||1)+'|'+String(op.IDQR))}&format=png`
+    ? `https://api.qrserver.com/v1/create-qr-code/?ecc=L&size=90x90&data=${encodeURIComponent('https://comercialgrupowedm.github.io/ERPNUEVO/PLANEACION.html?q='+String(op.IDQR))}&format=png`
     : '';
   const imgSrc = op.IMAGEN_B64
     || (typeof _imgCache!=='undefined'&&_imgCache&&_imgCache.has&&_imgCache.has(String(op.IDQR))
@@ -6004,7 +6004,7 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
  /* ── Formato QA («FORMATO PLANO 2026») y Hoja de ruta de Diseño ── */
  PL.dQA=function(op,qa){
   var h=qa.header||{}, r=qa.resultado||{}, mq=h.mq||[];
-  var qrUrl=op.IDQR?'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data='+encodeURIComponent('WEDM|OP-'+op.OP+'|ITEM-'+(op.ITEM||1)+'|'+String(op.IDQR))+'&format=png':'';
+  var qrUrl=op.IDQR?'https://api.qrserver.com/v1/create-qr-code/?ecc=L&size=90x90&data='+encodeURIComponent('https://comercialgrupowedm.github.io/ERPNUEVO/PLANEACION.html?q='+String(op.IDQR))+'&format=png':'';
   var img=op.IMAGEN_B64||(typeof _imgCache!=='undefined'&&_imgCache&&_imgCache.has&&_imgCache.has(String(op.IDQR))?_imgCache.get(String(op.IDQR)):'');
   var d={qr_html:qrUrl?'<img src="'+qrUrl+'" style="width:51px;height:51px;display:block;margin:0 auto"><div style="font-size:4.5px;color:#666;margin-top:1px">CODIGO QR.</div>':'<span style="font-size:5.5px;font-weight:700;color:#555">CODIGO QR.</span>',
    img_html:img?'<img src="'+img+'" style="width:74px;height:74px;object-fit:contain;display:block;margin:0 auto">':'<span class="lbl" style="display:block;text-align:center">IMAGEN.</span><div style="font-size:6px;color:#aaa;text-align:center;margin-top:2px">Vista<br>Isométrica</div>',
@@ -6017,7 +6017,7 @@ window.WEDM_DETALLE=function(p){ detalleProd(p.id); };</script>
  };
  PL.dHR=function(op,hr,secc){
   var hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}), lt=function(v){ return String(v==null?'':v).replace(/</g,'&lt;'); };
-  return {qr:'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent('WEDM|OP-'+op.OP+'|ITEM-'+(op.ITEM||1)+'|'+String(op.IDQR)),idqr:op.IDQR,op:op.OP,cot:op.COT||'—',fecha:hoy,item:op.ITEM||'—',
+  return {qr:'https://api.qrserver.com/v1/create-qr-code/?ecc=L&size=100x100&data='+encodeURIComponent('https://comercialgrupowedm.github.io/ERPNUEVO/PLANEACION.html?q='+String(op.IDQR)),idqr:op.IDQR,op:op.OP,cot:op.COT||'—',fecha:hoy,item:op.ITEM||'—',
    cliente:lt(op.CLIENTE),tipo:lt(op.TIPO),prioridad:lt(op.PRIORIDAD),descripcion:lt(op.DESCRIPCION),f_inicio:lt(op['FECHA INICIO']||hoy),f_entrega:lt(op['FECHA ENTREGA PRODUCCION']),cant:lt(op.CANTIDAD||op.CANT||'1 und'),secciones:secc||''};
  };
  /* ══ Formatos propios: crear en Desarrollador → asignar a módulo/vista → llenar, guardar e imprimir ══ */
