@@ -3024,7 +3024,7 @@ function calcTotalCot(){
   const sec=document.getElementById('sec-descuento'); if(sec) sec.style.display=total>0?'contents':'none'; calcDescuento();
 }
 function calcIvaAuto(){ const sin=gn('f8'); document.getElementById('f9').value=Math.round(sin*IVA_PCT/100); calcTotalCot(); }
-function calcDescuento(){ const total=gn('fa'), pct=gn('fdpct'); const el=document.getElementById('fb'); if(el) el.value=Math.round(total*pct/100); }
+function calcDescuento(){ const total=gn('f8'), pct=gn('fdpct'); const el=document.getElementById('fb'); if(el) el.value=Math.round(total*pct/100); }
 function onBuscarCliente(val){
   const cli=DB.clientes.find(x=>String(x.empresa||'').toLowerCase()===String(val||'').toLowerCase()); if(!cli) return;
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
@@ -3177,7 +3177,7 @@ async function saveCot(exist){
   const empresa=gv('f2'); if(!empresa){ toast('Selecciona una empresa','error'); wizTab('wiz-cot',1); return; }
   if(!gv('fe')){ toast('Falta la Fecha de Emisión','error'); wizTab('wiz-cot',0); return; }
   const asesor=gv('f5')||_asesorActual(); if(!asesor){ toast('Selecciona un asesor','error'); wizTab('wiz-cot',0); return; }
-  const sin=gn('f8'), iva=gn('f9'), total=sin+iva, pct=gn('fdpct'); const desc=Math.round(total*pct/100)||gn('fb');
+  const sin=gn('f8'), iva=gn('f9'), total=sin+iva, pct=gn('fdpct'); const desc=Math.round(sin*pct/100)||gn('fb');
   const cli=DB.clientes.find(x=>x.id===window._cotCliId)||DB.clientes.find(x=>String(x.empresa||'').toLowerCase()===empresa.toLowerCase());
   const row={tipo:gv('f1'),empresa,nit:gv('f3')||null,direccion:gv('fdir')||null,ciudad:gv('f4')||null,encargado:gv('fenc')||null,telefono:gv('ftel')||null,asesor,
     estado:_normEstado(gv('f6')||'EN ESPERA'),descripcion_proyecto:gv('f7')||null,descripcion_html:(typeof wdFinalCot==='function'?wdFinalCot():null),precio_sin_iva:sin,iva,precio_total:total,descuento_pct:pct,descuento:desc,
@@ -3220,7 +3220,7 @@ async function deleteCot(id){
 }
 async function recalcularTotalesCot(cotId){
   const c=DB.cotizaciones.find(x=>x.id===cotId); const its=itemsDe(cotId); if(!c||!its.length) return false;
-  const sin=its.reduce((s,it)=>s+totalItem(it),0); const iva=Math.round(sin*IVA_PCT/100); const total=sin+iva; const desc=Math.round(total*Number(c.descuento_pct||0)/100);
+  const sin=its.reduce((s,it)=>s+totalItem(it),0); const iva=Math.round(sin*IVA_PCT/100); const total=sin+iva; const desc=Math.round(sin*Number(c.descuento_pct||0)/100);
   const r=await sb.patch('cotizaciones','id='+eq(cotId),{precio_sin_iva:sin,iva,precio_total:total,descuento:desc});
   Object.assign(c,r[0]||{precio_sin_iva:sin,iva,precio_total:total,descuento:desc}); return true;
 }
@@ -3365,7 +3365,7 @@ function generarPDFCotizacion(id,soloGuardar){
   const _mq=c.origen==='MARQUILLA';
   const hoy=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   const sub=its.length?its.reduce((s,it)=>s+totalItem(it),0):Number(c.precio_sin_iva||c.precio_total||0);
-  const iva=its.length?Math.round(sub*IVA_PCT/100):(Number(c.iva||0)||Math.round(sub*IVA_PCT/100)); const descPct=Number(c.descuento_pct||0); const descVal=(its.length&&descPct>0)?Math.round((sub+iva)*descPct/100):Number(c.descuento||0);
+  const iva=its.length?Math.round(sub*IVA_PCT/100):(Number(c.iva||0)||Math.round(sub*IVA_PCT/100)); const descPct=Number(c.descuento_pct||0); const descVal=(its.length&&descPct>0)?Math.round(sub*descPct/100):Number(c.descuento||0);
   const total=(its.length?sub+iva:(Number(c.precio_total||0)||sub+iva))-descVal; const money=v=>fmt(Math.round(Number(v)||0));
   if(its.length&&typeof recalcularTotalesCot==='function'&&(Math.round(Number(c.precio_sin_iva)||0)!==sub||Math.round(Number(c.iva)||0)!==iva)){ try{ Promise.resolve(recalcularTotalesCot(id)).catch(()=>{}); }catch(e){} }
   const rows=(its.length?its:[{item:1,unidades:1,descripcion:c.descripcion_proyecto,precio_unit:sub,precio_total:sub}]).map((it,i)=>`
@@ -5121,7 +5121,7 @@ function formCrearOP(cotId){
   if(_normEstado(c.estado)!=='APROBADA'){ toast('La cotización debe estar APROBADA para crear la OP','error'); return; }
   const its=itemsDe(cotId); const enProd=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===cotId).map(p=>p.id_item));
   const libres=its.filter(it=>!enProd.has(it.id)); if(!libres.length){ toast('Todos los ítems de esta cotización ya están en producción','error'); return; }
-  const pct=Number(c.descuento_pct)||(Number(c.precio_total)>0?Number(c.descuento||0)/Number(c.precio_total)*100:0);
+  const pct=Number(c.descuento_pct)||(Number(c.precio_total)>0?Number(c.descuento||0)/Number(c.precio_sin_iva||c.precio_total)*100:0);
   const dis=disNombres();
   const opEx=opDeCot(cotId);
   // Diseñador por defecto: el que ya tenga asignada la OP existente (todos los ítems de una OP comparten diseñador)
