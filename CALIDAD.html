@@ -666,6 +666,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="certificados" onclick="nav('certificados')"><span class="nav-icon">🏅</span>Certificados</div>
     <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">📄</span>Remisiones</div>
     <div class="nav-item" data-m="repcausa" onclick="nav('repcausa')"><span class="nav-icon">🔧</span>Reprocesos por causa</div>
+    <div class="nav-item" data-m="ambiente" onclick="nav('ambiente')"><span class="nav-icon">🌡️</span>Temperatura y humedad</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
     <div class="nav-item" id="nav-inst" onclick="closeSidebar();erpInstalar()"><span class="nav-icon">📲</span>Instalar esta app</div>
@@ -1159,7 +1160,7 @@ async function doLogin(){
 //  Reemplaza el módulo de Calidad anterior (Google Sheets / GAS). Todo se escribe por RPC calidad_* (ver AYUDA y el informe).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',repcausa:'Reprocesos por causa',buscar:'Búsqueda'};
+const TITLES={dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',repcausa:'Reprocesos por causa',ambiente:'Temperatura y humedad',buscar:'Búsqueda'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
@@ -1268,7 +1269,7 @@ function rutaDe(o){
   if(r.length) return r;
   return (Array.isArray(o.procesos)?o.procesos:[]).map(p=>p&&(p.nombre||p.maquina)).filter(Boolean).map(String);
 }
-function buscaOP(o,q){ if(!q) return true; const s=_norm(q); return _norm([o.op,'OP-'+o.op,o.empresa,o.descripcion,o.asesor,o.externo_detalle,...rutaDe(o)].join(' ')).includes(s); }
+function buscaOP(o,q){ if(!q) return true; const s=_norm(q); return _norm([o.op,'OP-'+o.op,o.cot_num,'COT-'+o.cot_num,o.empresa,o.descripcion,o.asesor,o.externo_detalle,...rutaDe(o)].join(' ')).includes(s); }
 function filtroBusqueda(key,val,fn,count,ph){
   return `<div class="filter-bar" style="margin-top:12px;border-radius:12px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" data-fkey="${key}" placeholder="${ph||'🔍 Buscar OP, cliente, descripción…'}" value="${esc(val)}" oninput="${fn}"></div>${count!=null?`<span class="filter-count">${count}</span>`:''}</div></div>`;
 }
@@ -1431,6 +1432,7 @@ function detailItem(id,foco){
   const cal=puedeCal()&&vivo(o);
   const A=[];
   A.push(['📋','#14532d','INSPECCIÓN QA',`abrirInspeccion('${j}')`]);
+  A.push(['🏷','#0f172a','RÓTULO',`rotuloProd('${j}')`]);
   if(cal&&o.terminado&&!ap&&!ab.length) A.push(['✅','#16a34a','APROBAR',`aprobarItem('${j}')`]);
   if(cal&&o.terminado&&!ap) A.push(['⚠️','#dc2626','RECHAZAR / REPROCESO',`modalRechazo('${j}')`]);
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
@@ -1669,10 +1671,12 @@ function renderInspeccion(abiertas){
     <div class="qa-res">${R.map(([k,l])=>`<label class="${st.resultado[k]?'on':''}"><input type="checkbox" ${ro} ${st.resultado[k]?'checked':''} onchange="_QA.resultado['${k}']=this.checked;this.parentElement.classList.toggle('on',this.checked)"> ${l}</label>`).join('')}</div>
     <div class="form-grid" style="margin-top:12px">
       <div class="field span2"><label>Observaciones</label><textarea ${ro} oninput="_QA.observaciones=this.value">${esc(st.observaciones)}</textarea></div>
+      <div class="field span2"><label>📎 Registro de calidad escaneado</label><div id="qa-scan">${mutedP('Cargando…')}</div></div>
       <div class="field span2"><label>Firma inspector</label><input ${ro} list="qa-firmas" value="${esc(st.firmaInspector)}" oninput="_QA.firmaInspector=this.value" placeholder="Nombre de quien inspecciona"><datalist id="qa-firmas">${firmas.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
     </div>`;
   openModal(`📋 Inspección QA — ${opTitulo(o)}`,body,
     `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-ghost" onclick="imprimirQA()">🖨️ Imprimir</button>${st.soloLectura?'':`<button class="btn btn-primary" onclick="guardarInspeccion()">💾 Guardar</button>`}`);
+  qaScanCargar(o.id);
 }
 function qaPiezas(d){
   if(!_QA) return; const ab=_QA.kc.map((_,i)=>document.getElementById('qa-kc-'+i)?.classList.contains('open')?i:-1).filter(i=>i>=0);
@@ -1683,6 +1687,45 @@ function qaData(){
   const st=_QA; const base=Object.assign({},st.saved||{}); delete base.inspeccion;
   return Object.assign(base,{numPiezas:st.numPiezas,header:st.header,kc:st.kc,resultado:st.resultado,observaciones:st.observaciones,firmaInspector:st.firmaInspector,procVB:st.procVB,fecha:new Date().toLocaleDateString('es-CO')});
 }
+// ── Registro de calidad escaneado (PDF o foto) ligado al ítem: se guarda en Drive ──
+async function qaScanCargar(idProd){
+  const el=document.getElementById('qa-scan'); if(!el) return;
+  try{ const rows=await GET('prod_archivos','select=id,nombre,mime,size,created_by,created_at&id_prod=eq.'+encodeURIComponent(idProd)+'&tipo=eq.registro_calidad&order=created_at.desc');
+    const e2=document.getElementById('qa-scan'); if(!e2) return;
+    e2.innerHTML=(rows&&rows.length?rows.map(a=>`<div class="cm-line"><div class="cm-t" style="cursor:pointer" onclick="qaScanVer('${jsq(a.id)}')">📄 ${esc(a.nombre||'Registro')}<small>${esc(a.created_by||'')} · ${fmtDT(a.created_at)}</small></div>${puedeSubirFoto()?`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="qaScanBorrar('${jsq(a.id)}','${jsq(idProd)}')">🗑</button>`:''}</div>`).join(''):mutedP('Aún no hay registros escaneados.'))
+      +(puedeSubirFoto()?`<button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="qaScanSubir('${jsq(idProd)}')">📎 Subir registro escaneado</button>`:''); }
+  catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
+}
+function qaScanSubir(idProd){
+  pickFile('image/*,application/pdf',async f=>{
+    if(!/^image\//.test(f.type)&&f.type!=='application/pdf'){ toast('Solo se aceptan imágenes o PDF','error'); return; }
+    if(f.size>15*1024*1024){ toast('El archivo pesa más de 15 MB','error'); return; }
+    const o=opDe(idProd)||{}; showBusy();
+    try{
+      let data,mime=f.type,size=f.size;
+      if(/^image\//.test(f.type)){ data=await imgFromFile(f,2000,0.85); mime='image/jpeg'; size=Math.round(data.length*0.75); }
+      else data=await new Promise((a,b)=>{ const fr=new FileReader(); fr.onload=()=>a(fr.result); fr.onerror=()=>b(new Error('No se pudo leer el archivo')); fr.readAsDataURL(f); });
+      let dato=null;
+      try{ const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta:'REGISTROS CALIDAD/OP-'+(o.op||'general'),nombre:f.name||'registro',base64:String(data).split(',')[1]||'',mime,tipo:mime})});
+        const j=await r.json().catch(()=>null); const did=j&&j.ok&&(j.id||j.fileId||((j.url||'').match(/[-\w]{25,}/)||[])[0]); if(did) dato='https://drive.google.com/file/d/'+did+'/view'; }catch(e){}
+      if(!dato){ if(size>3.5*1024*1024) throw new Error('Drive no respondió y el archivo pesa más de 3.5 MB'); dato=data; toast('⚠️ Drive no respondió; se guardó en la base como respaldo','error'); }
+      const row={tipo:'registro_calidad',nombre:f.name||'registro',mime,size,data:dato,created_by:_SESSION.nombre,id_prod:idProd};
+      const r=await fetch(SB_URL+'/rest/v1/prod_archivos?select=id',{method:'POST',headers:{...sb.h,'Prefer':'return=representation'},body:JSON.stringify(row)}); if(!r.ok) await sb._fail(r,'subir archivos');
+      toast('✅ Registro subido'); qaScanCargar(idProd);
+    }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
+  });
+}
+async function qaScanVer(id){
+  showBusy();
+  try{ const r=await GET('prod_archivos','select=nombre,mime,data&id='+eq(id)); const a=r&&r[0]; if(!a||!a.data){ toast('Archivo no disponible','error'); return; }
+    const did=/^https?:/i.test(a.data)?(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1]:null;
+    let src=a.data; if(did) src='https://drive.google.com/file/d/'+did+'/preview';
+    else if(/^data:application\/pdf/i.test(a.data)){ const b=atob(a.data.split(',')[1]||''); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); src=URL.createObjectURL(new Blob([u],{type:'application/pdf'})); }
+    const esImg=/^image\//.test(a.mime||'')&&!did;
+    openModal(a.nombre||'Registro',esImg?`<img src="${esc(src)}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto">`:`<iframe src="${esc(src)}" style="width:100%;height:68vh;border:0;border-radius:8px"></iframe>`,`<button class="btn btn-primary" onclick="closeModal()">Cerrar</button>`);
+  }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
+}
+async function qaScanBorrar(id,idProd){ if(!confirm('¿Eliminar este registro escaneado?')) return; try{ await DELETE('prod_archivos',id); toast('🗑 Eliminado'); qaScanCargar(idProd); }catch(e){ toast('❌ '+errMsg(e),'error'); } }
 async function guardarInspeccion(){
   if(!_QA||!soloCal()) return; const id=_QA.id; const R=_QA.resultado;
   const n=['conforme','noConforme','reproceso','derogado'].filter(k=>R[k]).length;
@@ -1838,6 +1881,51 @@ function tpProvDe(n){ n=String(n||'').trim().toUpperCase(); return n?(DB.proveed
 function tpProvInfo(){
   const el=document.getElementById('tp-prov-info'); if(!el) return; const v=document.getElementById('tp-prov').value, p=tpProvDe(v);
   el.innerHTML=p?`📍 ${esc([p.direccion,p.ciudad].filter(Boolean).join(' · ')||'Sin dirección registrada')}${(p.telefono||p.celular)?' · 📞 '+esc(p.telefono||p.celular):''}${p.contacto?' · 👤 '+esc(p.contacto):''}`:(v?'Proveedor nuevo (no está en la lista): se escribirá tal cual.':'');
+}
+// ── RÓTULO DEL PRODUCTO (modelos por cliente) ──
+const ROT_MOD={generico:{n:'Genérico'},hada:{n:'Hada',cod:'linea'},colombina:{n:'Colombina',cod:'caja'},mosat:{n:'Mosat (inglés)',en:1,cod:'barra',lado:1},carvajal:{n:'Carvajal Educación',cod:'grande',lado:1,sinDesc:1},tecno:{n:'Tecnoquímicas',lado:1}};
+function rotModeloAuto(emp){ const e=String(emp||''); return /mosat|rotorclip/i.test(e)?'mosat':/hada/i.test(e)?'hada':/colombina/i.test(e)?'colombina':/carvajal/i.test(e)?'carvajal':/tecnoqu/i.test(e)?'tecno':'generico'; }
+function rotSize(){ try{ const z=JSON.parse(localStorage.getItem('wedm_rotprod_mm')||'null'); if(z&&z.w&&z.h) return z; }catch(e){} return {w:100,h:60}; }
+function rotFechaTxt(iso,en){ const M=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'], ME=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER']; const [y,m,d]=String(iso||hoyISO()).slice(0,10).split('-'); return en?ME[+m-1]+'-'+d+'-'+y:d+'-'+M[+m-1]+'-'+y; }
+function rotuloProd(id){
+  const o=opDe(id); if(!o) return; const mod=rotModeloAuto(o.empresa);
+  const nm=String((_SESSION&&_SESSION.nombre)||'').trim().split(/\s+/); const rev=nm.length>1?(nm[0][0]+'. '+nm[nm.length-1]).toUpperCase():(nm[0]||'').toUpperCase();
+  const cert=(DB.certificados||[]).find(c=>c.id_prod===o.id&&c.numero_pieza); const z=rotSize();
+  openModal('🏷 Rótulo del producto — '+opTitulo(o),`<div class="form-grid">
+    <div class="field span2"><label>Modelo (se elige solo según el cliente)</label><select id="rp-mod">${Object.entries(ROT_MOD).map(([k,v])=>`<option value="${k}" ${k===mod?'selected':''}>${v.n}</option>`).join('')}</select></div>
+    <div class="field span2"><label>Cliente</label><input id="rp-cli" value="${esc(String(o.empresa||'').toUpperCase())}"></div>
+    <div class="field span2"><label>Descripción</label><input id="rp-des" value="${esc(String(o.descripcion||'').toUpperCase())}"></div>
+    <div class="field"><label>Cotización</label><input id="rp-cot" value="${esc(String(o.cot_num??''))}"></div>
+    <div class="field"><label>Ítem (ej. 3 o 1-3)</label><input id="rp-item" value="${esc(String(o.item_num??''))}"></div>
+    <div class="field"><label>Fecha</label><input id="rp-fec" type="date" value="${hoyISO()}"></div>
+    <div class="field"><label>Revisado por</label><input id="rp-rev" value="${esc(rev)}"></div>
+    <div class="field"><label>Cantidad</label><input id="rp-cant" type="number" min="1" value="${esc(String(o.unidades??1))}"></div>
+    <div class="field"><label>Código / N° de pieza</label><input id="rp-cod" value="${esc(cert?cert.numero_pieza:'')}" placeholder="Si aplica"></div>
+    <div class="field"><label>Ancho (mm)</label><input id="rp-w" type="number" min="40" value="${z.w}"></div><div class="field"><label>Alto (mm)</label><input id="rp-h" type="number" min="25" value="${z.h}"></div>
+    <div class="field"><label>Copias</label><input id="rp-n" type="number" min="1" max="50" value="1"></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
+}
+function rotuloProdImp(){
+  const M=ROT_MOD[gv('rp-mod')]||ROT_MOD.generico, en=!!M.en;
+  const w=Math.max(40,+gv('rp-w')||100), h=Math.max(25,+gv('rp-h')||60), n=Math.min(50,Math.max(1,+gv('rp-n')||1)); try{ localStorage.setItem('wedm_rotprod_mm',JSON.stringify({w,h})); }catch(e){}
+  const k=Math.min(w/100,h/60), U=v=>(v*k).toFixed(2)+'mm', up=v=>esc(String(v||'').toUpperCase());
+  const L=en?{cli:'CUSTOMER',cot:'QUOTATION',fec:'DATE',rev:'CHECKED BY',cod:'CODE',item:'ITEM',u:'PCS'}:{cli:'CLIENTE',cot:'COTIZACIÓN',fec:'FECHA',rev:'REVISADO POR',cod:'CÓDIGO',item:'ITEM',u:'UND'};
+  const cod=up(gv('rp-cod')), cant=esc(gv('rp-cant')||'1');
+  const logo=en?`<div style="font-weight:900;font-size:${U(7)};color:#1a3a6b;letter-spacing:.2mm">MOSAT GROUP INC</div>`:`<img src="${LOGO_B64_PNG}" style="height:${U(10)};width:auto">`;
+  const linea=(t,v)=>`<div>${t}: ${v}</div>`;
+  const filas=[linea(L.cli,up(gv('rp-cli'))),(!en&&!M.sinDesc)?linea('DESCRIPCIÓN',up(gv('rp-des'))):'',linea(L.cot,up(gv('rp-cot'))),linea(L.fec,esc(rotFechaTxt(gv('rp-fec'),en))),linea(L.rev,up(gv('rp-rev')))].join('');
+  const negro=`background:#000;color:#fff;`;
+  let codHtml='', extraBot=0;
+  if(M.cod==='linea') codHtml=`<div style="display:flex;align-items:center;gap:${U(2)}">${L.cod}: <span style="${negro}flex:0 1 ${U(36)};text-align:center;padding:0 ${U(2)}">${cod||'-'}</span></div>`;
+  if(M.cod==='caja') codHtml=cod?`<div style="position:absolute;right:${U(20)};bottom:${U(1.5)};${negro}padding:${U(.4)} ${U(2.5)};font-size:${U(4.8)}">${cod}</div>`:'';
+  if(M.cod==='grande') codHtml=`<div style="display:flex;align-items:center;gap:${U(2)}">${L.cod}: <span style="${negro}font-size:${U(6.2)};padding:${U(.2)} ${U(2)};line-height:1.1;white-space:nowrap">${cod||'-'}</span></div>`;
+  if(M.cod==='barra'){ extraBot=9; codHtml=`<div>${L.cod}:</div><div style="position:absolute;left:0;right:0;bottom:0;height:${U(9)};${negro}display:flex;align-items:center;justify-content:center;font-size:${U(6)}">${cod}</div>`; }
+  const itemBox=M.lado?`<div style="position:absolute;top:${U(2)};right:${U(2)};${negro}writing-mode:vertical-rl;padding:${U(2)} ${U(1.2)};font-size:${U(5.6)};letter-spacing:.2mm">${L.item} ${esc(gv('rp-item'))}</div>`:`<div style="position:absolute;top:0;right:0;${negro}padding:${U(.8)} ${U(3)};font-size:${U(6)};font-weight:900">${L.item} ${esc(gv('rp-item'))}</div>`;
+  const qty=`<div style="position:absolute;right:${U(M.lado?2:0)};bottom:${U(extraBot+(M.lado?2:0))};${negro}text-align:center;padding:${U(.8)} ${U(2.5)};font-size:${U(6)};line-height:1.1;font-weight:700">${cant}<br><span style="font-size:${U(5.2)};font-weight:400">${L.u}</span></div>`;
+  const una=`<div style="position:relative;width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;border:.6mm solid #000;padding:${U(2)} ${U(M.lado?14:3)} ${U(2)} ${U(3)};font-family:Arial,Helvetica,sans-serif;color:#000;font-weight:800;font-size:${U(4.5)};line-height:1.15;text-transform:uppercase">
+    <div style="text-align:center;height:${U(10.5)};margin-bottom:${U(.5)}">${logo}</div>${filas}${codHtml}${itemBox}${qty}</div>`;
+  closeModal();
+  _abrirDocParaImprimir(`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${Array(n).fill(una).join('')}</body></html>`,'');
 }
 function tpRotSize(){ try{ const s=JSON.parse(localStorage.getItem('wedm_rotulo_mm')||'null'); if(s&&s.w&&s.h) return s; }catch(e){} return {w:100,h:60}; }
 function tpRotulo(id){
@@ -2143,8 +2231,8 @@ function statsCota(ct,ci,med,n){
 const f3=v=>v==null?'—':v.toFixed(3);
 function certResumen(c){
   const cot=c.cotas||[], med=c.mediciones||{}, n=c.piezas_medidas||1;
-  const st=cot.map((ct,i)=>statsCota(ct,i,med,n)); const conDatos=st.filter(s=>s.n);
-  return {st,nc:conDatos.filter(s=>s.ok===false).length,ok:conDatos.filter(s=>s.ok===true).length,medidas:conDatos.length};
+  const st=cot.map((ct,i)=>statsCota(ct,i,med,n)); st.forEach((s,i)=>{ s.der=!!cot[i].derogada&&s.ok===false; }); const conDatos=st.filter(s=>s.n);
+  return {st,nc:conDatos.filter(s=>s.ok===false&&!s.der).length,ok:conDatos.filter(s=>s.ok===true).length,medidas:conDatos.length};
 }
 let _certF={chip:'emitidos',q:''};
 function certSet(k,v){ _certF[k]=v; pgReset(); certificados(); }
@@ -2155,7 +2243,7 @@ function certificados(){
   const data=all.filter(c=>{
     if(_certF.chip==='emitidos'&&c.estado==='ANULADO') return false;
     if(_certF.chip==='anulados'&&c.estado!=='ANULADO') return false;
-    if(_certF.q&&!_norm([c.numero,certNum(c),c.op,'OP-'+c.op,c.empresa,c.referencia,c.orden_compra,c.numero_pieza,c.inspector].join(' ')).includes(_norm(_certF.q))) return false;
+    if(_certF.q&&!_norm([c.numero,certNum(c),c.op,'OP-'+c.op,c.cot_num,'COT-'+c.cot_num,c.empresa,c.referencia,c.orden_compra,c.numero_pieza,c.inspector].join(' ')).includes(_norm(_certF.q))) return false;
     return true;
   });
   const banner=moduleBanner('🏅','Certificados de conformidad','Resultados de medición por pieza y certificado para el cliente',
@@ -2183,7 +2271,7 @@ function certificados(){
 function tablaResumenCert(c){
   const r=certResumen(c);
   return `<div class="cert-wrap"><table class="cert-t" style="width:100%"><thead><tr><th>#</th><th>Cota</th><th>Nominal</th><th>Lím. máx</th><th>Lím. mín</th><th class="st">Prom.</th><th class="st">Mín</th><th class="st">Máx</th><th class="st">D. est</th><th class="st">Resultado</th></tr></thead><tbody>
-    ${(c.cotas||[]).map((ct,i)=>{ const s=r.st[i]; return `<tr class="${s.ok===true?'okr':s.ok===false?'ncr':''}"><td class="n">${i+1}</td><td><b>${esc(ct.letra||'')}</b></td><td>${esc(ct.nominal||'')}</td><td>${f3(s.lmax)}</td><td>${f3(s.lmin)}</td><td class="s">${f3(s.prom)}</td><td class="s">${f3(s.min)}</td><td class="s">${f3(s.max)}</td><td class="s">${f3(s.dev)}</td><td class="res">${s.ok===true?'✓ OK':s.ok===false?'✗ NC':'—'}${s.fuera?`<div style="font-size:9.5px;color:var(--danger)">${s.fuera} pieza(s) fuera</div>`:''}</td></tr>`; }).join('')}
+    ${(c.cotas||[]).map((ct,i)=>{ const s=r.st[i]; return `<tr class="${s.ok===true?'okr':s.ok===false?'ncr':''}"><td class="n">${i+1}</td><td><b>${esc(ct.letra||'')}</b></td><td>${esc(ct.nominal||'')}</td><td>${f3(s.lmax)}</td><td>${f3(s.lmin)}</td><td class="s">${f3(s.prom)}</td><td class="s">${f3(s.min)}</td><td class="s">${f3(s.max)}</td><td class="s">${f3(s.dev)}</td><td class="res">${s.ok===true?'✓ OK':s.ok===false?(s.der?'⚡ DEROGADO':'✗ NC'):'—'}${s.fuera?`<div style="font-size:9.5px;color:var(--danger)">${s.fuera} pieza(s) fuera</div>`:''}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
 function detailCert(id){
@@ -2192,7 +2280,7 @@ function detailCert(id){
   try{ if(o) chatCtx(o.id,o.op,'OP-'+o.id); else chatCtx('','CERT-'+c.id,'Certificado'); }catch(e){} const r=certResumen(c); const an=c.estado==='ANULADO'; const j=jsq(c.id);
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">CERTIFICADO N° ${certNum(c)}</div><div class="cot-hero-empresa">${esc(c.empresa||'—')}</div><div class="cot-hero-sub" style="white-space:normal">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''} · ${esc(c.referencia||'')}</div></div></div>
     <div class="cot-hero-badges">${an?'<span class="badge">🚫 Anulado</span>':r.nc?`<span class="badge">✗ ${r.nc} cota(s) no conforme(s)</span>`:'<span class="badge">✓ Conforme</span>'}<span class="badge">📅 ${fmtDate(c.fecha_emision)}</span></div></div>`;
-  const A=[['🏅','#16a34a','CERTIFICADO (PDF)',`docCertificado('${j}')`],['📏','#14532d','RESULTADOS DE MEDICIÓN',`docMediciones('${j}')`],['📋','#0284c7','HOJA DE CONTROL',`docHojaControl('${j}')`]];
+  const A=[['🏅','#16a34a','CERTIFICADO (PDF)',`docCertificado('${j}')`],['🌐','#1a3a6b','CERTIFICATE (EN)',`docCertificadoEN('${j}')`],['📏','#14532d','RESULTADOS DE MEDICIÓN',`docMediciones('${j}')`],['📋','#0284c7','HOJA DE CONTROL',`docHojaControl('${j}')`]];
   if(!an&&puedeCal()) A.push(['✏️','#b7791f','EDITAR',`editorCert('${j}')`],['🚫','#dc2626','ANULAR',`anularCert('${j}')`]);
   if(o) A.push(['📦','#64748b','VER ÍTEM',`detailItem('${jsq(o.id)}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,col,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${col}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
@@ -2223,7 +2311,7 @@ async function editorCert(certId,idProd){
   if(c){ cotas=(c.cotas||[]).map(x=>({...x})); med=Object.assign({},c.mediciones||{}); npz=c.piezas_medidas||1; }
   else{ cotas='ABCDEFGHIJ'.split('').map(l=>({letra:l,nominal:'',tol_pos:'',tol_neg:''})); npz=Math.min(CE_MAX_PZ,Math.max(1,Number(o&&o.unidades)||1)); }
   _CE={id:c?c.id:null,id_prod:c?c.id_prod:(o?o.id:null),cotas,med,npz,manual:{},
-    d:c?{op:c.op,item_num:c.item_num,cot_num:c.cot_num,empresa:c.empresa,referencia:c.referencia,orden_compra:c.orden_compra,numero_pieza:c.numero_pieza,material:c.material,tratamiento:c.tratamiento,cantidad:c.cantidad,fecha_emision:c.fecha_emision,fecha_fabricacion:c.fecha_fabricacion,observaciones:c.observaciones,inspector:c.inspector}
+    d:c?{op:c.op,item_num:c.item_num,cot_num:c.cot_num,empresa:c.empresa,referencia:c.referencia,orden_compra:c.orden_compra,numero_pieza:c.numero_pieza,mostrar_pieza:!!c.mostrar_pieza,material:c.material,tratamiento:c.tratamiento,cantidad:c.cantidad,fecha_emision:c.fecha_emision,fecha_fabricacion:c.fecha_fabricacion,observaciones:c.observaciones,inspector:c.inspector}
       :{op:o?o.op:'',item_num:o?o.item_num:'',cot_num:o?o.cot_num:'',empresa:o?o.empresa:'',referencia:o?o.descripcion:'',orden_compra:'',numero_pieza:'',material:'',tratamiento:'',cantidad:o?o.unidades:1,fecha_emision:hoyISO(),fecha_fabricacion:o&&fEntrega(o)?String(fEntrega(o)).slice(0,10):'',observaciones:'',inspector:_SESSION?.nombre||''}};
   // Intenta traer la orden de compra del cliente (si el rol puede leer la cotización)
   // (calidad y administración no leen cotizaciones por RLS: primero se usa la OC que quedó en una remisión de la misma OP)
@@ -2275,6 +2363,7 @@ function ceNominal(i,v){
   }
   ceRecalc(i);
 }
+function ceDerogar(i){ _CE.cotas[i].derogada=!_CE.cotas[i].derogada; ceRecalc(i); }
 function ceTol(i,k,v){ _CE.cotas[i][k]=v; _CE.manual[i+(k==='tol_pos'?'p':'n')]=!!String(v).trim(); ceRecalc(i); }
 function ceMed(i,p,v){ const k=i+'_'+p; if(String(v).trim()) _CE.med[k]=String(v).trim(); else delete _CE.med[k]; ceRecalc(i); }
 function ceRecalc(i){
@@ -2282,7 +2371,7 @@ function ceRecalc(i){
   for(let p=0;p<ce.npz;p++){ const e=document.getElementById(`ce-m${i}_${p}`); if(!e) continue; const v=numv(e.value); e.classList.remove('okv','ncv');
     if(v!=null&&s.lmin!=null&&s.lmax!=null) e.classList.add(v>=s.lmin&&v<=s.lmax?'okv':'ncv'); }
   const set=(k,t)=>{ const e=document.getElementById(`ce-s${i}-${k}`); if(e) e.textContent=t; };
-  set('prom',f3(s.prom)); set('min',f3(s.min)); set('max',f3(s.max)); set('dev',f3(s.dev)); set('res',s.ok===true?'✓ OK':s.ok===false?'✗ NC':'—');
+  set('prom',f3(s.prom)); set('min',f3(s.min)); set('max',f3(s.max)); set('dev',f3(s.dev)); const _dg=!!ce.cotas[i].derogada; set('res',s.ok===true?'✓ OK':s.ok===false?(_dg?'⚡ DEROG.':'✗ NC'):'—'); { const b=document.getElementById('ce-d'+i); if(b){ b.style.background=_dg?'#7e22ce':'#e2e8f0'; b.style.color=_dg?'#fff':'#475569'; } }
   const tr=document.getElementById('ce-r'+i); if(tr){ tr.classList.toggle('okr',s.ok===true); tr.classList.toggle('ncr',s.ok===false); }
 }
 function ceGuardaTope(){ const sc=document.getElementById('modal-body'); return sc?sc.scrollTop:0; }
@@ -2311,7 +2400,7 @@ async function ceDesdeQA(){
 }
 async function guardarCert(){
   const ce=_CE; if(!ce) return;
-  const cotas=ce.cotas.map(c=>({letra:String(c.letra||'').trim().toUpperCase(),nominal:String(c.nominal||'').trim(),tol_pos:String(c.tol_pos||'').trim(),tol_neg:String(c.tol_neg||'').trim()}));
+  const cotas=ce.cotas.map(c=>({letra:String(c.letra||'').trim().toUpperCase(),nominal:String(c.nominal||'').trim(),tol_pos:String(c.tol_pos||'').trim(),tol_neg:String(c.tol_neg||'').trim(),derogada:!!c.derogada}));
   const usadas=cotas.map((c,i)=>[c,i]).filter(([c,i])=>c.nominal||Object.keys(ce.med).some(k=>k.startsWith(i+'_')));
   if(!usadas.length){ toast('Escribe al menos una cota con su nominal o sus mediciones','error'); return; }
   // Se guardan solo las cotas usadas (las vacías A–J de la plantilla no), reindexando las mediciones
@@ -2323,6 +2412,35 @@ async function guardarCert(){
   if(!r) return;
   _CE=null; closeModal(); if(typeof feCerrar==='function') feCerrar(); refreshCurrentView();
   const nid=r.id||ce.id; if(nid) detailCert(nid);
+}
+
+// ── TEMPERATURA Y HUMEDAD DEL LABORATORIO (registro diario: 2 lecturas en la mañana y 2 en la tarde) ──
+const _AMB={mes:null,rows:{}};
+function ambMesNav(d){ const [y,m]=_AMB.mes.split('-').map(Number); const dt=new Date(y,m-1+d,1); const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); if(ym>hoyISO().slice(0,7)) return; _AMB.mes=ym; ambiente(); }
+function ambSetMes(v){ if(!v) return; _AMB.mes=v; ambiente(); }
+function ambColor(v){ const t=parseFloat(v); if(isNaN(t)) return ''; const x=Math.max(0,Math.min(1,(t-21)/(27-21))); const h=x<.5?215:5, a=Math.abs(x-.5)*2*.55; return `background:hsla(${h},75%,50%,${a.toFixed(2)})`; }
+async function ambiente(){
+  if(!_AMB.mes) _AMB.mes=hoyISO().slice(0,7);
+  const mes=_AMB.mes; const [y,m]=mes.split('-').map(Number); const dias=new Date(y,m,0).getDate(); const edit=puedeCal();
+  try{ const r=await sb.rpc('cal_ambiente_listar',{p_mes:mes}); _AMB.rows={}; (r||[]).forEach(x=>{ _AMB.rows[String(x.fecha).slice(0,10)]=x; }); }catch(e){ _vistaError(e); return; }
+  const cel=(f,k,v)=>`<td style="padding:0"><input data-d="${f}" data-k="${k}" ${edit?'':'disabled'} inputmode="decimal" value="${v==null?'':String(v).replace('.',',')}" onchange="ambGuardar('${f}')" style="width:100%;min-width:52px;border:0;text-align:center;background:transparent;padding:6px 2px;font-family:var(--mono);${k[0]==='t'?ambColor(v):''}"></td>`;
+  let rows=''; for(let d=1;d<=dias;d++){ const f=mes+'-'+String(d).padStart(2,'0'); const r=_AMB.rows[f]||{};
+    rows+=`<tr><td style="text-align:center;font-weight:800;background:var(--surface)">${d}</td>${['t1','t2','t3','t4'].map(k=>cel(f,k,r[k])).join('')}${['h1','h2','h3','h4'].map(k=>cel(f,k,r[k])).join('')}</tr>`; }
+  const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  setContent(moduleBanner('🌡️','Condiciones ambientales del laboratorio','Registro diario de temperatura (°C) y humedad (%HR)')
+    +`<div style="padding:10px 12px;display:flex;gap:6px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="ambMesNav(-1)">◀</button><input type="month" value="${mes}" max="${hoyISO().slice(0,7)}" onchange="ambSetMes(this.value)" style="flex:1;min-width:0;text-align:center"><button class="btn btn-ghost btn-sm" onclick="ambMesNav(1)">▶</button></div>
+    <div style="padding:0 12px;overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:13px;border:1px solid var(--border)">
+      <thead><tr><th rowspan="2" style="background:#e5e7eb;border:1px solid var(--border);padding:6px">${MESES[m-1].slice(0,3).toLowerCase()}-${String(y).slice(2)}</th><th colspan="4" style="background:#e5e7eb;border:1px solid var(--border);padding:6px">TEMPERATURA (°C)</th><th colspan="4" style="background:#e5e7eb;border:1px solid var(--border);padding:6px;border-left:2px solid #000">HUMEDAD (%HR)</th></tr>
+      <tr>${['Mañana 1','Mañana 2','Tarde 1','Tarde 2','Mañana 1','Mañana 2','Tarde 1','Tarde 2'].map((t,i)=>`<th style="background:#f3f4f6;border:1px solid var(--border);padding:4px;font-size:11px;${i===4?'border-left:2px solid #000':''}">${t}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div style="padding:8px 12px;font-size:11.5px;color:var(--muted)">${edit?'Escribe el valor y sal de la celda: se guarda solo. ':''}Las temperaturas se colorean de azul (frío) a rojo (caliente). Si borras todas las lecturas de un día, el día queda vacío.</div>`);
+}
+async function ambGuardar(f){
+  const g=k=>{ const e=document.querySelector(`input[data-d="${f}"][data-k="${k}"]`); const v=e?String(e.value).trim().replace(',','.'):''; return v===''?null:Number(v); };
+  const t=['t1','t2','t3','t4'].map(g), h=['h1','h2','h3','h4'].map(g);
+  if([...t,...h].some(v=>v!=null&&isNaN(v))){ toast('Escribe solo números','error'); return; }
+  try{ await sb.rpc('cal_ambiente_guardar',{p_fecha:f,p_t:t,p_h:h}); ['t1','t2','t3','t4'].forEach((k,i)=>{ const e=document.querySelector(`input[data-d="${f}"][data-k="${k}"]`); if(e) e.setAttribute('style',e.getAttribute('style').replace(/background:hsla\([^)]*\)|background:transparent/,'').replace(/;;+/g,';')+';'+(ambColor(t[i])||'background:transparent')); }); toast('✔ Guardado'); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); }
 }
 
 // ── PESTAÑA: REMISIONES (solo lectura) ─────────────────────────────────
@@ -2410,7 +2528,7 @@ function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q
 function onGlobalSearch(v){ if(MOD!=='buscar'&&_gsLocal(v)) return; _BQ=v; if(!String(v).trim()){ if(MOD==='buscar') nav('dashboard'); return; } if(MOD!=='buscar') nav('buscar',true); else buscar(); }
 function buscar(){
   const q=_BQ; const items=(DB.produccion||[]).concat(DB.extra||[]).filter(o=>buscaOP(o,q)).slice(0,40);
-  const certs=(DB.certificados||[]).filter(c=>_norm([c.numero,certNum(c),'OP-'+c.op,c.op,c.empresa,c.referencia].join(' ')).includes(_norm(q))).slice(0,20);
+  const certs=(DB.certificados||[]).filter(c=>_norm([c.numero,certNum(c),'OP-'+c.op,c.op,c.cot_num,'COT-'+c.cot_num,c.empresa,c.referencia].join(' ')).includes(_norm(q))).slice(0,20);
   setContent(moduleBanner('🔍','Búsqueda',`«${esc(q)}» · ${items.length} ítem(s) · ${certs.length} certificado(s)`)
     +`<div class="dp-section" style="margin-top:12px"><h4>📦 Ítems</h4>${items.length?`<div class="card-list">${items.map(o=>itemCard(o)).join('')}</div>`:mutedP('Sin ítems (solo se buscan ítems no despachados y los ligados a reprocesos, certificados o solicitudes).')}</div>`
     +`<div class="dp-section"><h4>🏅 Certificados</h4>${certs.length?certs.map(c=>`<div class="cm-line" style="cursor:pointer" onclick="detailCert('${jsq(c.id)}')"><div class="cm-t">N° ${certNum(c)} · OP-${esc(String(c.op??''))}<small>${esc(c.empresa||'')} · ${fmtDate(c.fecha_emision)}</small></div>${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':''}</div>`).join(''):mutedP('Sin certificados.')}</div><div style="height:80px"></div>`);
@@ -2587,12 +2705,12 @@ function imprimirQA(){
 // Certificado de conformidad (declaración formal para el cliente)
 const certDatosTabla=c=>`<table style="margin-bottom:10px"><tr>${cel('Orden de producción',`OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''}`)}${cel('Cliente',esc(c.empresa||'—'),'colspan="2"')}${cel('Cotización',esc(String(c.cot_num??'—')))}</tr>
   <tr>${cel('Referencia / producto',esc(c.referencia||'—'),'colspan="3"')}${cel('Cantidad',esc(String(c.cantidad??'—'))+' und')}</tr>
-  <tr>${cel('Orden de compra',esc(c.orden_compra||'—'))}${cel('N° de pieza',esc(c.numero_pieza||'—'))}${cel('Fecha de fabricación',fmtDate(c.fecha_fabricacion))}${cel('Fecha de emisión',fmtDate(c.fecha_emision))}</tr>
+  <tr>${cel('Orden de compra',esc(c.orden_compra||'—'),c.mostrar_pieza?'':'colspan="2"')}${c.mostrar_pieza?cel('N° de pieza',esc(c.numero_pieza||'—')):''}${cel('Fecha de fabricación',fmtDate(c.fecha_fabricacion))}${cel('Fecha de emisión',fmtDate(c.fecha_emision))}</tr>
   ${c.material||c.tratamiento?`<tr>${cel('Material',esc(c.material||'—'),'colspan="2"')}${cel('Tratamiento',esc(c.tratamiento||'—'),'colspan="2"')}</tr>`:''}</table>`;
 function docResumenMed(c){
   const r=certResumen(c);
   return `<table><thead><tr><th class="azul">#</th><th class="azul">Cota</th><th class="azul">Nominal</th><th class="azul">Lím. máx</th><th class="azul">Lím. mín</th><th class="azul">Promedio</th><th class="azul">Mín</th><th class="azul">Máx</th><th class="azul">D. est</th><th class="azul">Resultado</th></tr></thead><tbody>
-    ${(c.cotas||[]).map((ct,i)=>{ const s=r.st[i]; return `<tr class="center" style="${s.ok===true?'background:#f0fdf4':s.ok===false?'background:#fef2f2':''}"><td class="az2">${i+1}</td><td><b>${esc(ct.letra||'')}</b></td><td><b>${esc(ct.nominal||'')}</b></td><td style="color:#166534">${f3(s.lmax)}</td><td style="color:#991b1b">${f3(s.lmin)}</td><td><b>${f3(s.prom)}</b></td><td>${f3(s.min)}</td><td>${f3(s.max)}</td><td>${f3(s.dev)}</td><td style="font-weight:800;color:${s.ok===false?'#dc2626':'#166534'}">${s.ok===true?'✓ OK':s.ok===false?'✗ NC':'—'}</td></tr>`; }).join('')}</tbody></table>`;
+    ${(c.cotas||[]).map((ct,i)=>{ const s=r.st[i]; return `<tr class="center" style="${s.ok===true?'background:#f0fdf4':s.ok===false?(s.der?'background:#faf5ff':'background:#fef2f2'):''}"><td class="az2">${i+1}</td><td><b>${esc(ct.letra||'')}</b></td><td><b>${esc(ct.nominal||'')}</b></td><td style="color:#166534">${f3(s.lmax)}</td><td style="color:#991b1b">${f3(s.lmin)}</td><td><b>${f3(s.prom)}</b></td><td>${f3(s.min)}</td><td>${f3(s.max)}</td><td>${f3(s.dev)}</td><td style="font-weight:800;color:${s.ok===false?(s.der?'#7e22ce':'#dc2626'):'#166534'}">${s.ok===true?'✓ OK':s.ok===false?(s.der?'⚡ DEROGADO':'✗ NC'):'—'}</td></tr>`; }).join('')}</tbody></table>`;
 }
 function docCertificado(id){
   const c=(DB.certificados||[]).find(x=>x.id===id); if(!c) return; const r=certResumen(c);
@@ -2601,8 +2719,26 @@ function docCertificado(id){
     docCab('Certificado de conformidad','','CERTIFICADO N°',certNum(c),'#16a34a')+certDatosTabla(c)+
     `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:12px;font-size:10.5px;line-height:1.6;color:#166534"><b>${esc(EMPRESA_WEDM.nombre)}</b> certifica que los productos relacionados en el presente documento fueron fabricados bajo los estándares de calidad establecidos por la empresa, cumpliendo con las especificaciones técnicas requeridas por el cliente, los procesos internos de control y los criterios de aceptación definidos para la orden de producción <b>OP-${esc(String(c.op??''))}</b>.${c.observaciones?`<br><br><b>Observaciones:</b> ${esc(c.observaciones)}`:''}</div>
     ${(c.cotas||[]).length&&r.medidas?`<div class="azul" style="padding:4px 8px;font-size:9px;text-align:center;letter-spacing:.5px">RESULTADOS DE MEDICIÓN (${c.piezas_medidas||1} PIEZA${(c.piezas_medidas||1)>1?'S':''} MEDIDA${(c.piezas_medidas||1)>1?'S':''})</div>${docResumenMed(c)}`:''}
-    <div class="firm" style="margin-top:44px"><div>Inspector de calidad<br><span style="font-weight:400;color:#555">${esc(c.inspector||'')}</span></div><div>Director de calidad<br><span style="font-weight:400;color:#555">Firma / sello</span></div><div>Representante legal<br><span style="font-weight:400;color:#555">Firma</span></div></div>`;
+    <div class="firm" style="margin-top:44px"><div>Coordinador de calidad<br><span style="font-weight:400;color:#555">${esc(c.inspector||'')}</span></div></div>`;
   _abrirDocParaImprimir(docHtml(`CERTIFICADO-${certNum(c)}`,body),`CERTIFICADO-${certNum(c)}.pdf`);
+}
+// Certificado de conformidad en inglés (encabezado MOSAT Group)
+function docCertificadoEN(id){
+  const c=(DB.certificados||[]).find(x=>x.id===id); if(!c) return; const r=certResumen(c);
+  const cab=`<table style="border:2px solid #1a3a6b;margin-bottom:10px"><tr><td style="width:34%;border-right:1px solid #1a3a6b;vertical-align:middle"><div style="font-weight:900;font-size:20px;color:#1a3a6b;line-height:1">MOSAT GROUP INC<br><span style="font-size:9px;font-weight:400;color:#555">Advanced Metalwork</span></div><div style="font-size:7.5px;line-height:1.5;margin-top:4px;color:#333">6710 MAIN STREET SUITE 233 MIAMI LAKES · FL 33014<br>EIN 93-4707595 · MIAMI - FLORIDA - USA</div></td>
+    <td style="text-align:center;vertical-align:middle;border-right:1px solid #1a3a6b"><div style="font-size:14px;font-weight:900;color:#16a34a;text-transform:uppercase;line-height:1.3">Certificate of conformity</div></td>
+    <td style="width:120px;text-align:center;vertical-align:middle;padding:0"><div class="azul" style="padding:4px;font-size:8px">CERTIFICATE No.</div><div style="font-size:16px;font-weight:900;color:#16a34a;padding:8px 4px">${esc(String(certNum(c)))}</div></td></tr></table>`;
+  const datos=`<table style="margin-bottom:10px"><tr>${cel('Production order',`OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Item '+c.item_num:''}`)}${cel('Customer',esc(c.empresa||'—'),'colspan="2"')}${cel('Quotation',esc(String(c.cot_num??'—')))}</tr>
+    <tr>${cel('Reference / product',esc(c.referencia||'—'),'colspan="3"')}${cel('Quantity',esc(String(c.cantidad??'—'))+' pcs')}</tr>
+    <tr>${cel('Purchase order',esc(c.orden_compra||'—'),c.mostrar_pieza?'':'colspan="2"')}${c.mostrar_pieza?cel('Part number',esc(c.numero_pieza||'—')):''}${cel('Manufacturing date',fmtDate(c.fecha_fabricacion))}${cel('Issue date',fmtDate(c.fecha_emision))}</tr>
+    ${c.material||c.tratamiento?`<tr>${cel('Material',esc(c.material||'—'),'colspan="2"')}${cel('Treatment',esc(c.tratamiento||'—'),'colspan="2"')}</tr>`:''}</table>`;
+  const res=s=>s.ok===true?'✓ OK':s.ok===false?(s.der?'⚡ WAIVED':'✗ NC'):'—';
+  const tabla=(c.cotas||[]).length&&r.medidas?`<div class="azul" style="padding:4px 8px;font-size:9px;text-align:center;letter-spacing:.5px">MEASUREMENT RESULTS (${c.piezas_medidas||1} PIECE${(c.piezas_medidas||1)>1?'S':''} MEASURED)</div><table><thead><tr><th class="azul">#</th><th class="azul">Dim.</th><th class="azul">Nominal</th><th class="azul">Max limit</th><th class="azul">Min limit</th><th class="azul">Average</th><th class="azul">Min</th><th class="azul">Max</th><th class="azul">Std dev</th><th class="azul">Result</th></tr></thead><tbody>
+    ${(c.cotas||[]).map((ct,i)=>{ const s=r.st[i]; return `<tr class="center" style="${s.ok===true?'background:#f0fdf4':s.ok===false?(s.der?'background:#faf5ff':'background:#fef2f2'):''}"><td class="az2">${i+1}</td><td><b>${esc(ct.letra||'')}</b></td><td><b>${esc(ct.nominal||'')}</b></td><td>${f3(s.lmax)}</td><td>${f3(s.lmin)}</td><td><b>${f3(s.prom)}</b></td><td>${f3(s.min)}</td><td>${f3(s.max)}</td><td>${f3(s.dev)}</td><td style="font-weight:800;color:${s.ok===false?(s.der?'#7e22ce':'#dc2626'):'#166534'}">${res(s)}</td></tr>`; }).join('')}</tbody></table>`:'';
+  const body=(c.estado==='ANULADO'?'<div style="border:3px solid #dc2626;color:#dc2626;font-weight:900;font-size:18px;text-align:center;padding:6px;margin-bottom:8px">VOIDED DOCUMENT</div>':'')+cab+datos+
+    `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:12px;font-size:10.5px;line-height:1.6;color:#166534"><b>MOSAT GROUP INC</b> certifies that the products listed in this document were manufactured under the quality standards established by the company, meeting the technical specifications required by the customer and the internal control processes and acceptance criteria defined for production order <b>OP-${esc(String(c.op??''))}</b>.${c.observaciones?`<br><br><b>Remarks:</b> ${esc(c.observaciones)}`:''}</div>`+tabla+
+    `<div class="firm" style="margin-top:44px"><div>Quality coordinator<br><span style="font-weight:400;color:#555">${esc(c.inspector||'')}</span></div></div>`;
+  _abrirDocParaImprimir(docHtml(`CERTIFICATE-${certNum(c)}`,body),`CERTIFICATE-${certNum(c)}.pdf`);
 }
 // «Centralizar resultados de medición»: resumen por cota (lo que imprimía el editor anterior)
 function docMediciones(id){
@@ -2639,7 +2775,7 @@ function docDespacho(id){
 
 // ── Navegación, avisos y arranque ──────────────────────────────────
 function _vistaError(e){ try{ console.error(e); const c=document.getElementById('content'); if(c) c.innerHTML='<div class="callout" style="margin:16px;white-space:normal"><b>⚠️ No se pudo mostrar esta pantalla</b><br>'+String((e&&e.message)||e).replace(/</g,'&lt;')+'<br><small style="opacity:.7">'+String((e&&e.stack)||'').split('\n').slice(0,3).join(' · ').replace(/</g,'&lt;')+'</small></div>'; }catch(_){} }
-function refreshCurrentView(){ const mods={dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,repcausa,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,repcausa,ambiente,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -3384,7 +3520,7 @@ window.renderEditorCert=function(){
   const ce=_CE, n=ce.npz; const o=ce.id_prod?opDe(ce.id_prod):null; const c=ce.id?(DB.certificados||[]).find(x=>x.id===ce.id):null;
   const keep=ov().scrollTop;
   const num=c?certNum(c):'Nuevo';
-  const head=`<tr><th style="background:#1a3a6b;width:28px">#</th><th style="background:#1a3a6b;width:46px">Cota</th><th style="background:#1a3a6b;width:70px">Nominal</th><th style="background:#1a3a6b;width:56px">Tol +</th><th style="background:#1a3a6b;width:56px">Tol −</th>${Array.from({length:n},(_,p)=>`<th style="background:#16a34a;min-width:70px">P${p+1}</th>`).join('')}<th style="background:#1e40af">Prom.</th><th style="background:#166534">Mín</th><th style="background:#b91c1c">Máx</th><th style="background:#7e22ce">D. est</th><th style="background:#475569">Res.</th><th style="background:#dc2626;width:30px">Del</th></tr>`;
+  const head=`<tr><th style="background:#1a3a6b;width:28px">#</th><th style="background:#1a3a6b;width:46px">Cota</th><th style="background:#1a3a6b;width:70px">Nominal</th><th style="background:#1a3a6b;width:56px">Tol +</th><th style="background:#1a3a6b;width:56px">Tol −</th>${Array.from({length:n},(_,p)=>`<th style="background:#16a34a;min-width:70px">P${p+1}</th>`).join('')}<th style="background:#1e40af">Prom.</th><th style="background:#166534">Mín</th><th style="background:#b91c1c">Máx</th><th style="background:#7e22ce">D. est</th><th style="background:#475569">Res.</th><th style="background:#dc2626;width:56px">⚡ / Del</th></tr>`;
   const rows=ce.cotas.map((ct,i)=>`<tr id="ce-r${i}"><td class="n">${i+1}</td>
    <td><input value="${E(ct.letra)}" maxlength="4" style="font-weight:800" oninput="_CE.cotas[${i}].letra=this.value.toUpperCase()"></td>
    <td><input value="${E(ct.nominal)}" placeholder="ej. 25.00" oninput="ceNominal(${i},this.value)"></td>
@@ -3392,7 +3528,7 @@ window.renderEditorCert=function(){
    <td><input id="ce-tn${i}" value="${E(ct.tol_neg)}" placeholder="-0.00" style="color:#991b1b" oninput="ceTol(${i},'tol_neg',this.value)"></td>
    ${Array.from({length:n},(_,p)=>`<td><input id="ce-m${i}_${p}" value="${E(ce.med[i+'_'+p]||'')}" placeholder="—" inputmode="decimal" oninput="ceMed(${i},${p},this.value)"></td>`).join('')}
    <td class="s" id="ce-s${i}-prom" style="background:#eff6ff">—</td><td class="s" id="ce-s${i}-min" style="background:#f0fdf4">—</td><td class="s" id="ce-s${i}-max" style="background:#fef2f2">—</td><td class="s" id="ce-s${i}-dev" style="background:#faf5ff">—</td><td class="s res" id="ce-s${i}-res">—</td>
-   <td><button type="button" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;cursor:pointer" onclick="ceQuitarCota(${i})">✕</button></td></tr>`).join('');
+   <td style="white-space:nowrap"><button type="button" id="ce-d${i}" title="Derogado: el cliente aprueba esta cota aunque esté fuera de tolerancia" style="background:${ct.derogada?'#7e22ce':'#e2e8f0'};color:${ct.derogada?'#fff':'#475569'};border:0;border-radius:4px;width:22px;height:20px;cursor:pointer;margin-right:3px" onclick="ceDerogar(${i})">⚡</button><button type="button" style="background:#dc2626;color:#fff;border:0;border-radius:4px;width:20px;height:20px;cursor:pointer" onclick="ceQuitarCota(${i})">✕</button></td></tr>`).join('');
   const ops=opsLista();
   const sel=o?itemsDeOp(o.op):[];
   const html=`<div class="fe-sheet">
@@ -3402,7 +3538,7 @@ window.renderEditorCert=function(){
    <div class="fe-gen">
     <div class="g" style="grid-template-columns:230px 1fr 160px 160px"><div><label>OP — Ítem</label>${o?`<div style="font-weight:800;font-size:15px;padding:3px">OP-${E(ce.d.op)} · Ítem ${E(ce.d.item_num)}</div>`:`<input list="fe-dl-ops" inputmode="numeric" placeholder="Buscar OP…" value="${E(ce.d.op||'')}" onchange="feCertOp(this.value)" style="font-weight:800;font-size:15px">`}
       ${!o&&ce.d.op?`<input type="number" placeholder="N° de ítem" value="${E(ce.d.item_num||'')}" oninput="_CE.d.item_num=this.value" style="border:1px solid #cbd5e1;border-radius:4px;margin-top:2px">`:''}${(!c&&sel.length>1)||(!o&&ce.d.op&&sel.length)?`<select onchange="feCertItem(this.value)" style="border:1px solid #cbd5e1;border-radius:4px;margin-top:2px">${sel.map(x=>`<option value="${E(x.id)}" ${x.id===ce.id_prod?'selected':''}>Ítem ${x.item_num} — ${E(String(x.descripcion||'').slice(0,30))}</option>`).join('')}</select>`:''}</div>
-      ${fld('referencia','Referencia / producto')}${fld('orden_compra','Orden de compra (OC)','','N° OC')}${fld('numero_pieza','N° de pieza','','ej. REF-001')}</div>
+      ${fld('referencia','Referencia / producto')}${fld('orden_compra','Orden de compra (OC)','','N° OC')}<div><label>N° de pieza</label><div style="display:flex;gap:4px"><input placeholder="ej. REF-001" value="${E(_CE.d.numero_pieza??'')}" oninput="_CE.d.numero_pieza=this.value" style="flex:1;min-width:0"><select title="¿Mostrar el N° de pieza en el certificado?" onchange="_CE.d.mostrar_pieza=this.value==='1'" style="width:84px"><option value="0" ${_CE.d.mostrar_pieza?'':'selected'}>Oculto</option><option value="1" ${_CE.d.mostrar_pieza?'selected':''}>Visible</option></select></div></div></div>
     <div class="g h" style="grid-template-columns:2fr 1fr 80px 1fr 1fr"><div><label>Cliente</label><input value="${E(ce.d.empresa||'')}" oninput="_CE.d.empresa=this.value"></div>${fld('cot_num','Cotización','number')}${fld('cantidad','Cant.','number')}${fld('fecha_fabricacion','F. fabricación','date')}${fld('fecha_emision','F. emisión','date')}</div>
     <div class="g" style="grid-template-columns:1fr 1fr 1fr;border-bottom:0">${fld('material','Material')}${fld('tratamiento','Tratamiento')}${fld('inspector','Inspector de calidad')}</div>
    </div>
@@ -4686,9 +4822,9 @@ PL.dCert=function(c,r){
  return {titulo:'Certificado '+certNum(c),logo:LOGO_B64_PNG,lema:esc(E.lema||''),nit_emp:esc(E.nit||''),dir:esc(E.dir||''),ciudad_emp:esc(E.ciudad||''),tel:esc(E.tel||''),cel:esc(E.cel||''),email:esc(E.email||''),empresa:esc(E.nombre||''),
   pie:'Documento generado el '+new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})+' · '+esc((_SESSION&&_SESSION.nombre)||'')+' · '+esc(E.nombre)+' · NIT '+esc(E.nit),
   numero:certNum(c),anulado:c.estado==='ANULADO'?'DOCUMENTO ANULADO':'',op:'OP-'+esc(String(c.op!=null?c.op:'—'))+(c.item_num!=null?' · Ítem '+c.item_num:''),cliente:esc(c.empresa||'—'),cotizacion:esc(String(c.cot_num!=null?c.cot_num:'—')),referencia:esc(c.referencia||'—'),cantidad:esc(String(c.cantidad!=null?c.cantidad:'—'))+' und',
-  oc:esc(c.orden_compra||'—'),pieza:esc(c.numero_pieza||'—'),f_fab:fmtDate(c.fecha_fabricacion),f_emi:fmtDate(c.fecha_emision),material:(c.material||c.tratamiento)?esc(c.material||'—'):'',tratamiento:esc(c.tratamiento||'—'),obs:c.observaciones?esc(c.observaciones):'',op_n:esc(String(c.op!=null?c.op:'')),
+  oc:esc(c.orden_compra||'—'),pieza:c.mostrar_pieza?esc(c.numero_pieza||'—'):'',f_fab:fmtDate(c.fecha_fabricacion),f_emi:fmtDate(c.fecha_emision),material:(c.material||c.tratamiento)?esc(c.material||'—'):'',tratamiento:esc(c.tratamiento||'—'),obs:c.observaciones?esc(c.observaciones):'',op_n:esc(String(c.op!=null?c.op:'')),
   hay_cotas:((c.cotas||[]).length&&r.medidas)?'1':'',piezas:n+' PIEZA'+(n>1?'S':'')+' MEDIDA'+(n>1?'S':''),inspector:esc(c.inspector||''),
-  cotas:(c.cotas||[]).map(function(ct,i){ var s=r.st[i]; return {n:i+1,letra:esc(ct.letra||''),nominal:esc(ct.nominal||''),lmax:f3(s.lmax),lmin:f3(s.lmin),prom:f3(s.prom),min:f3(s.min),max:f3(s.max),dev:f3(s.dev),res:s.ok===true?'✓ OK':s.ok===false?'✗ NC':'—',bg:s.ok===true?'#f0fdf4':s.ok===false?'#fef2f2':'transparent',rc:s.ok===false?'#dc2626':'#166534'}; })};
+  cotas:(c.cotas||[]).map(function(ct,i){ var s=r.st[i]; return {n:i+1,letra:esc(ct.letra||''),nominal:esc(ct.nominal||''),lmax:f3(s.lmax),lmin:f3(s.lmin),prom:f3(s.prom),min:f3(s.min),max:f3(s.max),dev:f3(s.dev),res:s.ok===true?'✓ OK':s.ok===false?(s.der?'⚡ DEROGADO':'✗ NC'):'—',bg:s.ok===true?'#f0fdf4':s.ok===false?(s.der?'#faf5ff':'#fef2f2'):'transparent',rc:s.ok===false?(s.der?'#7e22ce':'#dc2626'):'#166534'}; })};
 };
 
  setTimeout(function(){ PL.load(); },1800); setTimeout(function(){ PL.load(); },9000); setInterval(function(){ PL.load(); },300000);
