@@ -1763,7 +1763,7 @@ async function fileToData(file){
     return {data:d,mime:'application/pdf',size:file.size};
   }
   if(/\.(dwg|dxf|step|stp|igs|iges|zip)$/i.test(file.name||'')){
-    if(file.size>5*1024*1024) throw new Error('El archivo pesa más de 5 MB');
+    if(file.size>25*1024*1024) throw new Error('El archivo pesa más de 25 MB');
     const d=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(new Error('No se pudo leer el archivo')); fr.readAsDataURL(file); });
     return {data:d,mime:'application/octet-stream',size:file.size};
   }
@@ -1786,6 +1786,14 @@ async function subirArchivo(ctx,tipo,file,after){
   try{
     const f=await fileToData(file);
     const row={tipo,nombre:file.name||('archivo.'+(f.mime==='application/pdf'?'pdf':'jpg')),mime:f.mime,size:f.size,data:f.data,created_by:_SESSION.nombre};
+    if(tipo==='dwg'||f.mime==='application/pdf'){   // pesados → Drive; si falla, respaldo en la base (máx 5 MB)
+      try{
+        const r=await fetch('https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec',{method:'POST',body:JSON.stringify({carpeta:'ARCHIVOS/'+String(ctx.id_prod||ctx.id_item||'general').replace(/[\\/:*?"<>|]/g,'').slice(0,60),nombre:row.nombre,base64:String(f.data).split(',')[1]||'',mime:f.mime,tipo:f.mime})});
+        const j=await r.json().catch(()=>null); const did=j&&j.ok&&(j.id||j.fileId||((j.url||'').match(/[-\w]{25,}/)||[])[0]);
+        if(did) row.data='https://drive.google.com/file/d/'+did+'/view';
+      }catch(e){}
+      if(!/^https?:/.test(row.data)&&f.size>5*1024*1024) throw new Error('Drive no respondió y el archivo pesa más de 5 MB');
+    }
     if(ctx.id_prod) row.id_prod=ctx.id_prod; else row.id_item=ctx.id_item;
     const id=await insertarArchivo(row); toast('✅ Archivo subido'); if(after) after(id); return id;
   }catch(e){ toast('❌ '+errMsg(e),'error'); return null; }
