@@ -2174,6 +2174,7 @@ function detailOP(id){
     ${s?`<div style="font-size:11.5px;opacity:.85;margin-top:8px">▶ Proceso actual: <b>MQ${s.i} · ${esc(s.raw)}</b>${s.oper?' · 👷 '+esc(s.oper):''}</div>`:''}</div>`;
   const A=[['📈','#2563eb','AVANCE',`modalAvancePasos('${j}')`],...(puede('planeacion','administracion')?[['🖼️','#7c3aed','IMAGEN',`modalImagen('${j}')`]]:[]),['🏭','#0d9488','PRODUCCIÓN',`modalProduccion('${j}')`],['✅','#16a34a','CALIDAD',`modalCalidad('${j}')`],['🚚','#7b1fa2','SERVICIO EXT.',`modalExterno('${j}')`],['📥',op.externo?'#7b1fa2':'#94a3b8','RECIBIR EXTERNO',op.externo?`recibirExterno('${j}')`:`toast('Primero hay que enviar la pieza a trabajo externo')`],
            ['🧭','#1e3a5f','RUTA Y TIEMPOS',puede('planeacion','administracion')?`modalRutaEdit('${j}')`:`modalRuta('${j}')`],['🔄','#d97706','CAMBIAR ESTADO',`modalEstado('${j}')`],['⏱️','#0284c7','HORAS',`modalHoras('${j}')`],['👷','#db2777','OPERARIO',`modalOperarios('${j}')`],['🚚','#16a34a','PEDIR REMISIÓN',`pedirRemision('${j}')`]];
+  if(puede('planeacion','administracion')) A.push(['✏️','#475569','EDITAR ÍTEM',`formEditarItem('${j}')`],['🗑','#dc2626','ELIMINAR ÍTEM',`eliminarItemOP('${j}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
   const pe0=puede('planeacion','administracion');
   const prodBar=op.terminado?`<div class="callout" style="margin:10px 0;background:#e6f6ea;border-color:#a8ddb5;color:#1e7d32">🏭 <b>Producción OK</b> · ${fmtF(op.entrega_prod_fecha||op.fecha_entrega_prod)||'—'}${op.terminado_por?' · '+esc(op.terminado_por):''}</div>`
@@ -2192,6 +2193,42 @@ function detailOP(id){
   openDetail(opTitulo(op),hero+grid+prodBar+externoAviso(op)+(tieneSvc(op)?pdServicios(op):'')+scoreH+tl+info+ruta+mqBox()+hist+simple,puede('planeacion','administracion')&&op.op?`<button class="btn btn-ghost btn-sm" style="background:#fef3c7;color:#92400e" onclick="corregirOP(${Number(op.op)},${Number(op.cot_num)||0})">🔧 Corregir OP</button>`:''); histCargar(op.id); mqCargarProd(op.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
 }
+// ── Editar / eliminar ítem de la OP (planeación y administración) ──
+function formEditarItem(id){
+  const op=opDe(id); if(!op) return;
+  openModal(`✏️ Editar ítem — ${opTitulo(op)}`,`<div class="form-grid">
+    <div class="field span2"><label>Descripción</label><textarea id="ei-d" rows="3" style="width:100%;box-sizing:border-box">${esc(op.descripcion||'')}</textarea></div>
+    <div class="field"><label>Unidades</label><input id="ei-u" type="number" min="1" step="1" value="${esc(String(op.unidades??''))}"></div>
+    <div class="field"><label>Entrega pactada</label><input id="ei-f" type="date" value="${esc(String(op.fecha_pactada||'').slice(0,10))}"></div>
+    <div class="field span2"><label>Diseñador</label><input id="ei-s" list="ei-sl" value="${esc(op.disenador||'')}"><datalist id="ei-sl"><option value="A. MEZA"><option value="M. GÓMEZ"></datalist></div></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:8px">Los cambios quedan en el historial del ítem. Las unidades no pueden ser menores a lo ya despachado (${op.cant_despachada??0}).</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditarItem('${esc(id)}')">💾 Guardar</button>`);
+}
+async function guardarEditarItem(id){
+  const u=gv('ei-u'); const r=await rpcP('prod_item_editar',{p_id:id,p_descripcion:gv('ei-d')||null,p_unidades:u!==''?Number(u):null,p_fecha_pactada:gv('ei-f')||null,p_disenador:gv('ei-s')||null},'✅ Ítem actualizado');
+  if(r) trasGuardar(id);
+}
+async function eliminarItemOP(id){
+  showBusy(); let i;
+  try{ i=await sb.rpc('prod_item_eliminar_info',{p_id:id}); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); return; }
+  hideBusy();
+  const li=t=>`<li style="margin:5px 0">${t}</li>`; const n=(v,s,pl)=>`${v} ${v===1?s:pl}`;
+  const titulo='🗑 Eliminar ítem de la OP-'+i.op;
+  const cab=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">Ítem ${i.item_num??'—'} · ${esc(i.descripcion||'Sin descripción')}</div>`;
+  if(i.bloqueado){ openModal(titulo,cab+`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:12px;font-size:13px">🚫 ${esc(i.bloqueado)}</div>`,`<button class="btn btn-primary" onclick="closeModal()">Entendido</button>`); return; }
+  const borra=[]; if(i.materiales) borra.push(n(i.materiales,'pedido de material','pedidos de material')); if(i.reprocesos) borra.push(n(i.reprocesos,'reproceso','reprocesos'));
+  if(i.eventos) borra.push(n(i.eventos,'registro del historial','registros del historial')); if(i.archivos_propios) borra.push(n(i.archivos_propios,'archivo','archivos'));
+  const alcance=i.es_ultimo
+    ? `<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px;font-size:12.5px;margin-bottom:10px">⚠️ Es el <b>único ítem</b> de la OP-${i.op}: al eliminarlo, la OP desaparece.</div>`
+    : `<div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);border-radius:10px;padding:10px;font-size:12.5px;margin-bottom:10px">✅ Solo se elimina <b>esta línea</b>. Los otros ${n(i.items_en_op-1,'ítem','ítems')} de la OP-${i.op} no se tocan.</div>`;
+  openModal(titulo,cab+alcance+`<ul style="font-size:12.5px;padding-left:18px;margin:0 0 10px">
+    ${li(`Se borra el registro de producción de este ítem (${esc(i.estado||'—')} · ${Math.round(Number(i.avance)||0)}% de avance).`)}
+    ${borra.length?li('También se borra: '+borra.join(', ')+'.'):''}
+    ${i.con_item_cot?li('El ítem de la cotización queda otra vez <b>sin OP</b> y se podrá enviar de nuevo a producción.'):''}
+    ${li('<b>Esta acción no se puede deshacer.</b>')}</ul><div style="font-size:13px;font-weight:700">¿Estás seguro de eliminar este ítem?</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626" onclick="eliminarItemOk('${esc(id)}')">Sí, eliminar ítem</button>`);
+}
+async function eliminarItemOk(id){ closeModal(); if(await rpcP('prod_eliminar_item',{p_id:id},'🗑 Ítem eliminado')){ closeDetail(); refreshCurrentView(); } }
 // Formulario simple de respaldo: % global, estado y prioridad en un solo paso
 function formAvance(id){
   const op=opDe(id); if(!op) return;

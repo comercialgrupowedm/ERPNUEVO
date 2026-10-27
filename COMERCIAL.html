@@ -2427,7 +2427,7 @@ function dpTog(id){
 const fmtCorto=n=>{ n=Number(n)||0; return n>=1e6?'$'+(n/1e6).toLocaleString('es-CO',{maximumFractionDigits:n>=1e8?0:1})+' M':fmt(n); };
 const _dFecha=v=>{ const t=String(v||''); return /^\d{4}-\d{2}-\d{2}/.test(t)?new Date(t.slice(0,10)+'T12:00:00'):new Date(t||0); };
 // v10: filtro de periodo del inicio (Mes por defecto · 3 meses · Año · Todo · Rango). Afecta "Cotizado" y "Top clientes".
-const _dashP={tipo:'todo',mes:null,desde:'',hasta:'',lista:false,ver:false,graf:'lista',topMes:null};
+const _dashP={tipo:'mes',mes:null,desde:'',hasta:'',lista:false,ver:false,graf:'lista',topMes:null};
 const _usYMd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 function dashSetTopMes(m){ _dashP.topMes=m||null; refreshCurrentView(); }
 function dashSetGraf(g){ _dashP.graf=g; refreshCurrentView(); }
@@ -2544,6 +2544,7 @@ function dashboard(){
         <div style="font-size:${dashSz(sum(pausadas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(pausadas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">${pausadas.length} cotizaci${pausadas.length>1?'ones':'ón'} con OP pausada</div></div>`:''}
       ${_esDev()?`<div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">💰 Vendido ${rg.label}</div>
+        ${_dashP.tipo==='mes'?`<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px;margin-bottom:6px"><button class="btn btn-ghost btn-sm" style="padding:2px 9px" onclick="dashMesNav(-1)">◀</button><input type="month" value="${_dashP.mes||_ymNow()}" max="${_ymNow()}" onchange="dashSetMes(this.value)" style="flex:1;min-width:0;text-align:center;font-size:12px;padding:3px"><button class="btn btn-ghost btn-sm" style="padding:2px 9px" onclick="dashMesNav(1)">▶</button></div>`:`<div onclick="event.stopPropagation();dashSetTipo('mes')" style="font-size:11px;color:#bfdbfe;margin-bottom:6px;text-decoration:underline">Ver por mes</div>`}
         <div style="font-size:${dashSz(sum(aprob))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(aprob)))}</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${aprob.length} aprobadas de ${mes.length} cotizadas</div>
         <div onclick="event.stopPropagation();dashPanel('sinProc','📝 Cotizado sin procesar ${rg.label}','Todo lo cotizado en este periodo se procesó')" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.18)">
