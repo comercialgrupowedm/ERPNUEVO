@@ -3745,7 +3745,10 @@ async function saveItem(){
     if(_IT.id){ const r=await PATCH('items',_IT.id,row); const i=DB.items.findIndex(x=>x.id===_IT.id); if(i>=0) DB.items[i]={...DB.items[i],...(r[0]||row)}; toast('✅ Ítem actualizado'); }
     else{ const r=await POST('items',row); DB.items.push(r[0]||row); toast('✅ Ítem agregado'); }
     await recalcularTotalesCot(_IT.cotId).catch(()=>{});
-    const cotId=_IT.cotId; closeModal(); refreshCurrentView(); detailCot(cotId);
+    const cotId=_IT.cotId, esNuevo=!_IT.id; closeModal(); refreshCurrentView(); detailCot(cotId);
+    // Ítem nuevo en una cotización aprobada que ya tiene OP → ofrecer enviarlo a producción
+    try{ const cc=DB.cotizaciones.find(x=>x.id===cotId); const opx=esNuevo&&cc&&_normEstado(cc.estado)==='APROBADA'&&typeof opDeCot==='function'&&opDeCot(cotId);
+      if(opx&&puede('comercial','administracion')) setTimeout(()=>{ if(confirm('Esta cotización ya tiene la OP-'+opx+'.\n\n¿Enviar el ítem nuevo a producción ahora (agregarlo a la OP)?')) formCrearOP(cotId); },400); }catch(_){}
   }catch(e){ toast('❌ '+e.message,'error'); if(btn){ btn.disabled=false; btn.textContent=_IT.isNew?'✓ Guardar Item':'✓ Actualizar'; } }
 }
 // Renumera 1..n tras eliminar un ítem (solo si la COT aún no tiene OP: en producción el nº de ítem ya está amarrado a la OP).
