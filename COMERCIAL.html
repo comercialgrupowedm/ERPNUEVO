@@ -2478,13 +2478,16 @@ function dashboard(){
   const mes=cots;   // cotizaciones del periodo elegido
   // v9: ACTIVO = aprobadas que todavía tienen producción por despachar, + aprobadas de los últimos 60 días que aún no tienen OP.
   // (las aprobadas cuya producción ya se despachó completa son historia y no cuentan)
-  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0,n:0,tv:0,pv:0}); const vv=Number(p.precio_total)||0; x.n++; x.tv+=vv; if(!p.despachado&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(String(p.estado||'').toUpperCase())){ x.pend++; x.pv+=vv; } });
+  const _itP={}; (DB.items||[]).forEach(i=>{ _itP[i.id]=i.precio_total; });
+  const prodPorCot={}; (DB.produccion||[]).forEach(p=>{ if(p.cot_num==null) return; const x=prodPorCot[p.cot_num]||(prodPorCot[p.cot_num]={pend:0,n:0,tv:0,pv:0}); const vv=Number(p.precio_total)||0; x.n++; x.tv+=vv; const _e=String(p.estado||'').toUpperCase(); if(!p.despachado&&_e==='PAUSADO'){ x.pz=(x.pz||0)+1; x.pzv=(x.pzv||0)+(Number(_itP[p.id_item])||0); } else if(!p.despachado&&!['TERMINADO','DESPACHADO','CANCELADO'].includes(_e)){ x.pend++; x.pv+=vv; } });
   const hace60=now.getTime()-60*864e5;
   const esActiva=c=>{ const x=prodPorCot[c.cotizacion]; return x?x.pend>0:_dFecha(c.fecha_emision||c.created_at).getTime()>=hace60; };
   const activasTodas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(esActiva);
   // Valor activo por ÍTEM: de cada cotización solo cuenta la parte de los ítems que siguen en producción (lo terminado/despachado/cancelado se resta)
   const valAct=c=>{ const x=prodPorCot[c.cotizacion]; const t=vSin(c); if(!x||!x.n) return t; const f=x.tv>0?x.pv/x.tv:x.pend/x.n; return Math.round(t*f); };
   const activas=activasTodas.map(c=>{ const v=valAct(c); return {...c,precio_total:v,precio_sin_iva:v}; });   // Valor activo = TODO lo aprobado que sigue en curso, sin importar el mes/periodo
+  // Valor pausado: ítems de cotizaciones aprobadas cuya OP está en PAUSADO (no cuentan en el valor activo)
+  const pausadas=cotsAll.filter(c=>_normEstado(c.estado)==='APROBADA').filter(c=>{ const x=prodPorCot[c.cotizacion]; return x&&x.pz>0; }).map(c=>{ const x=prodPorCot[c.cotizacion]; const v=x.pzv>0?x.pzv:Math.round(vSin(c)*x.pz/x.n); return {...c,precio_total:v,precio_sin_iva:v}; });
   const sum=l=>l.reduce((s,c)=>s+vSin(c),0);
   const _MS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], mesLbl=ym=>{ const [y,m]=ym.split('-'); return _MS[+m-1]+' '+y; };
   const porMes=list=>{ const g={}; list.forEach(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); if(isNaN(d)) return; const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); (g[ym]=g[ym]||[]).push(c); }); return Object.keys(g).sort().reverse().map(ym=>({ym,l:g[ym],t:sum(g[ym])})); };
@@ -2507,7 +2510,7 @@ function dashboard(){
   const esperaL=baseL.filter(c=>_normEstado(c.estado)==='EN ESPERA').sort((a,b)=>b.cotizacion-a.cotizacion);
   const tagL=_dashP.lista?esc(rg.corto):'todos los meses';
   const sinProc=mes.filter(c=>_normEstado(c.estado)!=='APROBADA');   // v13: cotizado en el periodo que NO se aprobó (en espera, canceladas…)
-  _dash.aprob=aprob; _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.esperaL=esperaL; _dash.recL=[...baseL].sort((a,b)=>b.cotizacion-a.cotizacion);
+  _dash.aprob=aprob; _dash.pausadas=[...pausadas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.activas=[...activas].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.mes=mes; _dash.sinProc=[...sinProc].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.espera=espera; _dash.enProc=enProc; _dash.term=term; _dash.fact=fact; _dash.urg=urg; _dash.todas=[...cots].sort((a,b)=>b.cotizacion-a.cotizacion); _dash.esperaL=esperaL; _dash.recL=[...baseL].sort((a,b)=>b.cotizacion-a.cotizacion);
   const _opN=new Set(), _opI=new Set(); (DB.produccion||[]).forEach(p=>{ if(p.op==null) return; if(p.cot_num!=null) _opN.add(Number(p.cot_num)); if(p.id_cotizacion) _opI.add(p.id_cotizacion); });
   const cotsOp=cotsAll.filter(c=>_opN.has(Number(c.cotizacion))||(c.id&&_opI.has(c.id)));   // Top clientes: solo lo que ya pasó a producción (tiene OP)
   const topBase=_dashP.topMes?cotsOp.filter(c=>{ const d=_dFecha(c.fecha_emision||c.created_at); return !isNaN(d)&&_usYMd(d)===_dashP.topMes; }):cotsOp;   // Top clientes: TODO por defecto; chips de mes opcionales
@@ -2532,10 +2535,13 @@ function dashboard(){
   <div style="padding:14px 2px;display:flex;flex-direction:column;gap:14px">
     ${dashControlesHTML()}
     ${dashGrafCtl()}
-    <div style="display:grid;grid-template-columns:${_esDev()?'minmax(0,1fr) minmax(0,1fr)':'minmax(0,1fr)'};gap:10px">
+    <div style="display:grid;grid-template-columns:repeat(${1+(pausadas.length?1:0)+(_esDev()?1:0)},minmax(0,1fr));gap:10px">
       <div onclick="dashPanel('activas','🔥 Valor activo (todo el tiempo)','No hay cotizaciones activas')" style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">🔥 Valor activo · todo el tiempo</div>
         <div style="font-size:${dashSz(sum(activas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(activas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${activas.length} aprobadas en curso</div>${mesesAct}</div>
+      ${pausadas.length?`<div onclick="dashPanel('pausadas','⏸ Valor pausado','No hay cotizaciones pausadas')" style="background:linear-gradient(135deg,#b45309,#d97706);border-radius:14px;padding:14px;cursor:pointer">
+        <div style="font-size:10px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">⏸ Valor pausado</div>
+        <div style="font-size:${dashSz(sum(pausadas))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(pausadas)))}</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">${pausadas.length} cotizaci${pausadas.length>1?'ones':'ón'} con OP pausada</div></div>`:''}
       ${_esDev()?`<div onclick="dashPanel('aprob','💰 Vendido ${rg.label}','No hay ventas en este periodo')" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:14px;cursor:pointer">
         <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;min-height:26px">💰 Vendido ${rg.label}</div>
         <div style="font-size:${dashSz(sum(aprob))}px;font-weight:800;color:#fff;font-family:var(--mono);white-space:nowrap">${fmt(Math.round(sum(aprob)))}</div>
@@ -2896,7 +2902,7 @@ function detailCot(id){
       <button class="cot-action-btn" onclick="generarPDFCotizacion('${id}',true)"><span class="cot-action-ic" style="background:#0d9488">💾</span><span class="cot-action-lbl">Guardar PDF</span></button>
       <button class="cot-action-btn" onclick="window.open(DRIVE_COT_FOLDER_URL,'_blank','noopener')"><span class="cot-action-ic" style="background:#f9a825">📁</span><span class="cot-action-lbl">Carpeta PDFs</span></button>
       ${edit?`${['EN ESPERA','RECHAZADA','CANCELADO','ANULADA'].includes(_normEstado(c.estado))?`<button class="cot-action-btn" onclick="_doEstadoCot('${id}','APROBADA')"><span class="cot-action-ic" style="background:#16a34a">✔</span><span class="cot-action-lbl">Aprobar Cotización</span></button>`:''}      <button class="cot-action-btn" onclick="duplicarCot('${id}')"><span class="cot-action-ic" style="background:#2e7d32">⧉</span><span class="cot-action-lbl">Duplicar Cotización</span></button>
-      <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button>`:''}
+      <button class="cot-action-btn" onclick="formItem(null,'${id}')"><span class="cot-action-ic" style="background:#2e7d32">🧩</span><span class="cot-action-lbl">Agregar Item</span></button><button class="cot-action-btn" onclick="formSubirOC('${id}')"><span class="cot-action-ic" style="background:#0369a1">📎</span><span class="cot-action-lbl">Subir Orden de Compra</span></button>`:''}
     </div>
     ${edit?`<div class="cot-actions"><button class="btn btn-primary-soft btn-sm" onclick="formCot(DB.cotizaciones.find(x=>x.id==='${id}'))">✏️ Editar</button>${(puede('planeacion','administracion')&&opDeCot(id))?`<button class="btn btn-primary-soft btn-sm" style="background:#fef3c7;color:#92400e" onclick="corregirOP('${id}')">🔧 Corregir OP-${opDeCot(id)}</button>`:''}${(()=>{ if((_normEstado(c.estado)!=='APROBADA'&&!_mqPorAprobar(c))||!puede('comercial','administracion')) return ''; const enP=new Set((DB.produccion||[]).filter(p=>p.id_cotizacion===id).map(p=>p.id_item)); const n=its.filter(it=>!enP.has(it.id)).length; if(!n) return ''; const ox=opDeCot(id); return `<button class="btn btn-sm" style="background:#1565c0;color:#fff;font-weight:700" onclick="formCrearOP('${id}')">🏭 ${ox?'Enviar '+n+' ítem'+(n>1?'s':'')+' nuevo'+(n>1?'s':'')+' a OP-'+ox:'Crear OP'}</button>`; })()}${(_esMq(c)&&window.self!==window.top&&!cotTieneOp(c))?`<button class="btn btn-primary-soft btn-sm" onclick="try{parent.postMessage({t:'wedm-mq-edit',id:'${id}'},location.origin)}catch(e){}">🏷️ Editar marquilla</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="recalcularTotalesCotUI('${id}')" title="Vuelve a sumar el total con los ítems (IVA ${IVA_PCT}%)">🔄 Recalcular Total</button>
@@ -3112,6 +3118,45 @@ async function cargarOcArchivos(id,elId){
     const rows=await GET('prod_archivos','select=id,tipo,nombre,mime,size,created_by,created_at&id_cot='+eq(id)+'&tipo=eq.orden_compra&order=created_at.desc');
     const el2=document.getElementById(window._OCLAST.el); if(el2) el2.innerHTML=(rows&&rows.length)?archivosHtml(rows,'',false):'';
   }catch(e){ el.innerHTML=mutedP(esc(errMsg(e))); }
+}
+// ── Subir orden de compra desde el detalle: Nº de OC + archivo → Drive (ORDENES DE COMPRA) ──
+function formSubirOC(cotId){
+  const c=DB.cotizaciones.find(x=>x.id===cotId); if(!c) return; window._ocUp={id:cotId,file:null};
+  openModal('📎 Subir orden de compra · COT-'+c.cotizacion,`<div class="form-grid"><div class="field span2"><label>Nº de la orden de compra *</label><input id="ocu-num" placeholder="Ej: 4500012345" autocomplete="off"></div></div>${c.orden_de_compra?`<div style="font-size:12px;color:var(--muted);margin-top:6px">Ya registrada: <b>${esc(c.orden_de_compra)}</b></div>`:''}<div id="ocu-pick" style="margin-top:12px"></div><div style="font-size:11px;color:var(--muted);margin-top:8px">Se guarda en Drive (carpeta ORDENES DE COMPRA) y queda asociada a la cotización.</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="ocu-ok" onclick="ocSubirOk()">⬆️ Subir</button>`);
+  ocuRender(); setTimeout(()=>{ const i=document.getElementById('ocu-num'); if(i) i.focus(); },60);
+}
+function ocuRender(){
+  const el=document.getElementById('ocu-pick'); if(!el) return; const f=window._ocUp&&window._ocUp.file;
+  el.innerHTML=f?`<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px"><span style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📎 ${esc(f.name)}</span><button type="button" class="btn btn-ghost btn-sm" onclick="window._ocUp.file=null;ocuRender()">✕</button></div>`
+    :`<button type="button" class="btn btn-ghost btn-sm" onclick="ocuPick()">📎 Elegir archivo (PDF o imagen)</button>`;
+}
+function ocuPick(){ pickFile('image/*,application/pdf',f=>{ if(!/^image\//.test(f.type)&&f.type!=='application/pdf'){ toast('Solo se aceptan imágenes o PDF','error'); return; } if(f.size>15*1024*1024){ toast('El archivo pesa más de 15 MB','error'); return; } window._ocUp.file=f; ocuRender(); }); }
+async function ocSubirOk(){
+  const U=window._ocUp; if(!U) return; const num=(document.getElementById('ocu-num').value||'').trim();
+  if(!num){ toast('Escribe el número de la orden de compra','error'); return; }
+  if(!U.file){ toast('Elige el archivo de la orden de compra','error'); return; }
+  const c=DB.cotizaciones.find(x=>x.id===U.id); if(!c) return; const f=U.file;
+  showBusy();
+  try{
+    let data,mime=f.type,size=f.size;
+    if(/^image\//.test(f.type)){ const r=await fileToData(f); data=r.data; mime=r.mime; size=r.size; }
+    else data=await new Promise((a,b)=>{ const fr=new FileReader(); fr.onload=()=>a(fr.result); fr.onerror=()=>b(new Error('No se pudo leer el archivo')); fr.readAsDataURL(f); });
+    const ext=(/\.([a-z0-9]{2,4})$/i.exec(f.name||'')||[])[1]||(mime==='application/pdf'?'pdf':'jpg');
+    const nombre='OC-'+num.replace(/[\\/:*?"<>|]/g,'')+'.'+ext.toLowerCase();
+    let dato=null;
+    try{
+      const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta:'ORDENES DE COMPRA/COT-'+c.cotizacion,nombre,base64:String(data).split(',')[1]||'',mime,tipo:mime})});
+      const j=await r.json().catch(()=>null); const did=j&&j.ok&&(j.id||j.fileId||((j.url||'').match(/[-\w]{25,}/)||[])[0]);
+      if(did) dato='https://drive.google.com/file/d/'+did+'/view';
+    }catch(e){}
+    if(!dato){ if(size>3.5*1024*1024) throw new Error('Drive no respondió y el archivo pesa más de 3.5 MB'); dato=data; toast('⚠️ Drive no respondió; se guardó en la base como respaldo','error'); }
+    await insertarArchivo({tipo:'orden_compra',nombre,mime,size,data:dato,created_by:_SESSION.nombre,id_cot:c.id});
+    const cur=String(c.orden_de_compra||'').trim(); const lista=cur?cur.split(/\s*,\s*/):[]; if(!lista.includes(num)) lista.push(num);
+    const nuevo=lista.join(', '); const r2=await PATCH('cotizaciones',c.id,{orden_de_compra:nuevo}); const i=DB.cotizaciones.findIndex(x=>x.id===c.id); if(i>=0) DB.cotizaciones[i]={...DB.cotizaciones[i],...(r2&&r2[0]||{orden_de_compra:nuevo})};
+    toast('✅ Orden de compra '+num+' subida'); closeModal(); refreshCurrentView(); detailCot(c.id);
+  }catch(e){ toast('❌ '+errMsg(e),'error'); }
+  finally{ hideBusy(); }
 }
 async function saveCot(exist){
   if(!exist){ const fl=cotFaltantes(); if(fl.length){ toast('Falta: '+fl.map(x=>x.label).join(', '),'error'); wizTab('wiz-cot',fl[0].tab); return; } }
