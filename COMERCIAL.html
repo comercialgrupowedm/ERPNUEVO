@@ -1991,7 +1991,17 @@ function askConfirm(titulo,mensaje,textoOk='Sí, continuar',peligro=false){
   });
 }
 function askDone(v){ const r=window._askRes; window._askRes=null; closeModal(); if(r) r(v); }
+let _dpStack=[], _dpCur='';
+function _dpSnap(){ const b=document.getElementById('dp-body'); return {title:_dpCur,t:document.getElementById('dp-title').textContent,body:b.innerHTML,actions:document.getElementById('dp-actions').innerHTML,wide:document.getElementById('dp').classList.contains('dp-wide'),sc:b.scrollTop}; }
+function _dpPop(){   // vuelve a la vista anterior dentro del panel (p. ej. de un ítem a su cotización) sin cerrarlo
+  const s=_dpStack.pop(); if(!s) return false;
+  document.getElementById('dp-title').textContent=s.t; document.getElementById('dp-body').innerHTML=s.body; document.getElementById('dp-actions').innerHTML=s.actions;
+  document.getElementById('dp').classList.toggle('dp-wide',!!s.wide); _dpCur=s.title; document.getElementById('dp-body').scrollTop=s.sc||0; return true;
+}
 function openDetail(title,body,actions=''){
+  if(_detailOpen&&_dpCur&&title!==_dpCur){ const i=_dpStack.findIndex(x=>x.title===title); if(i>=0) _dpStack.length=i; else _dpStack.push(_dpSnap()); }
+  if(!_detailOpen) _dpStack=[];
+  _dpCur=title;
   document.getElementById('dp').classList.remove('dp-wide');
   document.getElementById('dp-title').textContent=title;
   document.getElementById('dp-body').innerHTML=body;
@@ -2001,6 +2011,8 @@ function openDetail(title,body,actions=''){
   if(!_detailOpen){ _detailOpen=true; history.pushState({mod:MOD,detail:true},'','#'+MOD+'-detail'); }
 }
 function closeDetail(){
+  if(_detailOpen&&!_navFromNav&&!_navFromPopstate&&_dpPop()) return;
+  _dpStack=[]; _dpCur='';
   const was=_detailOpen; _detailOpen=false;
   document.getElementById('dp').classList.remove('open');
   document.getElementById('content').style.overflow='';
@@ -2080,7 +2092,8 @@ function nav(m){
 }
 window.addEventListener('popstate',function(e){
   _navFromPopstate=true;
-  if(_detailOpen){ _detailOpen=false; document.getElementById('dp').classList.remove('open'); document.getElementById('content').style.overflow=''; _navFromPopstate=false; return; }
+  if(_detailOpen&&_dpPop()){ history.pushState({mod:MOD,detail:true},'','#'+MOD+'-detail'); _navFromPopstate=false; return; }
+  if(_detailOpen){ _dpStack=[]; _dpCur=''; _detailOpen=false; document.getElementById('dp').classList.remove('open'); document.getElementById('content').style.overflow=''; _navFromPopstate=false; return; }
   const target=(e.state&&e.state.mod)?e.state.mod:'dashboard';
   if(_SESSION) nav(target);
   _navFromPopstate=false;
