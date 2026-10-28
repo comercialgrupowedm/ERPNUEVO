@@ -2423,8 +2423,8 @@ function ambColor(v){ const t=parseFloat(v); if(isNaN(t)) return ''; const x=Mat
 
 // ══ AVANCES EN PRODUCCIÓN: calidad va alimentando el % de cada proceso de la ruta (el servidor recalcula el avance global por horas) ══
 const AV_MAQ={cnc:'Centro Mecan.',torno:'Torno',fresadora:'Fresadora',banco:'Banco',edm:'EDM',rectificadora:'Rectificadora',hilo:'Hilo',soldadura:'Soldadura',ingenieria:'Ingeniería',externo:'Externo'};
-const AV_COLS='id,op,item_num,cot_num,empresa,descripcion,unidades,estado,avance,fecha_pactada,fecha_entrega_prod,despachado,terminado,diseno_ok,externo,avance_pasos,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria,hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_edm,hrs_rectificadora,hrs_hilo,hrs_soldadura,hrs_ingenieria';
-let _AVF={q:'',chip:'todas'}, _AVR={}, _AVE=null;
+const AV_COLS='id,op,item_num,cot_num,empresa,descripcion,unidades,estado,avance,fecha_pactada,fecha_entrega_prod,tipo,despachado,terminado,diseno_ok,externo,avance_pasos,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria,hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_edm,hrs_rectificadora,hrs_hilo,hrs_soldadura,hrs_ingenieria';
+let _AVF={q:'',chip:'todas',vista:'op',emp:'',maq:'',av:'',ent:'',tipo:'',fb:false}, _AVR={}, _AVE=null, _AVOPEN=new Set();
 function avBucket(nombre){
   const n=String(nombre??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim().replace(/\s+/g,' ');
   if(!n) return null; if(n==='SE RECTIFICADO') return 'rectificadora'; if(n==='SE SOLDADURA') return 'soldadura'; if(n.startsWith('SE ')) return 'externo';
@@ -2441,27 +2441,66 @@ function avPasos(o){
   return out;
 }
 const avColor=p=>p>=100?'#16a34a':p>=50?'#2563eb':p>0?'#d97706':'#94a3b8';
-function avSetQ(v){ _AVF.q=v; clearTimeout(avSetQ._t); avSetQ._t=setTimeout(avances,200); }
-function avChip(c){ _AVF.chip=c; avances(); }
+function avSetQ(v){ _AVF.q=v; clearTimeout(avSetQ._t); avSetQ._t=setTimeout(avRender,200); }
+function avSet2(k,v){ _AVF[k]=v; avRender(); }
+function avChip(c){ _AVF.chip=c; avRender(); }
+function avFb(){ _AVF.fb=!_AVF.fb; avRender(); }
+function avLimpiar(){ _AVF=Object.assign({},AVF_DEF,{vista:_AVF.vista}); avRender(); }
+function avTog(op){ if(_AVOPEN.has(op)) _AVOPEN.delete(op); else _AVOPEN.add(op); avRender(); }
+function avAll(on){ _AVOPEN=on?new Set(_AVLAST.map(g=>String(g.op))):new Set(); avRender(); }
+const AVF_DEF={q:'',chip:'todas',vista:'op',emp:'',maq:'',av:'',ent:'',tipo:'',fb:false};
+let _AVLAST=[];
 async function avances(){
   let rows;
   try{ rows=await GETALL('produccion','select='+AV_COLS+'&despachado=eq.false&diseno_ok=eq.true&order=op.desc,item_num.asc'); }catch(e){ _vistaError(e); return; }
   rows=(rows||[]).filter(o=>!o.terminado&&!['CANCELADO','TERMINADO','PAUSADO'].includes(o.estado)); _AVR={}; rows.forEach(o=>{ _AVR[o.id]=o; });
-  const q=_AVF.q; const hoy=new Date(); hoy.setHours(0,0,0,0);
-  const dias=o=>{ const f=o.fecha_entrega_prod||o.fecha_pactada; if(!f) return null; const t=new Date(String(f).slice(0,10)+'T00:00:00'); return isNaN(t)?null:Math.round((t-hoy)/86400000); };
+  avRender();
+}
+function avRender(){
+  const rows=Object.values(_AVR); const f=_AVF; const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const dias=o=>{ const x=o.fecha_entrega_prod||o.fecha_pactada; if(!x) return null; const t=new Date(String(x).slice(0,10)+'T00:00:00'); return isNaN(t)?null:Math.round((t-hoy)/86400000); };
+  const maqs=o=>[...new Set(avPasos(o).map(s=>s.b))];
   const sets={todas:rows,proceso:rows.filter(o=>Number(o.avance)>0&&Number(o.avance)<100),sinIniciar:rows.filter(o=>!(Number(o.avance)>0)),listos:rows.filter(o=>Number(o.avance)>=100),urg:rows.filter(o=>{ const d=dias(o); return d!=null&&d<=3&&Number(o.avance)<100; })};
   const chips=[['todas','Todos'],['proceso','En proceso'],['sinIniciar','Sin iniciar'],['urg','Entrega ≤ 3 días'],['listos','Al 100%']];
-  const base=sets[_AVF.chip]||rows; const data=base.filter(o=>buscaOP(o,q)).sort((a,b)=>{ const x=dias(a),y=dias(b); return (x==null?9999:x)-(y==null?9999:y)||(b.op-a.op)||((a.item_num||0)-(b.item_num||0)); });
-  const card=o=>{ const ps=avPasos(o), d=dias(o), av=Math.round(Number(o.avance)||0); const act=ps.find(s=>s.b!=='externo'&&s.pct<100);
-    const dt=d==null?'':d<0?`<span class="badge rojo">Vencido ${-d}d</span>`:d===0?'<span class="badge rojo">Hoy</span>':d<=3?`<span class="badge naranja">${d}d</span>`:`<span class="badge gris">${d}d</span>`;
-    return `<div class="list-card" onclick="avAbrir('${o.id}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">OP-${o.op} · ÍTEM ${o.item_num??'—'} · COT-${o.cot_num||'—'}</div><div class="lc-title">${esc(o.empresa||'—')}</div><div class="lc-sub" style="white-space:normal">${esc(o.descripcion||'')}</div></div>
-      <div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:800;font-family:var(--mono);color:${avColor(av)}">${av}%</div>${dt}</div></div>
-      <div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0"><div style="height:100%;width:${av}%;background:${avColor(av)};border-radius:4px"></div></div>
-      <div class="lc-meta" style="flex-wrap:wrap;gap:5px">${ps.map(s=>s.b==='externo'?`<span class="badge gris" title="${esc(s.raw)}">🚚 ${esc(s.raw.slice(0,14))}</span>`:`<span class="badge" style="background:${avColor(s.pct)}1a;color:${avColor(s.pct)};border:1px solid ${avColor(s.pct)}55;${act&&act.i===s.i?'box-shadow:0 0 0 2px '+avColor(s.pct)+'33;font-weight:800':''}">${s.pct>=100?'✓ ':''}${esc(AV_MAQ[s.b]||s.b)} ${s.pct}%</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">Sin ruta registrada</span>'}</div></div>`; };
-  setContent(moduleBanner('📈','Avances en producción','Todo lo que está en proceso: toca un ítem y actualiza el avance de cada máquina')
-    +`<div class="filter-bar" style="margin:10px 12px"><div class="filter-bar-top"><div class="filter-search-wrap"><input type="text" placeholder="Buscar OP, cliente, descripción…" value="${esc(q)}" autocomplete="off" oninput="avSetQ(this.value)"></div></div></div>`
-    +`<div class="kstrip" style="margin:0 12px 10px">${chips.map(([k,l])=>`<div class="kchip ${_AVF.chip===k?'on':''}" onclick="avChip('${k}')"><div class="n">${(sets[k]||[]).length}</div><div class="l">${l}</div></div>`).join('')}</div>`
-    +`<div style="padding:0 12px 14px">${data.length?data.slice(0,150).map(card).join(''):mutedP('No hay ítems con ese filtro')}${data.length>150?mutedP('Mostrando 150 de '+data.length+' · usa el buscador')  :''}</div>`);
+  const ok=o=>{ const d=dias(o), av=Number(o.avance)||0;
+    if(f.emp&&o.empresa!==f.emp) return false; if(f.tipo&&String(o.tipo||'')!==f.tipo) return false; if(f.maq&&!maqs(o).includes(f.maq)) return false;
+    if(f.av==='0'&&av>0) return false; if(f.av==='1'&&!(av>0&&av<50)) return false; if(f.av==='2'&&!(av>=50&&av<100)) return false; if(f.av==='3'&&av<100) return false;
+    if(f.ent==='venc'&&!(d!=null&&d<0)) return false; if(f.ent==='3'&&!(d!=null&&d<=3)) return false; if(f.ent==='7'&&!(d!=null&&d<=7)) return false; if(f.ent==='15'&&!(d!=null&&d<=15)) return false; if(f.ent==='sin'&&d!=null) return false;
+    return buscaOP(o,f.q); };
+  const base=sets[f.chip]||rows; const data=base.filter(ok);
+  const pool=fn=>[...new Set(rows.map(fn).filter(v=>v!=null&&String(v).trim()!==''))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  const sel=(k,lbl,opts)=>`<div class="field" style="min-width:150px;flex:1"><label style="font-size:11px">${lbl}</label><select onchange="avSet2('${k}',this.value)"><option value="">Todos</option>${opts.map(x=>{ const [v,t]=Array.isArray(x)?x:[x,x]; return `<option value="${esc(v)}" ${String(f[k])===String(v)?'selected':''}>${esc(t)}</option>`; }).join('')}</select></div>`;
+  const nF=['emp','maq','av','ent','tipo'].filter(k=>f[k]).length;
+  const panel=f.fb?`<div style="margin:0 12px 10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:12px"><div style="display:flex;gap:10px;flex-wrap:wrap">
+    ${sel('emp','Cliente',pool(o=>o.empresa))}${sel('maq','Máquina en la ruta',Object.keys(AV_MAQ).filter(k=>rows.some(o=>maqs(o).includes(k))).map(k=>[k,AV_MAQ[k]]))}
+    ${sel('av','Avance',[['0','Sin iniciar (0%)'],['1','Menos de 50%'],['2','50% a 99%'],['3','100%']])}${sel('ent','Entrega',[['venc','Vencidas'],['3','En 3 días o menos'],['7','En 7 días o menos'],['15','En 15 días o menos'],['sin','Sin fecha']])}
+    ${sel('tipo','Tipo',pool(o=>o.tipo))}</div><div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="avLimpiar()">✕ Limpiar filtros</button></div></div>`:'';
+  const chipsH2=(k,l)=>`<div class="kchip ${f.chip===k?'on':''}" onclick="avChip('${k}')"><div class="n">${(sets[k]||[]).length}</div><div class="l">${l}</div></div>`;
+  const barra=(av)=>`<div style="min-width:90px"><div style="font-size:11px;font-weight:800;color:${avColor(av)}">${av}%</div><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${av}%;background:${avColor(av)}"></div></div></div>`;
+  const dtag=d=>d==null?'<span style="color:var(--muted)">—</span>':d<0?`<span class="badge rojo">Vencido ${-d}d</span>`:d===0?'<span class="badge rojo">Hoy</span>':d<=3?`<span class="badge naranja">${d}d</span>`:`<span class="badge gris">${d}d</span>`;
+  const chipsMaq=o=>{ const ps=avPasos(o); const act=ps.find(s=>s.b!=='externo'&&s.pct<100); return ps.map(s=>s.b==='externo'?`<span class="badge gris" title="${esc(s.raw)}">🚚 ${esc(s.raw.slice(0,12))}</span>`:`<span class="badge" style="background:${avColor(s.pct)}1a;color:${avColor(s.pct)};border:1px solid ${avColor(s.pct)}55;margin:1px;${act&&act.i===s.i?'font-weight:800;box-shadow:0 0 0 2px '+avColor(s.pct)+'33':''}">${s.pct>=100?'✓ ':''}${esc(AV_MAQ[s.b]||s.b)} ${s.pct}%</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">Sin ruta</span>'; };
+  const btnAv=o=>puedeCal()?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();avAbrir('${o.id}')">📈 Avance</button>`:'';
+  const itemRow=(o,conOp)=>{ const d=dias(o); const av=Math.round(Number(o.avance)||0);
+    return `<tr onclick="avAbrir('${o.id}')" style="cursor:pointer">${conOp?`<td><b style="color:var(--info)">OP-${o.op}</b></td><td style="font-weight:600;max-width:170px">${esc(o.empresa||'—')}</td>`:''}<td class="td-center"><b>${o.item_num??'—'}</b></td><td style="max-width:260px">${esc(o.descripcion||'—')}</td><td class="td-center">${o.unidades??''}</td><td style="min-width:200px">${chipsMaq(o)}</td><td>${barra(av)}</td><td>${dtag(d)}</td><td>${btnAv(o)}</td></tr>`; };
+  let body;
+  if(!data.length) body=mutedP('No hay ítems con ese filtro');
+  else if(f.vista==='items'){
+    const lim=data.slice().sort((a,b)=>{ const x=dias(a),y=dias(b); return (x==null?9999:x)-(y==null?9999:y)||(b.op-a.op)||((a.item_num||0)-(b.item_num||0)); }).slice(0,300);
+    body=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>OP</th><th>Cliente</th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${lim.map(o=>itemRow(o,true)).join('')}</tbody></table></div></div>${data.length>300?mutedP('Mostrando 300 de '+data.length+' · usa los filtros'):''}`;
+  } else {
+    const m=new Map(); data.forEach(o=>{ let g=m.get(o.op); if(!g){ g={op:o.op,emp:o.empresa,cot:o.cot_num,its:[]}; m.set(o.op,g); } g.its.push(o); });
+    const gs=[...m.values()].map(g=>{ g.its.sort((a,b)=>(a.item_num||0)-(b.item_num||0)); g.av=Math.round(g.its.reduce((t,o)=>t+(Number(o.avance)||0),0)/g.its.length); const ds=g.its.map(dias).filter(x=>x!=null); g.d=ds.length?Math.min(...ds):null; return g; })
+      .sort((a,b)=>(a.d==null?9999:a.d)-(b.d==null?9999:b.d)||(b.op-a.op)); _AVLAST=gs;
+    body=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th>OP</th><th>COT</th><th>Cliente</th><th>Ítems</th><th>Avance</th><th>Entrega</th></tr></thead><tbody>${gs.slice(0,200).map(g=>{ const on=_AVOPEN.has(String(g.op));
+      return `<tr onclick="avTog('${g.op}')" style="cursor:pointer;${on?'background:var(--card2)':''}"><td style="font-size:14px;color:var(--muted)">${on?'▾':'▸'}</td><td><b style="color:var(--info)">OP-${g.op}</b></td><td>COT-${g.cot||'—'}</td><td style="font-weight:600">${esc(g.emp||'—')}</td><td class="td-center">${g.its.length}</td><td>${barra(g.av)}</td><td>${dtag(g.d)}</td></tr>`
+      +(on?`<tr><td></td><td colspan="6" style="padding:4px 0 12px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${g.its.map(o=>itemRow(o,false)).join('')}</tbody></table></td></tr>`:''); }).join('')}</tbody></table></div></div>${gs.length>200?mutedP('Mostrando 200 de '+gs.length+' OP · usa los filtros'):''}`;
+  }
+  const vbtn=(k,l)=>`<button class="btn ${f.vista===k?'btn-primary':'btn-ghost'} btn-sm" onclick="avSet2('vista','${k}')">${l}</button>`;
+  setContent(moduleBanner('📈','Avances en producción','Todo lo que está en proceso: despliega la OP y actualiza el avance de cada máquina')
+    +`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 12px"><div class="filter-search-wrap" style="flex:1;min-width:200px"><input type="text" placeholder="Buscar OP, cliente, descripción…" value="${esc(f.q)}" autocomplete="off" oninput="avSetQ(this.value)"></div>
+      <button class="btn ${f.fb||nF?'btn-primary':'btn-ghost'} btn-sm" onclick="avFb()">⚙️ Filtros${nF?' ('+nF+')':''}</button>${vbtn('op','▤ Por OP')}${vbtn('items','⊞ Ítems')}
+      ${f.vista==='op'?`<button class="btn btn-ghost btn-sm" onclick="avAll(true)">Desplegar todas</button><button class="btn btn-ghost btn-sm" onclick="avAll(false)">Plegar todas</button>`:''}</div>${panel}`
+    +`<div class="kstrip" style="margin:0 12px 10px">${chips.map(([k,l])=>chipsH2(k,l)).join('')}</div><div style="padding:0 12px 14px">${body}</div>`);
 }
 function avAbrir(id){
   const o=_AVR[id]; if(!o) return; if(!puedeCal()){ toast('Tu rol no puede registrar avances','error'); return; }
@@ -2493,7 +2532,7 @@ async function avGuardar(){
   if(!_AVE) return; const ch={}; for(const k in _AVE.val) if(_AVE.val[k]!==_AVE.ini[k]) ch[k]=_AVE.val[k];
   if(!Object.keys(ch).length){ toast('No cambiaste ningún avance','warn'); return; }
   const id=_AVE.id; const r=await rpcC('calidad_avance_pasos',{p_id:id,p_pasos:ch},'✅ Avance guardado');
-  if(r){ _AVE=null; closeModal(); refreshCurrentView(); }
+  if(r){ _AVE=null; closeModal(); avances(); }
 }
 async function ambiente(){
   if(!_AMB.mes) _AMB.mes=hoyISO().slice(0,7);
