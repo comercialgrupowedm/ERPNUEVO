@@ -4065,10 +4065,10 @@ async function prodImprimirPlanoQA(id){
     let srcs=[];
     if(/^https?:\/\//i.test(a.data)){ const did=(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1]; srcs=[did?(/^image\//.test(a.mime||'')?driveImg(did,1800):`https://drive.google.com/thumbnail?id=${did}&sz=w1800`):a.data]; }
     else if(/^image\//.test(a.mime||'')) srcs=[a.data];
-    else{ // PDF guardado en el sistema: se convierte cada página (máx. 3) en imagen para unirla con el QA
+    else{ // PDF guardado en el sistema: se convierte cada página (solo la primera, para que quede 1 hoja de plano + 1 de QA, a doble cara) en imagen para unirla con el QA
       const lib=await _pdfjs(); const bin=atob(String(a.data).split(',').pop()); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
       const pdf=await lib.getDocument({data:u8}).promise;
-      for(let n=1;n<=Math.min(3,pdf.numPages);n++){ const pg=await pdf.getPage(n); const v0=pg.getViewport({scale:1}); const v=pg.getViewport({scale:Math.min(4,2400/Math.max(v0.width,v0.height))}); const c=document.createElement('canvas'); c.width=Math.round(v.width); c.height=Math.round(v.height); const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:cx,viewport:v}).promise; srcs.push(c.toDataURL('image/jpeg',.92)); }
+      for(let n=1;n<=1;n++){ const pg=await pdf.getPage(n); const v0=pg.getViewport({scale:1}); const v=pg.getViewport({scale:Math.min(4,2400/Math.max(v0.width,v0.height))}); const c=document.createElement('canvas'); c.width=Math.round(v.width); c.height=Math.round(v.height); const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:cx,viewport:v}).promise; srcs.push(c.toDataURL('image/jpeg',.92)); }
     }
     let html=_qaFmtBuildPDFHtml(qaFindOP(id),qa);
     const hoja1=srcs.map(src=>`<div style="height:200mm;page-break-after:always;break-after:page;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(src)}" style="max-width:100%;max-height:200mm;object-fit:contain"></div>`).join('');
