@@ -3206,8 +3206,73 @@ function numeroALetras(n){
 
 // ── Guardar una copia del documento en Google Drive (además de abrir el diálogo de impresión) ──
 const DRIVE_PDF_URL='https://script.google.com/macros/s/AKfycbzUgZIYgWOSIBEqCxDqQnND_LyIGyrqnJICafbnRLvbHz8ztFVymCT9HTMKhuKp9beeLw/exec';
+/* PDF vectorial (texto seleccionable, nítido): dibuja el HTML del documento directamente en jsPDF a partir de las posiciones reales del navegador.
+   Una sola página del tamaño del contenido. Devuelve el PDF en base64 o lanza error (el llamador cae al método de imagen). */
+async function _pdfVectorial(html){
+  let ifr;
+  try{
+    ifr=document.createElement('iframe'); ifr.style.cssText='position:fixed;left:-99999px;top:0;width:794px;height:200px;border:none;opacity:0';
+    document.body.appendChild(ifr);
+    const doc=ifr.contentDocument||ifr.contentWindow.document; doc.open(); doc.write(html); doc.close();
+    doc.querySelectorAll('.no-print').forEach(el=>el.style.setProperty('display','none','important'));
+    await new Promise(res=>{ const imgs=[...(doc.images||[])]; if(!imgs.length){ res(); return; } let n=imgs.length; const fin=()=>{ if(--n<=0) res(); }; imgs.forEach(im=>im.complete?fin():(im.onload=im.onerror=fin)); setTimeout(res,4000); });
+    await new Promise(res=>setTimeout(res,150));
+    const win=ifr.contentWindow, body=doc.body, root=doc.documentElement;
+    const W=794; const H=Math.ceil(Math.max(body.scrollHeight,root.scrollHeight,body.getBoundingClientRect().bottom)); ifr.style.height=H+'px'; await new Promise(res=>setTimeout(res,50));
+    const k=612/W; const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'pt',orientation:(H*k>612?'p':'l'),format:[612,Math.max(100,H*k)]});
+    const FILL=(c)=>{ const m=/rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)(?:[, /]+([\d.]+))?\)/.exec(c||''); if(!m) return null; const a=m[4]==null?1:parseFloat(m[4]); return {r:+m[1],g:+m[2],b:+m[3],a}; };
+    const OK={'✓':'v','✔':'v','✗':'x','✘':'x','☑':'[x]','☐':'[ ]','⚡':'*','→':'->','←':'<-','·':'·','•':'•','–':'–','—':'—','’':'’','“':'“','”':'”','…':'…','€':'€'};
+    const clean=s=>String(s).replace(/[Ā-￿]/g,ch=>OK[ch]!==undefined?OK[ch]:(/[ -⁯]/.test(ch)?' ':'?')).replace(/ /g,' ');
+    const rect=(x,y,w,h,c,op)=>{ const f=FILL(c); if(!f||f.a<=0||w<=0||h<=0) return; pdf.setFillColor(f.r,f.g,f.b); const a=f.a*(op==null?1:op); if(a<1){ pdf.saveGraphicsState(); pdf.setGState(new pdf.GState({opacity:a})); pdf.rect(x*k,y*k,w*k,h*k,'F'); pdf.restoreGraphicsState(); } else pdf.rect(x*k,y*k,w*k,h*k,'F'); };
+    const fam=cs=>{ const f=(cs.fontFamily||'').toLowerCase(); return /courier|mono|consolas/.test(f)?'courier':/times|georgia|serif/.test(f)&&!/sans/.test(f)?'times':'helvetica'; };
+    const drawText=(node,cs,opac)=>{
+      const txt=node.data; if(!/\S/.test(txt)) return;
+      const fs=parseFloat(cs.fontSize)||12, bold=(parseInt(cs.fontWeight,10)||400)>=600||cs.fontWeight==='bold', ital=/italic|oblique/.test(cs.fontStyle);
+      const col=FILL(cs.color)||{r:0,g:0,b:0,a:1}; const tt=cs.textTransform; const f=fam(cs);
+      pdf.setFont(f,bold&&ital?'bolditalic':bold?'bold':ital?'italic':'normal'); pdf.setFontSize(fs*k); pdf.setTextColor(col.r,col.g,col.b);
+      const r=doc.createRange(); const words=[]; const re=/\S+/g; let m;
+      while((m=re.exec(txt))){ r.setStart(node,m.index); r.setEnd(node,m.index+m[0].length); const rc=r.getClientRects(); if(!rc.length) continue; const b=rc[0]; if(b.width<=0&&b.height<=0) continue; words.push({t:m[0],l:b.left,r:b.right,top:b.top,h:b.height}); }
+      const lines=[]; words.forEach(w=>{ const L=lines[lines.length-1]; if(L&&Math.abs(L.top-w.top)<Math.max(2,w.h*.4)){ L.t+=' '+w.t; L.r=w.r; } else lines.push({t:w.t,l:w.l,r:w.r,top:w.top,h:w.h}); });
+      lines.forEach(L=>{
+        let s=tt==='uppercase'?L.t.toUpperCase():tt==='lowercase'?L.t.toLowerCase():tt==='capitalize'?L.t.replace(/\b\w/g,c=>c.toUpperCase()):L.t; s=clean(s);
+        const base=(L.top+(L.h>fs*1.5?(L.h-fs*1.117)/2:0)+fs*.905)*k; const x=L.l*k, tw=pdf.getTextWidth(s), target=(L.r-L.l)*k; let cspace=0;
+        if(s.length>1&&Math.abs(target-tw)>.3) cspace=Math.max(-.6,Math.min(1.2,(target-tw)/(s.length-1)));
+        if(opac<1){ pdf.saveGraphicsState(); pdf.setGState(new pdf.GState({opacity:opac})); }
+        pdf.text(s,x,base,{charSpace:cspace,baseline:'alphabetic'});
+        if(/underline/.test(cs.textDecorationLine||cs.textDecoration||'')){ pdf.setDrawColor(col.r,col.g,col.b); pdf.setLineWidth(Math.max(.4,fs*k*.06)); pdf.line(x,base+fs*k*.12,x+target,base+fs*k*.12); }
+        if(opac<1) pdf.restoreGraphicsState();
+      });
+    };
+    const drawImg=(im,opac)=>{
+      const b=im.getBoundingClientRect(); if(b.width<1||b.height<1||!im.complete||!im.naturalWidth) return;
+      try{ const c=doc.createElement('canvas'); const sc=Math.min(3,Math.max(1,1600/Math.max(im.naturalWidth,1))); c.width=Math.round(im.naturalWidth); c.height=Math.round(im.naturalHeight); c.getContext('2d').drawImage(im,0,0);
+        const d=c.toDataURL('image/png'); if(opac<1){ pdf.saveGraphicsState(); pdf.setGState(new pdf.GState({opacity:opac})); }
+        // object-fit: contain
+        let x=b.left,y=b.top,w=b.width,h=b.height; const cs=win.getComputedStyle(im); if(/contain/.test(cs.objectFit||'')){ const s=Math.min(w/im.naturalWidth,h/im.naturalHeight); const nw=im.naturalWidth*s, nh=im.naturalHeight*s; x+=(w-nw)/2; y+=(h-nh)/2; w=nw; h=nh; }
+        pdf.addImage(d,'PNG',x*k,y*k,w*k,h*k,undefined,'FAST'); if(opac<1) pdf.restoreGraphicsState(); }catch(e){ throw new Error('imagen no legible'); }
+    };
+    const walk=(el,opac)=>{
+      const cs=win.getComputedStyle(el); if(cs.display==='none'||cs.visibility==='hidden') return; const o=opac*(parseFloat(cs.opacity)||0); if(o<=0) return;
+      const tag=el.tagName; if(/^(SCRIPT|STYLE|HEAD|META|LINK|TITLE|NOSCRIPT|IFRAME|CANVAS|SVG)$/i.test(tag)) return;
+      const b=el.getBoundingClientRect();
+      if(tag!=='BODY'&&tag!=='HTML') rect(b.left,b.top,b.width,b.height,cs.backgroundColor,o);
+      else if(tag==='BODY') rect(0,0,W,H,cs.backgroundColor,o);
+      // bordes
+      [['Top',b.left,b.top,b.width,null],['Bottom',b.left,null,b.width,null],['Left',b.left,b.top,null,b.height],['Right',null,b.top,null,b.height]].forEach(([s])=>{
+        const bw=parseFloat(cs['border'+s+'Width'])||0; if(bw<=0||cs['border'+s+'Style']==='none'||cs['border'+s+'Style']==='hidden') return; const c=cs['border'+s+'Color'];
+        if(s==='Top') rect(b.left,b.top,b.width,bw,c,o); if(s==='Bottom') rect(b.left,b.bottom-bw,b.width,bw,c,o); if(s==='Left') rect(b.left,b.top,bw,b.height,c,o); if(s==='Right') rect(b.right-bw,b.top,bw,b.height,c,o); });
+      if(tag==='IMG'){ drawImg(el,o); return; }
+      if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||tag==='BUTTON'){ return; }
+      el.childNodes.forEach(n=>{ if(n.nodeType===3) drawText(n,cs,o); else if(n.nodeType===1) walk(n,o); });
+    };
+    walk(body,1);
+    const b64=pdf.output('datauristring').split(',')[1];
+    ifr.remove(); ifr=null; return b64;
+  }catch(e){ if(ifr) ifr.remove(); throw e; }
+}
+
 async function _guardarPdfDrive(html,nombre,carpeta){
-  if(!carpeta||typeof html2canvas==='undefined'||typeof window.jspdf==='undefined') return;
+  if(!carpeta||typeof window.jspdf==='undefined') return;
   window._pdfEnCurso=window._pdfEnCurso||new Set(); if(window._pdfEnCurso.has(nombre)) return; window._pdfEnCurso.add(nombre); setTimeout(()=>window._pdfEnCurso.delete(nombre),15000);
   let ifr;
   try{
@@ -3221,13 +3286,16 @@ async function _guardarPdfDrive(html,nombre,carpeta){
       imgs.forEach(im=>im.complete?fin():(im.onload=im.onerror=fin)); setTimeout(res,4000);
     });
     await new Promise(res=>setTimeout(res,150));
+    let base64=null; try{ base64=await _pdfVectorial(html); }catch(e){ base64=null; }
+    if(base64){ ifr.remove(); ifr=null; } else {
     const canvas=await html2canvas(doc.body,{scale:4,useCORS:true,backgroundColor:'#ffffff'});
     ifr.remove(); ifr=null;
     // Una sola página, del tamaño exacto del contenido — así nunca sale una segunda hoja en blanco.
     const {jsPDF}=window.jspdf; const imgW=612, imgH=imgW*(canvas.height/canvas.width);
     const pdf=new jsPDF({unit:'pt',format:[imgW,imgH]});
     pdf.addImage(canvas.toDataURL("image/png"),'PNG',0,0,imgW,imgH,undefined,'FAST');
-    const base64=pdf.output('datauristring').split(',')[1];
+    base64=pdf.output('datauristring').split(',')[1];
+    }
     const _pm=/^(COT-\d+)-/.exec(nombre); const r=await fetch(DRIVE_PDF_URL,{method:'POST',body:JSON.stringify({carpeta,nombre,base64,prefijo:_pm?_pm[1]+'-':''})});
     const j=await r.json().catch(()=>null);
     if(j&&j.ok) toast('📤 Copia guardada en Drive');
