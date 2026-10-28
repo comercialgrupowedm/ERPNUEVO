@@ -791,6 +791,22 @@ const mutedP=t=>`<p style="font-size:12px;color:var(--muted);padding:6px 0">${t}
 function hoy0(){ const h=new Date(); h.setHours(0,0,0,0); return h; }
 function diasDe(f){ if(!f) return null; const t=new Date(String(f).slice(0,10)+'T00:00:00'); if(isNaN(t)) return null; return Math.round((t-hoy0())/86400000); }
 const diasPactada = p => diasDe(p.fecha_pactada);
+const diasEntrega = p => diasDe(p.fecha_entrega_prod||p.fecha_pactada);
+// ── SCORE (igual que Control Producción): avance 20% · días disponibles 60% · tipo/urgencia/garantía 20% → escala 0–10. Más alto = atender primero.
+const SCORE_CFG={pesos:{avance:.20,dias:.60,tipo:.20},tipo:{GR:9,UR:7,AS:7,MT:5,DE:5,PE:3,SE:3,EM:3,PP:1,SU:1},tipoVacio:3,sinFecha:3};
+const SCORE_NIVELES={critico:7.5,alto:6,medio:4};
+const _calAvance=a=>a<=20?1:a<=40?3:a<=60?5:a<=80?7:9;
+const _calDias=d=>d==null?SCORE_CFG.sinFecha:d>15?1:d>10?3:d>5?5:d>0?7:9;
+function scoreOP(o){
+  const C=SCORE_CFG, d=diasEntrega(o);
+  if(!o||o.despachado||['TERMINADO','CANCELADO','PAUSADO'].includes(o.estado)) return {total:0,a:0,d:0,t:0,dias:d};
+  const a=_calAvance(Number(o.avance)||0), dd=_calDias(d), t=o.es_garantia?9:(C.tipo[String(o.tipo||'').toUpperCase().slice(0,2)]??C.tipoVacio);
+  return {total:Math.round(Math.min(10,a*C.pesos.avance+dd*C.pesos.dias+t*C.pesos.tipo)*10)/10,a,d:dd,t,dias:d};
+}
+const scoreColor=t=>t>=SCORE_NIVELES.critico?'rojo':t>=SCORE_NIVELES.alto?'naranja':t>=SCORE_NIVELES.medio?'azul':'gris';
+const scoreNivel=t=>t>=SCORE_NIVELES.critico?'Crítico':t>=SCORE_NIVELES.alto?'Alto':t>=SCORE_NIVELES.medio?'Medio':'Bajo';
+function scoreBadge(o){ const s=scoreOP(o); if(!s.total) return ''; return `<span class="badge ${scoreColor(s.total)}" title="Score ${s.total.toFixed(1)}/10 · ${scoreNivel(s.total)} · avance ${s.a} · días ${s.d} · tipo ${s.t}">⭐ ${s.total.toFixed(1)}</span>`; }
+const scoreCell=o=>{ const t=scoreOP(o).total; return t?`<b style="font-family:var(--mono);color:${t>=SCORE_NIVELES.critico?'#dc2626':t>=SCORE_NIVELES.alto?'#d97706':'inherit'}">${t.toFixed(1)}</b>`:'—'; };
 function diasTag(d){
   if(d==null) return '';
   if(d<0) return `<span class="badge rojo">Vencido ${-d}d</span>`;
@@ -967,7 +983,7 @@ let MOD = 'dashboard';
 const TITLES = {dashboard:'Inicio', bandeja:'Mi bandeja', planta:'Planta · todas las OP', pedidos:'Pedidos de material', produccion:'Producción · todos los ítems', planos:'Planos', itemscot:'Ítems cotizados'};
 
 // ══ CARGA / SINCRONIZACIÓN (mismo esquema que el ERP Comercial) ═══
-const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,no_lleva_mp,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at,semana,notas_diseno,notas_diseno_por,notas_diseno_at,externo_hasta,lleva_externo,servicio_externo,servicios_cot,externo_ok_fecha,externo_ok_por';
+const PROD_COLS='id,op,id_cotizacion,id_item,cot_num,item_num,descripcion,unidades,empresa,asesor,tipo,prioridad,disenador,fecha_inicio,fecha_pactada,fecha_entrega_prod,procesos,avance,estado,diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,no_lleva_mp,externo,externo_desde,externo_detalle,terminado,entrega_prod_fecha,terminado_por,calidad_estado,calidad_fecha,calidad_por,cant_despachada,despachado,despacho_fecha,created_at,created_by,es_garantia,id_prod_origen,garantia_motivo,tiene_imagen,imagen_drive_id,updated_at,semana,notas_diseno,notas_diseno_por,notas_diseno_at,externo_hasta,lleva_externo,servicio_externo,servicios_cot,externo_ok_fecha,externo_ok_por';
 const _fd=(a,b)=>String(b||'').localeCompare(String(a||''));
 const PSYNC=[
   {t:'produccion',k:'produccion',sel:PROD_COLS,ord:'op.desc,item_num.asc,id.asc',cmp:(a,b)=>(b.op-a.op)||(Number(a.item_num)-Number(b.item_num))||String(a.id).localeCompare(String(b.id))},
@@ -1171,6 +1187,7 @@ function disBadge(p){
 // Orden por urgencia: vencidas/próximas primero, luego prioridad, luego OP más reciente
 const _PR={Urgente:0,Alta:1,Media:2,Baja:3};
 function cmpUrg(a,b){
+  const sc=scoreOP(b).total-scoreOP(a).total; if(sc) return sc;
   const da=diasPactada(a), db=diasPactada(b);
   const x=(da==null?99999:da)-(db==null?99999:db); if(x) return x;
   const y=(_PR[a.prioridad]??2)-(_PR[b.prioridad]??2); if(y) return y;
@@ -1286,11 +1303,11 @@ function cardProd(p){
   ].join('');
   return `<div class="list-card" onclick="detalleProd('${p.id}')"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${thumbProd(p)}<div style="min-width:0"><div class="lc-id">OP-${p.op} · COT-${p.cot_num||'—'} · ÍTEM ${p.item_num??'—'}</div><div class="lc-title">${esc(p.empresa||'—')}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div><div style="text-align:right;flex-shrink:0">${bPrior(p.prioridad)}<div style="font-size:11px;margin-top:4px">×${p.unidades}</div></div></div>
     ${miniSteps(p)}
-    <div class="lc-meta">${bProd(estadoDis(p))}${gar(p)}${flags}<span style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</span><span style="font-size:11px;color:var(--muted)">📅 ${pactadaTag(p)}</span>${disBadge(p)}</div></div>`;
+    <div class="lc-meta">${scoreBadge(p)}${bProd(estadoDis(p))}${gar(p)}${flags}<span style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</span><span style="font-size:11px;color:var(--muted)">📅 ${pactadaTag(p)}</span>${disBadge(p)}</div></div>`;
 }
 function tablaProd(rows){
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Descripción</th><th>Empresa</th><th>Cant</th><th>Avance</th><th>Estado</th><th>Etapa</th><th>Pactada</th><th>Prior.</th><th>Diseñador</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td class="td-center">${p.unidades}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${esc(etapaLabel(p))}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
+  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Score</th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Descripción</th><th>Empresa</th><th>Cant</th><th>Avance</th><th>Estado</th><th>Etapa</th><th>Pactada</th><th>Prior.</th><th>Diseñador</th></tr></thead><tbody>
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${scoreCell(p)}</td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td class="td-center">${p.unidades}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${esc(etapaLabel(p))}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 const kchip=(n,l,c,onclick,on)=>`<div class="kchip ${on?'on':''}" ${onclick?`onclick="${onclick}"`:'style="cursor:default"'}><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div></div>`;
@@ -1400,8 +1417,8 @@ function pinIr(i){ const p=_PINS[i]; if(!p) return; const el=document.querySelec
 (function(){ const n=window.nav; if(typeof n==='function'&&!n._pin){ window.nav=function(){ _PINS.length=0; pinRender(); _COTXC&&_COTXC(); return n.apply(this,arguments); }; window.nav._pin=1; } })();
 function tablaBk(rows){
   const fl=p=>[esNueva(p)?'<span class="badge morado">🆕 Nueva</span>':'',repAbierto(p)?'<span class="badge rojo">⚠️ Reproceso</span>':'',p.externo?'<span class="badge urg">🚚 Externo</span>':'',matsPend(p).length?`<span class="badge naranja">📨 ${matsPend(p).length}</span>`:''].join(' ');
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Empresa</th><th>Descripción</th><th>Cant</th><th>Etapa</th><th>Avance</th><th>Estado</th><th>Pactada</th><th>Prior.</th><th>Avisos</th><th>Diseñador</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${_BK.has(p.id)?'checked':''} onchange="bkToggle('${p.id}',this.checked)"></td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td class="td-center">${p.unidades}</td><td>${esc(etapaLabel(p))}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${fl(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
+  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th>Score</th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Empresa</th><th>Descripción</th><th>Cant</th><th>Etapa</th><th>Avance</th><th>Estado</th><th>Pactada</th><th>Prior.</th><th>Avisos</th><th>Diseñador</th></tr></thead><tbody>
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${_BK.has(p.id)?'checked':''} onchange="bkToggle('${p.id}',this.checked)"></td><td>${scoreCell(p)}</td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td class="td-center">${p.unidades}</td><td>${esc(etapaLabel(p))}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${pactadaTag(p)}</td><td>${bPrior(p.prioridad)}</td><td>${fl(p)}</td><td>${esc(p.disenador||'—')}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function bandeja(){
@@ -1431,7 +1448,7 @@ function bandeja(){
 }
 
 // ══ PLANTA · vista general de todas las OP (activas, despachadas, viejas…) ═══
-const PL_DEF={scope:'activas',vista:'tabla',q:'',est:'',emp:'',dis:'',prior:'',tipo:'',etapa:'',rango:'',mias:false,sort:'op',fbOpen:false};
+const PL_DEF={scope:'activas',vista:'tabla',q:'',est:'',emp:'',dis:'',prior:'',tipo:'',etapa:'',rango:'',mias:false,sort:'score',fbOpen:false};
 let _PL={...PL_DEF};
 const _OPEN=new Set();
 function plantaGo(preset){ _PL={...PL_DEF,...(preset||{})}; pgReset(); nav('planta',true); }
@@ -1444,7 +1461,8 @@ function plToggleFb(){ _PL.fbOpen=!_PL.fbOpen; const el=document.getElementById(
 function toggleOpG(op,el){ const card=el.closest('.opg'); const on=card.classList.toggle('open'); if(on) _OPEN.add(op); else _OPEN.delete(op); }
 function sortPl(rows){
   const a=rows.slice();
-  if(_PL.sort==='entrega') a.sort((x,y)=>String(x.fecha_pactada||'9999').localeCompare(String(y.fecha_pactada||'9999'))||(y.op-x.op)||(x.item_num-y.item_num));
+  if(_PL.sort==='score') a.sort(cmpUrg);
+  else if(_PL.sort==='entrega') a.sort((x,y)=>String(x.fecha_pactada||'9999').localeCompare(String(y.fecha_pactada||'9999'))||(y.op-x.op)||(x.item_num-y.item_num));
   else if(_PL.sort==='urgencia') a.sort(cmpUrg);
   else if(_PL.sort==='empresa') a.sort((x,y)=>String(x.empresa||'').localeCompare(String(y.empresa||''),'es')||(y.op-x.op)||(x.item_num-y.item_num));
   else if(_PL.sort==='avance') a.sort((x,y)=>Number(y.avance||0)-Number(x.avance||0)||(y.op-x.op)||(x.item_num-y.item_num));
@@ -1474,7 +1492,7 @@ function plGrupos(rows){
 function opItemRow(p){
   return `<div class="opg-item" onclick="detalleProd('${p.id}')">${thumbProd(p,34)}<div style="flex:1;min-width:0"><div style="font-size:11px;font-family:var(--mono);color:var(--muted);font-weight:700">ÍTEM ${p.item_num??'—'} · ×${p.unidades}${p.es_garantia?' · 🛡️':''}</div>
     <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>${miniSteps(p)}</div>
-    <div style="text-align:right;flex-shrink:0">${bProd(estadoDis(p))}<div style="font-size:10px;margin-top:4px">${pactadaTag(p)}</div></div></div>`;
+    <div style="text-align:right;flex-shrink:0">${scoreBadge(p)} ${bProd(estadoDis(p))}<div style="font-size:10px;margin-top:4px">${pactadaTag(p)}</div></div></div>`;
 }
 function opCard(g){
   const its=g.items; const act=its.filter(p=>!p.despachado); const desp=its.length-act.length;
@@ -1488,7 +1506,7 @@ function opCard(g){
     <div class="opg-head" onclick="toggleOpG(${g.op},this)">
       <div style="flex:1;min-width:0"><div class="lc-id">OP-${g.op} · COT-${g.cot||'—'}</div><div class="lc-title">${esc(g.empresa||'—')}</div>
         <div class="lc-sub">${its.length} ítem${its.length!==1?'s':''}${desp?` · ${desp} despachado${desp!==1?'s':''}`:''}</div></div>
-      <div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:800">${av.toFixed(0)}%</div><div class="opg-chev">›</div></div>
+      <div style="text-align:right;flex-shrink:0">${scoreBadge({...act.slice().sort((a,b)=>scoreOP(b).total-scoreOP(a).total)[0]||{despachado:true}})}<div style="font-size:13px;font-weight:800">${av.toFixed(0)}%</div><div class="opg-chev">›</div></div>
     </div>
     <div style="padding:0 14px 12px">${prog(av)}
       <div class="lc-meta">${stg}${desp===its.length?'<span class="badge gris">📦 Despachada</span>':''}${f?`<span style="font-size:11px;color:var(--muted)">📅 ${fmtDate(f)} ${diasTag(d)}</span>`:''}${rep?'<span class="badge rojo">⚠️ Reproceso</span>':''}${viejas?`<span class="badge rosado">⏳ ${viejas} vieja${viejas!==1?'s':''}</span>`:''}${sinDis?'<span class="badge rojo">🙋 Sin diseñador</span>':''}${dis.map(disBadgeN).join('')}</div></div>
@@ -1515,7 +1533,7 @@ function planta(){
       ${sel('dis','Diseñador',[['__none','🙋 Sin diseñador'],...disenadoresLista()],_PL.dis)}${sel('prior','Prioridad',['Baja','Media','Alta','Urgente'],_PL.prior)}
       ${sel('tipo','Tipo',uniq('tipo'),_PL.tipo)}${sel('etapa','Etapa',ETAPAS.map(e=>[e.k,e.l]),_PL.etapa)}
       ${sel('rango','Antigüedad',[['1m','Último mes'],['3m','Últimos 3 meses'],['6m','Últimos 6 meses'],['1y','Último año']],_PL.rango)}
-      <select onchange="plSet('sort',this.value)" title="Orden">${[['op','Orden: OP más reciente'],['antiguas','OP más antigua'],['entrega','Entrega más próxima'],['urgencia','Más urgentes'],['empresa','Empresa A-Z'],['avance','Mayor avance']].map(([v,l])=>`<option value="${v}" ${_PL.sort===v?'selected':''}>${l}</option>`).join('')}</select>
+      <select onchange="plSet('sort',this.value)" title="Orden">${[['score','Orden: Score (mayor primero)'],['op','OP más reciente'],['antiguas','OP más antigua'],['entrega','Entrega más próxima'],['urgencia','Más urgentes'],['empresa','Empresa A-Z'],['avance','Mayor avance']].map(([v,l])=>`<option value="${v}" ${_PL.sort===v?'selected':''}>${l}</option>`).join('')}</select>
       <button class="filter-reset" onclick="plReset()">✕ Limpiar</button></div></div>`;
   const ctl=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
     <div class="chips">${[['op','▦ Por OP'],['item','☰ Por ítem'],['tabla','⊞ Tabla'],['kanban','🗂️ Kanban']].map(([k,l])=>`<button class="chip ${_PL.vista===k?'on':''}" onclick="plVista('${k}')">${l}</button>`).join('')}<button class="chip ${_PL.mias?'on':''}" onclick="plSet('mias',${!_PL.mias})">⭐ Solo mis OP</button></div>
@@ -3516,7 +3534,7 @@ function _qaFmtUpdatePreview(){
 // panel, según qa.editable) replicando el formato en papel (bordes tipo tabla)
 function _qaFmtBuildPDFHtml(op, qa){
   // Ajusta todo a UNA sola hoja carta horizontal al imprimir (si no cabe, reduce el zoom)
-  const _fit=h=>String(h).replace(/<\/body>/i,'<script>(function(){var W=1018,H=770,b=document.body;function aj(){b.style.zoom=1;b.style.width=W+"px";var z=Math.min(1,H/Math.max(1,b.scrollHeight));if(z<1){b.style.zoom=z;b.style.width=(W/z)+"px";for(var i=0;i<20&&b.getBoundingClientRect().height>H;i++){z*=.97;b.style.zoom=z;b.style.width=(W/z)+"px";}}}function rs(){b.style.zoom="";b.style.width="";}window.addEventListener("beforeprint",aj);window.addEventListener("afterprint",rs);})();<\/script></body>');
+  const _fit=h=>String(h).replace(/<\/body>/i,'<script>(function(){var W=1018,H=770,b=document.getElementById("qaw")||document.body;function aj(){b.style.zoom=1;b.style.width=W+"px";var z=Math.min(1,H/Math.max(1,b.scrollHeight));if(z<1){b.style.zoom=z;b.style.width=(W/z)+"px";for(var i=0;i<20&&b.getBoundingClientRect().height>H;i++){z*=.97;b.style.zoom=z;b.style.width=(W/z)+"px";}}}function rs(){b.style.zoom="";b.style.width="";}window.addEventListener("beforeprint",aj);window.addEventListener("afterprint",rs);})();<\/script></body>');
   // Letras más grandes para que se lea al imprimir (el formato original usaba 5–7 px)
   const _k=h=>String(h).replace(/font-size:\s*([\d.]+)px/g,(m,n)=>'font-size:'+(Math.round(parseFloat(n)*1.5*10)/10)+'px').replace(/(\.kc-table tbody tr\.kc-group\{ height:|\.kc-table tbody tr\.kc-group td\{ height:)20px; min-height:20px/g,(m,x)=>x+'27px; min-height:27px').replace(/height:60px; min-height:60px/g,'height:81px; min-height:81px').replace(/\.kc-table tbody tr\.kc-group\{ height:20px/g,'.kc-table tbody tr.kc-group{ height:27px');
   if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return _fit(_k(o)); }catch(e){} }
@@ -4025,12 +4043,34 @@ function accionesProd(p){
   b.push(btn('🗺️','#0d9488','Hoja de ruta',`prodHojaRutaEditor('${id}')`));
   if(p.hoja_ruta||p._hrSaved) b.push(btn('🖨️','#0f766e','Imprimir hoja de ruta',`prodHojaRutaImprimir('${id}')`));
   b.push(btn('✅','#2563eb','Formato QA',`prodFormatoQA('${id}')`));
+  b.push(btn('🖨️','#1d4ed8','Imprimir plano + QA',`prodImprimirPlanoQA('${id}')`));
   if((DB.produccion||[]).filter(x=>x.op===p.op&&!x.es_garantia).length>1) b.push(btn('🏷️','#0f766e','Marquillas',`prodMarquillas('${id}')`));
   b.push(btn('🖼️','#0284c7','Imagen del ítem',`prodPickImagen('${id}')`));
   b.push(btn('📎','#475569','Subir plano',`prodSubirPlano('${id}')`));
   b.push(btn('📄','#334155','Ver plano',`prodVerPlano('${id}')`));
   if(puede('diseno','comercial')) b.push(btn('👤','#7c3aed',p.disenador?'Cambiar diseñador':'Asignar diseñador',`prodAsignarDis('${id}')`));
   return `<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`;
+}
+// Imprime en un solo trabajo: hoja 1 = plano, hoja 2 = Formato QA (necesita plano de imagen y Formato QA guardado)
+async function prodImprimirPlanoQA(id){
+  const p=prodDe(id); if(!p) return; showBusy();
+  try{
+    await _prodCargarExtra(p);
+    const qa=p.formato_qa;
+    if(!qa||!Array.isArray(qa.kc)||!qa.kc.length){ toast('Primero llena y guarda el Formato QA de este ítem','error'); return; }
+    const r=await GET('prod_archivos',ARCH_COLS+`&tipo=eq.plano&or=(id_prod.eq.${id}${p.id_item?`,id_item.eq.${p.id_item}`:''})&order=created_at.desc&limit=1`);
+    if(!r||!r[0]){ toast('Esta OP todavía no tiene plano','error'); return; }
+    const f=await GET('prod_archivos','select=nombre,mime,data&id='+eq(r[0].id)); const a=f&&f[0];
+    if(!a||!a.data){ toast('Plano no disponible','error'); return; }
+    let src='';
+    if(/^https?:\/\//i.test(a.data)){ const did=(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1]; src=did?(/^image\//.test(a.mime||'')?driveImg(did,1800):`https://drive.google.com/thumbnail?id=${did}&sz=w1800`):a.data; }
+    else if(/^image\//.test(a.mime||'')) src=a.data;
+    else { toast('Este plano es un PDF guardado en el sistema y no se puede unir con el QA. Imprímelos por separado.','error'); return; }
+    let html=_qaFmtBuildPDFHtml(qaFindOP(id),qa);
+    const hoja1=`<div style="height:200mm;page-break-after:always;break-after:page;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(src)}" style="max-width:100%;max-height:200mm;object-fit:contain"></div>`;
+    html=html.replace(/<body([^>]*)>/i,m=>m+hoja1+'<div id="qaw">').replace('<script>(function(){var W=1018','</div><script>(function(){var W=1018');
+    _abrirDocParaImprimir(html,`PLANO_QA_OP-${p.op}_Item${p.item_num||1}.pdf`,true);
+  }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
 }
 async function prodVerPlano(id){
   const p=prodDe(id); if(!p) return;
@@ -4269,8 +4309,8 @@ function prDentro(p){
 }
 const horasTot=p=>(p.procesos||[]).reduce((s,x)=>s+(Number(x&&x.horas)||0),0);
 function tablaProdAll(rows){
-  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Estado</th><th>Tipo</th><th>Prior.</th><th>Empresa</th><th>Descripción</th><th>Asesor</th><th>Diseñador</th><th>Avance</th><th>F. inicio</th><th>Pactada</th><th>Hrs</th><th>Sem</th></tr></thead><tbody>
-    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${bTipo(p.tipo)}</td><td>${bPrior(p.prioridad)}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td>${esc(p.asesor||'—')}</td><td>${esc(p.disenador||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${fmtDate(p.fecha_inicio)}</td><td>${pactadaTag(p)}</td><td class="td-center">${horasTot(p)?horasTot(p).toFixed(1)+'h':'—'}</td><td class="td-center">${p.semana??'—'}</td></tr>`).join('')}
+  return `<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Score</th><th></th><th>OP</th><th>COT</th><th>Ítem</th><th>Estado</th><th>Tipo</th><th>Prior.</th><th>Empresa</th><th>Descripción</th><th>Asesor</th><th>Diseñador</th><th>Avance</th><th>F. inicio</th><th>Pactada</th><th>Hrs</th><th>Sem</th></tr></thead><tbody>
+    ${rows.map(p=>`<tr onclick="detalleProd('${p.id}')"><td>${scoreCell(p)}</td><td>${thumbProd(p,34)}</td><td><b style="color:var(--purple)">OP-${p.op}</b></td><td>COT-${p.cot_num||'—'}</td><td class="td-center"><b>${p.item_num??'—'}</b></td><td>${bProd(estadoDis(p))}${gar(p)}</td><td>${bTipo(p.tipo)}</td><td>${bPrior(p.prioridad)}</td><td style="max-width:170px;font-weight:600">${esc(p.empresa||'—')}</td><td style="max-width:240px">${esc(p.descripcion||'—')}</td><td>${esc(p.asesor||'—')}</td><td>${esc(p.disenador||'—')}</td><td style="min-width:90px"><div style="font-size:11px;font-weight:700">${Number(p.avance||0).toFixed(0)}%</div>${prog(p.avance)}</td><td>${fmtDate(p.fecha_inicio)}</td><td>${pactadaTag(p)}</td><td class="td-center">${horasTot(p)?horasTot(p).toFixed(1)+'h':'—'}</td><td class="td-center">${p.semana??'—'}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function produccion(){
