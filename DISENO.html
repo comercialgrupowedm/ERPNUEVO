@@ -4062,12 +4062,16 @@ async function prodImprimirPlanoQA(id){
     if(!r||!r[0]){ toast('Esta OP todavía no tiene plano','error'); return; }
     const f=await GET('prod_archivos','select=nombre,mime,data&id='+eq(r[0].id)); const a=f&&f[0];
     if(!a||!a.data){ toast('Plano no disponible','error'); return; }
-    let src='';
-    if(/^https?:\/\//i.test(a.data)){ const did=(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1]; src=did?(/^image\//.test(a.mime||'')?driveImg(did,1800):`https://drive.google.com/thumbnail?id=${did}&sz=w1800`):a.data; }
-    else if(/^image\//.test(a.mime||'')) src=a.data;
-    else { toast('Este plano es un PDF guardado en el sistema y no se puede unir con el QA. Imprímelos por separado.','error'); return; }
+    let srcs=[];
+    if(/^https?:\/\//i.test(a.data)){ const did=(a.data.match(/(?:\/d\/|[?&]id=)([-\w]{20,})/)||[])[1]; srcs=[did?(/^image\//.test(a.mime||'')?driveImg(did,1800):`https://drive.google.com/thumbnail?id=${did}&sz=w1800`):a.data]; }
+    else if(/^image\//.test(a.mime||'')) srcs=[a.data];
+    else{ // PDF guardado en el sistema: se convierte cada página (máx. 3) en imagen para unirla con el QA
+      const lib=await _pdfjs(); const bin=atob(String(a.data).split(',').pop()); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      const pdf=await lib.getDocument({data:u8}).promise;
+      for(let n=1;n<=Math.min(3,pdf.numPages);n++){ const pg=await pdf.getPage(n); const v0=pg.getViewport({scale:1}); const v=pg.getViewport({scale:Math.min(4,2400/Math.max(v0.width,v0.height))}); const c=document.createElement('canvas'); c.width=Math.round(v.width); c.height=Math.round(v.height); const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:cx,viewport:v}).promise; srcs.push(c.toDataURL('image/jpeg',.92)); }
+    }
     let html=_qaFmtBuildPDFHtml(qaFindOP(id),qa);
-    const hoja1=`<div style="height:200mm;page-break-after:always;break-after:page;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(src)}" style="max-width:100%;max-height:200mm;object-fit:contain"></div>`;
+    const hoja1=srcs.map(src=>`<div style="height:200mm;page-break-after:always;break-after:page;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(src)}" style="max-width:100%;max-height:200mm;object-fit:contain"></div>`).join('');
     html=html.replace(/<body([^>]*)>/i,m=>m+hoja1+'<div id="qaw">').replace('<script>(function(){var W=1018','</div><script>(function(){var W=1018');
     _abrirDocParaImprimir(html,`PLANO_QA_OP-${p.op}_Item${p.item_num||1}.pdf`,true);
   }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
