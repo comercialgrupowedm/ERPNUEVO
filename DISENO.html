@@ -3515,10 +3515,12 @@ function _qaFmtUpdatePreview(){
 // Construye el HTML del formato (imprimible o editable en vivo dentro del
 // panel, según qa.editable) replicando el formato en papel (bordes tipo tabla)
 function _qaFmtBuildPDFHtml(op, qa){
+  // Ajusta todo a UNA sola hoja carta horizontal al imprimir (si no cabe, reduce el zoom)
+  const _fit=h=>String(h).replace(/<\/body>/i,'<script>(function(){var W=1018,H=770,b=document.body;function aj(){b.style.zoom=1;b.style.width=W+"px";var z=Math.min(1,H/Math.max(1,b.scrollHeight));if(z<1){b.style.zoom=z;b.style.width=(W/z)+"px";for(var i=0;i<20&&b.getBoundingClientRect().height>H;i++){z*=.97;b.style.zoom=z;b.style.width=(W/z)+"px";}}}function rs(){b.style.zoom="";b.style.width="";}window.addEventListener("beforeprint",aj);window.addEventListener("afterprint",rs);})();<\/script></body>');
   // Letras más grandes para que se lea al imprimir (el formato original usaba 5–7 px)
   const _k=h=>String(h).replace(/font-size:\s*([\d.]+)px/g,(m,n)=>'font-size:'+(Math.round(parseFloat(n)*1.5*10)/10)+'px').replace(/(\.kc-table tbody tr\.kc-group\{ height:|\.kc-table tbody tr\.kc-group td\{ height:)20px; min-height:20px/g,(m,x)=>x+'27px; min-height:27px').replace(/height:60px; min-height:60px/g,'height:81px; min-height:81px').replace(/\.kc-table tbody tr\.kc-group\{ height:20px/g,'.kc-table tbody tr.kc-group{ height:27px');
-  if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return _k(o); }catch(e){} }
-  return _k(_qaFmtBuildPDFHtmlOrig(op,qa));
+  if(!(qa&&qa.editable)&&!(qa&&qa.header&&qa.header.mqItems)&&window.PL&&PL.has('qa')){ try{ const o=PL.render('qa',PL.dQA(op,qa),null,'FORMATO PLANO 2026'); if(o) return _fit(_k(o)); }catch(e){} }
+  return _fit(_k(_qaFmtBuildPDFHtmlOrig(op,qa)));
 }
 function _qaFmtBuildPDFHtmlOrig(op, qa){
   const h        = qa.header||{};
