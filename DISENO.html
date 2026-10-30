@@ -5739,6 +5739,7 @@ img[data-wl-zoom]{cursor:zoom-in}
   // Eventos
   document.addEventListener('click',function(e){
     var im=e.target; if(!im||im.tagName!=='IMG') return;
+    if(im.closest&&im.closest('[contenteditable]')) return;   // en los editores de texto la imagen se edita, no se abre
     if(!qualifies(im)) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     open(im);
