@@ -4888,7 +4888,7 @@ function imgEdit(img){
   if(!img||!img.src) return; const old=document.getElementById('imged-ov'); if(old) old.remove();
   const W=Math.min(560,Math.floor(window.innerWidth*0.88)), nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height; if(!nw||!nh) return;
   const k=Math.min(1,W/nw,380/nh), dw=Math.round(nw*k), dh=Math.round(nh*k);
-  const ov=document.createElement('div'); ov.id='imged-ov'; ov.style.cssText='position:fixed;inset:0;z-index:6000;background:rgba(15,23,42,.7);display:flex;align-items:center;justify-content:center;padding:10px';
+  const ov=document.createElement('div'); ov.id='imged-ov'; ov.style.cssText='position:fixed;inset:0;z-index:100600;background:rgba(15,23,42,.7);display:flex;align-items:center;justify-content:center;padding:10px';
   ov.innerHTML=`<div style="background:#fff;color:#111;border-radius:14px;padding:14px;max-width:96vw;max-height:96vh;overflow:auto;font-family:Arial,sans-serif"><div style="font-weight:800;margin-bottom:6px">✂️ Editar imagen</div><div style="font-size:12px;color:#555;margin-bottom:8px">Arrastra sobre la imagen para <b>recortar</b> esa zona. Usa el control para <b>reducir el tamaño</b>.</div><div id="ie-w" style="position:relative;width:${dw}px;height:${dh}px;margin:0 auto;touch-action:none;cursor:crosshair;background:#eee"><canvas id="ie-c" width="${dw}" height="${dh}" style="display:block"></canvas><div id="ie-r" style="position:absolute;border:2px dashed #ea580c;background:rgba(234,88,12,.15);display:none"></div></div><div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap"><label style="font-size:12px;font-weight:700">Tamaño <input id="ie-s" type="range" min="10" max="100" value="100" style="vertical-align:middle"> <b id="ie-sv">100%</b></label><span id="ie-i" style="font-size:11px;color:#555"></span></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap"><button id="ie-q" style="padding:8px 12px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer">Quitar recorte</button><button id="ie-x" style="padding:8px 12px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer">Cancelar</button><button id="ie-ok" style="padding:8px 14px;border:0;background:#1a3a6b;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">✓ Aplicar</button></div></div>`;
   document.body.appendChild(ov);
   const cv=ov.querySelector('#ie-c'), cx=cv.getContext('2d'), box=ov.querySelector('#ie-w'), rc=ov.querySelector('#ie-r'), sl=ov.querySelector('#ie-s');
@@ -4921,7 +4921,7 @@ function imgEscalar(img,f){
 function imgBar(img){
   imgBarQuitar(); img.setAttribute('data-imgsel','1'); img.style.outline='3px solid #2563eb';
   var r=img.getBoundingClientRect(); var b=document.createElement('div'); b.id='imgbar';
-  b.style.cssText='position:fixed;z-index:6500;background:#111827;color:#fff;border-radius:10px;padding:5px 6px;display:flex;gap:5px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.4);font:700 12px Arial,sans-serif';
+  b.style.cssText='position:fixed;z-index:100500;background:#111827;color:#fff;border-radius:10px;padding:5px 6px;display:flex;gap:5px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.4);font:700 12px Arial,sans-serif';
   var btn=function(t,fn,ti){ var x=document.createElement('button'); x.type='button'; x.textContent=t; x.title=ti||''; x.style.cssText='background:#374151;color:#fff;border:0;border-radius:7px;padding:6px 10px;cursor:pointer;font:700 12px Arial,sans-serif'; x.onmousedown=function(e){ e.preventDefault(); }; x.onclick=function(e){ e.stopPropagation(); fn(); }; b.appendChild(x); };
   var nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
   var lab=document.createElement('span'); lab.textContent=nw+'×'+nh+' px'; lab.style.cssText='opacity:.8;padding:0 4px'; b.appendChild(lab);
@@ -4930,7 +4930,7 @@ function imgBar(img){
   btn('✂️ Recortar / tamaño',function(){ imgBarQuitar(); imgEdit(img); },'Abre el editor completo');
   btn('🗑 Quitar',function(){ var h=img.closest('[contenteditable]'); img.remove(); imgBarQuitar(); if(h) h.dispatchEvent(new Event('input',{bubbles:true})); },'Elimina la imagen');
   var hd=document.createElement('div'); hd.id='imgbar-h'; hd.title='Arrastra para cambiar el tamaño';
-  hd.style.cssText='position:fixed;z-index:6501;width:16px;height:16px;background:#2563eb;border:2px solid #fff;border-radius:4px;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.5)';
+  hd.style.cssText='position:fixed;z-index:100501;width:16px;height:16px;background:#2563eb;border:2px solid #fff;border-radius:4px;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.5)';
   hd.style.left=Math.round(r.right-10)+'px'; hd.style.top=Math.round(r.bottom-10)+'px'; document.body.appendChild(hd);
   hd.onpointerdown=function(e){ e.preventDefault(); e.stopPropagation(); try{ hd.setPointerCapture(e.pointerId); }catch(x){} var x0=e.clientX, w0=img.getBoundingClientRect().width, nwid=w0;
     hd.onpointermove=function(m){ nwid=Math.max(16,w0+(m.clientX-x0)); img.style.width=nwid+'px'; img.style.height='auto'; var q=img.getBoundingClientRect(); hd.style.left=Math.round(q.right-10)+'px'; hd.style.top=Math.round(q.bottom-10)+'px'; };
