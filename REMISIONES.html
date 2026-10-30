@@ -1885,7 +1885,7 @@ async function papelera(){
 }
 async function papRestaurar(id){
   if(!confirm('¿Restaurar este elemento (y lo que se eliminó junto con él)?')) return;
-  try{ showBusy(); const r=await sb.rpc('papelera_restaurar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('♻️ Restaurado'+(r&&r.restaurados>1?' ('+r.restaurados+' registros)':'')); await refreshCurrent(); }
+  try{ showBusy(); const r=await sb.rpc('papelera_restaurar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('♻️ Restaurado'+(r&&r.restaurados>1?' ('+r.restaurados+' registros)':'')+((r&&r.renumerados&&r.renumerados.length)?' · el número '+r.renumerados.map(x=>x.de+' ya estaba tomado, quedó con el '+x.a).join('; '):'')); await refreshCurrent(); }
   catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
 async function papBorrar(id){
