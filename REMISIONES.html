@@ -593,6 +593,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" onclick="closeSidebar();ayudaManual()"><span class="nav-icon">📖</span>Manual de uso</div>
     <div class="nav-item" id="nav-inst" onclick="closeSidebar();erpInstalar()"><span class="nav-icon">📲</span>Instalar esta app</div>
+    <div class="nav-item" data-m="papelera" onclick="nav('papelera')"><span class="nav-icon">🗑️</span>Papelera</div>
   </div>
   <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)">
     <div id="sidebar-user-info" style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px"></div>
@@ -1077,7 +1078,7 @@ async function doLogin(){
 //  Flujo: Calidad PIDE → Comercial SELECCIONA → Administración GENERA → Calidad DESPACHA
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones',elementos:'Elementos / Ítems'};
+const TITLES={papelera:'Papelera',dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones',elementos:'Elementos / Ítems'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
 const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
@@ -1868,7 +1869,31 @@ function mqAplicarEdit(){
   const est=E.its.map(it=>({id:it.id,t:'',s:'',u:it.unidades||1,pies:false,tp:it.tipo_mq||'',d:it.descripcion||'',dm:'1',p:it.precio_unit==null?'':it.precio_unit,pm:'1',cnc:h(it,'CENTRO'),edm:h(it,'EDM'),h:it.marquilla_html||''}));
   E.ids=E.its.map(i=>i.id); mqRepintar(est);
 }
-function refreshCurrentView(){ const mods={dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones,elementos}; if(MOD!=='cotizaciones'&&MOD!=='elementos') embedSalir(); if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+// ══ PAPELERA: lo que se borra queda guardado (por un tiempo) y se puede restaurar ══
+const PAP_MOD='remisiones';
+const PAP_T={clientes:'Cliente',cotizaciones:'Cotización',items:'Ítem de cotización',produccion:'Ítem de producción (OP)',prod_archivos:'Archivo',prod_materiales:'Material pedido',prod_reprocesos:'Reproceso',prod_cotizado:'Datos cotizados',remisiones:'Remisión',ordenes_compra:'Orden de compra',oc_lineas:'Línea de OC',proveedores:'Proveedor',certificados_conformidad:'Certificado',inv_materiales:'Inventario',materiales:'Material',servicios:'Servicio',cal_ambiente:'Temp./humedad',op_numeros:'Número de OP',doc_registros:'Registro de documento',doc_formatos:'Formato',dev_docs:'Documento'};
+let _PAPQ='';
+async function papelera(){
+  let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
+  const q=_PAPQ.toLowerCase(); const data=rows.filter(r=>!q||(String(r.resumen||'')+' '+(PAP_T[r.tabla]||r.tabla)+' '+String(r.borrado_por||'')).toLowerCase().includes(q));
+  const fmt=d=>{ const t=new Date(d); return isNaN(t)?'':t.toLocaleDateString('es-CO')+' '+t.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}); };
+  const fila=r=>`<tr><td style="white-space:nowrap">${fmt(r.borrado_en)}</td><td><span class="badge gris">${esc(PAP_T[r.tabla]||r.tabla)}</span></td><td style="max-width:420px">${esc(r.resumen||'—')}${r.hijos?` <span class="badge azul" title="Se restauran junto con este elemento">+${r.hijos} relacionado(s)</span>`:''}</td><td>${esc(r.borrado_por||'—')}</td>
+    <td style="white-space:nowrap"><button class="btn btn-primary btn-sm" onclick="papRestaurar(${r.id})">♻️ Restaurar</button> <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="papBorrar(${r.id})" title="Eliminar para siempre">🗑</button></td></tr>`;
+  setContent(moduleBanner('🗑️','Papelera','Lo que se eliminó en este módulo se guarda 6 meses: restáuralo con un clic')
+    +`<div style="margin:10px 12px"><div class="filter-search-wrap"><input type="text" placeholder="Buscar en la papelera…" value="${esc(_PAPQ)}" autocomplete="off" oninput="_PAPQ=this.value;clearTimeout(window._papT);window._papT=setTimeout(papelera,250)"></div></div>`
+    +`<div style="padding:0 12px 14px">${data.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Eliminado</th><th>Tipo</th><th>Elemento</th><th>Por</th><th></th></tr></thead><tbody>${data.map(fila).join('')}</tbody></table></div></div>`:`<p style="font-size:13px;color:var(--muted);padding:16px 4px">La papelera está vacía.</p>`}</div>`);
+}
+async function papRestaurar(id){
+  if(!confirm('¿Restaurar este elemento (y lo que se eliminó junto con él)?')) return;
+  try{ showBusy(); const r=await sb.rpc('papelera_restaurar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('♻️ Restaurado'+(r&&r.restaurados>1?' ('+r.restaurados+' registros)':'')); await refreshCurrent(); }
+  catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
+async function papBorrar(id){
+  if(!confirm('¿Eliminar para siempre? Ya no se podrá recuperar.')) return;
+  try{ showBusy(); await sb.rpc('papelera_vaciar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('Eliminado definitivamente'); papelera(); }
+  catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
+}
+function refreshCurrentView(){ const mods={papelera,dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones,elementos}; if(MOD!=='cotizaciones'&&MOD!=='elementos') embedSalir(); if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
