@@ -4292,12 +4292,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
 // ══════════════════════════════════════════════════════════════════
 const ROL_LABEL={admin:'Administrador',desarrollador:'Desarrollador',comercial:'Comercial',lectura:'Solo lectura',diseno:'Diseño',compras:'Compras',produccion:'Producción',calidad:'Calidad',administracion:'Administración',planeacion:'Planeación'};
 const MODS_ROL={
-  desarrollador:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones','materiales','servicios','procesos'],
-  admin:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
-  comercial:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
+  desarrollador:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones','materiales','servicios','procesos','papelera'],
+  admin:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones','papelera'],
+  comercial:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones','papelera'],
   lectura:['dashboard','cotizaciones','items','usados','analisis','clientes','produccion','remisiones'],
   diseno:['produccion'], compras:['produccion'], produccion:['produccion'],
-  calidad:['produccion','remisiones'], administracion:['remisiones','produccion','cotizaciones','items'],
+  calidad:['produccion','remisiones'], administracion:['remisiones','produccion','cotizaciones','items','papelera'],
 };
 const ROLES_BANDEJA=['diseno','compras','produccion','calidad','administracion'];
 const rolActual=()=>_SESSION?.rol||'';
