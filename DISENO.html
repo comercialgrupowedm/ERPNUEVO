@@ -1314,9 +1314,14 @@ const kchip=(n,l,c,onclick,on)=>`<div class="kchip ${on?'on':''}" ${onclick?`onc
 
 // ══ INICIO ════════════════════════════════════════════════════════
 // Vista del inicio: «Solo lo mío» (diseñador) o «Ver todo» (como el administrador: todo el equipo y la planta)
+// Vista predeterminada por usuario: Miguel Herrera entra viendo TODO; si cambia la vista, se recuerda solo la de él (en este navegador)
+const _prefK=k=>'dis_'+k+'_'+((_SESSION&&_SESSION.nombre)||'');
+const _prefGet=k=>{ try{ return localStorage.getItem(_prefK(k)); }catch(e){ return null; } };
+const _prefSet=(k,v)=>{ try{ localStorage.setItem(_prefK(k),v); }catch(e){} };
+const _verTodoDef=()=>!!(_SESSION&&_SESSION.nombre==='M. HERRERA');
 let _DV=null;
-function dvTodo(){ if(_DV==null) return _esAdmin()&&!(DB.produccion||[]).some(esMia); return _DV==='todo'; }
-function dvToggle(){ _DV=dvTodo()?'mio':'todo'; refreshCurrentView(); }
+function dvTodo(){ if(_DV==null){ const pf=_prefGet('dv'); if(pf) return pf==='todo'; if(_verTodoDef()) return true; return _esAdmin()&&!(DB.produccion||[]).some(esMia); } return _DV==='todo'; }
+function dvToggle(){ _DV=dvTodo()?'mio':'todo'; _prefSet('dv',_DV); refreshCurrentView(); }
 function dashboard(){
   const all=DB.produccion||[]; const act=all.filter(enPlanta);
   const T=dvTodo();
@@ -1373,7 +1378,7 @@ const BD_SCOPES={
   sindis:['Sin diseñador',p=>ST.sindis(p)],
   equipo:['Todo el equipo',p=>enBandejaDis(p)],
 };
-function bdScope(k){ _BD.scope=k; _BD.kf=''; pgReset(); bandeja(); }
+function bdScope(k){ _BD.scope=k; _prefSet('bd',k); _BD.kf=''; pgReset(); bandeja(); }
 let _bdT=null; function bdSetQ(v){ clearTimeout(_bdT); _bdT=setTimeout(()=>{ _BD.q=v; pgReset(); bandeja(); },220); }
 
 // ── Vista «Por OP»: una fila por OP (con cantidad de ítems) y botón para desplegar/elegir el ítem ──
@@ -1423,7 +1428,7 @@ function tablaBk(rows){
 }
 function bandeja(){
   const all=DB.produccion||[];
-  if(!_BD.init){ _BD.init=true; if(_esAdmin()&&!all.some(esMia)) _BD.scope='equipo'; }
+  if(!_BD.init){ _BD.init=true; const pf=_prefGet('bd'); if(pf&&BD_SCOPES[pf]) _BD.scope=pf; else if(_verTodoDef()||(_esAdmin()&&!all.some(esMia))) _BD.scope='equipo'; }
   const cnt={}; for(const k in BD_SCOPES) cnt[k]=all.filter(BD_SCOPES[k][1]).length;
   const q=_norm(_BD.q);
   const base=all.filter(BD_SCOPES[_BD.scope][1]);
@@ -4120,9 +4125,10 @@ function kanbanHtml(rows){
 // ── Módulo Pedidos (material solicitado a compras, con su estado) ──
 const PE_EST={PENDIENTE:['Por enviar','naranja'],SOLICITADO:['Solicitado','azul'],COMPRADO:['Comprado','verde'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
 let _PE={scope:'mios',est:'',q:''};
-function peSet(k,v){ _PE[k]=v; pgReset(); pedidos(); }
+function peSet(k,v){ _PE[k]=v; if(k==='scope') _prefSet('pe',v); pgReset(); pedidos(); }
 let _peT=null; function peSetQ(v){ clearTimeout(_peT); _peT=setTimeout(()=>{ _PE.q=v; pgReset(); pedidos(); },220); }
 function pedidos(){
+  if(!_PE.init){ _PE.init=true; const pf=_prefGet('pe'); if(pf) _PE.scope=pf; else if(_verTodoDef()) _PE.scope='equipo'; }
   const mats=(DB.prodMats||[]).map(m=>({m,p:prodDe(m.id_prod)})).filter(x=>x.p&&!x.p.despachado);
   const base=mats.filter(x=>_PE.scope==='equipo'||esMia(x.p));
   const cnt={}; Object.keys(PE_EST).forEach(k=>cnt[k]=base.filter(x=>x.m.estado===k).length);
