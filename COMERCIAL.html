@@ -3909,11 +3909,11 @@ async function saveItem(){
     const _totCot=()=>{ const its=itemsDe(_IT.cotId); const sin=its.reduce((s,it)=>s+totalItem(it),0); const iva=Math.round(sin*IVA_PCT/100); return {precio_sin_iva:sin,iva,precio_total:sin+iva,descuento:Math.round(sin*Number((_cotRow||{}).descuento_pct||0)/100)}; };
     const _cotId0=_IT.cotId, _itId0=_IT.id;
     if(_itId0){
-      const i=DB.items.findIndex(x=>x.id===_itId0), prev=i>=0?{...DB.items[i]}:null; if(i>=0) DB.items[i]={...DB.items[i],...row};
+      const i=DB.items.findIndex(x=>x.id===_itId0), prev=i>=0?{...DB.items[i]}:null; if(i>=0) Object.assign(DB.items[i],row); delete _IDX.items_cot;
       const vals=(_cotRow&&itemsDe(_cotId0).length)?_totCot():null; if(vals&&_cotRow) Object.assign(_cotRow,vals);
       toast('✅ Ítem actualizado'); closeModal(); refreshCurrentView(); detailCot(_cotId0);
-      _bgGuardando(Promise.all([sb.patch('items','id='+eq(_itId0),row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null])).then(([r,rc])=>{ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0&&r&&r[0]) DB.items[j]={...DB.items[j],...r[0]}; if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); })
-        .catch(e=>{ if(prev){ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0) DB.items[j]=prev; } if(_cotRow&&_cPrev) Object.assign(_cotRow,_cPrev); toast('❌ No se guardó el cambio del ítem: '+e.message,'error'); refreshCurrentView(); detailCot(_cotId0); });
+      _bgGuardando(Promise.all([sb.patch('items','id='+eq(_itId0),row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null])).then(([r,rc])=>{ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0&&r&&r[0]) Object.assign(DB.items[j],r[0]); delete _IDX.items_cot; if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); })
+        .catch(e=>{ if(prev){ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0) Object.assign(DB.items[j],prev); delete _IDX.items_cot; } if(_cotRow&&_cPrev) Object.assign(_cotRow,_cPrev); toast('❌ No se guardó el cambio del ítem: '+e.message,'error'); refreshCurrentView(); detailCot(_cotId0); });
       return;
     }
     else{
