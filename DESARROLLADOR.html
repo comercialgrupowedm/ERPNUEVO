@@ -3801,6 +3801,16 @@ function onPrecioInput(){
   _IT.precioManual=true; const t=itemTotales(); const precio=gn('ipunit'); const im=document.getElementById('imargen');
   if(im&&t.presup>0) im.value=((precio/t.presup-1)*100).toFixed(2); recalcItem();
 }
+// ── Indicador de guardado en segundo plano: barrita abajo («Guardando cambios…» → «✓ Guardado») + aviso si cierran la pestaña mientras guarda ──
+let _bgN=0, _bgT=null;
+function _bgBar(){ let b=document.getElementById('bg-save'); if(!b){ b=document.createElement('div'); b.id='bg-save'; b.style.cssText='position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:99999;display:none;align-items:center;gap:9px;padding:8px 16px;border-radius:99px;background:rgba(15,23,42,.88);color:#fff;font:600 12.5px/1 system-ui,Arial,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25);pointer-events:none;transition:opacity .25s;overflow:hidden'; b.innerHTML='<span id="bg-save-ic" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:bgspin .7s linear infinite"></span><span id="bg-save-tx">Guardando cambios…</span>'; document.body.appendChild(b); const st=document.createElement('style'); st.textContent='@keyframes bgspin{to{transform:rotate(360deg)}}'; document.head.appendChild(st); } return b; }
+function _bgGuardando(prom){
+  const b=_bgBar(), ic=b.querySelector('#bg-save-ic'), tx=b.querySelector('#bg-save-tx'); clearTimeout(_bgT); _bgN++;
+  b.style.display='flex'; b.style.opacity='1'; b.style.background='rgba(15,23,42,.88)'; ic.style.cssText='display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:bgspin .7s linear infinite'; ic.textContent=''; tx.textContent='Guardando cambios…';
+  const fin=ok=>{ _bgN=Math.max(0,_bgN-1); if(_bgN>0) return; if(ok){ ic.style.cssText='display:inline-block;font-size:13px'; ic.textContent='✓'; tx.textContent='Guardado'; _bgT=setTimeout(()=>{ b.style.opacity='0'; setTimeout(()=>{ if(!_bgN) b.style.display='none'; },300); },1400); } else { b.style.background='rgba(185,28,28,.92)'; ic.style.cssText='display:inline-block;font-size:13px'; ic.textContent='⚠'; tx.textContent='No se pudo guardar'; _bgT=setTimeout(()=>{ b.style.opacity='0'; setTimeout(()=>{ if(!_bgN) b.style.display='none'; },300); },4000); } };
+  Promise.resolve(prom).then(()=>fin(true),()=>fin(false)); return prom;
+}
+window.addEventListener('beforeunload',e=>{ if(_bgN>0){ e.preventDefault(); e.returnValue='Aún se están guardando cambios.'; return e.returnValue; } });
 async function saveItem(){
   const t=itemTotales(); const mats=_IT.mats.filter(m=>m.nombre), svcs=_IT.svcs.filter(s=>s.nombre), prcs=_IT.prcs.filter(p=>p.nombre);
   const desc=gv('i4'); if(!desc&&!mats.length&&!prcs.length&&!svcs.length){ toast('Describe el ítem o agrega materiales/procesos','error'); wizItemTab(0); return; }
@@ -3811,9 +3821,23 @@ async function saveItem(){
     margen_pct:gn('imargen'),costo_total:Math.round(t.total),presup_unit:Math.round(t.presup),precio_unit:precio,precio_total:Math.round(precio*unidades),marquilla_html:(typeof window._ITH==='string'?(typeof wdFinal==='function'?wdFinal():(window._ITH||null)):undefined)};
   const btn=document.getElementById('btn-save-item'); if(btn){ btn.disabled=true; btn.textContent='⏳ Guardando…'; }
   try{
-    if(_IT.id){ const r=await PATCH('items',_IT.id,row); const i=DB.items.findIndex(x=>x.id===_IT.id); if(i>=0) DB.items[i]={...DB.items[i],...(r[0]||row)}; toast('✅ Ítem actualizado'); }
-    else{ const r=await POST('items',row); DB.items.push(r[0]||row); toast('✅ Ítem agregado'); }
-    await recalcularTotalesCot(_IT.cotId).catch(()=>{});
+    // Guardado rápido: la pantalla se actualiza al instante con los datos locales y el servidor se guarda en paralelo (un solo viaje en vez de dos seguidos)
+    const _cotRow=DB.cotizaciones.find(x=>x.id===_IT.cotId), _cPrev=_cotRow?{precio_sin_iva:_cotRow.precio_sin_iva,iva:_cotRow.iva,precio_total:_cotRow.precio_total,descuento:_cotRow.descuento}:null;
+    const _totCot=()=>{ const its=itemsDe(_IT.cotId); const sin=its.reduce((s,it)=>s+totalItem(it),0); const iva=Math.round(sin*IVA_PCT/100); return {precio_sin_iva:sin,iva,precio_total:sin+iva,descuento:Math.round(sin*Number((_cotRow||{}).descuento_pct||0)/100)}; };
+    const _cotId0=_IT.cotId, _itId0=_IT.id;
+    if(_itId0){
+      const i=DB.items.findIndex(x=>x.id===_itId0), prev=i>=0?{...DB.items[i]}:null; if(i>=0) DB.items[i]={...DB.items[i],...row};
+      const vals=(_cotRow&&itemsDe(_cotId0).length)?_totCot():null; if(vals&&_cotRow) Object.assign(_cotRow,vals);
+      toast('✅ Ítem actualizado'); closeModal(); refreshCurrentView(); detailCot(_cotId0);
+      _bgGuardando(Promise.all([sb.patch('items','id='+eq(_itId0),row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null])).then(([r,rc])=>{ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0&&r&&r[0]) DB.items[j]={...DB.items[j],...r[0]}; if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); })
+        .catch(e=>{ if(prev){ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0) DB.items[j]=prev; } if(_cotRow&&_cPrev) Object.assign(_cotRow,_cPrev); toast('❌ No se guardó el cambio del ítem: '+e.message,'error'); refreshCurrentView(); detailCot(_cotId0); });
+      return;
+    }
+    else{
+      const tmp={...row,id:'__tmp__'}; DB.items.push(tmp); const vals=_cotRow?_totCot():null; DB.items.splice(DB.items.indexOf(tmp),1);
+      const [r,rc]=await Promise.all([sb.post('items',row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null]);
+      DB.items.push(r[0]||row); if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); else if(vals&&_cotRow) Object.assign(_cotRow,vals); toast('✅ Ítem agregado');
+    }
     const cotId=_IT.cotId, esNuevo=!_IT.id; closeModal(); refreshCurrentView(); detailCot(cotId);
     // Ítem nuevo en una cotización aprobada que ya tiene OP → ofrecer enviarlo a producción
     try{ const cc=DB.cotizaciones.find(x=>x.id===cotId); const opx=esNuevo&&cc&&_normEstado(cc.estado)==='APROBADA'&&typeof opDeCot==='function'&&opDeCot(cotId);
