@@ -739,7 +739,7 @@ const nombreLindo=n=>NOMBRE_MOSTRAR[n]||n;
 async function cargarUsuarios(){
   try{ const r=await sb.rpc('listar_usuarios'); if(Array.isArray(r)&&r.length) USUARIOS=r; }catch(e){}
   const ORDEN_DIS=['A. MEZA','F. GIRALDO','M. GÓMEZ','admin'];
-  USUARIOS_DIS = USUARIOS.filter(u=>{const g=_wedmGrant(u,ROLES_DIS,'diseno'); return g==='no'?false:(g==='si'||ORDEN_DIS.includes(u.nombre));}).sort((a,b)=>(ORDEN_DIS.indexOf(a.nombre)+1||999)-(ORDEN_DIS.indexOf(b.nombre)+1||999)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
+  USUARIOS_DIS = USUARIOS.filter(u=>{const g=_wedmGrant(u,ROLES_DIS,'diseno'); return g==='no'?false:(g==='si'||ORDEN_DIS.includes(u.nombre)||(u.modulos==null&&u.rol==='diseno'));}).sort((a,b)=>(ORDEN_DIS.indexOf(a.nombre)+1||999)-(ORDEN_DIS.indexOf(b.nombre)+1||999)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(u=>({nombre:u.nombre,rol:u.rol,asesor:u.asesor||u.nombre}));
 }
 async function _cargarUsuariosDis(){ await cargarUsuarios(); _renderUserGrid(); }
 function _renderUserGrid(){
