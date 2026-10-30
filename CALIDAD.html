@@ -2223,12 +2223,12 @@ function statsCota(ct,ci,med,n){
   const vals=[]; for(let p=0;p<n;p++){ const v=numv(med[ci+'_'+p]); if(v!=null) vals.push(v); }
   const nom=numv(ct.nominal); let tp=numv(ct.tol_pos), tn=numv(ct.tol_neg);
   if((tp==null||tn==null)&&nom!=null){ const t=hadaTol(nom); if(t!=null){ if(tp==null) tp=t; if(tn==null) tn=-t; } }
-  const lmax=nom!=null&&tp!=null?nom+tp:null, lmin=nom!=null&&tn!=null?nom+tn:null;
+  const _r=x=>Math.round(x*1e6)/1e6; const lmax=nom!=null&&tp!=null?_r(nom+tp):null, lmin=nom!=null&&tn!=null?_r(nom+tn):null;
   if(!vals.length) return {n:0,lmin,lmax,prom:null,min:null,max:null,dev:null,ok:null};
-  const prom=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const prom=_r(vals.reduce((a,b)=>a+b,0)/vals.length);
   const dev=vals.length>1?Math.sqrt(vals.reduce((a,b)=>a+(b-prom)**2,0)/(vals.length-1)):0;
   const ok=lmin!=null&&lmax!=null?(prom>=lmin&&prom<=lmax):null;
-  return {n:vals.length,lmin,lmax,prom,min:Math.min(...vals),max:Math.max(...vals),dev,ok,fuera:lmin!=null&&lmax!=null?vals.filter(v=>v<lmin||v>lmax).length:0};
+  return {n:vals.length,lmin,lmax,prom,min:Math.min(...vals),max:Math.max(...vals),dev,ok,fuera:lmin!=null&&lmax!=null?vals.filter(v=>_r(v)<lmin||_r(v)>lmax).length:0};
 }
 const f3=v=>v==null?'—':v.toFixed(3);
 function certResumen(c){
@@ -2635,7 +2635,7 @@ function docRemision(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m){ toast('Remisión no encontrada','error'); return; }
   if(!m.numero){ toast('La remisión aún no tiene número','error'); return; }
   const tipo=/MOSAT/i.test(m.empresa||'')?'packing':'remision';
-  _abrirDocParaImprimir(docHtmlRem(m,tipo),`${tipo==='packing'?'PackingList':'REM'}-${m.numero}.pdf`,'remisiones');
+  _abrirDocParaImprimir(docHtmlRem(m,tipo),_nomRem(m,tipo),'remisiones');
 }
 
 // ── BÚSQUEDA GLOBAL ─────────────────────────────────────────────────
@@ -3865,7 +3865,7 @@ window.feRemGuardar=async()=>{
 window.feRemImprimir=()=>{
   const d=datos(); if(!d.empresa){ toast('Escribe el cliente para imprimir','error'); return; }
   const m=R.id?(DB.remisiones||[]).find(x=>x.id===R.id):null; const prev={...(m||{}),...d,numero:m?.numero};
-  _abrirDocParaImprimir(docHtmlRem(prev,'remision'),`REM-${prev.numero||'borrador'}.pdf`,'remisiones');
+  _abrirDocParaImprimir(docHtmlRem(prev,'remision'),_nomRem(prev,'remision'),'remisiones');
 };
 })();
 </script>
@@ -5708,6 +5708,21 @@ document.addEventListener('keydown',function(e){if(box.style.display!=='block')r
 document.addEventListener('focusout',function(e){if(e.target===cur)setTimeout(function(){if(document.activeElement!==cur)hide();},180);});
 window.addEventListener('scroll',function(e){if(box.style.display==='block'&&!box.contains(e.target))pos();},true);
 window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.addEventListener('resize',pos);visualViewport.addEventListener('scroll',pos);}
+})();
+
+/* WEDM-NOMBRE-PDF: el cuadro "Guardar como" propone el nombre del documento (REM 13473 COLOMBINA.pdf), no el título de la pestaña */
+(function(){
+  if(window._nomPdfOk) return; window._nomPdfOk=1;
+  window._nomLimpio=function(s){ return String(s||'').replace(/\.pdf$/i,'').replace(/[\\\/:*?"<>|\r\n]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120); };
+  window._nomCorto=function(e){ var t=String(e||'').replace(/[.,]/g,' ').replace(/\b(S\s*A\s*S|S\s*A|LTDA|INC|PTY|LTD|SUCURSAL|COLOMBIA|DE|DEL|Y|&)\b/gi,' ').replace(/\s+/g,' ').trim().split(' '); var g=/^(GRUPO|INDUSTRIAS|COMPA|PRODUCTOS|CORPORACION|FUNDACION)/i.test(t[0]||''); return (g&&t[1]?t[0]+' '+t[1]:(t[0]||'')).toUpperCase(); };
+  window._nomRem=function(m,tipo){ m=m||{}; return (tipo==='packing'?'PACKING LIST ':tipo==='despacho'?'DESPACHO ':'REM ')+(m.numero||'borrador')+(m.empresa?' '+_nomCorto(m.empresa):'')+'.pdf'; };
+  var orig=window._abrirDocParaImprimir; if(typeof orig!=='function') return;
+  window._abrirDocParaImprimir=function(html,fn){
+    var n=_nomLimpio(fn); if(!n){ var t=String(html||'').match(/<title>([^<]*)<\/title>/i); n=_nomLimpio(t&&t[1]); }
+    var prev=document.title, back=function(){ try{ document.title=prev; }catch(e){} window.removeEventListener('afterprint',back); };
+    if(n){ try{ document.title=n; }catch(e){} window.addEventListener('afterprint',back); setTimeout(back,180000); }
+    return orig.apply(this,arguments);
+  };
 })();
 </script>
 
