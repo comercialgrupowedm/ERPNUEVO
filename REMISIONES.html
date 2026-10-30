@@ -4525,7 +4525,9 @@ function imgBar(img){
 }
 (function(){ var st=document.createElement('style'); st.textContent='[contenteditable] img{cursor:pointer;max-width:100%}[contenteditable] img:hover{outline:2px dashed #2563eb}'; document.head.appendChild(st); })();
 document.addEventListener('click',function(e){ var im=e.target; if(im&&im.tagName==='IMG'&&im.closest('[contenteditable]')){ imgBar(im); } else if(!(im&&((im.closest&&im.closest('#imgbar'))||im.id==='imgbar-h'))) imgBarQuitar(); });
-document.addEventListener('scroll',function(){ imgBarQuitar(); },true);
+document.addEventListener('scroll',function(e){ var im=document.querySelector('img[data-imgsel]'); if(!im){ imgBarQuitar(); return; } var r=im.getBoundingClientRect(), b=document.getElementById('imgbar'), h=document.getElementById('imgbar-h'); if(r.bottom<0||r.top>window.innerHeight){ imgBarQuitar(); return; } if(b){ var t=r.top-b.offsetHeight-6; if(t<4) t=r.bottom+6; b.style.top=Math.max(4,t)+'px'; b.style.left=Math.max(4,Math.min(window.innerWidth-b.offsetWidth-4,r.left))+'px'; } if(h){ h.style.left=Math.round(r.right-10)+'px'; h.style.top=Math.round(r.bottom-10)+'px'; } },true);
+document.addEventListener('dragstart',function(e){ var t=e.target; if(t&&t.tagName==='IMG'&&t.closest&&t.closest('[contenteditable]')) e.preventDefault(); },true);
+document.addEventListener('mousedown',function(e){ var t=e.target; if(t&&t.tagName==='IMG'&&t.closest&&t.closest('[contenteditable]')){ e.preventDefault(); imgBar(t); } },true);
 </script>
 <!-- /WEDM-IMGEDIT -->
 <!-- WEDM-MANUALES-2 -->
