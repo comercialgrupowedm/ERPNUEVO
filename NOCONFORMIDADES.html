@@ -612,12 +612,13 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 .ev-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
 .ev-row:last-child{border-bottom:none}
 .ev-row .t{color:var(--muted);font-size:10.5px;min-width:92px;font-family:var(--mono)}
-.nc-menu{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
-@media(min-width:700px){.nc-menu{grid-template-columns:repeat(4,1fr)}}
-.nc-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 10px;text-align:center;cursor:pointer;transition:transform .12s}
-.nc-card:active{transform:scale(.97)}.nc-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
-.nc-ic{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px}
-.nc-t{font-weight:700;font-size:12px;letter-spacing:.3px}.nc-n{font-size:11px;color:var(--muted);margin-top:3px}
+.nc-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:4px}
+.nc-card{background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.nc-card:active{transform:scale(.97)}.nc-card:hover{box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.nc-tile{background:#0a0a0a;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+.nc-ic{width:72%;aspect-ratio:1/1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(40px,9vw,64px);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.nc-t{font-weight:600;font-size:11px;letter-spacing:.2px;padding:8px 8px 2px;text-transform:uppercase;color:var(--text)}.nc-n{font-size:10.5px;color:var(--muted);padding:0 8px 8px}
+.nc-homebtn{height:38px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0}
 .nc-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
 .nc-sel{padding:7px 9px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:12px;max-width:100%}
 .nc-tabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:10px;border-bottom:1px solid var(--border)}
@@ -684,6 +685,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 
 <div id="topbar">
   <div id="menu-btn" onclick="toggleSidebar()">🔍</div>
+  <button type="button" id="home-btn" class="nc-homebtn" onclick="nav('inicio')" title="Menú principal">▦ Menú</button>
   <img src="" id="topbar-logo" alt="GRUPOWEDM" style="height:28px;width:auto;margin-right:4px;flex-shrink:0">
   <h2 id="page-title">Inicio</h2>
   <div class="tb-search" onclick="document.getElementById('globalSearch').focus()">
@@ -709,7 +711,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div class="nav-scroll">
     <div class="nav-section">No conformidades</div>
     <div class="nav-item" onclick="location.href='CALIDAD.html'"><span class="nav-icon">⬅️</span>Volver a Calidad</div>
-    <div class="nav-item active" data-m="inicio" onclick="nav('inicio')"><span class="nav-icon">🛡️</span>Inicio</div>
+    <div class="nav-item active" data-m="inicio" onclick="nav('inicio')"><span class="nav-icon">▦</span>MENÚ</div>
     <div class="nav-item" data-m="reprocesos" onclick="nav('reprocesos')"><span class="nav-icon">♻️</span>Reprocesos</div>
     <div class="nav-item" data-m="registros" onclick="nav('registros')"><span class="nav-icon">📝</span>Registros (acciones)</div>
     <div class="nav-item" data-m="reportes" onclick="nav('reportes')"><span class="nav-icon">📋</span>Reportes</div>
@@ -732,7 +734,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <div id="content"></div>
 
 <div id="bottom-nav">
-  <div class="bn-item active" data-m="inicio" onclick="nav('inicio')"><div class="bn-icon">🛡️</div><div>Inicio</div></div>
+  <div class="bn-item active" data-m="inicio" onclick="nav('inicio')"><div class="bn-icon">▦</div><div>Menú</div></div>
   <div class="bn-item" data-m="reprocesos" onclick="nav('reprocesos')"><div class="bn-icon">♻️</div><div>Reprocesos</div></div>
   <div class="bn-item" data-m="registros" onclick="nav('registros')"><div class="bn-icon">📝</div><div>Acciones</div></div>
   <div class="bn-item" data-m="reportes" onclick="nav('reportes')"><div class="bn-icon">📋</div><div>Reportes</div></div>
@@ -1214,7 +1216,7 @@ async function doLogin(){
 //  Las OP, clientes, colaboradores se toman del ERP (produccion, plan_colaboradores).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='inicio';
-const TITLES={inicio:'Gestión de no conformidades',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
+const TITLES={inicio:'Menú',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REPORTA_DEFAULT='Carlos Lasso';
 // ── FOTO DE EVIDENCIA (cámara de la tablet/celular) ──
@@ -1342,13 +1344,13 @@ setInterval(async()=>{
 
 // ── INICIO (menú de tarjetas) ──────────────────────────────────────
 const MENU=[
- {k:'reprocesos',t:'REPROCESOS',ic:'♻️',c:'#f59e0b',n:()=> (DB.reportes||[]).length+' reportes'},
- {k:'registros',t:'REGISTROS',ic:'📝',c:'#3b82f6',n:()=> (DB.registros||[]).length+' acciones'},
- {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#eab308',n:()=>'Próximamente'},
- {k:'cincoS',t:'5 S',ic:'🧹',c:'#3b82f6',n:()=>'Próximamente'},
- {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#3b82f6',n:()=>'Próximamente'},
- {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#38bdf8',n:()=>'Próximamente'},
- {k:'reportes',t:'REPORTE',ic:'📋',c:'#38bdf8',n:()=> (DB.reportes||[]).length+' reportes'}];
+ {k:'reprocesos',t:'REPROCESOS',ic:'♻️',c:'#2f6df6',n:()=> (DB.reportes||[]).length+' reportes'},
+ {k:'registros',t:'REGISTROS',ic:'📝',c:'#2f6df6',n:()=> (DB.registros||[]).length+' acciones'},
+ {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>'Próximamente'},
+ {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>'Próximamente'},
+ {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>'Próximamente'},
+ {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>'Próximamente'},
+ {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'}];
 function inicio(){
   const R=DB.registros||[], P=DB.reportes||[]; const h=hoyISO();
   const ab=R.filter(r=>!cerrada(r)).length, ve=R.filter(vencida).length;
@@ -1356,8 +1358,8 @@ function inicio(){
   const costo=R.reduce((s,r)=>s+(Number(r.costos)||0),0);
   const kp=(l,v,c)=>`<div class="kpi-card ${c||''}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`;
   setContent(moduleBanner('🛡️','Gestión de no conformidades','Reportes, acciones correctivas y análisis de causas')
-   +`<div style="padding:12px"><div class="kpi-grid">${kp('Acciones registradas',R.length,'info')}${kp('Abiertas',ab,'warn')}${kp('Con cierre vencido',ve,ve?'danger':'teal')}${kp('Reportes últimos 30 días',rec,'pink')}${kp('Costo registrado de NC',fmt(costo),'gold')}</div>
-   <div class="nc-menu">${MENU.map(m=>`<div class="nc-card" onclick="nav('${m.k}')"><div class="nc-ic" style="background:${m.c}">${m.ic}</div><div class="nc-t">${m.t}</div><div class="nc-n">${esc(m.n())}</div></div>`).join('')}</div></div>`);
+   +`<div style="padding:12px"><div class="nc-menu">${MENU.map(m=>`<div class="nc-card" onclick="nav('${m.k}')"><div class="nc-tile"><div class="nc-ic" style="background:${m.c}">${m.ic}</div></div><div class="nc-t">${m.t}</div><div class="nc-n">${esc(m.n())}</div></div>`).join('')}</div>
+   <div class="kpi-grid" style="margin-top:18px">${kp('Acciones registradas',R.length,'info')}${kp('Abiertas',ab,'warn')}${kp('Con cierre vencido',ve,ve?'danger':'teal')}${kp('Reportes últimos 30 días',rec,'pink')}${kp('Costo registrado de NC',fmt(costo),'gold')}</div></div>`);
 }
 function proximamente(k){
   setContent(moduleBanner('🚧',TITLES[k],'Esta parte se construye en la siguiente entrega')
