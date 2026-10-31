@@ -1466,11 +1466,12 @@ function detailItem(id,foco){
     ${dr('Fecha pactada',fmtDate(o.fecha_pactada)+(diasPactada(o)!=null&&!o.despachado?' · '+diasTag(diasPactada(o)):''))}
     ${dr('Tipo',esc(o.tipo||'—'))}${dr('Diseñador',esc(o.disenador||'—'))}${dr('Prioridad',bPrio(o.prioridad)||'—')}
     ${dr('Ruta de producción',rutaDe(o).length?rutaDe(o).map((r,i)=>`<div style="font-size:12px">${i+1}. ${esc(r)}</div>`).join(''):'—')}</div>`;
+  const rotH=`<div class="dp-section" id="det-rot"><h4>🏷 Rótulos guardados</h4>${mutedP('Cargando…')}</div>`;
   const hist=`<div class="dp-section"><h4>🕓 Historial</h4><div id="det-hist">${mutedP('Cargando…')}</div></div><div style="height:30px"></div>`;
-  openDetail(opTitulo(o),hero+gar+grid+tl+calH+extH+mqBox()+repH+certH+solH+datos+hist); mqCargarProd(o.id);
+  openDetail(opTitulo(o),hero+gar+grid+tl+calH+extH+mqBox()+repH+certH+solH+rotH+datos+hist); mqCargarProd(o.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
   if(foco==='rep') setTimeout(()=>document.getElementById('det-rep')?.scrollIntoView({block:'start'}),120);
-  cargarHistorial(id);
+  cargarHistorial(id); rotulosCargar(id);
 }
 async function cargarHistorial(id){
   try{
@@ -1892,23 +1893,33 @@ const ROT_MOD={generico:{n:'Genérico'},hada:{n:'Hada',cod:'linea'},colombina:{n
 function rotModeloAuto(emp){ const e=String(emp||''); return /mosat|rotorclip/i.test(e)?'mosat':/hada/i.test(e)?'hada':/colombina/i.test(e)?'colombina':/carvajal/i.test(e)?'carvajal':/tecnoqu/i.test(e)?'tecno':'generico'; }
 function rotSize(){ try{ const z=JSON.parse(localStorage.getItem('wedm_rotprod_mm')||'null'); if(z&&z.w&&z.h) return z; }catch(e){} return {w:100,h:60}; }
 function rotFechaTxt(iso,en){ const M=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'], ME=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER']; const [y,m,d]=String(iso||hoyISO()).slice(0,10).split('-'); return en?ME[+m-1]+'-'+d+'-'+y:d+'-'+M[+m-1]+'-'+y; }
-function rotuloProd(id){
-  const o=opDe(id); if(!o) return; const mod=rotModeloAuto(o.empresa);
+function rotuloProd(id,k){
+  const o=opDe(id); if(!o) return; const P=(k!=null&&(window._ROTS||{})[id]&&window._ROTS[id][k])||{}; const mod=P.mod||rotModeloAuto(o.empresa);
   const nm=String((_SESSION&&_SESSION.nombre)||'').trim().split(/\s+/); const rev=nm.length>1?(nm[0][0]+'. '+nm[nm.length-1]).toUpperCase():(nm[0]||'').toUpperCase();
   const cert=(DB.certificados||[]).find(c=>c.id_prod===o.id&&c.numero_pieza); const z=rotSize();
   openModal('🏷 Rótulo del producto — '+opTitulo(o),`<div class="form-grid">
     <div class="field span2"><label>Modelo (se elige solo según el cliente)</label><select id="rp-mod">${Object.entries(ROT_MOD).map(([k,v])=>`<option value="${k}" ${k===mod?'selected':''}>${v.n}</option>`).join('')}</select></div>
-    <div class="field span2"><label>Cliente</label><input id="rp-cli" value="${esc(String(o.empresa||'').toUpperCase())}"></div>
-    <div class="field span2"><label>Descripción</label><input id="rp-des" value="${esc(String(o.descripcion||'').toUpperCase())}"></div>
-    <div class="field"><label>Cotización</label><input id="rp-cot" value="${esc(String(o.cot_num??''))}"></div>
-    <div class="field"><label>Ítem (ej. 3 o 1-3)</label><input id="rp-item" value="${esc(String(o.item_num??''))}"></div>
-    <div class="field"><label>Fecha</label><input id="rp-fec" type="date" value="${hoyISO()}"></div>
-    <div class="field"><label>Revisado por</label><input id="rp-rev" value="${esc(rev)}"></div>
-    <div class="field"><label>Cantidad</label><input id="rp-cant" type="number" min="1" value="${esc(String(o.unidades??1))}"></div>
-    <div class="field"><label>Código / N° de pieza</label><input id="rp-cod" value="${esc(cert?cert.numero_pieza:'')}" placeholder="Si aplica"></div>
+    <div class="field span2"><label>Cliente</label><input id="rp-cli" value="${esc(P.cli!=null?P.cli:String(o.empresa||'').toUpperCase())}"></div>
+    <div class="field span2"><label>Descripción</label><input id="rp-des" value="${esc(P.des!=null?P.des:String(o.descripcion||'').toUpperCase())}"></div>
+    <div class="field"><label>Cotización</label><input id="rp-cot" value="${esc(P.cot!=null?P.cot:String(o.cot_num??''))}"></div>
+    <div class="field"><label>Ítem (ej. 3 o 1-3)</label><input id="rp-item" value="${esc(P.item!=null?P.item:String(o.item_num??''))}"></div>
+    <div class="field"><label>Fecha</label><input id="rp-fec" type="date" value="${esc(P.fec||hoyISO())}"></div>
+    <div class="field"><label>Revisado por</label><input id="rp-rev" value="${esc(P.rev!=null?P.rev:rev)}"></div>
+    <div class="field"><label>Cantidad</label><input id="rp-cant" type="number" min="1" value="${esc(String(P.cant!=null?P.cant:(o.unidades??1)))}"></div>
+    <div class="field"><label>Código / N° de pieza</label><input id="rp-cod" value="${esc(P.cod!=null?P.cod:(cert?cert.numero_pieza:''))}" placeholder="Si aplica"></div>
     <div class="field"><label>Ancho (mm)</label><input id="rp-w" type="number" min="40" value="${z.w}"></div><div class="field"><label>Alto (mm)</label><input id="rp-h" type="number" min="25" value="${z.h}"></div>
     <div class="field"><label>Copias</label><input id="rp-n" type="number" min="1" max="50" value="1"></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${puedeCal()?`<button class="btn btn-ghost" onclick="rotuloProdGuardar('${jsq(id)}')">💾 Guardar</button>`:''}<button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
+}
+async function rotuloProdGuardar(id){
+  if(!puedeCal()) return; const g=k=>gv('rp-'+k);
+  const d={mod:g('mod'),cli:g('cli'),des:g('des'),cot:g('cot'),item:g('item'),fec:g('fec'),rev:g('rev'),cant:g('cant'),cod:g('cod'),w:g('w'),h:g('h'),n:g('n')};
+  const r=await rpcC('calidad_rotulo_guardar',{p_id_prod:id,p_datos:d},'💾 Rótulo guardado en el ítem'); if(r){ closeModal(); if(_DET_ID===id) rotulosCargar(id); }
+}
+async function rotulosCargar(id){
+  const el=document.getElementById('det-rot'); if(!el) return;
+  try{ const x=await GET('prod_rotulos','select=id,datos,creado_por,created_at&id_prod='+eq(id)+'&order=id.desc'); if(_DET_ID!==id) return; (window._ROTS=window._ROTS||{})[id]=(x||[]).map(r=>r.datos||{});
+    el.innerHTML=`<h4>🏷 Rótulos guardados (${(x||[]).length})</h4>`+((x||[]).length?x.map((r,i)=>{ const d=r.datos||{}; return `<div class="cm-line" style="cursor:pointer" onclick="rotuloProd('${jsq(id)}',${i})"><div class="cm-t">${esc((ROT_MOD[d.mod]||{}).n||'Rótulo')} · ${esc(String(d.cant||''))} und<small>${fmtDT(r.created_at)}${r.creado_por?' · '+esc(r.creado_por):''} · toca para ver / reimprimir</small></div></div>`; }).join(''):mutedP('Aún no hay rótulos guardados. Usa «RÓTULO» → «Guardar».')); }catch(e){ el.innerHTML=''; }
 }
 function rotuloProdImp(){
   const M=ROT_MOD[gv('rp-mod')]||ROT_MOD.generico, en=!!M.en;
@@ -2085,15 +2096,11 @@ async function remRowsOP(op){
     return {id:o.id,item:o.item_num,descripcion:o.descripcion,disp,total:o.unidades,gar:o.es_garantia,bloq,parcial:sale>0};
   });
 }
-async function solicitarRemisionOP(op){
+function solicitarRemisionOP(op){
   if(!soloCal()) return;
-  const lst=(DB.produccion||[]).filter(o=>pendDesp(o)&&dispDe(o)>0&&!remTramite(o.op));
-  const ops=[...new Set(lst.map(o=>o.op))].sort((a,b)=>b-a);
-  if(!ops.length){ toast('No hay OP con ítems aprobados por despachar y sin remisión en trámite','warn'); return; }
-  if(!op||!ops.includes(Number(op))) op=ops[0]; op=Number(op);
-  showBusy(); let rows; try{ rows=await remRowsOP(op); } finally{ hideBusy(); }
-  const lbl=n=>{ const o=lst.find(x=>x.op===n); return 'OP-'+n+(o&&o.empresa?' · '+o.empresa:''); };
-  remSelPedirModal(op,rows,{rpc:rpcC,after:async()=>{ await recargar(); refreshCurrentView(); }},{ops:ops.map(n=>({v:n,l:lbl(n)})),fn:'solicitarRemisionOP'});
+  // Abre el formulario libre de Remisiones (más completo): pasa la sesión y la OP
+  try{ localStorage.setItem('_wedm_rem_s',JSON.stringify(_SESSION)); }catch(e){}
+  location.href='REMISIONES.html#libre'+(op?'-'+Number(op):'');
 }
 async function pedirRemision(op){ return solicitarRemisionOP(op); }
 

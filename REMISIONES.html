@@ -1934,6 +1934,8 @@ async function iniciarApp(){
   avisarNuevas(); updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
   nav(TITLES[h]?h:(_misRoles().some(x=>['comercial','administracion','calidad'].includes(x))&&(DB.remisiones||[]).some(remPendiente)?'remisiones':'dashboard'));
+  const ml=/^libre(?:-(\d+))?$/.exec(h);   // viene de Calidad (Solicitar remisión): abre el formulario libre
+  if(ml&&puedeLibre()){ setTimeout(()=>{ try{ formLibreRem(null); if(ml[1]){ const el=document.getElementById('fr-op'); if(el){ el.value=ml[1]; feRemSel('op',true); } } }catch(e){ console.warn(e); } },500); }
 }
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){ ['splash-logo-img','topbar-logo','sb-logo-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_B64_PNG; }); }
