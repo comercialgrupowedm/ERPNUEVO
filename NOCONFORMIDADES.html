@@ -1948,7 +1948,7 @@ async function pendPoll(){ if(!puedeNC()||document.hidden||!_SYNC.init) return;
     _PEND_N=n; pendBadge(); }catch(e){} }
 setInterval(pendPoll,60000);
 function repCrearAccion(id){ const r=repDe(id); if(!r) return; closeDetail();
-  const fu=(DB.fuentes||[]).find(f=>/reproceso/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
+  const fu=(DB.fuentes||[]).find(f=>/incumplimiento de controles/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
   wizOpen(null,{rep:id,repPor:r.reportado_por||'',d:{op:r.op??'',item:r.item||'',cliente:r.cliente||'',maquina:r.maquina||'',tipo_reproceso:r.tipo_reproceso||'',responsable_nc:r.responsable||'',proceso_area:'PRODUCCIÓN',fuente:fu?(fu.tipo_fuente||fu.tipo_reporte):'',descripcion:(r.comentarios||'')+(r.fecha?'\n\n(Reproceso reportado el '+fmtDate(r.fecha)+(r.reportado_por?' por '+r.reportado_por:'')+')':'')}}); }
 async function repSinAccion(id){ if(!confirm('¿Este reporte no necesita acción correctiva? Dejará de salir como pendiente.')) return; const r=await rpcN('nc_reporte_ligar',{p_reporte:id,p_registro:null},'✅ Marcado: no requiere acción'); if(r){ closeDetail(); refreshCurrentView(); } }
 // ══ INSPECCIÓN DE MATERIA PRIMA (FT-05-01-01 Recepción técnica de insumos y suministros) ══
@@ -1999,7 +1999,7 @@ function mpDetalle(id){
 }
 async function mpElim(id){ if(!confirm('¿Eliminar esta inspección? Queda en la papelera 6 meses.')) return; const r=await sbRun(()=>sb.rpc('nc_eliminar',{p_tabla:'nc_inspmp',p_id:id}),'🗑 Inspección eliminada (está en la papelera)'); if(r){ await cargarMp(true); closeDetail(); refreshCurrentView(); } }
 function mpCrearAccion(id){ const r=mpDe(id); if(!r) return; closeDetail();
-  const fu=(DB.fuentes||[]).find(f=>/proveedor|materia|insumo|inspecci/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
+  const fu=(DB.fuentes||[]).find(f=>/recepci.n t.cnica de mp/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
   wizOpen(null,{insp:id,d:{op:r.op??'',item:r.item||'',cliente:r.cliente||'',proceso_area:'PROVEEDORES',nombre_prov:r.proveedor||'',fuente:fu?(fu.tipo_fuente||fu.tipo_reporte):'',descripcion:'Inspección de materia prima rechazada ('+fmtDate(r.fecha)+') — proveedor '+(r.proveedor||'')+(r.factura?', factura '+r.factura:'')+'.\n\nHallazgos:\n'+mpHall(r).map(x=>'• '+x).join('\n')}}); }
 // ── Formulario ──
 const mpPillHTML=(sec,k,opts,cur)=>opts.map(([o,c])=>`<button type="button" class="epp-pill${String(cur).toUpperCase()===o?' on '+c:''}" onclick="mpSet('${sec}','${k}','${o}')">${o}</button>`).join('');
