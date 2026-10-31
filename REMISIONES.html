@@ -1232,7 +1232,7 @@ function detalleRem(id){
     b.push(btn('🖨️','#7b1fa2','Formato de despacho',`docRemision('${id}','despacho')`));
   }
   b.push(btn('📁','#0d9488','Ver carpeta',`window.open('https://drive.google.com/drive/folders/1OKNbxd2Iru9CjY3LAMBYPZVkXv9nRGhx','_blank')`));
-  if(puede('administracion')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
+  if(puede('administracion','calidad')&&['PEDIDA','SELECCIONADA','GENERADA','DESPACHADA'].includes(m.estado)&&m.estado!=='CANCELADA') b.push(btn('✏️','#475569','Editar datos',`formEditarRem('${id}')`));
   if(puedeLibre()&&!esFinal(m)) b.push(btn('📝','#7c3aed','Formulario libre',`formLibreRem('${id}')`));
   if(puede('administracion')&&!esFinal(m)&&['PEDIDA','SELECCIONADA','GENERADA'].includes(m.estado)) b.push(btn('✖️','#dc2626','Cancelar remisión',`remCancelar('${id}')`));
   if(puede('administracion')) b.push(btn('🗑️','#991b1b','Eliminar',`remEliminar('${id}')`));
@@ -1362,7 +1362,7 @@ function erQuitar(i){ _ER.lineas.splice(i,1); erRender(); }
 function formEditarRem(id){
   const m=remDe(id); if(!m) return;
   _ER={lineas:(m.lineas||[]).map(l=>({...l}))};
-  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí corriges lo que sale **impreso** (cliente, dirección, orden de compra, fecha) y también los **ítems y cantidades**. La cantidad no puede superar lo que la OP tiene disponible.`)}<div class="form-grid">${puede('administracion')?fldR('Número de remisión (REM-)','er-num',m.numero||'','inputmode="numeric"'):''}${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
+  openModal('✏️ Datos de '+remNum(m),`${ayudaForm(`Aquí corriges lo que sale **impreso** (cliente, dirección, orden de compra, fecha) y también los **ítems y cantidades**. La cantidad no puede superar lo que la OP tiene disponible.`)}<div class="form-grid">${puede('administracion','calidad')?fldR('Número de remisión (REM-)','er-num',m.numero||'','inputmode="numeric"'):''}${fldR('Señores (cliente)','er-emp',m.empresa||'','',true)}${fldR('NIT','er-nit',m.nit||'')}${fldR('Ciudad','er-ciu',m.ciudad||'')}${fldR('Dirección','er-dir',m.direccion||'','',true)}${fldR('Encargado','er-con',m.contacto||'')}${fldR('Teléfono','er-tel',m.telefono||'')}
     ${fldR('Orden de compra del cliente','er-oc',m.oc_cliente||'')}<div class="field"><label>Fecha del documento</label><input type="date" id="er-fec" value="${esc(fFecha(m))}"></div>${fldR('Proyecto','er-pro',m.proyecto||'','',true)}
     <div class="field span2"><label>Observaciones</label><textarea id="er-obs">${esc(m.observaciones||'')}</textarea></div></div>
     <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems y cantidades</h4><div id="er-lines"></div><button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="erAgregar()">➕ Agregar ítem</button><div style="font-size:11.5px;color:var(--muted);margin-top:8px">En una remisión despachada, al cambiar una cantidad se ajusta lo despachado en producción y queda registrado en el historial del ítem.</div></div>`,
@@ -1374,7 +1374,7 @@ async function guardarEditarRem(id){
   if(!d.empresa){ toast('Escribe el cliente','error'); return; }
   if(!d.lineas.length){ toast('La remisión debe tener al menos un ítem','error'); return; }
   if(d.lineas.some(l=>!(Number(l.cantidad)>0))){ toast('Cada ítem necesita una cantidad mayor que 0','error'); return; }
-  const m0=remDe(id); const nuevoNum=puede('administracion')?gv('er-num'):''; closeModal();
+  const m0=remDe(id); const nuevoNum=puede('administracion','calidad')?gv('er-num'):''; closeModal();
   if(!await rpcR('remision_editar',{p_id:id,p_data:d},'✅ Datos guardados')) return;
   if(nuevoNum&&String(m0&&m0.numero||'')!==String(nuevoNum)){ if(!(Number(nuevoNum)>0)){ toast('Número no válido','error'); } else await rpcR('remision_set_numero',{p_id:id,p_numero:Number(nuevoNum)},'🔢 Número cambiado a REM-'+nuevoNum); }
   afterRem(id);
