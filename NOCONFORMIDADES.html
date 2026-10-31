@@ -740,7 +740,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
   <div class="bn-item" data-m="reportes" onclick="nav('reportes')"><div class="bn-icon">📋</div><div>Reportes</div></div>
   <div class="bn-sp"></div>
 </div>
-<button type="button" id="fab-menu" class="fab fab-menu" onclick="nav('inicio')" title="Menú principal">▦</button>
+<button type="button" id="fab-menu" class="fab fab-menu" onclick="nav('inicio')" title="Menú principal">▦<span id="fab-badge" style="display:none"></span></button>
 <div id="fab-more"></div><button type="button" id="fab-add" class="fab fab-add" style="display:none" title="Nuevo">＋</button>
 
 <div class="overlay" id="modal-overlay">
@@ -1272,12 +1272,12 @@ const nl2br=s=>esc(s).replace(/\n/g,'<br>');
 
 async function cargarTodo(){
   const [rep,reg,fue,col,mq]=await Promise.all([
-    GETALL('nc_reportes','select=id,cliente,op,item,id_prod,responsable,reportado_por,tipo_reproceso,comentarios,fecha,maquina,ref_op,creado_por,created_at,updated_at,tiene_foto&order=fecha.desc.nullslast,created_at.desc.nullslast,id.asc'),
+    GETALL('nc_reportes','select=id,cliente,op,item,id_prod,responsable,reportado_por,tipo_reproceso,comentarios,fecha,maquina,ref_op,creado_por,created_at,updated_at,tiene_foto,req_accion,registro_id&order=fecha.desc.nullslast,created_at.desc.nullslast,id.asc'),
     GETALL('nc_registros','select=*&order=accion_no.desc.nullslast,id.asc'),
     GET('nc_fuentes','select=*&order=id').catch(()=>[]),
     GET('nc_colaboradores','select=*&order=orden.asc,nombre.asc').catch(()=>[]),
     GET('tiempos_maquinas','select=maquina').catch(()=>[])]);
-  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=col||[]; DB.maqs=[...new Set((mq||[]).map(x=>x.maquina).filter(Boolean))].sort(); _SYNC.init=true;
+  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=col||[]; DB.maqs=[...new Set((mq||[]).map(x=>x.maquina).filter(Boolean))].sort(); _SYNC.init=true; try{ pendBadge(); }catch(e){}
 }
 async function recargar(){ await cargarTodo(); }
 async function rpcN(fn,params,okMsg){
@@ -1341,6 +1341,7 @@ async function iniciarApp(){
   hideSplash();
   const esDev=_esAdmin(); document.querySelectorAll('.solo-dev').forEach(el=>el.style.display=esDev?'':'none');
   const h=(location.hash||'').replace('#','').replace('-detail','');
+  _PEND_N=pendReps().length; pendBadge(); if(puedeNC()&&_PEND_N) setTimeout(()=>pendBar(),1200);
   nav(TITLES[h]?h:'inicio');
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1362,7 +1363,7 @@ const MENU=[
  {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
  {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>'Próximamente'},
  {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>'Próximamente'},
- {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'}];
+ {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'+(puedeNC()&&pendReps().length?' · ⏳ '+pendReps().length+' sin acción':'')}];
 function inicio(){
   const R=DB.registros||[], P=DB.reportes||[]; const h=hoyISO();
   const ab=R.filter(r=>!cerrada(r)).length, ve=R.filter(vencida).length;
@@ -1390,7 +1391,7 @@ function reportes(){
   const act=(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="repForm()">➕ Nuevo reporte</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="impRepForm()" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar</button>`:'');
   const cols=[{k:'fecha',t:'Fecha',f:r=>fmtDate(r.fecha)},{k:'op',t:'OP',v:r=>r.op!=null?Number(r.op):null,h:r=>`<b>${r.op!=null?r.op:'—'}</b>`},{k:'item',t:'Ítem'},{k:'cliente',t:'Cliente'},
    {k:'tipo_reproceso',t:'Tipo',h:r=>r.tipo_reproceso?`<span class="badge naranja" title="${esc(NC_RE[r.tipo_reproceso]||'')}">${esc(r.tipo_reproceso)}</span>`:'—'},{k:'desc_re',t:'Descripción del tipo',v:r=>NC_RE[r.tipo_reproceso]||''},
-   {k:'responsable',t:'Responsable'},{k:'reportado_por',t:'Reportó'},{k:'maquina',t:'Máquina'},{k:'foto',t:'Foto',v:r=>r.tiene_foto?'Sí':'No',h:r=>r.tiene_foto?'📷':''},{k:'comentarios',t:'Comentarios'}];
+   {k:'responsable',t:'Responsable'},{k:'reportado_por',t:'Reportó'},{k:'accion',t:'Acción',v:r=>r.registro_id?'Con acción':r.req_accion?'Pendiente de acción':'—',h:r=>{ if(r.registro_id){ const g=(DB.registros||[]).find(x=>x.id===r.registro_id); return `<span class="badge verde">Acción #${g?g.accion_no:'?'}</span>`; } return r.req_accion?'<span class="badge rojo">⏳ Pendiente</span>':''; }},{k:'maquina',t:'Máquina'},{k:'foto',t:'Foto',v:r=>r.tiene_foto?'Sí':'No',h:r=>r.tiene_foto?'📷':''},{k:'comentarios',t:'Comentarios'}];
   const cuerpo=vwGet('reportes')==='d'?miniDash([[all.length,'Reportes de NC','pink'],[new Set(all.map(r=>r.op).filter(Boolean)).size,'OP distintas','info'],[all.filter(r=>r.tiene_foto).length,'Con foto','teal']],
     [['Por tipo de reproceso',all,r=>r.tipo_reproceso?ncReTxt(r.tipo_reproceso):'','#f59e0b'],['Por responsable',all,r=>r.responsable,'#ef4444'],['Quién reporta',all,r=>r.reportado_por,'#0ea5e9'],['Por máquina',all,r=>r.maquina,'#3b82f6'],['Por cliente',all,r=>r.cliente,'#16a34a'],['Por año',all,r=>anioDe(r.fecha),'#8b5cf6']])
     :xlTable('reportes',cols,all,{click:'repDetalle'});
@@ -1399,11 +1400,11 @@ function reportes(){
 const repDe=id=>(DB.reportes||[]).find(r=>r.id===id);
 function repDetalle(id){
   const r=repDe(id); if(!r) return;
-  openDetail('Reporte NC · '+opTxt(r),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha))}${dr('Cliente',esc(r.cliente||'—'))}${dr('OP · ítem',opTxt(r))}${dr('Responsable de la NC',esc(r.responsable||'—'))}${dr('Quién reportó',esc(r.reportado_por||'—'))}${dr('Tipo de reproceso',esc(ncReTxt(r.tipo_reproceso)))}${dr('Máquina',esc(r.maquina||'—'))}${dr('Registrado por',esc(r.creado_por||'—'))}</div>
+  openDetail('Reporte NC · '+opTxt(r),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha))}${dr('Cliente',esc(r.cliente||'—'))}${dr('OP · ítem',opTxt(r))}${dr('Responsable de la NC',esc(r.responsable||'—'))}${dr('Quién reportó',esc(r.reportado_por||'—'))}${dr('Tipo de reproceso',esc(ncReTxt(r.tipo_reproceso)))}${dr('Máquina',esc(r.maquina||'—'))}${dr('Registrado por',esc(r.creado_por||'—'))}${dr('Acción correctiva',r.registro_id?'<span class="badge verde">Creada</span>':r.req_accion?'<span class="badge rojo">⏳ Pendiente</span>':'—')}</div>
    <div class="dp-section"><h4>Comentarios</h4><p style="font-size:13px;line-height:1.5">${nl2br(r.comentarios||'—')}</p></div>
    <div class="dp-section" id="rp-foto" style="display:none"><h4>Foto</h4><div id="rp-foto-c"></div></div>
    ${r.id_prod?`<div class="dp-section"><h4>OP en el ERP</h4><p style="font-size:12px;color:var(--muted)">Ligada a la OP-${r.op} del módulo de producción.</p></div>`:''}`,
-   puedeNC()?`<button class="btn btn-ghost" onclick="repForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="repEliminar('${jsq(id)}')">🗑 Eliminar</button>`:'');
+   (r.registro_id?`<button class="btn btn-primary" onclick="closeDetail();regDetalle('${jsq(r.registro_id)}')">📝 Ver acción #${((DB.registros||[]).find(x=>x.id===r.registro_id)||{}).accion_no??''}</button>`:(puedeNC()?`<button class="btn btn-primary" onclick="repCrearAccion('${jsq(id)}')">📝 Crear acción correctiva</button>${r.req_accion?`<button class="btn btn-ghost" onclick="repSinAccion('${jsq(id)}')">Sin acción</button>`:''}`:''))+(puedeNC()?`<button class="btn btn-ghost" onclick="repForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="repEliminar('${jsq(id)}')">🗑 Eliminar</button>`:''));
   document.getElementById('dp-actions').style.display='flex';
   repFotoCargar(id);
 }
@@ -1476,6 +1477,7 @@ async function regDetalle(id){
   openDetail('Acción #'+(r.accion_no??'—')+' · '+(r.tipo_reporte||''),`<div class="nc-tabs">${tab('gen','General')}${tab('cau','Causas')}${tab('por','5 porqués')}${tab('esp','Espina')}${tab('gru','Grupo')}${tab('cos','Costos')}</div>
    <div class="dp-tabpanel active" data-panel="gen">
     <div class="dp-section">${dr('Estado',bEstado(r))}${dr('Tipo de reporte',bTipo(r.tipo_reporte))}${dr('Fecha del reporte',fmtDate(r.fecha_reporte))}${dr('Registró',esc((r.responsable_registro||'—')+(r.cargo?' · '+r.cargo:'')))}${dr('Fuente',esc((r.fuente||'—')+(r.numeral_norma?' (numeral '+r.numeral_norma+')':'')))}${dr('Proceso / área',esc(r.proceso_area||'—'))}${dr('Máquina',esc(r.maquina||'—'))}${dr('Cliente',esc(r.cliente||'—'))}${dr('OP · ítem',opTxt(r))}${dr('Tipo de reproceso',esc(r.tipo_reproceso||'—'))}${dr('Significativo',esc(r.significativo||'—'))}${dr('Responsable de la NC',esc(r.responsable_nc||'—'))}${r.proveedor?dr('Proveedor',esc(r.proveedor)):''}</div>
+    ${r.reporte_id?`<div class="dp-section"><h4>Reporte de origen</h4><button class="btn btn-ghost btn-sm" onclick="closeDetail();repDetalle('${jsq(r.reporte_id)}')">📋 Ver reporte de reproceso</button></div>`:''}
     <div class="dp-section"><h4>Descripción de la no conformidad / oportunidad de mejora</h4><p class="nc-p">${nl2br(r.descripcion||'—')}</p></div>
     ${r.contencion_requerida?`<div class="dp-section"><h4>Contención</h4><p class="nc-p">${nl2br(r.acciones_contencion||'Requerida (sin detalle)')}</p></div>`:''}
     ${r.correcciones?`<div class="dp-section"><h4>Correcciones</h4><p class="nc-p">${nl2br(r.correcciones)}</p></div>`:''}
@@ -1582,18 +1584,20 @@ function whyHTML(problema,porques,raiz,ed){
 const WSTEPS=[['General','📋'],['Contención','🛑'],['Causas','🔍'],['5 porqués','❓'],['Espina','🐟'],['Grupo','👥'],['Plan y cierre','📅'],['Costos','💲'],['Revisar','✅']];
 let _W=null;
 const WK=['tipo_reporte','fecha_reporte','responsable_registro','cargo','fuente','numeral_norma','proceso_area','op','item','cliente','maquina','tipo_reproceso','significativo','responsable_nc','proveedor','descripcion','acciones_contencion','correcciones','acciones_planificadas','desc_tipo_reporte','plan_definido_por','resp_implementacion','resp_seguimiento','fecha_prevista_cierre','fecha_real_cierre','n_revisiones','causa_raiz','mano_obra','materiales','servicio_externo','costos'];
-async function wizOpen(id){
+async function wizOpen(id,pre){
   if(!soloNC()) return; const r=id?regDe(id):{}; let H={causas:[],porques:[],espina:null,grupo:[],costos:null};
   if(id){ showBusy(); try{ H=await regHijos(id); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); return; } hideBusy(); }
   const d={}; WK.forEach(k=>d[k]=r[k]??''); d.contencion_requerida=!!r.contencion_requerida; d.aprobacion=!!r.aprobacion;
   d.fecha_prevista_cierre=(prevista(r)||'').slice(0,10); d.fecha_real_cierre=(r.fecha_real_cierre||r.real_cierre_rep||'').slice(0,10); d.fecha_reporte=(r.fecha_reporte||hoyISO()).slice(0,10);
   d.resp_implementacion=r.resp_implementacion||r.resp_impl_rep||''; d.resp_seguimiento=r.resp_seguimiento||r.resp_seg_rep||'';
   if(!id){ d.tipo_reporte='ACCIÓN CORRECTIVA'; d.responsable_registro=(_SESSION&&_SESSION.nombre)||''; }
+  if(!id&&pre&&pre.d) Object.assign(d,pre.d);
   const e=H.espina||{}; FB_TOP.concat(FB_BOT).forEach(([k])=>d['e_'+k]=e[k]||''); d.e_efecto=e.efecto||'';
   _W={id:id||null,step:0,d,dirty:false,
     causas:H.causas.map(c=>({tipo_causa:c.tipo_causa||'',causa:c.causa||'',codigo:c.codigo||''})),
     porques:H.porques.map(p=>({porque:p.porque||'',descripcion:p.descripcion||''})),
     grupo:H.grupo.map(g=>({rol:g.rol||'',nombre:g.nombre||'',cargo:g.cargo||''}))};
+  if(pre){ _W.reporteId=pre.rep; _W.repPor=pre.repPor; }
   if(!id){ _W.causas=[{tipo_causa:'',causa:'',codigo:''}]; _W.porques=[0,1,2,3,4].map(()=>({porque:'',descripcion:''})); _W.grupo=[{rol:ROLES_GRUPO[0],nombre:'',cargo:''}]; }
   closeDetail(); document.getElementById('wiz')?.remove();
   const all=DB.registros||[], rp=DB.reportes||[]; const nom=colabNombres();
@@ -1617,7 +1621,7 @@ function wizFuente(){ wizLeer(); const f=(DB.fuentes||[]).find(x=>x.tipo_reporte
 function wizGrupoDef(){ // reproceso nuevo: Carlos Lasso es quien reporta (Facilitador)
   if(!_W||_W.id||_W.defRep) return; const t=(_W.d.tipo_reproceso||'').trim(); if(!t||t==='N/A') return; _W.defRep=true;
   if(_W.grupo.some(g=>/Quien Reporta/i.test(g.rol)&&g.nombre)) return;
-  const c=(DB.colab||[]).find(x=>x.nombre===REPORTA_DEFAULT&&x.activo!==false); if(!c) return;
+  const c=(DB.colab||[]).find(x=>x.nombre===(_W.repPor||REPORTA_DEFAULT)&&x.activo!==false); if(!c) return;
   const vac=_W.grupo.find(g=>/Quien Reporta/i.test(g.rol)&&!g.nombre); if(vac){ vac.nombre=c.nombre; vac.cargo=c.cargo||''; } else _W.grupo.push({rol:ROLES_GRUPO[1],nombre:c.nombre,cargo:c.cargo||''}); _W.dirty=true; }
 function wizRolCambio(el){ const row=el.closest('[data-l]'); const n=row&&row.querySelector('[data-c="nombre"]'); if(n){ n.setAttribute('list',esRolLider(el.value)?'dl-lider':'dl-resp'); n.placeholder=esRolLider(el.value)?'Solo líderes':''; const c=(DB.colab||[]).find(x=>x.nombre===n.value); if(esRolLider(el.value)&&c&&!c.es_lider){ n.value=''; toast('Ese colaborador no es líder','warn'); } } }
 function wizGrupoNombre(el){ const row0=el.closest('[data-l]'); const rs=row0&&row0.querySelector('[data-c="rol"]'); if(rs&&esRolLider(rs.value)){ const c0=(DB.colab||[]).find(x=>x.nombre===el.value); if(el.value&&!(c0&&c0.es_lider)){ el.value=''; toast('Para «Líder (Dueño del Proceso)» elige un líder de la lista','warn'); return; } } const row=el.closest('[data-l]'); const c=(DB.colab||[]).find(x=>x.nombre===el.value); const cg=row&&row.querySelector('[data-c="cargo"]'); if(c&&cg&&!cg.value) cg.value=c.cargo||''; }
@@ -1658,7 +1662,7 @@ async function wizGuardar(){
   p.causas=_W.causas.filter(c=>c.causa||c.tipo_causa).map(c=>({...c,fecha:d.fecha_reporte,tipo_reporte:d.tipo_reporte}));
   p.porques=_W.porques.filter(x=>x.porque||x.descripcion); p.grupo=_W.grupo.filter(g=>g.nombre||g.cargo);
   p.espina=Object.fromEntries([...FB_TOP.concat(FB_BOT).map(([k])=>[k,d['e_'+k]||'']),['efecto',d.e_efecto||'']]);
-  const r=await rpcN('nc_registro_guardar',{p},'✅ Acción guardada'); if(r){ _W.dirty=false; document.getElementById('wiz')?.remove(); _W=null; closeDetail(); refreshCurrentView(); }
+  const r=await rpcN('nc_registro_guardar',{p},'✅ Acción guardada'); if(r&&_W.reporteId&&r.id){ await rpcN('nc_reporte_ligar',{p_reporte:_W.reporteId,p_registro:r.id}); } if(r){ _W.dirty=false; document.getElementById('wiz')?.remove(); _W=null; closeDetail(); refreshCurrentView(); }
 }
 
 // ── REPROCESOS (análisis) ──────────────────────────────────────────
@@ -1931,6 +1935,22 @@ function xlCsv(id){ const {cols}=XLC[id]; const L=xlSorted(id,xlRows(id)); const
 // Dashboard sencillo (KPIs + barras) para vistas que no lo tenían
 function miniDash(kpis,grupos){ const top=(arr,f,n=8)=>{ const m={}; arr.forEach(x=>{ const k=f(x); if(k&&k!=='N/A') m[k]=(m[k]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n); };
   return `<div style="padding:12px"><div class="kpi-grid">${kpis.map(([v,l,c])=>`<div class="kpi-card ${c}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`).join('')}</div><div class="nc-grid2">${grupos.map(([t,arr,f,col])=>{ const d=top(arr,f); const mx=Math.max(1,...d.map(x=>x[1])); return `<div class="nc-box"><h4>${t}</h4>${d.length?d.map(([k,v])=>`<div class="nc-bar"><span class="nc-bl" title="${esc(k)}">${esc(trunc(k,34))}</span><span class="nc-bt"><i style="width:${Math.round(v/mx*100)}%;background:${col}"></i></span><b>${v}</b></div>`).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>`; }).join('')}</div></div><div style="height:80px"></div>`; }
+// ── ENLACE REPORTE → ACCIÓN CORRECTIVA ──
+const pendReps=()=>(DB.reportes||[]).filter(r=>r.req_accion&&!r.registro_id);
+let _PEND_N=null;
+function pendBadge(){ const n=puedeNC()?pendReps().length:0; const b=document.getElementById('fab-badge'); if(b){ b.textContent=n>99?'99+':n; b.style.display=n?'flex':'none'; } }
+function pendBar(msg){ document.getElementById('pend-bar')?.remove(); const n=pendReps().length; if(!n) return; const d=document.createElement('div'); d.id='pend-bar'; d.innerHTML=`<span>🔔 ${msg||('Hay '+n+' reporte'+(n>1?'s':'')+' de reproceso sin acción correctiva')}</span><button onclick="document.getElementById('pend-bar').remove();verPendientes()">Ver</button><button class="x" onclick="document.getElementById('pend-bar').remove()">✕</button>`; document.body.appendChild(d); setTimeout(()=>d.remove(),15000); }
+function verPendientes(){ const st=xlSt('reportes'); st.q=''; st.sort=null; st.n=300; st.f={accion:new Set(['Pendiente de acción'])}; VW.reportes='t'; nav('reportes'); }
+async function pendPoll(){ if(!puedeNC()||document.hidden||!_SYNC.init) return;
+  try{ const x=await GET('nc_reportes','select=id&req_accion=eq.true&registro_id=is.null'); const n=x.length;
+    if(_PEND_N!==null&&n>_PEND_N){ await cargarTodo(); pendBar('Nuevo reporte de reproceso: falta la acción correctiva'); if(MOD==='reportes'||MOD==='inicio') refreshCurrentView(); }
+    else if(_PEND_N!==null&&n<_PEND_N){ await cargarTodo(); }
+    _PEND_N=n; pendBadge(); }catch(e){} }
+setInterval(pendPoll,60000);
+function repCrearAccion(id){ const r=repDe(id); if(!r) return; closeDetail();
+  const fu=(DB.fuentes||[]).find(f=>/reproceso/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
+  wizOpen(null,{rep:id,repPor:r.reportado_por||'',d:{op:r.op??'',item:r.item||'',cliente:r.cliente||'',maquina:r.maquina||'',tipo_reproceso:r.tipo_reproceso||'',responsable_nc:r.responsable||'',proceso_area:'PRODUCCIÓN',fuente:fu?(fu.tipo_fuente||fu.tipo_reporte):'',descripcion:(r.comentarios||'')+(r.fecha?'\n\n(Reproceso reportado el '+fmtDate(r.fecha)+(r.reportado_por?' por '+r.reportado_por:'')+')':'')}}); }
+async function repSinAccion(id){ if(!confirm('¿Este reporte no necesita acción correctiva? Dejará de salir como pendiente.')) return; const r=await rpcN('nc_reporte_ligar',{p_reporte:id,p_registro:null},'✅ Marcado: no requiere acción'); if(r){ closeDetail(); refreshCurrentView(); } }
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
@@ -2023,6 +2043,8 @@ function ayudaAbrir(){
 #top-tabs .vw-tabs{padding:0;gap:6px}#top-tabs .vw-tabs button{border:1px solid var(--border);border-radius:10px;padding:7px 14px;background:var(--card2);box-shadow:none}#top-tabs .vw-tabs button.on{background:#2f6df6;color:#fff;border-color:#2f6df6;box-shadow:none}
 .fab{width:42px;height:42px;font-size:22px}.fab-menu{bottom:8px;font-size:18px}.fab-add{right:14px;bottom:8px}#fab-more{right:14px;bottom:58px}
 .xl-wrap{padding:6px 8px 0}.xl-scroll{max-height:calc(100dvh - 118px)!important;min-height:120px}.xl-bar{margin-bottom:6px}
+#fab-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff}
+#pend-bar{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:950;background:#1f2937;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13px;font-weight:700;max-width:92vw}#pend-bar button{border:none;border-radius:8px;padding:6px 12px;background:#f59e0b;color:#111;font-weight:800;cursor:pointer}#pend-bar .x{background:transparent;color:#fff;padding:4px 6px}
 </style>
 <script>
 (function(){
