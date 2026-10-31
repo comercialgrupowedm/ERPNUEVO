@@ -2025,7 +2025,7 @@ function mpForm(id){
    <p class="wiz-hint">FT-05-01-01 · Recepción técnica de insumos y suministros</p>
    <div class="form-grid">${ncFoto2HTML('mpf','Foto de evidencia del material')}${fld('Fecha de inspección','mp-fec',(r&&r.fecha?String(r.fecha).slice(0,10):hoyISO()),'type="date"')}
    ${fld('Proveedor / fabricante','mp-prov',r?r.proveedor||'':'','list="dl-mpprov" autocomplete="off"')}${fld('# Factura','mp-fac',r?r.factura||'':'','autocomplete="off"')}
-   ${fld('# OP (opcional)','mp-op',r&&r.op!=null?r.op:'','inputmode="numeric" onchange="opBuscar(\'mp\')"')}${fld('# Ítem (opcional)','mp-item',r?r.item||'':'','inputmode="numeric" onchange="opBuscar(\'mp\')"')}
+   ${fld('# OP (opcional · de Control de producción)','mp-op',r&&r.op!=null?r.op:'','inputmode="numeric" oninput="clearTimeout(window._mpT);window._mpT=setTimeout(()=>mpOpBuscar(),400)"')}<div class="field"><label># Ítem (de la OP)</label><select id="mp-item" onchange="mpItemSel()"><option value=""></option></select></div>
    ${fld('Cliente (opcional)','mp-cli',r?r.cliente||'':'','autocomplete="off"')}<div class="field"><label>Inspector</label><select id="mp-ins">${(()=>{ const L=MP_INSP.slice(); const cur=r?r.inspector||'':(L.includes(ses)?ses:''); if(cur&&!L.includes(cur)) L.unshift(cur); return '<option value=""></option>'+L.map(x=>`<option ${x===cur?'selected':''}>${esc(x)}</option>`).join(''); })()}</select></div>
    <div class="field span2"><small id="mp-ophint" style="color:var(--muted)"></small></div></div>
    <h4 style="margin:12px 0 4px">Requisitos del proveedor</h4><div id="mp-req"></div>
@@ -2034,9 +2034,22 @@ function mpForm(id){
    <div id="mp-rej" style="display:none;margin-top:12px;padding:10px;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:13px">⚠️ Hay un rechazo: <b>poner el material en cuarentena</b> y activar el procedimiento de salidas no conformes.</div>
    <div class="form-grid" style="margin-top:12px"><div class="field"><label>Estado</label><select id="mp-est" onchange="mpBlocks()"><option value=""></option><option ${r&&r.estado==='APROBADO'?'selected':''}>APROBADO</option><option ${r&&r.estado==='RECHAZADO'?'selected':''}>RECHAZADO</option></select></div></div>`,
    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="mpGuardar()">💾 Guardar</button>`);
-  mpBlocks();
+  mpBlocks(); if(r&&r.op!=null) mpOpBuscar(r.item);
 }
+let _MPI=[];
+async function mpOpBuscar(pre){
+  const op=gv('mp-op'), sel=document.getElementById('mp-item'), h=document.getElementById('mp-ophint'); if(!sel) return; _MPF.opOk=null;
+  if(!/^\d+$/.test(op)){ sel.innerHTML='<option value=""></option>'; _MPI=[]; if(h) h.textContent=''; return; }
+  try{ _MPI=await GET('produccion','select=id,op,item_num,empresa,descripcion&op=eq.'+op+'&order=item_num.asc'); }catch(e){ return; }
+  if(gv('mp-op')!==op) return;
+  if(!_MPI.length){ _MPF.opOk=false; sel.innerHTML='<option value=""></option>'; if(h) h.innerHTML='<span style="color:#b91c1c">⚠️ Esa OP no existe en Control de producción</span>'; return; }
+  _MPF.opOk=true; const cur=pre!=null&&pre!==''?String(pre):(_MPI.length===1?String(_MPI[0].item_num):'');
+  sel.innerHTML='<option value=""></option>'+_MPI.map(x=>`<option value="${x.item_num}" ${String(x.item_num)===cur?'selected':''}>${x.item_num} · ${esc(trunc(x.descripcion||'',50))}</option>`).join(''); mpItemSel();
+}
+function mpItemSel(){ const it=gv('mp-item'), x=_MPI.find(a=>String(a.item_num)===it)||(_MPI[0]), h=document.getElementById('mp-ophint'), c=document.getElementById('mp-cli');
+  if(x&&c) c.value=x.empresa||''; if(h&&x) h.textContent='✓ OP '+x.op+' · '+(x.empresa||'')+(it?' · '+trunc(x.descripcion||'',70):' ('+_MPI.length+' ítem(s) en la OP)'); }
 async function mpGuardar(){
+  if(gv('mp-op')&&_MPF.opOk===false){ toast('Esa OP no existe en Control de producción','error'); return; }
   const prov=gv('mp-prov'), ins=gv('mp-ins'); if(!prov){ toast('Falta el proveedor','error'); return; } if(!ins){ toast('Falta el inspector','error'); return; }
   const n=x=>{ const t=gv(x).replace(',','.'); return t===''||isNaN(Number(t))?null:Number(t); };
   const limp=o=>{ const out={}; Object.entries(o).forEach(([k,x])=>{ const y={}; Object.entries(x).forEach(([a,b])=>{ if(b!==''&&b!=null) y[a]=b; }); if(Object.keys(y).length) out[k]=y; }); return out; };
