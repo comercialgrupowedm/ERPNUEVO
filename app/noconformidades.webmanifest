@@ -1,0 +1,26 @@
+{
+ "name": "Gestión de no conformidades · Grupo WEDM",
+ "short_name": "No conformidades",
+ "id": "noconformidades",
+ "start_url": "../NOCONFORMIDADES.html",
+ "scope": "../NOCONFORMIDADES.html",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#14532d",
+ "theme_color": "#14532d",
+ "lang": "es",
+ "icons": [
+  {
+   "src": "noconformidades-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any maskable"
+  },
+  {
+   "src": "noconformidades-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}
