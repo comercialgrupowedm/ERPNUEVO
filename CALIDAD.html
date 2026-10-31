@@ -1468,7 +1468,7 @@ function detailItem(id,foco){
     ${dr('Ruta de producción',rutaDe(o).length?rutaDe(o).map((r,i)=>`<div style="font-size:12px">${i+1}. ${esc(r)}</div>`).join(''):'—')}</div>`;
   const rotH=`<div class="dp-section" id="det-rot"><h4>🏷 Rótulos guardados</h4>${mutedP('Cargando…')}</div>`;
   const hist=`<div class="dp-section"><h4>🕓 Historial</h4><div id="det-hist">${mutedP('Cargando…')}</div></div><div style="height:30px"></div>`;
-  openDetail(opTitulo(o),hero+gar+grid+tl+calH+extH+mqBox()+repH+certH+solH+rotH+datos+hist); mqCargarProd(o.id);
+  openDetail(opTitulo(o),hero+gar+grid+tl+calH+rotH+extH+mqBox()+repH+certH+solH+datos+hist); mqCargarProd(o.id);
   if(document.querySelector('#dp-body .lz-th')) setTimeout(lzThumbs,0);
   if(foco==='rep') setTimeout(()=>document.getElementById('det-rep')?.scrollIntoView({block:'start'}),120);
   cargarHistorial(id); rotulosCargar(id);
@@ -1914,7 +1914,7 @@ function rotuloProd(id,k){
 async function rotuloProdGuardar(id){
   if(!puedeCal()) return; const g=k=>gv('rp-'+k);
   const d={mod:g('mod'),cli:g('cli'),des:g('des'),cot:g('cot'),item:g('item'),fec:g('fec'),rev:g('rev'),cant:g('cant'),cod:g('cod'),w:g('w'),h:g('h'),n:g('n')};
-  const r=await rpcC('calidad_rotulo_guardar',{p_id_prod:id,p_datos:d},'💾 Rótulo guardado en el ítem'); if(r){ closeModal(); if(_DET_ID===id) rotulosCargar(id); }
+  const r=await rpcC('calidad_rotulo_guardar',{p_id_prod:id,p_datos:d},'💾 Rótulo guardado en el ítem'); if(r){ closeModal(); if(_DET_ID===id){ await rotulosCargar(id); document.getElementById('det-rot')?.scrollIntoView({block:'center',behavior:'smooth'}); } }
 }
 async function rotulosCargar(id){
   const el=document.getElementById('det-rot'); if(!el) return;
