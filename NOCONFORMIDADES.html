@@ -1263,7 +1263,7 @@ const esRolLider=r=>/^líder/i.test(r||'');
 const colabAct=()=>(DB.colab||[]).filter(c=>c.activo!==false);
 const colabNombres=(soloLid)=>colabAct().filter(c=>!soloLid||c.es_lider).map(c=>c.nombre);
 const PAP_MOD='noconformidades';
-const PAP_T={nc_epp:'Evaluación EPP',nc_5s:'Evaluación 5 S',nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
+const PAP_T={nc_epp:'Evaluación EPP',nc_inspmp:'Inspección materia prima',nc_5s:'Evaluación 5 S',nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
 let _PAPQ='';
 const hoyISO=()=>{ const d=new Date(); const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
 const anioDe=f=>String(f||'').slice(0,4);
@@ -1312,7 +1312,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:()=>proximamente('matprima'),rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1361,7 +1361,7 @@ const MENU=[
  {k:'registros',t:'REGISTROS',ic:'📝',c:'#2f6df6',n:()=> (DB.registros||[]).length+' acciones'},
  {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>DB.epp?DB.epp.length+' evaluaciones':'Evaluaciones'},
  {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
- {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>'Próximamente'},
+ {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>DB.mp?DB.mp.length+' inspecciones':'Inspecciones'},
  {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>'Próximamente'},
  {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'+(puedeNC()&&pendReps().length?' · ⏳ '+pendReps().length+' sin acción':'')}];
 function inicio(){
@@ -1597,7 +1597,7 @@ async function wizOpen(id,pre){
     causas:H.causas.map(c=>({tipo_causa:c.tipo_causa||'',causa:c.causa||'',codigo:c.codigo||''})),
     porques:H.porques.map(p=>({porque:p.porque||'',descripcion:p.descripcion||''})),
     grupo:H.grupo.map(g=>({rol:g.rol||'',nombre:g.nombre||'',cargo:g.cargo||''}))};
-  if(pre){ _W.reporteId=pre.rep; _W.repPor=pre.repPor; }
+  if(pre){ _W.reporteId=pre.rep; _W.repPor=pre.repPor; _W.inspId=pre.insp; }
   if(!id){ _W.causas=[{tipo_causa:'',causa:'',codigo:''}]; _W.porques=[0,1,2,3,4].map(()=>({porque:'',descripcion:''})); _W.grupo=[{rol:ROLES_GRUPO[0],nombre:'',cargo:''}]; }
   closeDetail(); document.getElementById('wiz')?.remove();
   const all=DB.registros||[], rp=DB.reportes||[]; const nom=colabNombres();
@@ -1662,7 +1662,7 @@ async function wizGuardar(){
   p.causas=_W.causas.filter(c=>c.causa||c.tipo_causa).map(c=>({...c,fecha:d.fecha_reporte,tipo_reporte:d.tipo_reporte}));
   p.porques=_W.porques.filter(x=>x.porque||x.descripcion); p.grupo=_W.grupo.filter(g=>g.nombre||g.cargo);
   p.espina=Object.fromEntries([...FB_TOP.concat(FB_BOT).map(([k])=>[k,d['e_'+k]||'']),['efecto',d.e_efecto||'']]);
-  const r=await rpcN('nc_registro_guardar',{p},'✅ Acción guardada'); if(r&&_W.reporteId&&r.id){ await rpcN('nc_reporte_ligar',{p_reporte:_W.reporteId,p_registro:r.id}); } if(r){ _W.dirty=false; document.getElementById('wiz')?.remove(); _W=null; closeDetail(); refreshCurrentView(); }
+  const r=await rpcN('nc_registro_guardar',{p},'✅ Acción guardada'); if(r&&_W.reporteId&&r.id){ await rpcN('nc_reporte_ligar',{p_reporte:_W.reporteId,p_registro:r.id}); } if(r&&_W.inspId&&r.id){ try{ await sb.rpc('nc_inspmp_ligar',{p_id:_W.inspId,p_registro:r.id}); await cargarMp(true); }catch(e){} } if(r){ _W.dirty=false; document.getElementById('wiz')?.remove(); _W=null; closeDetail(); refreshCurrentView(); }
 }
 
 // ── REPROCESOS (análisis) ──────────────────────────────────────────
@@ -1951,6 +1951,135 @@ function repCrearAccion(id){ const r=repDe(id); if(!r) return; closeDetail();
   const fu=(DB.fuentes||[]).find(f=>/reproceso/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
   wizOpen(null,{rep:id,repPor:r.reportado_por||'',d:{op:r.op??'',item:r.item||'',cliente:r.cliente||'',maquina:r.maquina||'',tipo_reproceso:r.tipo_reproceso||'',responsable_nc:r.responsable||'',proceso_area:'PRODUCCIÓN',fuente:fu?(fu.tipo_fuente||fu.tipo_reporte):'',descripcion:(r.comentarios||'')+(r.fecha?'\n\n(Reproceso reportado el '+fmtDate(r.fecha)+(r.reportado_por?' por '+r.reportado_por:'')+')':'')}}); }
 async function repSinAccion(id){ if(!confirm('¿Este reporte no necesita acción correctiva? Dejará de salir como pendiente.')) return; const r=await rpcN('nc_reporte_ligar',{p_reporte:id,p_registro:null},'✅ Marcado: no requiere acción'); if(r){ closeDetail(); refreshCurrentView(); } }
+// ══ INSPECCIÓN DE MATERIA PRIMA (FT-05-01-01 Recepción técnica de insumos y suministros) ══
+const MP_REQ=[['prov','Fabricante / proveedor'],['fact','# Factura del proveedor'],['cert','# Certificado de conformidad o materiales'],['lote','# Lote reportado en la factura o certificado'],['ens','# Certificado de ensayo'],['res','Resultados del ensayo (aprobado / rechazado)'],['fcert','Fecha del certificado de ensayo']];
+const MP_VER=[['emp','Estado del empaque'],['sol','Cantidad solicitada'],['rec','Cantidad recibida'],['apa','Apariencia del material']];
+const MP_INSP=['Cristian Posada',"Jeremy's Barros Catalán",'Carlos Lasso'];
+const MP_MD=[['diam','Diámetro'],['largo','Largo']], MP_MR=[['esp','Espesor'],['ancho','Ancho'],['largo','Largo']];
+const _MF={anio:'',mes:'',prov:'',insp:'',est:''}; let _MPF=null;
+async function cargarMp(force){ if(DB.mp&&!force) return; DB.mp=await GETALL('nc_inspmp','select=id,fecha,op,item,inspector,proveedor,cliente,factura,estado,datos,materiales,req_accion,registro_id,creado_por,id_prod&order=fecha.desc.nullslast,id.asc'); }
+const mpDe=id=>(DB.mp||[]).find(r=>r.id===id);
+function mpHall(r){ const h=[], d=r.datos||{}, q=d.req||{}, v=d.ver||{};
+  MP_REQ.forEach(([k,l])=>{ const x=q[k]; if(x&&String(x.v).toUpperCase()==='NO') h.push(l+': NO'+(x.o&&!/^ning/i.test(x.o)?' ('+x.o+')':'')); });
+  MP_VER.forEach(([k,l])=>{ const x=v[k]; if(x&&String(x.v).toUpperCase()==='R') h.push(l+': rechazado'+(x.d||x.o?' ('+(x.d||x.o)+')':'')); });
+  return h; }
+const mpEstBadge=e=>e==='APROBADO'?'<span class="badge verde">Aprobado</span>':e==='RECHAZADO'?'<span class="badge rojo">Rechazado</span>':'<span class="badge gris">Sin estado</span>';
+const mpVBadge=v=>{ v=String(v==null?'':v); if(!v) return ''; const u=v.toUpperCase(); return `<span class="badge ${u==='SI'||u==='A'?'verde':u==='NO'||u==='R'?'rojo':'gris'}">${esc(v)}</span>`; };
+function mpFiltrados(){ return (DB.mp||[]).filter(r=>(!_MF.anio||fAnio(r.fecha)===_MF.anio)&&(!_MF.mes||fMes(r.fecha)===_MF.mes)&&(!_MF.prov||r.proveedor===_MF.prov)&&(!_MF.insp||r.inspector===_MF.insp)&&(!_MF.est||(r.estado||'')===_MF.est)); }
+function mpSetF(k,v){ _MF[k]=v; mp(); }
+async function mp(){
+  if(!DB.mp) loading(); try{ await cargarMp(); }catch(e){ _vistaError(e); return; }
+  const all=DB.mp, L=mpFiltrados(), tot=L.length, ap=L.filter(r=>r.estado==='APROBADO').length, re=L.filter(r=>r.estado==='RECHAZADO').length, sin=L.filter(r=>!r.estado).length, ch=L.filter(r=>mpHall(r).length).length;
+  const cnt=(f,sel)=>{ const m={}; L.forEach(r=>{ if(sel&&!sel(r)) return; const k=f(r); if(k) m[k]=(m[k]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8); };
+  const bars=(t,arr,c)=>`<div class="nc-box"><h4>${t}</h4>${arr.length?arr.map(([k,v],i)=>barra(k,v/arr[0][1]*100,v,c)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>`;
+  const anios=uniq(all,r=>fAnio(r.fecha)).reverse(), provs=uniq(all,r=>r.proveedor), insps=uniq(all,r=>r.inspector);
+  const cols=[{k:'fecha',t:'Fecha',v:r=>r.fecha?new Date(r.fecha).getTime():null,f:r=>fmtDate(r.fecha)},{k:'proveedor',t:'Proveedor'},{k:'op',t:'OP',v:r=>r.op!=null?Number(r.op):null},{k:'item',t:'Ítem'},{k:'factura',t:'Factura'},{k:'inspector',t:'Inspector'},
+   {k:'estado',t:'Estado',v:r=>r.estado||'',h:r=>mpEstBadge(r.estado)},{k:'nh',t:'N° hallazgos',v:r=>mpHall(r).length},{k:'nm',t:'Materiales',v:r=>(r.materiales||[]).length},{k:'hall',t:'Hallazgos',v:r=>mpHall(r).join(' · ')},
+   ...MP_REQ.map(([k,l])=>({k:'q_'+k,t:l,v:r=>((r.datos||{}).req||{})[k]?.v||'',h:r=>mpVBadge(((r.datos||{}).req||{})[k]?.v)})),
+   ...MP_VER.map(([k,l])=>({k:'v_'+k,t:l,v:r=>((r.datos||{}).ver||{})[k]?.v||'',h:r=>mpVBadge(((r.datos||{}).ver||{})[k]?.v)}))];
+  const dash=vwGet('mp')==='d';
+  setContent(moduleBanner('📦','Inspección de materia prima',(dash?tot+' de '+all.length:all.length)+' inspecciones',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="mpForm()">➕ Nueva inspección</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar historial</button>`:''))+vwTabs('mp')
+   +(dash?`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('mpSetF','anio','Año',anios,_MF.anio)}${selFiltro('mpSetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_MF.mes,m=>MESES[m-1])}${selFiltro('mpSetF','prov','Proveedor',provs,_MF.prov)}${selFiltro('mpSetF','insp','Inspector',insps,_MF.insp)}${selFiltro('mpSetF','est','Estado',['APROBADO','RECHAZADO'],_MF.est)}${(_MF.anio||_MF.mes||_MF.prov||_MF.insp||_MF.est)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_MF).forEach(k=>_MF[k]='');mp()">Quitar filtros</button>`:''}</div></div>
+   <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Inspecciones</div></div><div class="kpi-card teal"><div class="kpi-value">${ap}</div><div class="kpi-label">Aprobadas</div></div><div class="kpi-card danger"><div class="kpi-value">${re}</div><div class="kpi-label">Rechazadas</div></div><div class="kpi-card warn"><div class="kpi-value">${ch}</div><div class="kpi-label">Con hallazgos</div></div><div class="kpi-card"><div class="kpi-value">${sin}</div><div class="kpi-label">Sin estado</div></div></div>
+   <div class="nc-grid2">${bars('Inspecciones por proveedor',cnt(r=>r.proveedor),'#2f6df6')}${bars('Proveedores con más hallazgos',cnt(r=>r.proveedor,r=>mpHall(r).length),'#ef4444')}${bars('Por inspector',cnt(r=>r.inspector),'#8b5cf6')}${bars('Hallazgos más frecuentes',(()=>{ const m={}; L.forEach(r=>mpHall(r).forEach(h=>{ const k=h.split(' (')[0]; m[k]=(m[k]||0)+1; })); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8); })(),'#f59e0b')}${bars('Por mes',(()=>{ const m={}; L.forEach(r=>{ const d=r.fecha?new Date(r.fecha):null; if(d&&!isNaN(d)){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); m[k]=(m[k]||0)+1; } }); return Object.entries(m).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12); })(),'#16a34a')}</div></div>`:xlTable('mp',cols,all,{click:'mpDetalle'})));
+}
+function mpMatTxt(m){ const e=(a,b)=>a||b?`${a||'—'} → <b>${b||'—'}</b>`:'—';
+  return m.tipo==='Circular'?`<tr><td>Circular</td><td>Ø ${e(m.diam_s,m.diam_r)}</td><td>Largo ${e(m.largo_s,m.largo_r)}</td></tr>`:`<tr><td>Rectangular</td><td>Esp. ${e(m.esp_s,m.esp_r)} · Ancho ${e(m.ancho_s,m.ancho_r)}</td><td>Largo ${e(m.largo_s,m.largo_r)}</td></tr>`; }
+function mpDetalle(id){
+  const r=mpDe(id); if(!r) return; const d=r.datos||{}, q=d.req||{}, v=d.ver||{}, h=mpHall(r);
+  openDetail('Inspección · '+(r.proveedor||'sin proveedor'),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha))}${dr('Estado',mpEstBadge(r.estado))}${dr('Proveedor',esc(r.proveedor||'—'))}${dr('OP / Ítem',r.op!=null?esc(r.op)+(r.item?' / '+esc(r.item):''):'—')}${r.cliente?dr('Cliente',esc(r.cliente)):''}${dr('Factura',esc(r.factura||'—'))}${dr('Inspector',esc(r.inspector||'—'))}${dr('Muestreo',d.muestra!=null||d.revision!=null||d.frecuencia?esc((d.muestra??'—')+' muestra · '+(d.revision??'—')+' a revisión · '+(d.frecuencia||'')):'—')}</div>
+   ${r.estado==='RECHAZADO'||h.length?`<div class="dp-section" style="background:#fef2f2;border-radius:10px;padding:10px"><h4 style="color:#b91c1c">⚠️ ${r.estado==='RECHAZADO'?'Rechazada — material en cuarentena. ':''}Hallazgos</h4>${h.length?'<ul style="margin:4px 0 0 18px;font-size:13px">'+h.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':''}${r.estado==='RECHAZADO'?'<p style="font-size:12px;margin-top:6px">Activar el procedimiento de salidas no conformes.</p>':''}</div>`:''}
+   <div class="dp-section"><h4>Requisitos del proveedor</h4><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><tbody>${MP_REQ.map(([k,l])=>{ const x=q[k]||{}; return `<tr><td>${l}</td><td>${mpVBadge(x.v)}</td><td style="font-size:12px">${esc(x.o||'')}</td></tr>`; }).join('')}</tbody></table></div></div></div>
+   <div class="dp-section"><h4>Verificar y asegurar</h4><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><tbody>${MP_VER.map(([k,l])=>{ const x=v[k]||{}; return `<tr><td>${l}</td><td>${mpVBadge(x.v)}</td><td style="font-size:12px">${esc(x.d||x.o||'')}</td></tr>`; }).join('')}</tbody></table></div></div></div>
+   ${(r.materiales||[]).length?`<div class="dp-section"><h4>Dimensiones (solicitado → recibido)</h4><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><tbody>${r.materiales.map(mpMatTxt).join('')}</tbody></table></div></div></div>`:''}
+   <div class="dp-section" id="mp-foto" style="display:none"><h4>Foto de evidencia</h4><div id="mp-foto-c"></div></div>`,
+   `<button class="btn btn-primary" onclick="mpPDF('${jsq(id)}')">📄 PDF</button>`+(puedeNC()?`${r.estado==='RECHAZADO'&&!r.registro_id?`<button class="btn btn-ghost" onclick="mpCrearAccion('${jsq(id)}')">🛠️ Crear acción</button>`:''}<button class="btn btn-ghost" onclick="mpForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="mpElim('${jsq(id)}')">🗑 Eliminar</button>`:''));
+  document.getElementById('dp-actions').style.display='flex';
+  GET('nc_inspmp','select=foto&id='+eq(id)).then(x=>{ const f=x[0]&&x[0].foto; if(!f||!document.getElementById('mp-foto')) return; document.getElementById('mp-foto').style.display=''; document.getElementById('mp-foto-c').innerHTML=/^data:image\//.test(f)?`<img src="${f}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">`:''; if(!/^data:image\//.test(f)) document.getElementById('mp-foto').style.display='none'; }).catch(()=>{});
+}
+async function mpElim(id){ if(!confirm('¿Eliminar esta inspección? Queda en la papelera 6 meses.')) return; const r=await sbRun(()=>sb.rpc('nc_eliminar',{p_tabla:'nc_inspmp',p_id:id}),'🗑 Inspección eliminada (está en la papelera)'); if(r){ await cargarMp(true); closeDetail(); refreshCurrentView(); } }
+function mpCrearAccion(id){ const r=mpDe(id); if(!r) return; closeDetail();
+  const fu=(DB.fuentes||[]).find(f=>/proveedor|materia|insumo|inspecci/i.test((f.tipo_fuente||'')+' '+(f.tipo_reporte||'')));
+  wizOpen(null,{insp:id,d:{op:r.op??'',item:r.item||'',cliente:r.cliente||'',proceso_area:'PROVEEDORES',nombre_prov:r.proveedor||'',fuente:fu?(fu.tipo_fuente||fu.tipo_reporte):'',descripcion:'Inspección de materia prima rechazada ('+fmtDate(r.fecha)+') — proveedor '+(r.proveedor||'')+(r.factura?', factura '+r.factura:'')+'.\n\nHallazgos:\n'+mpHall(r).map(x=>'• '+x).join('\n')}}); }
+// ── Formulario ──
+const mpPillHTML=(sec,k,opts,cur)=>opts.map(([o,c])=>`<button type="button" class="epp-pill${String(cur).toUpperCase()===o?' on '+c:''}" onclick="mpSet('${sec}','${k}','${o}')">${o}</button>`).join('');
+function mpBlocks(){
+  const el1=document.getElementById('mp-req'), el2=document.getElementById('mp-ver'), el3=document.getElementById('mp-mats'), q=_MPF.req, v=_MPF.ver;
+  if(el1) el1.innerHTML=MP_REQ.map(([k,l])=>{ const x=q[k]||{}; return `<div class="epp-it"><div class="epp-n">${l}</div><div class="epp-pills">${mpPillHTML('req',k,[['SI','ok'],['NO','bad'],['N/A','na']],x.v||'')}</div><input class="nc-sel" style="flex:1 1 200px" placeholder="Observación" value="${esc(x.o||'')}" oninput="mpObs('req','${k}',this.value)"></div>`; }).join('');
+  if(el2) el2.innerHTML=MP_VER.map(([k,l])=>{ const x=v[k]||{}; return `<div class="epp-it"><div class="epp-n">${l}</div><div class="epp-pills">${mpPillHTML('ver',k,[['A','ok'],['R','bad'],['N/A','na']],x.v||'')}</div><input class="nc-sel" style="flex:1 1 200px" placeholder="Detalle" value="${esc(x.d||'')}" oninput="mpObs('ver','${k}',this.value)"></div>`; }).join('');
+  if(el3) el3.innerHTML=_MPF.mats.map((m,i)=>{ const camp=m.tipo==='Circular'?MP_MD:MP_MR; return `<div class="nc-sec" style="margin-bottom:8px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><select class="nc-sel" onchange="mpMatTipo(${i},this.value)"><option ${m.tipo==='Circular'?'selected':''}>Circular</option><option ${m.tipo==='Rectangular'?'selected':''}>Rectangular</option></select><b style="font-size:12px">Material ${i+1}</b><button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger)" onclick="mpMatDel(${i})">✕</button></div>
+   <div class="form-grid">${camp.map(([c,l])=>`<div class="field"><label>${l} solicitado</label><input value="${esc(m[c+'_s']||'')}" oninput="mpMat(${i},'${c}_s',this.value)" inputmode="decimal"></div><div class="field"><label>${l} recibido</label><input value="${esc(m[c+'_r']||'')}" oninput="mpMat(${i},'${c}_r',this.value)" inputmode="decimal"></div>`).join('')}</div></div>`; }).join('')||'<p style="font-size:12px;color:var(--muted)">Sin materiales (solo si aplica)</p>';
+  const rej=document.getElementById('mp-rej'); if(rej){ const hay=MP_VER.some(([k])=>String((v[k]||{}).v).toUpperCase()==='R')||gv('mp-est')==='RECHAZADO'; rej.style.display=hay?'block':'none'; }
+}
+function mpSet(sec,k,val){ const o=_MPF[sec]; const x=o[k]=o[k]||{}; x.v=x.v===val?'':val; mpBlocks(); }
+function mpObs(sec,k,val){ const x=_MPF[sec][k]=_MPF[sec][k]||{}; x[sec==='ver'?'d':'o']=val; }
+function mpMat(i,c,val){ _MPF.mats[i][c]=val; }
+function mpMatTipo(i,t){ _MPF.mats[i]={tipo:t}; mpBlocks(); }
+function mpMatDel(i){ _MPF.mats.splice(i,1); mpBlocks(); }
+function mpMatAdd(t){ _MPF.mats.push({tipo:t||'Rectangular'}); mpBlocks(); }
+function mpForm(id){
+  if(!soloNC()) return; const r=id?mpDe(id):null; closeDetail(); const d=(r&&r.datos)||{};
+  _MPF={id:id||null,req:JSON.parse(JSON.stringify(d.req||{})),ver:JSON.parse(JSON.stringify(d.ver||{})),mats:JSON.parse(JSON.stringify((r&&r.materiales)||[])),keepFoto:!!id}; delete _NCFS.mpf;
+  const ses=(_SESSION&&_SESSION.nombre)||'';
+  openModal(id?'✏️ Editar inspección':'➕ Nueva inspección de materia prima',`${dl('dl-mpprov',uniq(DB.mp||[],x=>x.proveedor))}${dl('dl-mpins',uniq(DB.mp||[],x=>x.inspector).concat(colabNombres()))}
+   <p class="wiz-hint">FT-05-01-01 · Recepción técnica de insumos y suministros</p>
+   <div class="form-grid">${ncFoto2HTML('mpf','Foto de evidencia del material')}${fld('Fecha de inspección','mp-fec',(r&&r.fecha?String(r.fecha).slice(0,10):hoyISO()),'type="date"')}
+   ${fld('Proveedor / fabricante','mp-prov',r?r.proveedor||'':'','list="dl-mpprov" autocomplete="off"')}${fld('# Factura','mp-fac',r?r.factura||'':'','autocomplete="off"')}
+   ${fld('# OP (opcional)','mp-op',r&&r.op!=null?r.op:'','inputmode="numeric" onchange="opBuscar(\'mp\')"')}${fld('# Ítem (opcional)','mp-item',r?r.item||'':'','inputmode="numeric" onchange="opBuscar(\'mp\')"')}
+   ${fld('Cliente (opcional)','mp-cli',r?r.cliente||'':'','autocomplete="off"')}<div class="field"><label>Inspector</label><select id="mp-ins">${(()=>{ const L=MP_INSP.slice(); const cur=r?r.inspector||'':(L.includes(ses)?ses:''); if(cur&&!L.includes(cur)) L.unshift(cur); return '<option value=""></option>'+L.map(x=>`<option ${x===cur?'selected':''}>${esc(x)}</option>`).join(''); })()}</select></div>
+   <div class="field span2"><small id="mp-ophint" style="color:var(--muted)"></small></div></div>
+   <h4 style="margin:12px 0 4px">Requisitos del proveedor</h4><div id="mp-req"></div>
+   <h4 style="margin:12px 0 4px">Verificar y asegurar</h4><div class="form-grid">${fld('Cantidad de muestra','mp-mue',d.muestra??'','inputmode="decimal"')}${fld('Cantidad para revisión','mp-rev',d.revision??'','inputmode="decimal"')}${fld('Muestreo (fracción, ej. 1 · 0.5)','mp-mst',d.muestreo??'','inputmode="decimal"')}<div class="field"><label>Frecuencia</label><select id="mp-frec"><option value=""></option>${['Cada lote o Producto','Muestra'].map(f=>`<option ${d.frecuencia===f?'selected':''}>${f}</option>`).join('')}</select></div></div><div id="mp-ver" style="margin-top:6px"></div>
+   <h4 style="margin:12px 0 4px">Dimensiones del material</h4><div id="mp-mats"></div><div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn btn-ghost btn-sm" onclick="mpMatAdd('Rectangular')">➕ Rectangular</button><button type="button" class="btn btn-ghost btn-sm" onclick="mpMatAdd('Circular')">➕ Circular</button></div>
+   <div id="mp-rej" style="display:none;margin-top:12px;padding:10px;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:13px">⚠️ Hay un rechazo: <b>poner el material en cuarentena</b> y activar el procedimiento de salidas no conformes.</div>
+   <div class="form-grid" style="margin-top:12px"><div class="field"><label>Estado</label><select id="mp-est" onchange="mpBlocks()"><option value=""></option><option ${r&&r.estado==='APROBADO'?'selected':''}>APROBADO</option><option ${r&&r.estado==='RECHAZADO'?'selected':''}>RECHAZADO</option></select></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="mpGuardar()">💾 Guardar</button>`);
+  mpBlocks();
+}
+async function mpGuardar(){
+  const prov=gv('mp-prov'), ins=gv('mp-ins'); if(!prov){ toast('Falta el proveedor','error'); return; } if(!ins){ toast('Falta el inspector','error'); return; }
+  const n=x=>{ const t=gv(x).replace(',','.'); return t===''||isNaN(Number(t))?null:Number(t); };
+  const limp=o=>{ const out={}; Object.entries(o).forEach(([k,x])=>{ const y={}; Object.entries(x).forEach(([a,b])=>{ if(b!==''&&b!=null) y[a]=b; }); if(Object.keys(y).length) out[k]=y; }); return out; };
+  const old=_MPF.id?(mpDe(_MPF.id)||{}).datos||{}:{};
+  const datos=Object.assign({},old.legacy?{legacy:true}:{},{req:limp(_MPF.req),ver:limp(_MPF.ver),muestra:n('mp-mue'),revision:n('mp-rev'),muestreo:n('mp-mst'),frecuencia:gv('mp-frec')||null});
+  const mats=_MPF.mats.map(m=>Object.fromEntries(Object.entries(m).filter(([k,v])=>v!==''&&v!=null))).filter(m=>Object.keys(m).length>1);
+  const p={id:_MPF.id,fecha:gv('mp-fec'),proveedor:prov,inspector:ins,factura:gv('mp-fac'),op:gv('mp-op'),item:gv('mp-item'),cliente:gv('mp-cli'),estado:gv('mp-est'),datos,materiales:mats};
+  if(_NCFS.mpf) p.foto=_NCFS.mpf;
+  const r=await sbRun(()=>sb.rpc('nc_inspmp_guardar',{p}),'✅ Inspección guardada'); if(!r) return;
+  closeModal(); await cargarMp(true); if(MOD==='matprima') mp();
+  if(p.estado==='RECHAZADO'&&r.id&&confirm('La inspección quedó RECHAZADA. ¿Crear ahora la acción correctiva?')) mpCrearAccion(r.id);
+}
+// ── PDF FT-05-01-01 ──
+async function mpPDF(id){
+  const r=mpDe(id); if(!r) return; toast('Generando formato…'); let foto=''; try{ const x=(await GET('nc_inspmp','select=foto&id='+eq(id)))[0]; if(x&&/^data:image\//.test(x.foto||'')) foto=x.foto; }catch(e){}
+  const d=r.datos||{}, q=d.req||{}, v=d.ver||{}, E=x=>esc(x==null?'':String(x)); const lg=typeof LOGO_B64_PNG!=='undefined'?LOGO_B64_PNG:'';
+  const nom='INSP_'+id+'_'+(r.proveedor||'').replace(/[^\w]+/g,'_').slice(0,30);
+  const body=`<table class="hd"><tr><td style="width:20%;text-align:center">${lg?`<img src="${lg}" style="max-width:130px;max-height:60px">`:'GRUPO WEDM'}</td><td class="tt">RECEPCIÓN TÉCNICA DE INSUMOS Y SUMINISTROS</td><td style="width:22%">Código: <b>FT-05-01-01</b><br>Versión: 2</td></tr></table>
+  <table><tr><td class="l">Fecha de inspección</td><td>${E(fmtDate(r.fecha))}</td><td class="l">Estado</td><td><b>${E(r.estado||'—')}</b></td></tr><tr><td class="l">Proveedor / fabricante</td><td>${E(r.proveedor)}</td><td class="l"># Factura</td><td>${E(r.factura)}</td></tr><tr><td class="l">Cliente</td><td>${E(r.cliente)}</td><td class="l"># OP / # Ítem</td><td>${E(r.op)}${r.item?' / '+E(r.item):''}</td></tr>
+  <tr><td class="l">Muestra</td><td>${E(d.muestra)} · revisión ${E(d.revision)}</td><td class="l">Muestreo / frecuencia</td><td>${E(d.muestreo)} · ${E(d.frecuencia)}</td></tr></table>
+  <table><tr><th colspan="3" class="h">REQUISITOS DEL PROVEEDOR</th></tr>${MP_REQ.map(([k,l])=>`<tr><td class="l">${l}</td><td style="width:60px;text-align:center"><b>${E((q[k]||{}).v)}</b></td><td>${E((q[k]||{}).o)}</td></tr>`).join('')}</table>
+  <table><tr><th colspan="3" class="h">VERIFICAR Y ASEGURAR (A = aprobado · R = rechazado)</th></tr>${MP_VER.map(([k,l])=>`<tr><td class="l">${l}</td><td style="width:60px;text-align:center"><b>${E((v[k]||{}).v)}</b></td><td>${E((v[k]||{}).d||(v[k]||{}).o)}</td></tr>`).join('')}</table>
+  ${(r.materiales||[]).length?`<table><tr><th colspan="3" class="h">DIMENSIONES (solicitado → recibido)</th></tr>${r.materiales.map(mpMatTxt).join('')}</table>`:''}
+  ${r.estado==='RECHAZADO'?'<p style="border:2px solid #b91c1c;color:#b91c1c;padding:8px;font-weight:700;margin-top:8px">MATERIAL EN CUARENTENA — ACTIVAR EL PROCEDIMIENTO DE SALIDAS NO CONFORMES</p>':''}
+  ${foto?`<p style="margin-top:8px"><b>Foto de evidencia</b><br><img src="${foto}" style="max-width:100%;max-height:300px"></p>`:''}
+  <table style="margin-top:10px"><tr><td class="l">Nombre del inspector</td><td>${E(r.inspector)}</td><td class="l">Fecha</td><td>${E(fmtDate(r.fecha))}</td></tr></table>`;
+  const w=window.open('','_blank'); if(!w){ toast('Permite las ventanas emergentes para ver el PDF','err'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nom)}</title><style>body{font-family:Arial,sans-serif;font-size:11px;margin:14px}table{width:100%;border-collapse:collapse;margin-bottom:6px}td,th{border:1px solid #444;padding:4px 6px;vertical-align:top}.l{background:#eee;font-weight:700;width:24%}.h{background:#2f6df6;color:#fff;text-align:left}.tt{text-align:center;font-weight:700;font-size:14px}@media print{@page{size:A4;margin:10mm}}</style></head><body>${body}<script>setTimeout(function(){window.print()},400)<\/script></body></html>`); w.document.close();
+}
+// ── Importar historial de inspecciones ──
+async function impEjecutar3(){
+  const log=document.getElementById('imp3-log'), btn=document.getElementById('imp3-btn'); const P=t=>{ log.textContent+=t+'\n'; };
+  btn.disabled=true; log.textContent='';
+  try{
+    if(!window.NC_HIST3_B64){ P('Cargando nc_historial3.js…'); await new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='nc_historial3.js?'+Date.now(); s.onload=ok; s.onerror=()=>ko(new Error('No se encontró nc_historial3.js junto al módulo (¿lo subiste a GitHub?)')); document.head.appendChild(s); }); }
+    const bin=Uint8Array.from(atob(window.NC_HIST3_B64),c=>c.charCodeAt(0));
+    const D=JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    const rows=(D.nc_inspmp||[]).map(r=>Object.assign({},r,{fecha:r.fecha?String(r.fecha).slice(0,10)+'T12:00:00Z':null,created_at:r.fecha,updated_at:r.fecha,creado_por:'Importado AppSheet'})); let ins=0;
+    for(let i=0;i<rows.length;i+=100){ const r=await sb.rpc('nc_importar',{p_tabla:'nc_inspmp',p_rows:rows.slice(i,i+100)}); ins+=(r&&r.insertadas)||0; }
+    P('✓ nc_inspmp: '+rows.length+' leídas, '+ins+' nuevas'); DB.mp=null; toast('✅ Inspecciones importadas');
+  }catch(e){ P('\n❌ '+errMsg(e)); toast('❌ '+errMsg(e),'error'); }
+  btn.disabled=false;
+}
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
@@ -1981,7 +2110,7 @@ function herramientas(){
    <p style="margin-top:6px">Carga: <b>reportes, acciones (registro de no conformidad), causas, 5 porqués, espina de pescado, grupos, costos y fuentes</b>. Si lo ejecutas dos veces <b>no duplica</b>: lo que ya existe se omite.</p>
    <p style="margin-top:6px;color:var(--muted)">Actualmente en la base: ${(DB.registros||[]).length} acciones y ${(DB.reportes||[]).length} reportes.</p>
    <button class="btn btn-primary" style="margin-top:12px" id="imp-btn" onclick="impEjecutar()">⬆️ Importar ahora</button><div id="imp-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div>
-   <div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>EPP y 5 S</b> (4.499 evaluaciones de EPP y 2.986 de 5 S). Necesitas haber subido <b>nc_historial2.js</b> junto a este módulo. Si lo ejecutas dos veces <b>no duplica</b>.</p><button class="btn btn-primary" style="margin-top:10px" id="imp2-btn" onclick="impEjecutar2()">⬆️ Importar EPP y 5 S</button><div id="imp2-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
+   <div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>EPP y 5 S</b> (4.499 evaluaciones de EPP y 2.986 de 5 S). Necesitas haber subido <b>nc_historial2.js</b> junto a este módulo. Si lo ejecutas dos veces <b>no duplica</b>.</p><button class="btn btn-primary" style="margin-top:10px" id="imp2-btn" onclick="impEjecutar2()">⬆️ Importar EPP y 5 S</button><div id="imp2-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div><div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>Inspección de materia prima</b> (138 inspecciones y 178 materiales). Necesitas haber subido <b>nc_historial3.js</b>. No duplica si lo ejecutas dos veces.</p><button class="btn btn-primary" style="margin-top:10px" id="imp3-btn" onclick="impEjecutar3()">⬆️ Importar inspecciones</button><div id="imp3-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
 }
 async function impEjecutar(){
   const log=document.getElementById('imp-log'), btn=document.getElementById('imp-btn'); const P=t=>{ log.textContent+=t+'\n'; };
