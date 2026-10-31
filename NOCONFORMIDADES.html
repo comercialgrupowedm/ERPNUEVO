@@ -719,6 +719,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="cincoS" onclick="nav('cincoS')"><span class="nav-icon">🧹</span>5 S</div>
     <div class="nav-item" data-m="matprima" onclick="nav('matprima')"><span class="nav-icon">📦</span>Inspección materia prima</div>
     <div class="nav-item" data-m="rrhh" onclick="nav('rrhh')"><span class="nav-icon">👥</span>Política RRHH</div>
+    <div class="nav-item" data-m="informes" onclick="nav('informes')"><span class="nav-icon">📊</span>Informes</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" id="nav-inst" onclick="closeSidebar();erpInstalar()"><span class="nav-icon">📲</span>Instalar esta app</div>
     <div class="nav-item" data-m="colaboradores" onclick="nav('colaboradores')"><span class="nav-icon">🧑‍🤝‍🧑</span>Colaboradores y líderes</div>
@@ -1228,7 +1229,7 @@ async function doLogin(){
 //  Las OP, clientes, colaboradores se toman del ERP (produccion, plan_colaboradores).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='inicio';
-const TITLES={inicio:'Menú',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
+const TITLES={inicio:'Menú',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',informes:'Informes',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REPORTA_DEFAULT='Carlos Lasso';
 // ── FOTO DE EVIDENCIA (cámara de la tablet/celular) ──
@@ -1312,7 +1313,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh,papelera,herramientas,colaboradores});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh,informes,papelera,herramientas,colaboradores});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1363,6 +1364,7 @@ const MENU=[
  {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
  {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>DB.mp?DB.mp.length+' inspecciones':'Inspecciones'},
  {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>DB.rr?DB.rr.length+' registros':'Llamados de atención'},
+ {k:'informes',t:'INFORMES',ic:'📊',c:'#16a34a',n:()=>'Gestión de indicadores'},
  {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'+(puedeNC()&&pendReps().length?' · ⏳ '+pendReps().length+' sin acción':'')}];
 function inicio(){
   const R=DB.registros||[], P=DB.reportes||[]; const h=hoyISO();
@@ -2204,6 +2206,146 @@ async function impEjecutar4(){
   }catch(e){ P('\n❌ '+errMsg(e)); toast('❌ '+errMsg(e),'error'); }
   btn.disabled=false;
 }
+// ── INFORMES: gestión de indicadores por mes (EPP · 5 S · NC · causas) ──
+const _INF={anio:'',mes:'',tab:'resumen'};
+const MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const infYM=f=>{ const s=String(f||''); if(/^\d{4}-\d\d-\d\d$/.test(s)) return [+s.slice(0,4),+s.slice(5,7)]; const d=new Date(f); return f&&!isNaN(d)?[d.getFullYear(),d.getMonth()+1]:null; };
+const infKpiEpp=t=>t===0?5:t<=3?3:t<=6?1:0;
+const infKpi5s=t=>t>=6?0:t>=4?1:t>=1?3:5;
+async function cargarCausas(force){ if(DB.causas&&!force) return; DB.causas=await GETALL('nc_causas','select=id,registro_id,tipo_causa,causa,codigo,fecha,tipo_reporte&order=id'); }
+function infCalc(a,m){
+  const dentro=f=>{ const x=infYM(f); return !!x&&x[0]===a&&x[1]===m; }, es=(x,y)=>String(x||'').localeCompare(String(y||''),'es');
+  const E={}; (DB.epp||[]).filter(r=>dentro(r.fecha)).forEach(r=>{ const e=E[r.colaborador]=E[r.colaborador]||{n:r.colaborador||'(sin nombre)',ev:0,it:EPP_ITEMS.map(()=>0)}; e.ev++; EPP_ITEMS.forEach(([k],i)=>{ const u=((r.items||{})[k]||{}).u; if(u==='NO LO PORTA'||u==='LO PORTA PERO NO LO USA') e.it[i]++; }); });
+  const epp=Object.values(E).map(e=>({...e,tot:e.it.reduce((x,y)=>x+y,0)})).map(e=>({...e,kpi:infKpiEpp(e.tot)})).sort((x,y)=>es(x.n,y.n));
+  const S={}; (DB.s5||[]).filter(r=>dentro(r.fecha)).forEach(r=>{ const e=S[r.colaborador]=S[r.colaborador]||{n:r.colaborador||'(sin nombre)',ev:0,g:[0,0,0]}; e.ev++; ['c','o','l'].forEach((g,gi)=>{ [1,2,3].forEach(i=>{ const v=(r.items||{})[g+i]; if(typeof v==='number'&&v<4) e.g[gi]++; }); }); });
+  const s5=Object.values(S).map(e=>({...e,tot:e.g[0]+e.g[1]+e.g[2]})).map(e=>({...e,kpi:infKpi5s(e.tot)})).sort((x,y)=>es(x.n,y.n));
+  const N={}; const R=(DB.registros||[]).filter(r=>dentro(r.fecha_reporte)); R.forEach(r=>{ const k=String(r.responsable_nc||'').trim()||'(sin responsable)'; const e=N[k]=N[k]||{n:k,tot:0,sig:0}; e.tot++; if(r.significativo==='SI') e.sig++; });
+  const nc=Object.values(N).sort((x,y)=>(x.n.startsWith('(')?1:0)-(y.n.startsWith('(')?1:0)||y.tot-x.tot||es(x.n,y.n));
+  const rf={}; (DB.registros||[]).forEach(r=>rf[r.id]=r.fecha_reporte);
+  const C={}; (DB.causas||[]).filter(c=>dentro(c.fecha||rf[c.registro_id])).forEach(c=>{ const k=(c.codigo||'')+'|'+(c.causa||''); const e=C[k]=C[k]||{cod:c.codigo||'',causa:c.causa||'',n:0}; e.n++; });
+  const causas=Object.values(C).sort((x,y)=>y.n-x.n||es(x.cod,y.cod));
+  const cargo=n=>((DB.colab||[]).find(c=>c.nombre===n)||{}).cargo||'';
+  const R2={}; const g=n=>R2[n]=R2[n]||{n,cargo:cargo(n),eev:0,efa:0,ek:'',sev:0,sfa:0,sk:'',nc:0};
+  epp.forEach(e=>{ const r=g(e.n); r.eev=e.ev; r.efa=e.tot; r.ek=e.kpi; }); s5.forEach(e=>{ const r=g(e.n); r.sev=e.ev; r.sfa=e.tot; r.sk=e.kpi; });
+  nc.filter(e=>!e.n.startsWith('(')).forEach(e=>e.n.split(',').map(x=>x.trim()).filter(Boolean).forEach(p=>{ g(p).nc+=e.tot; }));
+  const resumen=Object.values(R2).sort((x,y)=>es(x.n,y.n));
+  return {epp,s5,nc,causas,resumen,nReg:R.length,nEpp:(DB.epp||[]).filter(r=>dentro(r.fecha)).length,n5s:(DB.s5||[]).filter(r=>dentro(r.fecha)).length};
+}
+function infSet(k,v){ _INF[k]=v; informes(); }
+async function informes(){
+  if(!DB.epp||!DB.s5||!DB.causas) loading();
+  try{ await Promise.all([cargarEpp(),cargar5s(),cargarCausas()]); }catch(e){ _vistaError(e); return; }
+  const hoy=new Date(); if(!_INF.anio){ _INF.anio=String(hoy.getFullYear()); _INF.mes=String(hoy.getMonth()+1); }
+  const ys=new Set([String(hoy.getFullYear())]); [...(DB.epp||[]),...(DB.s5||[])].forEach(r=>{ const x=infYM(r.fecha); if(x) ys.add(String(x[0])); }); (DB.registros||[]).forEach(r=>{ const x=infYM(r.fecha_reporte); if(x) ys.add(String(x[0])); });
+  const a=+_INF.anio, m=+_INF.mes, D=infCalc(a,m), T=_INF.tab;
+  const kc=v=>v===''||v==null?'<span class="badge gris">—</span>':`<span class="badge ${v>=5?'verde':v>=3?'azul':v>=1?'naranja':'rojo'}">${v}</span>`;
+  const th=(...c)=>`<thead><tr>${c.map(x=>`<th>${x}</th>`).join('')}</tr></thead>`;
+  const tb=(h,rows)=>`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl">${h}<tbody>${rows||'<tr><td colspan="20" style="text-align:center;color:var(--muted);padding:18px">Sin datos en este mes</td></tr>'}</tbody></table></div></div>`;
+  let body='';
+  if(T==='resumen') body=tb(th('Colaborador','Cargo','Eval. EPP','Fallas EPP','Calif. EPP','Eval. 5 S','Fallas 5 S','Calif. 5 S','NC (responsable)'),D.resumen.map(r=>`<tr><td><b>${esc(r.n)}</b></td><td>${esc(r.cargo)}</td><td>${r.eev||'—'}</td><td>${r.eev?r.efa:'—'}</td><td>${kc(r.ek)}</td><td>${r.sev||'—'}</td><td>${r.sev?r.sfa:'—'}</td><td>${kc(r.sk)}</td><td>${r.nc||'—'}</td></tr>`).join(''));
+  if(T==='epp') body=tb(th('Colaborador','Eval.',...EPP_ITEMS.map(x=>x[1]),'Total','Calif. KPI'),D.epp.map(r=>`<tr><td><b>${esc(r.n)}</b></td><td>${r.ev}</td>${r.it.map(v=>`<td>${v||0}</td>`).join('')}<td><b>${r.tot}</b></td><td>${kc(r.kpi)}</td></tr>`).join(''));
+  if(T==='s5') body=tb(th('Colaborador','Eval.','Clasificar','Ordenar','Limpiar','Total fallas','Calificación'),D.s5.map(r=>`<tr><td><b>${esc(r.n)}</b></td><td>${r.ev}</td><td>${r.g[0]}</td><td>${r.g[1]}</td><td>${r.g[2]}</td><td><b>${r.tot}</b></td><td>${kc(r.kpi)}</td></tr>`).join(''));
+  if(T==='nc') body=tb(th('Responsable de la no conformidad','Total','Significativas'),D.nc.map(r=>`<tr><td><b>${esc(r.n)}</b></td><td>${r.tot}</td><td>${r.sig}</td></tr>`).join(''));
+  if(T==='causas') body=tb(th('Código','Causa raíz','Veces'),D.causas.map(r=>`<tr><td>${esc(r.cod||'—')}</td><td>${esc(r.causa)}</td><td><b>${r.n}</b></td></tr>`).join(''));
+  const tab=(k,l)=>`<button class="${T===k?'on':''}" onclick="infSet('tab','${k}')">${l}</button>`;
+  setContent(moduleBanner('📊','Informes','Gestión de indicadores por mes',`<button class="btn btn-primary btn-sm" onclick="infExcel()">⬇️ Descargar Excel</button>`)
+   +`<div style="padding:10px 12px"><div class="nc-filtros"><select class="nc-sel" onchange="infSet('anio',this.value)">${[...ys].sort().reverse().map(y=>`<option ${y===_INF.anio?'selected':''}>${y}</option>`).join('')}</select><select class="nc-sel" onchange="infSet('mes',this.value)">${MESES_L.map((x,i)=>`<option value="${i+1}" ${String(i+1)===String(_INF.mes)?'selected':''}>${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></div></div>
+   <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${D.nEpp}</div><div class="kpi-label">Evaluaciones EPP</div></div><div class="kpi-card teal"><div class="kpi-value">${D.n5s}</div><div class="kpi-label">Evaluaciones 5 S</div></div><div class="kpi-card warn"><div class="kpi-value">${D.nReg}</div><div class="kpi-label">No conformidades</div></div><div class="kpi-card"><div class="kpi-value">${D.causas.reduce((s,x)=>s+x.n,0)}</div><div class="kpi-label">Causas registradas</div></div></div>
+   <div class="vw-tabs" style="margin:10px 0">${tab('resumen','👥 Resumen')}${tab('epp','🦺 EPP')}${tab('s5','🧹 5 S')}${tab('nc','🛡️ No conformidades')}${tab('causas','🔎 Causas')}</div>${body}
+   <p style="font-size:12px;color:var(--muted);margin:10px 0 20px">Calificación EPP: 0 fallas = 5 · 1–3 = 3 · 4–6 = 1 · más de 6 = 0. Calificación 5 S (suma de fallas): 0 = 5 · 1–3 = 3 · 4–5 = 1 · 6 o más = 0.</p></div>`);
+}
+async function infExcel(){
+  try{ showBusy(); if(!window.ExcelJS) await new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'; s.onload=ok; s.onerror=()=>ko(new Error('No se pudo cargar el generador de Excel')); document.head.appendChild(s); });
+    const a=+_INF.anio, m=+_INF.mes, D=infCalc(a,m), mn=MESES_L[m-1], MN=mn[0].toUpperCase()+mn.slice(1), ym=a+'-'+String(m).padStart(2,'0'), dentro=f=>{ const x=infYM(f); return !!x&&x[0]===a&&x[1]===m; };
+    const C={navy:'FF1F3A6B',blue:'FF2F6DF6',light:'FFEAF0FB',zebra:'FFF5F8FD',line:'FFD0D7E5',white:'FFFFFFFF',txt:'FF1E293B'};
+    const wb=new ExcelJS.Workbook(); wb.creator='Grupo WEDM'; wb.created=new Date();
+    const solid=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}}), thin={style:'thin',color:{argb:C.line}}, brd={top:thin,left:thin,bottom:thin,right:thin};
+    const sheet=(n,tab,w)=>{ const ws=wb.addWorksheet(n,{properties:{tabColor:{argb:tab}},views:[{showGridLines:false}]}); w.forEach((x,i)=>{ ws.getColumn(i+1).width=x; }); return ws; };
+    const banner=(ws,t,sub,nc)=>{ ws.mergeCells(1,1,1,nc); ws.mergeCells(2,1,2,nc); const c=ws.getCell(1,1); c.value=t; c.font={bold:true,size:16,color:{argb:C.white},name:'Calibri'}; c.fill=solid(C.navy); c.alignment={vertical:'middle',indent:1}; ws.getRow(1).height=34; const d=ws.getCell(2,1); d.value=sub; d.font={size:11,color:{argb:C.navy},bold:true}; d.fill=solid(C.light); d.alignment={vertical:'middle',indent:1}; ws.getRow(2).height=22; for(let i=2;i<=nc;i++){ ws.getCell(1,i).fill=solid(C.navy); ws.getCell(2,i).fill=solid(C.light); } };
+    const head=(ws,r,labels,h=34)=>{ labels.forEach((l,i)=>{ const c=ws.getCell(r,i+1); c.value=l; c.font={bold:true,color:{argb:C.white},size:10.5}; c.fill=solid(C.blue); c.alignment={horizontal:i?'center':'left',vertical:'middle',wrapText:true,indent:i?0:1}; c.border=brd; }); ws.getRow(r).height=h; };
+    const body=(ws,r,nc,first)=>{ for(let i=1;i<=nc;i++){ const c=ws.getCell(r,i); c.border=brd; c.font={color:{argb:C.txt},size:10.5,bold:i===first}; c.alignment={horizontal:i===1?'left':'center',vertical:'middle',indent:i===1?1:0}; if(r%2===0) c.fill=solid(C.zebra); } };
+    const tot=(ws,r,nc)=>{ for(let i=1;i<=nc;i++){ const c=ws.getCell(r,i); c.fill=solid(C.light); c.font={bold:true,color:{argb:C.navy},size:11}; c.border={top:{style:'medium',color:{argb:C.navy}},bottom:thin,left:thin,right:thin}; c.alignment={horizontal:i===1?'left':'center',indent:i===1?1:0}; } };
+    const cf=(ws,ref)=>ws.addConditionalFormatting({ref,rules:[[5,'FFC6EFCE','FF006100'],[3,'FFDDEBF7','FF1F4E79'],[1,'FFFFEB9C','FF9C5700'],[0,'FFFFC7CE','FF9C0006']].map(([v,bg,fg],i)=>({type:'cellIs',operator:'equal',formulae:[v],priority:i+1,style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:bg}},font:{bold:true,color:{argb:fg}}}}))});
+    const cfPos=(ws,ref)=>ws.addConditionalFormatting({ref,rules:[{type:'cellIs',operator:'greaterThan',formulae:[0],priority:9,style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFFDE7D6'}},font:{bold:true,color:{argb:'FF9A3412'}}}}]});
+    const sub=`Año ${a}  ·  Mes: ${MN}  ·  Generado ${new Date().toLocaleDateString('es-CO')}`;
+    const kcal=v=>v===''||v==null?'':v;
+    // ── hojas en orden (resumen primero, se llena al final)
+    const wsR=sheet('RESUMEN','FF16A34A',[40,34,14,12,14,14,12,14,28]);
+    const wsE=sheet('ANÁLISIS EPP','FF2F6DF6',[40,12,12,12,12,12,12,12,12,12,14]);
+    const ws5=sheet('ANALISIS 5S','FF2F6DF6',[40,14,14,14,12,14]);
+    const wsN=sheet('ANALISIS NO CONFORMIDADES','FF2F6DF6',[50,16,16]);
+    const wsC=sheet('ANALISIS DE LAS CAUSAS','FF2F6DF6',[10,100,10]);
+    const dE=sheet('DATOS_EPP','FF94A3B8',[18,34,28,...EPP_ITEMS.map(()=>20),...EPP_ITEMS.map(()=>9)]);
+    const d5=sheet('DATOS_5S','FF94A3B8',[18,34,28,...Array(9).fill(8),10,10,10]);
+    const dN=sheet('DATOS_NC','FF94A3B8',[8,14,38,14,34,70]);
+    const dC=sheet('DATOS_CAUSAS','FF94A3B8',[10,70,16,14]);
+    const LET=n=>{ let s=''; n++; while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); } return s; };
+    // DATOS_EPP
+    const rE=(DB.epp||[]).filter(r=>dentro(r.fecha)).sort((x,y)=>String(x.fecha).localeCompare(String(y.fecha)));
+    head(dE,1,['Fecha','Colaborador','Máquina',...EPP_ITEMS.map(x=>'Utilización '+x[1]),...EPP_ITEMS.map(x=>'Falla '+x[1])],38);
+    rE.forEach((r,i)=>{ const n=i+2; const row=[new Date(r.fecha),r.colaborador||'',r.maquina||'',...EPP_ITEMS.map(([k])=>((r.items||{})[k]||{}).u||'')]; row.forEach((v,j)=>{ dE.getCell(n,j+1).value=v; });
+      EPP_ITEMS.forEach(([k],j)=>{ const u=((r.items||{})[k]||{}).u||'', col=LET(3+j); dE.getCell(n,4+EPP_ITEMS.length+j).value={formula:`IF(OR(${col}${n}="NO LO PORTA",${col}${n}="LO PORTA PERO NO LO USA"),1,0)`,result:(u==='NO LO PORTA'||u==='LO PORTA PERO NO LO USA')?1:0}; });
+      body(dE,n,3+2*EPP_ITEMS.length,2); dE.getCell(n,1).numFmt='dd/mm/yyyy hh:mm'; });
+    dE.autoFilter={from:{row:1,column:1},to:{row:Math.max(2,rE.length+1),column:3+2*EPP_ITEMS.length}}; dE.views=[{showGridLines:false,state:'frozen',ySplit:1,xSplit:2}];
+    // DATOS_5S
+    const r5=(DB.s5||[]).filter(r=>dentro(r.fecha)).sort((x,y)=>String(x.fecha).localeCompare(String(y.fecha))); const K5=['c1','c2','c3','o1','o2','o3','l1','l2','l3'];
+    head(d5,1,['Fecha','Colaborador','Máquina',...K5.map(k=>({c:'Clasif ',o:'Orden ',l:'Limp '}[k[0]]+k[1])),'Fallas CLASIFICAR','Fallas ORDENAR','Fallas LIMPIAR'],38);
+    r5.forEach((r,i)=>{ const n=i+2, it=r.items||{}; [new Date(r.fecha),r.colaborador||'',r.maquina||'',...K5.map(k=>it[k]==null?'':it[k])].forEach((v,j)=>{ d5.getCell(n,j+1).value=v; });
+      [0,1,2].forEach(g=>{ const c0=LET(3+g*3), c2=LET(5+g*3), res=[1,2,3].filter(i2=>typeof it['clo'[g]+i2]==='number'&&it['clo'[g]+i2]<4).length; d5.getCell(n,13+g).value={formula:`COUNTIF(${c0}${n}:${c2}${n},"<4")`,result:res}; });
+      body(d5,n,15,2); d5.getCell(n,1).numFmt='dd/mm/yyyy hh:mm'; });
+    d5.autoFilter={from:{row:1,column:1},to:{row:Math.max(2,r5.length+1),column:15}}; d5.views=[{showGridLines:false,state:'frozen',ySplit:1,xSplit:2}];
+    // DATOS_NC
+    const rN=(DB.registros||[]).filter(r=>dentro(r.fecha_reporte)).sort((x,y)=>(x.accion_no||0)-(y.accion_no||0));
+    head(dN,1,['Acción N°','Fecha reporte','Responsable de la no conformidad','Significativo','Cliente','Descripción'],34);
+    rN.forEach((r,i)=>{ const n=i+2; [r.accion_no,r.fecha_reporte?new Date(r.fecha_reporte+'T12:00:00'):'',String(r.responsable_nc||'').trim(),r.significativo||'',r.cliente||'',r.descripcion||''].forEach((v,j)=>{ dN.getCell(n,j+1).value=v; }); body(dN,n,6,3); dN.getCell(n,2).numFmt='dd/mm/yyyy'; dN.getCell(n,6).alignment={wrapText:true,vertical:'top'}; });
+    dN.autoFilter={from:{row:1,column:1},to:{row:Math.max(2,rN.length+1),column:6}}; dN.views=[{showGridLines:false,state:'frozen',ySplit:1}];
+    // DATOS_CAUSAS
+    const rf={}; (DB.registros||[]).forEach(r=>rf[r.id]=r.fecha_reporte); const rC=(DB.causas||[]).filter(c=>dentro(c.fecha||rf[c.registro_id]));
+    head(dC,1,['Código','Causa raíz','Tipo de causa','Fecha'],30);
+    rC.forEach((c,i)=>{ const n=i+2; [c.codigo||'',c.causa||'',c.tipo_causa||'',(c.fecha||rf[c.registro_id])?new Date((c.fecha||rf[c.registro_id])+'T12:00:00'):''].forEach((v,j)=>{ dC.getCell(n,j+1).value=v; }); body(dC,n,4,1); dC.getCell(n,4).numFmt='dd/mm/yyyy'; dC.getCell(n,2).alignment={wrapText:true,vertical:'middle'}; });
+    dC.autoFilter={from:{row:1,column:1},to:{row:Math.max(2,rC.length+1),column:4}}; dC.views=[{showGridLines:false,state:'frozen',ySplit:1}];
+    const LIM=5000, rg=(sh,c)=>`${sh}!$${c}$2:$${c}$${LIM}`;
+    // ANÁLISIS EPP (fórmulas sobre DATOS_EPP)
+    banner(wsE,'ANÁLISIS EPP — Elementos de protección personal',sub,11);
+    head(wsE,4,['Colaborador',...EPP_ITEMS.map(x=>x[1]),'TOTAL','CAL. KPI'],36);
+    D.epp.forEach((r,i)=>{ const n=5+i; wsE.getCell(n,1).value=r.n; EPP_ITEMS.forEach((_,j)=>{ wsE.getCell(n,2+j).value={formula:`SUMIFS(${rg('DATOS_EPP',LET(3+EPP_ITEMS.length+j))},${rg('DATOS_EPP','B')},$A${n})`,result:r.it[j]}; });
+      wsE.getCell(n,10).value={formula:`SUM(B${n}:I${n})`,result:r.tot}; wsE.getCell(n,11).value={formula:`IF(J${n}=0,5,IF(J${n}<=3,3,IF(J${n}<=6,1,0)))`,result:r.kpi}; body(wsE,n,11,1); });
+    const eL=4+D.epp.length, eT=eL+1; if(D.epp.length){ wsE.getCell(eT,1).value='TOTAL GENERAL'; for(let j=2;j<=10;j++) wsE.getCell(eT,j).value={formula:`SUM(${LET(j-1)}5:${LET(j-1)}${eL})`,result:j<10?D.epp.reduce((s,r)=>s+r.it[j-2],0):D.epp.reduce((s,r)=>s+r.tot,0)}; wsE.getCell(eT,11).value={formula:`IFERROR(AVERAGE(K5:K${eL}),"")`,result:D.epp.length?D.epp.reduce((s,r)=>s+r.kpi,0)/D.epp.length:''}; wsE.getCell(eT,11).numFmt='0.0'; tot(wsE,eT,11); cf(wsE,`K5:K${eL}`); cfPos(wsE,`B5:I${eL}`); }
+    wsE.getCell(eT+2,1).value='Calificación: 0 fallas = 5 · 1 a 3 = 3 · 4 a 6 = 1 · más de 6 = 0'; wsE.getCell(eT+2,1).font={italic:true,size:9.5,color:{argb:'FF64748B'}}; wsE.views=[{showGridLines:false,state:'frozen',ySplit:4,xSplit:1}];
+    // ANALISIS 5S
+    banner(ws5,'ANÁLISIS 5 S — Orden y limpieza',sub,6); head(ws5,4,['Colaborador','Fallas CLASIFICAR','Fallas ORDENAR','Fallas LIMPIAR','TOTAL','CALIFICACIÓN'],36);
+    D.s5.forEach((r,i)=>{ const n=5+i; ws5.getCell(n,1).value=r.n; [0,1,2].forEach(g=>{ ws5.getCell(n,2+g).value={formula:`SUMIFS(${rg('DATOS_5S',LET(12+g))},${rg('DATOS_5S','B')},$A${n})`,result:r.g[g]}; });
+      ws5.getCell(n,5).value={formula:`SUM(B${n}:D${n})`,result:r.tot}; ws5.getCell(n,6).value={formula:`IF(E${n}>=6,0,IF(E${n}>=4,1,IF(E${n}>=1,3,5)))`,result:r.kpi}; body(ws5,n,6,1); });
+    const sL=4+D.s5.length, sT=sL+1; if(D.s5.length){ ws5.getCell(sT,1).value='TOTAL GENERAL'; for(let j=2;j<=5;j++) ws5.getCell(sT,j).value={formula:`SUM(${LET(j-1)}5:${LET(j-1)}${sL})`,result:D.s5.reduce((s,r)=>s+(j<5?r.g[j-2]:r.tot),0)}; ws5.getCell(sT,6).value={formula:`IFERROR(AVERAGE(F5:F${sL}),"")`,result:D.s5.reduce((s,r)=>s+r.kpi,0)/D.s5.length}; ws5.getCell(sT,6).numFmt='0.0'; tot(ws5,sT,6); cf(ws5,`F5:F${sL}`); cfPos(ws5,`B5:D${sL}`); }
+    ws5.getCell(sT+2,1).value='Falla = punto con nota menor a 4. Calificación: 0 fallas = 5 · 1 a 3 = 3 · 4 a 5 = 1 · 6 o más = 0'; ws5.getCell(sT+2,1).font={italic:true,size:9.5,color:{argb:'FF64748B'}}; ws5.views=[{showGridLines:false,state:'frozen',ySplit:4,xSplit:1}];
+    // ANALISIS NO CONFORMIDADES
+    banner(wsN,'ANÁLISIS NO CONFORMIDADES',sub,3); head(wsN,4,['Responsable de la no conformidad','Total','Significativas'],32);
+    D.nc.forEach((r,i)=>{ const n=5+i; wsN.getCell(n,1).value=r.n; const crit=r.n.startsWith('(')?'""':`$A${n}`; wsN.getCell(n,2).value={formula:`COUNTIFS(${rg('DATOS_NC','C')},${crit})`,result:r.tot}; wsN.getCell(n,3).value={formula:`COUNTIFS(${rg('DATOS_NC','C')},${crit},${rg('DATOS_NC','D')},"SI")`,result:r.sig}; body(wsN,n,3,1); });
+    const nL=4+D.nc.length, nT=nL+1; if(D.nc.length){ wsN.getCell(nT,1).value='TOTAL GENERAL'; wsN.getCell(nT,2).value={formula:`SUM(B5:B${nL})`,result:D.nc.reduce((s,r)=>s+r.tot,0)}; wsN.getCell(nT,3).value={formula:`SUM(C5:C${nL})`,result:D.nc.reduce((s,r)=>s+r.sig,0)}; tot(wsN,nT,3); cfPos(wsN,`C5:C${nL}`); } wsN.views=[{showGridLines:false,state:'frozen',ySplit:4}];
+    // ANALISIS DE LAS CAUSAS
+    banner(wsC,'ANÁLISIS DE LAS CAUSAS — Causa raíz de las no conformidades',sub,3); head(wsC,4,['Código','Causa raíz de la no conformidad','Veces'],30);
+    D.causas.forEach((r,i)=>{ const n=5+i; wsC.getCell(n,1).value=r.cod; wsC.getCell(n,2).value=r.causa; wsC.getCell(n,3).value={formula:`COUNTIFS(${rg('DATOS_CAUSAS','A')},$A${n},${rg('DATOS_CAUSAS','B')},$B${n})`,result:r.n}; body(wsC,n,3,3); wsC.getCell(n,2).alignment={horizontal:'left',vertical:'middle',wrapText:true,indent:1}; });
+    const cL=4+D.causas.length, cT=cL+1; if(D.causas.length){ wsC.getCell(cT,1).value='TOTAL'; wsC.getCell(cT,3).value={formula:`SUM(C5:C${cL})`,result:D.causas.reduce((s,r)=>s+r.n,0)}; tot(wsC,cT,3); } wsC.views=[{showGridLines:false,state:'frozen',ySplit:4}];
+    // RESUMEN (todo por fórmulas hacia las hojas de análisis)
+    banner(wsR,'GESTIÓN DE INDICADORES — GRUPO WEDM',sub,9);
+    const kp=[['Evaluaciones EPP',`COUNTA(${rg('DATOS_EPP','B')})`,rE.length,'FF2F6DF6'],['Evaluaciones 5 S',`COUNTA(${rg('DATOS_5S','B')})`,r5.length,'FF16A34A'],['No conformidades',`COUNTA(${rg('DATOS_NC','A')})`,rN.length,'FFF59E0B'],['Calificación EPP (prom.)',D.epp.length?`'ANÁLISIS EPP'!K${eT}`:'""',D.epp.length?D.epp.reduce((s,r)=>s+r.kpi,0)/D.epp.length:'','FF8B5CF6'],['Calificación 5 S (prom.)',D.s5.length?`'ANALISIS 5S'!F${sT}`:'""',D.s5.length?D.s5.reduce((s,r)=>s+r.kpi,0)/D.s5.length:'','FFEC4899']];
+    const kcol=[[1,2],[3,4],[5,6],[7,8],[9,9]]; kp.forEach(([l,f,res,col],i)=>{ const [c1,c2]=kcol[i]; if(c2>c1){ wsR.mergeCells(4,c1,4,c2); wsR.mergeCells(5,c1,5,c2); } const t=wsR.getCell(4,c1), v=wsR.getCell(5,c1); t.value=l; t.font={bold:true,size:9.5,color:{argb:C.white}}; v.value={formula:f,result:res}; v.font={bold:true,size:22,color:{argb:C.white}}; v.numFmt=i>=3?'0.0':'0'; [4,5].forEach(r=>{ for(let c=c1;c<=c2;c++){ const x=wsR.getCell(r,c); x.fill=solid(col); x.alignment={horizontal:'center',vertical:'middle'}; } }); });
+    wsR.getRow(4).height=20; wsR.getRow(5).height=38;
+    head(wsR,7,['Colaborador','Cargo','Eval. EPP','Fallas EPP','Calif. EPP','Eval. 5 S','Fallas 5 S','Calif. 5 S','NC (responsable)'],36);
+    const look=(sh,col,n,fall)=>`IFERROR(INDEX('${sh}'!$${col}:$${col},MATCH($A${n},'${sh}'!$A:$A,0)),${fall})`;
+    D.resumen.forEach((r,i)=>{ const n=8+i; wsR.getCell(n,1).value=r.n; wsR.getCell(n,2).value=r.cargo; wsR.getCell(n,2).alignment={horizontal:'left',vertical:'middle',indent:1};
+      wsR.getCell(n,3).value={formula:`COUNTIFS(${rg('DATOS_EPP','B')},$A${n})`,result:r.eev}; wsR.getCell(n,4).value={formula:look('ANÁLISIS EPP','J',n,'""'),result:r.eev?r.efa:''}; wsR.getCell(n,5).value={formula:look('ANÁLISIS EPP','K',n,'""'),result:kcal(r.ek)};
+      wsR.getCell(n,6).value={formula:`COUNTIFS(${rg('DATOS_5S','B')},$A${n})`,result:r.sev}; wsR.getCell(n,7).value={formula:look('ANALISIS 5S','E',n,'""'),result:r.sev?r.sfa:''}; wsR.getCell(n,8).value={formula:look('ANALISIS 5S','F',n,'""'),result:kcal(r.sk)};
+      wsR.getCell(n,9).value={formula:`SUMPRODUCT(--ISNUMBER(SEARCH($A${n},${rg('DATOS_NC','C')})))`,result:r.nc}; body(wsR,n,9,1); wsR.getCell(n,2).alignment={horizontal:'left',vertical:'middle',indent:1}; });
+    const rL=7+D.resumen.length; if(D.resumen.length){ cf(wsR,`E8:E${rL}`); cf(wsR,`H8:H${rL}`); cfPos(wsR,`I8:I${rL}`); wsR.autoFilter={from:{row:7,column:1},to:{row:rL,column:9}}; }
+    wsR.getCell(rL+2,1).value='Las hojas ANÁLISIS se calculan con fórmulas sobre las hojas DATOS_ (gris). Si corriges un dato allí, todo se recalcula.'; wsR.getCell(rL+2,1).font={italic:true,size:9.5,color:{argb:'FF64748B'}};
+    wsR.views=[{showGridLines:false,state:'frozen',ySplit:7,xSplit:1}];
+    [wsR,wsE,ws5,wsN,wsC].forEach(w=>{ w.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}; });
+    const buf=await wb.xlsx.writeBuffer(); const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})); const el=document.createElement('a'); el.href=url; el.download='GESTION_DE_INDICADORES_GRUPOWEDM_'+ym+'.xlsx'; document.body.appendChild(el); el.click(); setTimeout(()=>{ el.remove(); URL.revokeObjectURL(url); },2000);
+    toast('⬇️ Excel de '+mn+' '+a+' descargado');
+  }catch(e){ toast('❌ '+(e&&e.message||e),'error'); } finally{ hideBusy(); }
+}
+
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
