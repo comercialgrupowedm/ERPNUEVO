@@ -6920,7 +6920,7 @@ async function raImpPick(f){
       if(!num||!fecha||/BORRADOR/i.test(r['TIPO'])||!/AMCOR/i.test(r['EMPRESA'])) return;
       const items=E.filter(e=>e['ID_REMISION']&&e['ID_REMISION']===r['ID_PEDIDO']).map(e=>({cant:String(e['UNIDADES']||''),desc:String(e['DESCRIPCION']||'')}));
       const fmm=r['DEVOLUCION FMM']?'FMM'+String(r['DEVOLUCION FMM']).replace(/^FMM/i,''):'';
-      rows.push({numero:num,fecha,encargado:String(r['ENCARGADO']||''),telefono:String(r['TELEFONO']||''),proyecto:String(r['DESCRIPCION DEL PROYECTO']||''),cotizacion:'',fmm,items});
+      rows.push({numero:num,fecha,encargado:String(r['ENCARGADO']||''),telefono:String(r['TELEFONO']||''),proyecto:String(r['DESCRIPCION DEL PROYECTO']||''),cotizacion:'',fmm,items,tipo:String(r['TIPO']||''),calificacion:String(r['CALIFICACION']||''),asesor:String(r['ASESOR']||''),orden_compra:String(r['ORDEN DE COMPRA']||''),op:''});
     });
     _raImp=rows;
     out.innerHTML=`<div style="padding:10px 14px"><div class="imp-badge-ok">✅ ${rows.length} remisiones AMCOR encontradas</div>

@@ -3019,12 +3019,12 @@ const _raFechaCorta=iso=>{ const [y,m,d]=String(iso).slice(0,10).split('-'); ret
 const _raActaDef=(fmm)=>'Por medio de la presente reportamos devolución de repuesto relacionado al '+(fmm||'FMM______')+' no se le hizo ninguna intervención por lo tanto no genera costo $0.';
 async function remamcor(){
   try{ _RA.rows=await GETALL('remisiones_amcor','select=*&order=fecha.desc,created_at.desc'); }catch(e){ _vistaError(e); return; }
-  const q=_norm(_RA.q||''); const data=_RA.rows.filter(r=>!q||_norm([r.numero,r.cotizacion,r.proyecto,r.encargado,r.fmm].join(' ')).includes(q));
+  const q=_norm(_RA.q||''); const data=_RA.rows.filter(r=>!q||_norm([r.numero,r.cotizacion,r.proyecto,r.encargado,r.fmm,r.asesor,r.op,r.orden_compra].join(' ')).includes(q));
   const edit=puedeCal();
-  const filas=data.map(r=>`<tr><td><b>${esc(r.numero)}</b></td><td>${esc(_raFechaCorta(r.fecha))}</td><td>${esc(r.cotizacion||'')}</td><td>${esc(r.proyecto||'')}</td><td>${esc(r.encargado||'')}</td><td style="white-space:nowrap"><button class="btn btn-sm" style="background:#1a3a6b;color:#fff" onclick="raImprimir('${r.id}')">🖨️ PDF</button> ${edit?`<button class="btn btn-ghost btn-sm" onclick="raForm('${r.id}')">✏️</button> <button class="btn btn-ghost btn-sm" onclick="raEliminar('${r.id}')">🗑️</button>`:''}</td></tr>`).join('');
+  const filas=data.map(r=>`<tr><td><b>${esc(r.numero)}</b></td><td>${esc(_raFechaCorta(r.fecha))}</td><td>${esc((r.tipo||'').slice(0,2))}</td><td>${esc(r.cotizacion||'')}</td><td>${esc(r.proyecto||'')}</td><td>${esc(r.encargado||'')}</td><td>${esc(r.asesor||'')}</td><td style="white-space:nowrap"><button class="btn btn-sm" style="background:#1a3a6b;color:#fff" onclick="raImprimir('${r.id}')">🖨️ PDF</button> ${edit?`<button class="btn btn-ghost btn-sm" onclick="raForm('${r.id}')">✏️</button> <button class="btn btn-ghost btn-sm" onclick="raEliminar('${r.id}')">🗑️</button>`:''}</td></tr>`).join('');
   setContent(moduleBanner('🏭','Remisiones AMCOR','Acta de entrega + remisión (devoluciones y trabajos sin costo)',edit?`<button class="btn btn-sm" style="background:#fff;color:#1a3a6b;font-weight:800" onclick="raForm('')">＋ Nueva</button>`:'')
-   +`<div style="padding:10px 12px"><input id="ra-q" value="${esc(_RA.q)}" placeholder="🔍 Buscar N°, cotización, proyecto, FMM…" oninput="_RA.q=this.value;clearTimeout(window._raT);window._raT=setTimeout(remamcor,350)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
-   <div style="padding:0 12px 14px;overflow-x:auto"><table class="data-tbl" style="width:100%"><thead><tr><th>N°</th><th>Fecha</th><th>Cotización</th><th>Proyecto</th><th>Encargado</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">Sin remisiones AMCOR. Usa «＋ Nueva».</td></tr>'}</tbody></table></div>`);
+   +`<div style="padding:10px 12px"><input id="ra-q" value="${esc(_RA.q)}" placeholder="🔍 Buscar N°, cotización, proyecto, FMM, asesor…" oninput="_RA.q=this.value;clearTimeout(window._raT);window._raT=setTimeout(remamcor,350)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
+   <div style="padding:0 12px 14px;overflow-x:auto"><table class="data-tbl" style="width:100%"><thead><tr><th>N°</th><th>Fecha</th><th>Tipo</th><th>Cotización</th><th>Proyecto</th><th>Encargado</th><th>Asesor</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px">Sin remisiones AMCOR. Usa «＋ Nueva».</td></tr>'}</tbody></table></div>`);
   const i=document.getElementById('ra-q'); if(i&&_RA.q){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
 }
 function raForm(id){
@@ -3033,6 +3033,8 @@ function raForm(id){
   openModal(r?'✏️ Editar remisión AMCOR':'🏭 Nueva remisión AMCOR',
    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-num','N° de remisión',r?r.numero:'','inputmode="numeric"')}${inp('ra-fec','Fecha',r?String(r.fecha).slice(0,10):hoyISO(),'type="date"')}</div>
     ${inp('ra-cot','Cotización',r?r.cotizacion:'')}${inp('ra-pro','Proyecto',r?r.proyecto:'')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:var(--muted)">Tipo</label><select id="ra-tipo" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px">${['','PE. Proyecto externo','UR. Urgencia'].map(t=>`<option ${r&&r.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>${inp('ra-cal','Calificación',r?r.calificacion:'','inputmode="numeric"')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${inp('ra-ase','Asesor',r?r.asesor:'')}${inp('ra-oc','Orden de compra',r?r.orden_compra:'')}${inp('ra-op','OP',r?r.op:'')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-enc','Encargado',r?r.encargado:'')}${inp('ra-tel','Teléfono',r?r.telefono:'')}</div>
     <div style="margin:6px 0 4px;font-size:11px;font-weight:700;color:var(--muted)">ÍTEMS</div><div id="ra-items">${it.map(x=>raItemH(x)).join('')}</div>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ra-items').insertAdjacentHTML('beforeend',raItemH({}))">＋ Ítem</button>
@@ -3045,7 +3047,7 @@ async function raGuardar(id){
   const g=k=>(document.getElementById(k)||{}).value||'';
   const items=[...document.querySelectorAll('#ra-items > div')].map(d=>({cant:d.querySelector('.ra-c').value.trim(),desc:d.querySelector('.ra-d').value.trim()})).filter(x=>x.cant||x.desc);
   const con=document.getElementById('ra-acta').checked;
-  const d={numero:g('ra-num').trim(),fecha:g('ra-fec'),cotizacion:g('ra-cot').trim(),proyecto:g('ra-pro').trim(),encargado:g('ra-enc').trim(),telefono:g('ra-tel').trim(),items,con_acta:con,fmm:con?g('ra-fmm').trim():'',acta_texto:con?g('ra-at').trim():'',creado_por:_SESSION?.nombre||''};
+  const d={numero:g('ra-num').trim(),fecha:g('ra-fec'),cotizacion:g('ra-cot').trim(),proyecto:g('ra-pro').trim(),encargado:g('ra-enc').trim(),telefono:g('ra-tel').trim(),items,con_acta:con,fmm:con?g('ra-fmm').trim():'',acta_texto:con?g('ra-at').trim():'',creado_por:_SESSION?.nombre||'',tipo:g('ra-tipo'),calificacion:g('ra-cal').trim(),asesor:g('ra-ase').trim(),orden_compra:g('ra-oc').trim(),op:g('ra-op').trim()};
   if(!d.numero){ toast('Falta el N° de remisión','error'); return; }
   showBusy();
   try{ await sb.rpc('rem_amcor_guardar',{p_id:id||null,p_data:d}); closeModal(); toast('✅ Remisión AMCOR guardada'); await remamcor(); }
