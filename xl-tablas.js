@@ -99,7 +99,7 @@
     var hr=table.tHead.rows[table.tHead.rows.length-1]; var th=[].slice.call(hr.cells); if(th.length<2) return;
     var sig=th.map(function(h){ return h.textContent.replace(/\s+/g,' ').trim(); }).join('|'); table.setAttribute('data-xlx-sig',sig); var key=keyOf(table,sig);
     th.forEach(function(h,i){ var t=h.textContent.replace(/\s+/g,' ').trim(); if(!t||h.querySelector('input,select,button')||h.classList.contains('no-xl')) return;
-      var own=h.hasAttribute('onclick'); var sp=document.createElement('span'); sp.className='xlx-t'; sp.setAttribute('data-b',t); sp.textContent=t; h.textContent=''; h.appendChild(sp);
+      var own=h.hasAttribute('onclick')&&h.getAttribute('onclick')!==''; if(!own){ h.classList.remove('ot'); h.removeAttribute('data-sort'); h.setAttribute('onclick',''); } var sp=document.createElement('span'); sp.className='xlx-t'; sp.setAttribute('data-b',t); sp.textContent=t; h.textContent=''; h.appendChild(sp);
       var b=document.createElement('button'); b.type='button'; b.className='xlx-dd'; b.title='Filtrar / ordenar'; b.textContent='▾'; h.appendChild(b);
       b.onclick=function(e){ e.stopPropagation(); if(POP){ closePop(); return; } request(table,key,i,'menu',b); };
       if(!own) sp.onclick=function(e){ e.stopPropagation(); request(table,key,i,'sort',b); }; });
