@@ -3028,11 +3028,34 @@ async function remamcor(){
    <div style="padding:0 12px 14px;overflow-x:auto"><table class="data-tbl" style="width:100%"><thead><tr><th>N°</th><th>Fecha</th><th>Tipo</th><th>Cotización</th><th>Proyecto</th><th>Encargado</th><th>Asesor</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px">Sin remisiones AMCOR. Usa «＋ Nueva».</td></tr>'}</tbody></table></div>`);
   const i=document.getElementById('ra-q'); if(i&&_RA.q){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
 }
+
+// ── Conexión con OP / cotización (carga automática) ──
+const raSiguiente=()=>String(Math.max(0,..._RA.rows.map(r=>parseInt(r.numero,10)||0))+1);
+function raOpsAmcor(){ const m={}; (DB.produccion||[]).filter(p=>/AMCOR/i.test(p.empresa||'')&&p.op!=null).forEach(p=>{ const o=m[p.op]||(m[p.op]={op:p.op,cot:p.cot_num,its:[]}); o.its.push(p); }); return Object.values(m).sort((a,b)=>b.op-a.op); }
+function raBuscarH(){
+  const L=raOpsAmcor();
+  return `<div style="margin-bottom:12px;padding:10px;border:1px solid #1a3a6b;border-radius:8px;background:rgba(26,58,107,.05)"><label style="font-size:11px;font-weight:800;color:#1a3a6b">🔗 BUSCAR OP O COTIZACIÓN DE AMCOR (llena todo solo)</label>
+  <input id="ra-buscar" list="ra-dl" placeholder="Escribe el N° de OP o de cotización…" onchange="raAuto(this.value)" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;margin-top:4px">
+  <datalist id="ra-dl">${L.map(o=>`<option value="OP ${o.op} · COT ${o.cot||'—'} · ${esc(String(o.its[0].descripcion||'').slice(0,50))}"></option>`).join('')}</datalist><div id="ra-auto-msg" style="font-size:11px;color:var(--muted);margin-top:4px"></div></div>`;
+}
+async function raAuto(v){
+  const n=(String(v).match(/\d+/g)||[]); const L=raOpsAmcor();
+  let o=null; if(/^OP/i.test(v)&&n[0]) o=L.find(x=>String(x.op)===n[0]); if(!o&&n[0]) o=L.find(x=>String(x.op)===n[0]||String(x.cot)===n[0]);
+  const msg=document.getElementById('ra-auto-msg'); if(!o){ if(msg) msg.textContent='No encontré esa OP/cotización de AMCOR'; return; }
+  const set=(k,val)=>{ const e=document.getElementById(k); if(e&&val!=null&&val!=='') e.value=val; };
+  const its=o.its.slice().sort((a,b)=>(a.item_num||0)-(b.item_num||0));
+  set('ra-op',o.op); set('ra-cot',o.cot||''); set('ra-ase',its[0].asesor||'');
+  const box=document.getElementById('ra-items'); if(box) box.innerHTML=its.map(p=>raItemH({cant:p.unidades,desc:p.descripcion})).join('');
+  let c=null; try{ c=(DB.cotizaciones||[]).find(x=>String(x.cotizacion)===String(o.cot)); if(!c&&o.cot){ const r=await GETALL('cotizaciones','select=cotizacion,descripcion_proyecto,encargado,telefono,orden_de_compra,asesor&cotizacion=eq.'+encodeURIComponent(o.cot)); c=r&&r[0]; } }catch(e){}
+  if(c){ set('ra-pro',c.descripcion_proyecto); set('ra-enc',c.encargado); set('ra-tel',c.telefono); set('ra-oc',c.orden_de_compra); set('ra-ase',c.asesor); }
+  else set('ra-pro',its[0].descripcion);
+  if(msg) msg.textContent='✅ Cargado de OP '+o.op+(o.cot?' · COT '+o.cot:'')+' ('+its.length+' ítem'+(its.length>1?'s':'')+'). Revisa y ajusta lo que haga falta.';
+}
 function raForm(id){
   const r=id?_RA.rows.find(x=>x.id===id):null; const it=(r&&r.items&&r.items.length?r.items:[{cant:'',desc:''}]);
   const inp=(i,l,v,ex)=>`<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:var(--muted)">${l}</label><input id="${i}" value="${esc(v==null?'':v)}" ${ex||''} style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px"></div>`;
   openModal(r?'✏️ Editar remisión AMCOR':'🏭 Nueva remisión AMCOR',
-   `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-num','N° de remisión',r?r.numero:'','inputmode="numeric"')}${inp('ra-fec','Fecha',r?String(r.fecha).slice(0,10):hoyISO(),'type="date"')}</div>
+   `${r?'':raBuscarH()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-num','N° de remisión',r?r.numero:raSiguiente(),'inputmode="numeric"')}${inp('ra-fec','Fecha',r?String(r.fecha).slice(0,10):hoyISO(),'type="date"')}</div>
     ${inp('ra-cot','Cotización',r?r.cotizacion:'')}${inp('ra-pro','Proyecto',r?r.proyecto:'')}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:var(--muted)">Tipo</label><select id="ra-tipo" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px">${['','PE. Proyecto externo','UR. Urgencia'].map(t=>`<option ${r&&r.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>${inp('ra-cal','Calificación',r?r.calificacion:'','inputmode="numeric"')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${inp('ra-ase','Asesor',r?r.asesor:'')}${inp('ra-oc','Orden de compra',r?r.orden_compra:'')}${inp('ra-op','OP',r?r.op:'')}</div>
