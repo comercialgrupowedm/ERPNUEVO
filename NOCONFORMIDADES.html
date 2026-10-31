@@ -734,11 +734,14 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <div id="content"></div>
 
 <div id="bottom-nav">
-  <div class="bn-item active" data-m="inicio" onclick="nav('inicio')"><div class="bn-icon">▦</div><div>Menú</div></div>
   <div class="bn-item" data-m="reprocesos" onclick="nav('reprocesos')"><div class="bn-icon">♻️</div><div>Reprocesos</div></div>
   <div class="bn-item" data-m="registros" onclick="nav('registros')"><div class="bn-icon">📝</div><div>Acciones</div></div>
+  <div class="bn-sp"></div>
   <div class="bn-item" data-m="reportes" onclick="nav('reportes')"><div class="bn-icon">📋</div><div>Reportes</div></div>
+  <div class="bn-sp"></div>
 </div>
+<button type="button" id="fab-menu" class="fab fab-menu" onclick="nav('inicio')" title="Menú principal">▦</button>
+<div id="fab-more"></div><button type="button" id="fab-add" class="fab fab-add" style="display:none" title="Nuevo">＋</button>
 
 <div class="overlay" id="modal-overlay">
   <div class="modal">
@@ -1036,14 +1039,22 @@ function setContent(h){
   if(active&&content&&content.contains(active)&&active.dataset&&active.dataset.fkey){
     restore={key:active.dataset.fkey,start:active.selectionStart,end:active.selectionEnd};
   }
-  content.innerHTML=h;
+  content.innerHTML=h; fabRender();
   if(restore){ const el=content.querySelector(`[data-fkey="${restore.key}"]`); if(el){ el.focus(); try{ el.setSelectionRange(restore.start,restore.end); }catch(e){} } }
   if(h.indexOf('lz-th')>-1) setTimeout(lzThumbs,0);
 }
-function loading(){ setContent(`<div class="empty"><div class="spinner"></div><p style="margin-top:12px">Cargando…</p></div>`); }
-function moduleBanner(icon,title,sub,actions='',bg){
-  return `<div class="mod-banner mb-slim"${bg?` style="background:${bg}"`:''}><div class="mbs-row"><span class="mbs-ic">${icon}</span><div class="mbs-t">${title}<small>${sub}</small></div></div>${actions?`<div class="mbs-act">${actions}</div>`:''}</div>`;
+// ── BOTONES FLOTANTES: añadir (derecha) y menú (centro) ──
+function fabRender(){
+  const box=document.getElementById('fab-add'), st=document.getElementById('fab-more'); if(!box||!st) return;
+  const t=document.createElement('div'); t.innerHTML=_ACT; _ACT='';
+  const bs=[...t.querySelectorAll('button')]; const pri=bs.find(b=>/btn-primary/.test(b.className));
+  if(pri){ box.style.display='flex'; box.setAttribute('onclick',pri.getAttribute('onclick')); box.title=pri.textContent.replace(/^[^\wÁÉÍÓÚÑ]+/,'').trim(); } else { box.style.display='none'; box.removeAttribute('onclick'); }
+  const otros=bs.filter(b=>b!==pri);
+  st.innerHTML=otros.map(b=>`<button class="fab-pill" onclick="${b.getAttribute('onclick')}">${b.innerHTML}</button>`).join('');
 }
+function loading(){ setContent(`<div class="empty"><div class="spinner"></div><p style="margin-top:12px">Cargando…</p></div>`); }
+let _ACT='';
+function moduleBanner(icon,title,sub,actions='',bg){ _ACT=actions||''; return ''; }
 const chipsH=(items,cur,fn)=>`<div class="chips">${items.map(([k,l,n])=>`<button class="chip ${cur===k?'on':''}" onclick="${fn}('${k}')">${l}${n!=null?` <b>${n}</b>`:''}</button>`).join('')}</div>`;
 
 // ══ TIPOS DE OP (mismos que el comercial) y observaciones ═════════
@@ -1999,6 +2010,12 @@ function ayudaAbrir(){
 .xl-pop input[type=text]{width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg);color:var(--text)}
 .xl-list{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px 6px}.xl-list label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer}.xl-c{margin-left:auto;color:var(--muted);font-size:11px}.xl-pf{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
 .xl-bar input[type=text]{padding-left:34px}
+#bottom-nav{display:grid!important;grid-template-columns:repeat(5,1fr);gap:0!important;overflow:visible!important}#bottom-nav .bn-item{min-width:0}
+.fab{position:fixed;z-index:250;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;color:#fff;font-size:26px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.3);-webkit-tap-highlight-color:transparent}
+.fab:active{transform:scale(.92)}.fab-menu{left:50%;transform:translateX(-50%);bottom:12px;background:linear-gradient(135deg,#2f6df6,#1e40af);font-size:22px}.fab-menu:active{transform:translateX(-50%) scale(.92)}
+.fab-add{right:calc(10% - 27px);bottom:12px;background:linear-gradient(135deg,#16a34a,#15803d)}
+#fab-more{position:fixed;z-index:250;right:calc(10% - 27px);bottom:76px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}.fab-pill{border:none;border-radius:99px;padding:8px 14px;background:#1f2937;color:#fff;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+#home-btn{display:none!important}.xl-scroll{max-height:calc(100dvh - 215px)!important;min-height:200px}.xl-wrap{padding-top:6px}
 </style>
 <script>
 (function(){
