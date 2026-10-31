@@ -6893,10 +6893,52 @@ async function imgDiagnostico(){
     +(reales.length?`<div style="margin:8px 0;max-height:180px;overflow:auto;font-size:12px;background:var(--card2);border-radius:8px;padding:8px">${reales.slice(0,300).map(p=>`OP-${p.op} · ítem ${p.item_num??'—'}`).join('<br>')}${reales.length>300?'<br>…':''}</div><button class="btn btn-sm btn-ghost" onclick="navigator.clipboard.writeText(window._imgMalCSV).then(()=>toast(\'Lista copiada\'))">📋 Copiar lista (CSV)</button>`:'');
   btn.disabled=false;
 }
+
+// ── Importar REMISIONES AMCOR (hojas SOLAMCOR + ELAMCOR de un Excel) ──
+let _raImp=null;
+function raImpCard(){
+  return `<div class="imp-card" style="border-color:#1a3a6b;background:rgba(26,58,107,.05)" onclick="document.getElementById('raimp-file').click()">
+    <div class="imp-icon" style="background:linear-gradient(135deg,#1a3a6b,#2d5fa6)">🏭</div>
+    <div class="imp-info"><div class="imp-name">Remisiones AMCOR</div><div class="imp-sub">Excel con las hojas SOLAMCOR y ELAMCOR · crea o actualiza por número</div></div><div class="imp-arrow">›</div>
+    <input type="file" id="raimp-file" accept=".xlsx,.xls" style="display:none" onclick="event.stopPropagation()" onchange="raImpPick(this.files[0]);this.value=''"></div><div id="raimp-out"></div>`;
+}
+function _raImpFecha(v){
+  if(v instanceof Date&&!isNaN(v)) return new Date(v.getTime()+12*3600e3).toISOString().slice(0,10);
+  const m=String(v||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  const i=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return i?i[0]:'';
+}
+async function raImpPick(f){
+  const out=document.getElementById('raimp-out'); if(!f||!out) return;
+  try{
+    const wb=XLSX.read(new Uint8Array(await f.arrayBuffer()),{type:'array',cellDates:true});
+    const sh=n=>{ const k=wb.SheetNames.find(x=>x.trim().toUpperCase()===n); return k?XLSX.utils.sheet_to_json(wb.Sheets[k],{defval:'',raw:true}):null; };
+    const S=sh('SOLAMCOR'), E=sh('ELAMCOR');
+    if(!S||!E){ out.innerHTML='<div class="imp-badge-err">❌ El Excel debe tener las hojas SOLAMCOR y ELAMCOR</div>'; return; }
+    const rows=[];
+    S.forEach(r=>{
+      const num=String(r['REMISION']||'').trim(), fecha=_raImpFecha(r['FECHA  EMISION']||r['FECHA EMISION']);
+      if(!num||!fecha||/BORRADOR/i.test(r['TIPO'])||!/AMCOR/i.test(r['EMPRESA'])) return;
+      const items=E.filter(e=>e['ID_REMISION']&&e['ID_REMISION']===r['ID_PEDIDO']).map(e=>({cant:String(e['UNIDADES']||''),desc:String(e['DESCRIPCION']||'')}));
+      const fmm=r['DEVOLUCION FMM']?'FMM'+String(r['DEVOLUCION FMM']).replace(/^FMM/i,''):'';
+      rows.push({numero:num,fecha,encargado:String(r['ENCARGADO']||''),telefono:String(r['TELEFONO']||''),proyecto:String(r['DESCRIPCION DEL PROYECTO']||''),cotizacion:'',fmm,items});
+    });
+    _raImp=rows;
+    out.innerHTML=`<div style="padding:10px 14px"><div class="imp-badge-ok">✅ ${rows.length} remisiones AMCOR encontradas</div>
+      <div class="imp-preview-wrap" style="margin-top:8px"><table><thead><tr><th>N°</th><th>Fecha</th><th>Encargado</th><th>Proyecto</th><th>Ítems</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.numero)}</td><td>${r.fecha}</td><td>${esc(r.encargado)}</td><td>${esc(r.proyecto)}</td><td>${r.items.length}</td></tr>`).join('')}</tbody></table></div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost" onclick="document.getElementById('raimp-out').innerHTML='';_raImp=null">Cancelar</button><button class="btn btn-primary" onclick="raImpEnviar()">📥 Importar ${rows.length}</button></div></div>`;
+  }catch(e){ out.innerHTML='<div class="imp-badge-err">❌ '+esc(e.message||e)+'</div>'; }
+}
+async function raImpEnviar(){
+  if(!_raImp||!_raImp.length) return;
+  try{ showBusy(); const r=await sb.rpc('rem_amcor_importar',{p_rows:_raImp}); hideBusy();
+    document.getElementById('raimp-out').innerHTML=`<div style="padding:10px 14px"><div class="imp-badge-ok">✅ ${r.nuevas} nuevas · ${r.actualizadas} actualizadas</div></div>`; _raImp=null; toast('Remisiones AMCOR importadas'); }
+  catch(e){ hideBusy(); toast('❌ '+(e.message||e),'error'); }
+}
 const _importarBase=importar;
 importar=function(){
   _importarBase.apply(this,arguments);
   const c=document.getElementById('content'); if(!c||!_esDev()) return;
+  const gr=c.querySelector('.imp-grid'); if(gr) gr.insertAdjacentHTML('afterbegin',raImpCard());
   c.insertAdjacentHTML('beforeend',`<div class="dp-section" style="margin:18px 0 90px"><h4>🖼️ Revisar imágenes de Drive</h4>
     <p style="font-size:12.5px;color:var(--muted);margin:6px 0 10px">Prueba una por una las imágenes enlazadas a las OP y dice cuáles no cargan (archivo borrado o no público). Tarda un par de minutos.</p>
     <button class="btn btn-primary" id="imgdiag-btn" onclick="imgDiagnostico()">🔍 Revisar ahora</button>
