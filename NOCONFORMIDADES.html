@@ -684,7 +684,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 </div>
 
 <div id="topbar">
-  <div id="menu-btn" onclick="toggleSidebar()">🔍</div>
+  <div id="menu-btn" onclick="toggleSidebar()">🔍</div><div id="top-tabs"></div>
   <button type="button" id="home-btn" class="nc-homebtn" onclick="nav('inicio')" title="Menú principal">▦ Menú</button>
   <img src="" id="topbar-logo" alt="GRUPOWEDM" style="height:28px;width:auto;margin-right:4px;flex-shrink:0">
   <h2 id="page-title">Inicio</h2>
@@ -1046,6 +1046,7 @@ function setContent(h){
 // ── BOTONES FLOTANTES: añadir (derecha) y menú (centro) ──
 function fabRender(){
   const box=document.getElementById('fab-add'), st=document.getElementById('fab-more'); if(!box||!st) return;
+  const tt=document.getElementById('top-tabs'), tb=document.getElementById('topbar'); if(tt){ tt.innerHTML=_VWT?vwTabsHTML(_VWT):''; if(tb) tb.classList.toggle('has-tabs',!!_VWT); } _VWT='';
   const t=document.createElement('div'); t.innerHTML=_ACT; _ACT='';
   const bs=[...t.querySelectorAll('button')]; const pri=bs.find(b=>/btn-primary/.test(b.className));
   if(pri){ box.style.display='flex'; box.setAttribute('onclick',pri.getAttribute('onclick')); box.title=pri.textContent.replace(/^[^\wÁÉÍÓÚÑ]+/,'').trim(); } else { box.style.display='none'; box.removeAttribute('onclick'); }
@@ -1876,7 +1877,8 @@ async function impEjecutar2(){
 
 // ══ TABLA TIPO EXCEL (orden por columna + filtro desplegable) y pestañas Tabla/Dashboard ══
 const VW={}; const vwGet=m=>VW[m]||'t';
-const vwTabs=m=>`<div class="vw-tabs"><button class="${vwGet(m)==='t'?'on':''}" onclick="vwSet('${m}','t')">📋 Tabla</button><button class="${vwGet(m)==='d'?'on':''}" onclick="vwSet('${m}','d')">📊 Dashboard</button></div>`;
+let _VWT=''; const vwTabs=m=>{ _VWT=m; return ''; };
+const vwTabsHTML=m=>`<div class="vw-tabs"><button class="${vwGet(m)==='t'?'on':''}" onclick="vwSet('${m}','t')">📋 Tabla</button><button class="${vwGet(m)==='d'?'on':''}" onclick="vwSet('${m}','d')">📊 Dashboard</button></div>`;
 function vwSet(m,v){ VW[m]=v; xlClose(); refreshCurrentView(); }
 const XL={}, XLC={}; let XLP=null;
 const xlSt=id=>XL[id]||(XL[id]={q:'',sort:null,f:{},n:300});
@@ -2016,6 +2018,11 @@ function ayudaAbrir(){
 .fab-add{right:calc(10% - 27px);bottom:12px;background:linear-gradient(135deg,#16a34a,#15803d)}
 #fab-more{position:fixed;z-index:250;right:calc(10% - 27px);bottom:76px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}.fab-pill{border:none;border-radius:99px;padding:8px 14px;background:#1f2937;color:#fff;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 #home-btn{display:none!important}.xl-scroll{max-height:calc(100dvh - 215px)!important;min-height:200px}.xl-wrap{padding-top:6px}
+#bottom-nav{display:none!important}
+#top-tabs{display:none;gap:6px;flex:1;align-items:center;min-width:0}#topbar.has-tabs #top-tabs{display:flex}#topbar.has-tabs #topbar-logo,#topbar.has-tabs #page-title{display:none}
+#top-tabs .vw-tabs{padding:0;gap:6px}#top-tabs .vw-tabs button{border:1px solid var(--border);border-radius:10px;padding:7px 14px;background:var(--card2);box-shadow:none}#top-tabs .vw-tabs button.on{background:#2f6df6;color:#fff;border-color:#2f6df6;box-shadow:none}
+.fab{width:42px;height:42px;font-size:22px}.fab-menu{bottom:8px;font-size:18px}.fab-add{right:14px;bottom:8px}#fab-more{right:14px;bottom:58px}
+.xl-wrap{padding:6px 8px 0}.xl-scroll{max-height:calc(100dvh - 118px)!important;min-height:120px}.xl-bar{margin-bottom:6px}
 </style>
 <script>
 (function(){
