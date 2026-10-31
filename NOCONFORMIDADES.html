@@ -1263,7 +1263,7 @@ const esRolLider=r=>/^líder/i.test(r||'');
 const colabAct=()=>(DB.colab||[]).filter(c=>c.activo!==false);
 const colabNombres=(soloLid)=>colabAct().filter(c=>!soloLid||c.es_lider).map(c=>c.nombre);
 const PAP_MOD='noconformidades';
-const PAP_T={nc_epp:'Evaluación EPP',nc_inspmp:'Inspección materia prima',nc_5s:'Evaluación 5 S',nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
+const PAP_T={nc_epp:'Evaluación EPP',nc_inspmp:'Inspección materia prima',nc_rrhh:'Política RRHH',nc_5s:'Evaluación 5 S',nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
 let _PAPQ='';
 const hoyISO=()=>{ const d=new Date(); const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
 const anioDe=f=>String(f||'').slice(0,4);
@@ -1312,7 +1312,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh,papelera,herramientas,colaboradores});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1362,7 +1362,7 @@ const MENU=[
  {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>DB.epp?DB.epp.length+' evaluaciones':'Evaluaciones'},
  {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
  {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>DB.mp?DB.mp.length+' inspecciones':'Inspecciones'},
- {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>'Próximamente'},
+ {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>DB.rr?DB.rr.length+' registros':'Llamados de atención'},
  {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'+(puedeNC()&&pendReps().length?' · ⏳ '+pendReps().length+' sin acción':'')}];
 function inicio(){
   const R=DB.registros||[], P=DB.reportes||[]; const h=hoyISO();
@@ -2115,6 +2115,95 @@ async function impEjecutar3(){
   }catch(e){ P('\n❌ '+errMsg(e)); toast('❌ '+errMsg(e),'error'); }
   btn.disabled=false;
 }
+// ══ POLÍTICA RRHH (llamados de atención por incumplimiento de políticas) ══
+const RR_HALL=[['Registro inadecuado en la entrada','Política de Control de Horarios y Registro de Tiempo Laborado'],['Registro inadecuado en la salida','Política de Control de Horarios y Registro de Tiempo Laborado'],['Usar el celular durante la operación de maquinaria, equipos o herramientas','Política de Uso de Teléfonos y Dispositivos móviles en Horario Laboral'],['Utilizar el celular dentro de áreas de máquinas o zonas de riesgo','Política de Uso de Teléfonos y Dispositivos móviles en Horario Laboral']];
+const RR_TURNOS=['C0 - 8:00 a.m. a 5:00 p.m.','C1 - 6:00 a.m. a 2:00 p.m.','C1* - 7:00 a.m. a 3:00 p.m.','C2 - 2:00 p.m. a 10:00 p.m.','C3 - 9:00 p.m. a 6:00 a.m.','S1 - 6:00 a.m. a 6:00 p.m.','S2 - 6:00 p.m. a 6:00 a.m.','SABADO - 8:0 a.m. a 12:00 p.m.'];
+const RR_AREAS=['PRODUCCIÓN','ALMACÉN','ADMINISTRACIÓN','OTRO'];
+const _RRF={anio:'',mes:'',hall:'',nom:'',ll:''}; let _RRM=null;
+async function cargarRr(force){ if(DB.rr&&!force) return; DB.rr=await GETALL('nc_rrhh','select=id,fecha,nombre,cargo,hallazgo,politica,turno,hora,observaciones,area,responsable_registro,jefe,cargo_jefe,motivo,llamado,creado_por&order=fecha.desc.nullslast,id.asc'); try{ const w=await GETALL('nc_rrhh','select=id&foto=not.is.null'); const s=new Set(w.map(x=>x.id)); DB.rr.forEach(r=>r.tiene_foto=s.has(r.id)); }catch(e){} }
+const rrDe=id=>(DB.rr||[]).find(r=>r.id===id);
+const rrFechaTxt=f=>{ const d=String(f||'').slice(0,10).split('-'); return d.length===3?(+d[2])+'/'+(+d[1])+'/'+d[0]:''; };
+function rrMotivo(d){
+  const fe=rrFechaTxt(d.fecha), hall=d.hallazgo||'', celular=/tel[eé]fono|celular/i.test((d.politica||'')+' '+hall);
+  if(celular) return `Por medio del presente, la Dirección de Talento Humano le comunica un llamado de atención escrito debido al incumplimiento de la Política de Uso de Teléfonos y Dispositivos móviles en Horario Laboral, la cual establece que los dispositivos móviles Deben permanecer guardados en los lockers, No pueden utilizarse en jornada laboral y Solo están autorizados durante los descansos establecidos y en la hora de almuerzo.\n\nSegún reporte del supervisor y verificación directa, el día ${fe}${d.hora?' a las '+d.hora:''} usted fue encontrado(a) ${hall}\n\nEstas acciones representan un riesgo operativo, disminuyen la concentración en tareas críticas y contravienen normas internas, afectando la seguridad y productividad del proceso.\n\nSe le solicita ajustar de inmediato su conducta. La reincidencia podrá generar sanciones disciplinarias superiores, incluyendo suspensión de acuerdo con la gravedad y los riesgos generados.`;
+  return `Por medio del presente, la Dirección de Talento Humano le comunica un llamado de atención escrito debido al incumplimiento de los lineamientos establecidos en la Política de Control de Horarios y Registro de Tiempo Laborado, vigente en nuestra organización. En la verificación correspondiente al día ${fe}, se evidenció ${hall}.\n\nLo anterior constituye una falta disciplinaria, de acuerdo con el Reglamento Interno de Trabajo, el Código Sustantivo del Trabajo (Art. 58 y 60) y la política mencionada, afectando la productividad del área y el control de la nómina mensual.\n\nSe le recuerda la obligación de cumplir estrictamente con los horarios asignados y registrar de forma veraz y oportuna su tiempo laborado. La reincidencia en esta conducta podrá acarrear sanciones mayores tales como suspensión disciplinaria y demás medidas contempladas por la ley y la empresa.`; }
+const rrFiltrados=()=>(DB.rr||[]).filter(r=>(!_RRF.anio||fAnio(r.fecha)===_RRF.anio)&&(!_RRF.mes||fMes(r.fecha)===_RRF.mes)&&(!_RRF.hall||r.hallazgo===_RRF.hall)&&(!_RRF.nom||r.nombre===_RRF.nom)&&(!_RRF.ll||(_RRF.ll==='si'?r.llamado:!r.llamado)));
+function rrSetF(k,v){ _RRF[k]=v; rrhh(); }
+async function rrhh(){
+  if(!puede('calidad','administracion')){ setContent(empty('Este módulo es solo para Calidad y Administración','🔒')); return; }
+  if(!DB.rr) loading(); try{ await cargarRr(); }catch(e){ _vistaError(e); return; }
+  const all=DB.rr, L=rrFiltrados(), tot=L.length, ll=L.filter(r=>r.llamado).length, pen=tot-ll, pers=new Set(L.map(r=>r.nombre)).size;
+  const cnt=(f,n=8)=>{ const m={}; L.forEach(r=>{ const k=f(r); if(k) m[k]=(m[k]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n); };
+  const bars=(t,arr,c)=>`<div class="nc-box"><h4>${t}</h4>${arr.length?arr.map(([k,v])=>barra(k,v/arr[0][1]*100,v,c)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>`;
+  const veces={}; all.forEach(r=>veces[r.nombre]=(veces[r.nombre]||0)+1);
+  const cols=[{k:'fecha',t:'Fecha',v:r=>r.fecha?new Date(r.fecha).getTime():null,f:r=>fmtDate(r.fecha)},{k:'nombre',t:'Colaborador'},{k:'cargo',t:'Cargo'},{k:'hallazgo',t:'Hallazgo'},{k:'turno',t:'Turno'},{k:'hora',t:'Hora'},{k:'veces',t:'Veces (total)',v:r=>veces[r.nombre]||1},{k:'llamado',t:'Llamado de atención',v:r=>r.llamado?'Emitido':'Pendiente',h:r=>r.llamado?'<span class="badge verde">Emitido</span>':'<span class="badge naranja">Pendiente</span>'},{k:'area',t:'Área'},{k:'politica',t:'Política'},{k:'jefe',t:'Jefe inmediato'},{k:'responsable_registro',t:'Registró'},{k:'observaciones',t:'Observaciones'}];
+  const dash=vwGet('rrhh')==='d';
+  setContent(moduleBanner('👥','Política RRHH',(dash?tot+' de '+all.length:all.length)+' registros',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="rrForm()">➕ Nuevo registro</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar historial</button>`:''))+vwTabs('rrhh')
+   +(dash?`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('rrSetF','anio','Año',uniq(all,r=>fAnio(r.fecha)).reverse(),_RRF.anio)}${selFiltro('rrSetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_RRF.mes,m=>MESES[m-1])}${selFiltro('rrSetF','hall','Hallazgo',uniq(all,r=>r.hallazgo),_RRF.hall,v=>trunc(v,50))}${selFiltro('rrSetF','nom','Colaborador',uniq(all,r=>r.nombre),_RRF.nom)}${selFiltro('rrSetF','ll','Llamado',['si','no'],_RRF.ll,v=>v==='si'?'Emitido':'Pendiente')}${(_RRF.anio||_RRF.mes||_RRF.hall||_RRF.nom||_RRF.ll)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_RRF).forEach(k=>_RRF[k]='');rrhh()">Quitar filtros</button>`:''}</div></div>
+   <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Registros</div></div><div class="kpi-card teal"><div class="kpi-value">${ll}</div><div class="kpi-label">Llamados emitidos</div></div><div class="kpi-card warn"><div class="kpi-value">${pen}</div><div class="kpi-label">Pendientes</div></div><div class="kpi-card"><div class="kpi-value">${pers}</div><div class="kpi-label">Colaboradores</div></div></div>
+   <div class="nc-grid2">${bars('Por hallazgo',cnt(r=>r.hallazgo),'#ef4444')}${bars('Reincidencia por colaborador',cnt(r=>r.nombre,10),'#f59e0b')}${bars('Por turno',cnt(r=>r.turno),'#8b5cf6')}${bars('Por política',cnt(r=>r.politica),'#2f6df6')}${bars('Por mes',(()=>{ const m={}; L.forEach(r=>{ const d=r.fecha?new Date(r.fecha):null; if(d&&!isNaN(d)){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); m[k]=(m[k]||0)+1; } }); return Object.entries(m).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12); })(),'#16a34a')}</div></div>`:xlTable('rrhh',cols,all,{click:'rrDetalle'})));
+}
+function rrDetalle(id){
+  const r=rrDe(id); if(!r) return; const otros=(DB.rr||[]).filter(x=>x.nombre===r.nombre&&x.id!==id);
+  openDetail('Política RRHH · '+(r.nombre||''),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha)+(r.hora?' · '+esc(r.hora):''))}${dr('Colaborador',esc(r.nombre||'—'))}${dr('Cargo',esc(r.cargo||'—'))}${dr('Turno',esc(r.turno||'—'))}${dr('Área',esc(r.area||'—'))}${dr('Hallazgo',esc(r.hallazgo||'—'))}${dr('Política',esc(r.politica||'—'))}${dr('Observaciones',esc(r.observaciones||'—'))}${dr('Jefe inmediato',esc((r.jefe||'—')+(r.cargo_jefe?' · '+r.cargo_jefe:'')))}${dr('Registró',esc(r.responsable_registro||r.creado_por||'—'))}${dr('Llamado de atención',r.llamado?'<span class="badge verde">Emitido</span>':'<span class="badge naranja">Pendiente</span>')}</div>
+   ${otros.length?`<div class="dp-section"><h4>⚠️ Reincidencia: ${otros.length} registro(s) anterior(es) o posteriores</h4>${otros.slice(0,10).map(x=>`<div class="cm-line" style="cursor:pointer" onclick="rrDetalle('${jsq(x.id)}')"><div class="cm-t">${fmtDate(x.fecha)} · ${esc(trunc(x.hallazgo||'',60))}</div></div>`).join('')}</div>`:''}
+   <div class="dp-section" id="rr-foto" style="display:none"><h4>Foto</h4><div id="rr-foto-c"></div></div>`,
+   `<button class="btn btn-primary" onclick="rrPDF('${jsq(id)}')">📄 Llamado de atención (PDF)</button>`+(puedeNC()?`<button class="btn btn-ghost" onclick="rrLlamado('${jsq(id)}',${r.llamado?'false':'true'})">${r.llamado?'↩️ Marcar pendiente':'✅ Marcar emitido'}</button><button class="btn btn-ghost" onclick="rrForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="rrElim('${jsq(id)}')">🗑 Eliminar</button>`:''));
+  document.getElementById('dp-actions').style.display='flex';
+  if(r.tiene_foto) GET('nc_rrhh','select=foto&id='+eq(id)).then(x=>{ const f=x[0]&&x[0].foto; if(!/^data:image\//.test(f||'')||!document.getElementById('rr-foto')) return; document.getElementById('rr-foto').style.display=''; document.getElementById('rr-foto-c').innerHTML=`<img src="${f}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">`; }).catch(()=>{});
+}
+async function rrLlamado(id,v){ const r=await rpcN('nc_rrhh_llamado',{p_id:id,p_llamado:v},v?'✅ Llamado marcado como emitido':'Marcado como pendiente'); if(r){ await cargarRr(true); closeDetail(); refreshCurrentView(); } }
+async function rrElim(id){ if(!confirm('¿Eliminar este registro? Queda en la papelera 6 meses.')) return; const r=await sbRun(()=>sb.rpc('nc_eliminar',{p_tabla:'nc_rrhh',p_id:id}),'🗑 Registro eliminado (está en la papelera)'); if(r){ await cargarRr(true); closeDetail(); refreshCurrentView(); } }
+function rrForm(id){
+  if(!soloNC()) return; const r=id?rrDe(id):null; closeDetail(); _RRM={id:id||null}; delete _NCFS.rrf;
+  const ult=(DB.rr||[])[0]||{}; const ses=(_SESSION&&_SESSION.nombre)||'';
+  const hallL=RR_HALL.map(x=>x[0]); (DB.rr||[]).forEach(x=>{ if(x.hallazgo&&!hallL.includes(x.hallazgo)) hallL.push(x.hallazgo); });
+  const sel=(idd,L,cur,ch='')=>`<select id="${idd}" ${ch}><option value=""></option>${(cur&&!L.includes(cur)?[cur,...L]:L).map(x=>`<option ${x===cur?'selected':''}>${esc(x)}</option>`).join('')}</select>`;
+  openModal(id?'✏️ Editar registro Política RRHH':'➕ Nuevo registro Política RRHH',`<div class="form-grid">
+   <div class="field"><label>Colaborador</label><select id="rr-nom" onchange="rrNomSel()"><option value=""></option>${(r&&r.nombre&&!colabNombres().includes(r.nombre)?[r.nombre,...colabNombres()]:colabNombres()).map(x=>`<option ${r&&r.nombre===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>${fld('Cargo','rr-cargo',r?r.cargo||'':'')}
+   ${fld('Fecha del hallazgo','rr-fec',r&&r.fecha?String(r.fecha).slice(0,10):hoyISO(),'type="date"')}${fld('Hora','rr-hora',r?r.hora||'':'','type="time"')}
+   <div class="field"><label>Turno</label>${sel('rr-turno',RR_TURNOS,r?r.turno||'':'')}</div><div class="field"><label>Área</label>${sel('rr-area',RR_AREAS,r?r.area||'':'PRODUCCIÓN')}</div>
+   <div class="field span2"><label>Hallazgo de auditoría</label>${sel('rr-hall',hallL,r?r.hallazgo||'':'','onchange="rrHallSel()"')}</div><div class="field span2"><label>Política asociada (se pone sola)</label><input id="rr-pol" value="${esc(r?r.politica||'':'')}" readonly></div>
+   <div class="field span2"><label>Observaciones</label><textarea id="rr-obs" rows="2">${esc(r?r.observaciones||'':'')}</textarea></div>
+   ${fld('Responsable del registro','rr-resp',r?r.responsable_registro||'':ses)}${ncFoto2HTML('rrf','Foto (opcional)')}
+   ${fld('Jefe inmediato','rr-jefe',r?r.jefe||'':ult.jefe||'')}${fld('Cargo del jefe','rr-cjefe',r?r.cargo_jefe||'':ult.cargo_jefe||'')}
+   <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px"><input type="checkbox" id="rr-ll" ${r&&r.llamado?'checked':''} style="width:auto"> Llamado de atención ya emitido / entregado</label></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="rrGuardar()">💾 Guardar</button>`);
+}
+function rrNomSel(){ const c=colabAct().find(x=>x.nombre===gv('rr-nom')); if(c&&c.cargo&&!gv('rr-cargo')) document.getElementById('rr-cargo').value=c.cargo; }
+function rrHallSel(){ const h=RR_HALL.find(x=>x[0]===gv('rr-hall')); const o=(DB.rr||[]).find(x=>x.hallazgo===gv('rr-hall')&&x.politica); document.getElementById('rr-pol').value=h?h[1]:(o?o.politica:''); }
+async function rrGuardar(){
+  const nombre=gv('rr-nom'), hall=gv('rr-hall'); if(!nombre){ toast('Elige el colaborador','error'); return; } if(!hall){ toast('Elige el hallazgo','error'); return; }
+  const old=_RRM.id?rrDe(_RRM.id):null; const d={fecha:gv('rr-fec'),hora:gv('rr-hora'),hallazgo:hall,politica:gv('rr-pol')};
+  const cambio=!old||old.hallazgo!==hall||String(old.fecha).slice(0,10)!==d.fecha||(old.hora||'')!==d.hora;
+  const p={id:_RRM.id,fecha:d.fecha,nombre,cargo:gv('rr-cargo'),hallazgo:hall,politica:d.politica,turno:gv('rr-turno'),hora:d.hora,observaciones:gv('rr-obs'),area:gv('rr-area'),responsable_registro:gv('rr-resp'),jefe:gv('rr-jefe'),cargo_jefe:gv('rr-cjefe'),llamado:document.getElementById('rr-ll').checked,motivo:cambio?rrMotivo(d):(old.motivo||rrMotivo(d))};
+  if(_NCFS.rrf) p.foto=_NCFS.rrf;
+  const r=await sbRun(()=>sb.rpc('nc_rrhh_guardar',{p}),'✅ Registro guardado'); if(!r) return;
+  closeModal(); await cargarRr(true); if(MOD==='rrhh') rrhh();
+}
+function rrPDF(id){
+  const r=rrDe(id); if(!r) return; const E=x=>esc(x==null?'':String(x)); const lg=typeof LOGO_B64_PNG!=='undefined'?LOGO_B64_PNG:'';
+  const mot=r.motivo||rrMotivo({fecha:String(r.fecha).slice(0,10),hora:r.hora,hallazgo:r.hallazgo,politica:r.politica}); const nom='LLAMADO_'+(r.nombre||'').replace(/[^\wÁÉÍÓÚáéíóúñÑ]+/g,'_')+'_'+String(r.fecha).slice(0,10);
+  const w=window.open('','_blank'); if(!w){ toast('Permite las ventanas emergentes para ver el PDF','err'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nom)}</title><style>body{font-family:Arial,sans-serif;font-size:13px;margin:30px 40px;line-height:1.5}h2{text-align:center;margin:18px 0}table{width:100%;border-collapse:collapse;margin:12px 0}td{border:1px solid #444;padding:5px 8px}.l{background:#eee;font-weight:700;width:22%}.f{display:flex;gap:40px;margin-top:70px}.f div{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center;font-size:12px}@media print{@page{size:A4;margin:14mm}}</style></head><body>
+  <div style="text-align:center">${lg?`<img src="${lg}" style="max-height:60px">`:'<b>GRUPO WEDM</b>'}</div><h2>LLAMADO DE ATENCIÓN ESCRITO</h2>
+  <table><tr><td class="l">Fecha del hallazgo</td><td>${E(rrFechaTxt(r.fecha))}${r.hora?' · '+E(r.hora):''}</td><td class="l">Área</td><td>${E(r.area)}</td></tr><tr><td class="l">Colaborador</td><td>${E(r.nombre)}</td><td class="l">Cargo</td><td>${E(r.cargo)}</td></tr><tr><td class="l">Turno</td><td>${E(r.turno)}</td><td class="l">Jefe inmediato</td><td>${E(r.jefe)}${r.cargo_jefe?' · '+E(r.cargo_jefe):''}</td></tr><tr><td class="l">Hallazgo</td><td colspan="3">${E(r.hallazgo)}</td></tr><tr><td class="l">Política</td><td colspan="3">${E(r.politica)}</td></tr>${r.observaciones?`<tr><td class="l">Observaciones</td><td colspan="3">${E(r.observaciones)}</td></tr>`:''}</table>
+  <p style="white-space:pre-wrap;text-align:justify">${E(mot)}</p>
+  <div class="f"><div>${E(r.nombre)}<br>Colaborador</div><div>${E(r.jefe||'Jefe inmediato')}<br>${E(r.cargo_jefe||'Jefe inmediato')}</div><div>Dirección de Talento Humano</div></div>
+  <script>setTimeout(function(){window.print()},400)<\/script></body></html>`); w.document.close();
+}
+async function impEjecutar4(){
+  const log=document.getElementById('imp4-log'), btn=document.getElementById('imp4-btn'); const P=t=>{ log.textContent+=t+'\n'; };
+  btn.disabled=true; log.textContent='';
+  try{
+    if(!window.NC_HIST4_B64){ P('Cargando nc_historial4.js…'); await new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='nc_historial4.js?'+Date.now(); s.onload=ok; s.onerror=()=>ko(new Error('No se encontró nc_historial4.js junto al módulo (¿lo subiste a GitHub?)')); document.head.appendChild(s); }); }
+    const bin=Uint8Array.from(atob(window.NC_HIST4_B64),c=>c.charCodeAt(0));
+    const D=JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); const rows=D.nc_rrhh||[]; let ins=0;
+    for(let i=0;i<rows.length;i+=50){ const r=await sb.rpc('nc_importar',{p_tabla:'nc_rrhh',p_rows:rows.slice(i,i+50)}); ins+=(r&&r.insertadas)||0; }
+    P('✓ nc_rrhh: '+rows.length+' leídas, '+ins+' nuevas'); DB.rr=null; toast('✅ Política RRHH importada');
+  }catch(e){ P('\n❌ '+errMsg(e)); toast('❌ '+errMsg(e),'error'); }
+  btn.disabled=false;
+}
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
@@ -2145,7 +2234,7 @@ function herramientas(){
    <p style="margin-top:6px">Carga: <b>reportes, acciones (registro de no conformidad), causas, 5 porqués, espina de pescado, grupos, costos y fuentes</b>. Si lo ejecutas dos veces <b>no duplica</b>: lo que ya existe se omite.</p>
    <p style="margin-top:6px;color:var(--muted)">Actualmente en la base: ${(DB.registros||[]).length} acciones y ${(DB.reportes||[]).length} reportes.</p>
    <button class="btn btn-primary" style="margin-top:12px" id="imp-btn" onclick="impEjecutar()">⬆️ Importar ahora</button><div id="imp-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div>
-   <div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>EPP y 5 S</b> (4.499 evaluaciones de EPP y 2.986 de 5 S). Necesitas haber subido <b>nc_historial2.js</b> junto a este módulo. Si lo ejecutas dos veces <b>no duplica</b>.</p><button class="btn btn-primary" style="margin-top:10px" id="imp2-btn" onclick="impEjecutar2()">⬆️ Importar EPP y 5 S</button><div id="imp2-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div><div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>Inspección de materia prima</b> (138 inspecciones y 178 materiales). Necesitas haber subido <b>nc_historial3.js</b>. No duplica si lo ejecutas dos veces.</p><button class="btn btn-primary" style="margin-top:10px" id="imp3-btn" onclick="impEjecutar3()">⬆️ Importar inspecciones</button><div id="imp3-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
+   <div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>EPP y 5 S</b> (4.499 evaluaciones de EPP y 2.986 de 5 S). Necesitas haber subido <b>nc_historial2.js</b> junto a este módulo. Si lo ejecutas dos veces <b>no duplica</b>.</p><button class="btn btn-primary" style="margin-top:10px" id="imp2-btn" onclick="impEjecutar2()">⬆️ Importar EPP y 5 S</button><div id="imp2-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div><div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>Inspección de materia prima</b> (138 inspecciones y 178 materiales). Necesitas haber subido <b>nc_historial3.js</b>. No duplica si lo ejecutas dos veces.</p><button class="btn btn-primary" style="margin-top:10px" id="imp3-btn" onclick="impEjecutar3()">⬆️ Importar inspecciones</button><div id="imp3-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div><div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>Política RRHH</b> (70 registros). Necesitas haber subido <b>nc_historial4.js</b>. No duplica si lo ejecutas dos veces.</p><button class="btn btn-primary" style="margin-top:10px" id="imp4-btn" onclick="impEjecutar4()">⬆️ Importar Política RRHH</button><div id="imp4-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
 }
 async function impEjecutar(){
   const log=document.getElementById('imp-log'), btn=document.getElementById('imp-btn'); const P=t=>{ log.textContent+=t+'\n'; };

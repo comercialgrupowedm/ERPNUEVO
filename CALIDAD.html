@@ -1897,7 +1897,7 @@ function rotuloProd(id,k){
   const o=opDe(id); if(!o) return; const P=(k!=null&&(window._ROTS||{})[id]&&window._ROTS[id][k])||{}; const mod=P.mod||rotModeloAuto(o.empresa);
   const nm=String((_SESSION&&_SESSION.nombre)||'').trim().split(/\s+/); const rev=nm.length>1?(nm[0][0]+'. '+nm[nm.length-1]).toUpperCase():(nm[0]||'').toUpperCase();
   const cert=(DB.certificados||[]).find(c=>c.id_prod===o.id&&c.numero_pieza); const z=rotSize();
-  openModal('🏷 Rótulo del producto — '+opTitulo(o),`<div class="form-grid">
+  openModal('🏷 Rótulo del producto — '+opTitulo(o),`<div style="font-size:12px;color:var(--muted);margin-bottom:4px">Vista previa (se actualiza al editar)</div><div id="rp-prev" style="background:#e5e7eb;border-radius:10px;padding:10px;margin-bottom:12px;overflow:hidden"></div><div class="form-grid" oninput="rotuloProdVer()" onchange="rotuloProdVer()">
     <div class="field span2"><label>Modelo (se elige solo según el cliente)</label><select id="rp-mod">${Object.entries(ROT_MOD).map(([k,v])=>`<option value="${k}" ${k===mod?'selected':''}>${v.n}</option>`).join('')}</select></div>
     <div class="field span2"><label>Cliente</label><input id="rp-cli" value="${esc(P.cli!=null?P.cli:String(o.empresa||'').toUpperCase())}"></div>
     <div class="field span2"><label>Descripción</label><input id="rp-des" value="${esc(P.des!=null?P.des:String(o.descripcion||'').toUpperCase())}"></div>
@@ -1910,6 +1910,7 @@ function rotuloProd(id,k){
     <div class="field"><label>Ancho (mm)</label><input id="rp-w" type="number" min="40" value="${z.w}"></div><div class="field"><label>Alto (mm)</label><input id="rp-h" type="number" min="25" value="${z.h}"></div>
     <div class="field"><label>Copias</label><input id="rp-n" type="number" min="1" max="50" value="1"></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${puedeCal()?`<button class="btn btn-ghost" onclick="rotuloProdGuardar('${jsq(id)}')">💾 Guardar</button>`:''}<button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
+  rotuloProdVer(); setTimeout(rotuloProdVer,120);
 }
 async function rotuloProdGuardar(id){
   if(!puedeCal()) return; const g=k=>gv('rp-'+k);
@@ -1921,9 +1922,9 @@ async function rotulosCargar(id){
   try{ const x=await GET('prod_rotulos','select=id,datos,creado_por,created_at&id_prod='+eq(id)+'&order=id.desc'); if(_DET_ID!==id) return; (window._ROTS=window._ROTS||{})[id]=(x||[]).map(r=>r.datos||{});
     el.innerHTML=`<h4>🏷 Rótulos guardados (${(x||[]).length})</h4>`+((x||[]).length?x.map((r,i)=>{ const d=r.datos||{}; return `<div class="cm-line" style="cursor:pointer" onclick="rotuloProd('${jsq(id)}',${i})"><div class="cm-t">${esc((ROT_MOD[d.mod]||{}).n||'Rótulo')} · ${esc(String(d.cant||''))} und<small>${fmtDT(r.created_at)}${r.creado_por?' · '+esc(r.creado_por):''} · toca para ver / reimprimir</small></div></div>`; }).join(''):mutedP('Aún no hay rótulos guardados. Usa «RÓTULO» → «Guardar».')); }catch(e){ el.innerHTML=''; }
 }
-function rotuloProdImp(){
+function rotuloProdBuild(){
   const M=ROT_MOD[gv('rp-mod')]||ROT_MOD.generico, en=!!M.en;
-  const w=Math.max(40,+gv('rp-w')||100), h=Math.max(25,+gv('rp-h')||60), n=Math.min(50,Math.max(1,+gv('rp-n')||1)); try{ localStorage.setItem('wedm_rotprod_mm',JSON.stringify({w,h})); }catch(e){}
+  const w=Math.max(40,+gv('rp-w')||100), h=Math.max(25,+gv('rp-h')||60), n=Math.min(50,Math.max(1,+gv('rp-n')||1));
   const k=Math.min(w/100,h/60), U=v=>(v*k).toFixed(2)+'mm', up=v=>esc(String(v||'').toUpperCase());
   const L=en?{cli:'CUSTOMER',cot:'QUOTATION',fec:'DATE',rev:'CHECKED BY',cod:'CODE',item:'ITEM',u:'PCS'}:{cli:'CLIENTE',cot:'COTIZACIÓN',fec:'FECHA',rev:'REVISADO POR',cod:'CÓDIGO',item:'ITEM',u:'UND'};
   const cod=up(gv('rp-cod')), cant=esc(gv('rp-cant')||'1');
@@ -1940,6 +1941,15 @@ function rotuloProdImp(){
   const qty=`<div style="position:absolute;right:${U(M.lado?2:0)};bottom:${U(extraBot+(M.lado?2:0))};${negro}text-align:center;padding:${U(.8)} ${U(2.5)};font-size:${U(6)};line-height:1.1;font-weight:700">${cant}<br><span style="font-size:${U(5.2)};font-weight:400">${L.u}</span></div>`;
   const una=`<div style="position:relative;width:${w}mm;height:${h}mm;page-break-after:always;overflow:hidden;box-sizing:border-box;border:.6mm solid #000;padding:${U(2)} ${U(M.lado?14:3)} ${U(2)} ${U(3)};font-family:Arial,Helvetica,sans-serif;color:#000;font-weight:800;font-size:${U(4.5)};line-height:1.15;text-transform:uppercase">
     <div style="text-align:center;height:${U(10.5)};margin-bottom:${U(.5)}">${logo}</div>${filas}${codHtml}${itemBox}${qty}</div>`;
+  return {una,w,h,n};
+}
+function rotuloProdVer(){
+  const el=document.getElementById('rp-prev'); if(!el) return;
+  try{ const {una,w,h}=rotuloProdBuild(); const pw=w*3.7795, ph=h*3.7795, box=el.clientWidth||340, k=Math.min(1.4,(box-2)/pw);
+    el.innerHTML=`<div style="width:${(pw*k).toFixed(1)}px;height:${(ph*k).toFixed(1)}px;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25)"><div style="transform:scale(${k.toFixed(4)});transform-origin:0 0;width:${pw}px;height:${ph}px">${una.replace('page-break-after:always;','')}</div></div>`; }catch(e){ el.innerHTML=''; }
+}
+function rotuloProdImp(){
+  const {una,w,h,n}=rotuloProdBuild(); try{ localStorage.setItem('wedm_rotprod_mm',JSON.stringify({w,h})); }catch(e){}
   closeModal();
   _abrirDocParaImprimir(`<!doctype html><html><head><meta charset="utf-8"><title>Rótulo</title><style>@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${Array(n).fill(una).join('')}</body></html>`,'');
 }
