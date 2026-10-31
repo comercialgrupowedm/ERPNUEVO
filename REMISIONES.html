@@ -3622,6 +3622,7 @@ window.formLibreRem=function(id){
    <div class="fe-gen" style="border-top:0;background:#fff"><div class="g" style="grid-template-columns:1fr 1fr 1fr">
      <div ${modoPaso?'style="display:none"':''}><label>Orden de producción (OP)</label><input id="fr-op" value="${E(m&&m.op!=null?m.op:'')}" list="fr-ops" inputmode="numeric" placeholder="🔎 N° OP o cliente" autocomplete="off" oninput="feRemSel('op',false)" onchange="feRemSel('op',true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div>
      <div ${modoPaso?'style="display:none"':''}><label>Cotización</label><input id="fr-cot" value="${E(m&&m.cot_num!=null?m.cot_num:'')}" list="fr-cots" inputmode="numeric" placeholder="🔎 N° cotización" autocomplete="off" oninput="feRemSel('cot',false)" onchange="feRemSel('cot',true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div>
+     ${m&&m.numero!=null&&puede('administracion','calidad')?`<div><label>N° de remisión (editable)</label><input id="fr-num" type="number" min="1" inputmode="numeric" value="${E(m.numero)}" style="border:1px solid #1a3a6b;background:#fff;border-radius:5px;font-weight:800" oninput="var t=document.getElementById('fr-numtxt'); if(t) t.textContent=this.value"></div>`:''}
      <div><label>Fecha</label><input id="fr-fec" type="date" value="${E(m?(fFecha(m)||hoyISO()):hoyISO())}" style="border:1px solid #cbd5e1;background:#fff;border-radius:5px"></div></div></div></div>
   <div id="fr-dl"><datalist id="fr-ops"></datalist><datalist id="fr-cots"></datalist></div>
   <div class="pdbox" ${modoPaso?'style="display:none"':''}><div class="fe-bar2" style="border-radius:6px 6px 0 0">2 · Ítems con saldo pendiente — marca los que van en esta remisión</div>
@@ -3631,7 +3632,7 @@ window.formLibreRem=function(id){
     <td style="width:45%;vertical-align:top"><div style="line-height:1.75">
      ${fl('CLIENTE','fr-emp',m&&m.empresa,'style="font-weight:700"')}${fl('NIT','fr-nit',m&&m.nit)}${fl('DIRECCIÓN','fr-dir',m&&m.direccion)}${fl('CIUDAD','fr-ciu',m&&m.ciudad)}${fl('ENCARGADO','fr-con',m&&m.contacto)}${fl('TELÉFONO','fr-tel',m&&m.telefono)}</div>
      <table style="margin-top:10px;width:100%"><tr><td class="azul borde-azul" style="padding:5px 10px">PROYECTO:</td><td class="borde-azul" style="padding:5px 10px"><input id="fr-pro" value="${E(m&&m.proyecto||'')}"></td></tr></table></td></tr></table>
-   <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">REMISIÓN</td><td class="borde" style="width:50%;text-align:center;padding:8px">${modoPaso&&puede('administracion')?`<input id="fr-num" type="number" min="1" value="${E(m.numero||'')}" placeholder="N°" style="text-align:center;font-weight:700">`:(m&&m.numero?E(m.numero):'<span style="color:#64748b">Se asigna al guardar</span>')}</td></tr></table>
+   <table style="margin-bottom:12px"><tr><td class="azul borde" style="width:50%;text-align:center;padding:8px">REMISIÓN</td><td class="borde" style="width:50%;text-align:center;padding:8px">${m&&m.numero?`<span id="fr-numtxt">${E(m.numero)}</span>`:'<span style="color:#64748b">Se asigna al guardar</span>'}</td></tr></table>
    <table style="margin-bottom:12px"><thead><tr class="azul"><th class="borde center" style="width:6%">ITEM</th><th class="borde center" style="width:9%">CANT</th><th class="borde">DESCRIPCIÓN</th></tr></thead><tbody id="fr-body"></tbody></table>
    <button class="fe-add nop" onclick="feRemManual()">＋ Agregar ítem manual</button><div id="fr-tot" style="text-align:right;color:#64748b;font-size:10px;margin:-4px 0 8px"></div>
    <div style="margin-bottom:12px"><b>OBSERVACIONES:</b><textarea id="fr-obs" rows="2" style="border:1px dotted #94a3b8">${E(m&&m.observaciones||'')}</textarea></div>
@@ -3660,6 +3661,7 @@ window.feRemGuardar=async()=>{
   const over=d.lineas.find(l=>{ const it=l.id_prod&&(R.items||[]).find(x=>x.id_prod===l.id_prod); return it&&Number(l.cantidad)>Number(it.unidades); });
   if(over){ toast('Una cantidad supera lo que falta por remisionar; ajústala','error'); return; }
   const r=await rpcR('remision_guardar_libre',{p_id:R.id,p_data:d},'✅ Remisión guardada');
+  if(r&&R.id){ const m0=remDe(R.id), num=(document.getElementById('fr-num')||{}).value||''; if(num&&m0&&String(m0.numero||'')!==String(num)){ if(Number(num)>0) await rpcR('remision_set_numero',{p_id:R.id,p_numero:Number(num)},'🔢 Número cambiado a REM-'+num); else toast('Número no válido','error'); } }
   if(r){ feCerrar(); _RM.f='todas'; nav('remisiones'); try{ detalleRem(r.id||R.id); }catch(e){} }
 };
 window.feRemImprimir=()=>{
