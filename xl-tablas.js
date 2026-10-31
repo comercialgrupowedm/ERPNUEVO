@@ -91,7 +91,7 @@
     if(pagBtns().length&&typeof _PGN!=='undefined'){ PEND={key:key,i:i,kind:kind}; if(loadAll()) return; PEND=null; }
     act(table,key,i,kind,btn); }
 
-  function enhance(table){ var rows=dataRows(table); if(rows.length<2||!table.tHead||!table.tHead.rows.length) return;
+  function enhance(table){ if(table.parentElement&&table.parentElement.closest('table')) return; var tb=table.tBodies[0]; if(!tb||tb.querySelector('td[colspan]')||tb.querySelector('table')) return; var rows=dataRows(table); if(rows.length<2||!table.tHead||!table.tHead.rows.length) return;
     var hr=table.tHead.rows[table.tHead.rows.length-1]; var th=[].slice.call(hr.cells); if(th.length<2) return;
     var sig=th.map(function(h){ return h.textContent.replace(/\s+/g,' ').trim(); }).join('|'); table.setAttribute('data-xlx-sig',sig); var key=keyOf(table,sig);
     th.forEach(function(h,i){ var t=h.textContent.replace(/\s+/g,' ').trim(); if(!t||h.querySelector('input,select,button')||h.classList.contains('no-xl')) return;
