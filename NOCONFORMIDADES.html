@@ -1251,7 +1251,7 @@ const esRolLider=r=>/^líder/i.test(r||'');
 const colabAct=()=>(DB.colab||[]).filter(c=>c.activo!==false);
 const colabNombres=(soloLid)=>colabAct().filter(c=>!soloLid||c.es_lider).map(c=>c.nombre);
 const PAP_MOD='noconformidades';
-const PAP_T={nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
+const PAP_T={nc_epp:'Evaluación EPP',nc_5s:'Evaluación 5 S',nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
 let _PAPQ='';
 const hoyISO=()=>{ const d=new Date(); const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
 const anioDe=f=>String(f||'').slice(0,4);
@@ -1300,7 +1300,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp:()=>proximamente('epp'),cincoS:()=>proximamente('cincoS'),matprima:()=>proximamente('matprima'),rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:()=>proximamente('matprima'),rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1346,8 +1346,8 @@ setInterval(async()=>{
 const MENU=[
  {k:'reprocesos',t:'REPROCESOS',ic:'♻️',c:'#2f6df6',n:()=> (DB.reportes||[]).length+' reportes'},
  {k:'registros',t:'REGISTROS',ic:'📝',c:'#2f6df6',n:()=> (DB.registros||[]).length+' acciones'},
- {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>'Próximamente'},
- {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>'Próximamente'},
+ {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>DB.epp?DB.epp.length+' evaluaciones':'Evaluaciones'},
+ {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
  {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>'Próximamente'},
  {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>'Próximamente'},
  {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'}];
@@ -1667,6 +1667,165 @@ async function colGuardar(id){
   const r=await rpcN('nc_colaborador_guardar',{p:d},'✅ Guardado'); if(r){ closeModal(); colaboradores(); }
 }
 
+// ══ EPP (elementos de protección) y 5 S ═══════════════════════════════
+const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const fdt=f=>{ if(!f) return '—'; const d=new Date(f); return isNaN(d)?'—':d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}); };
+const fAnio=f=>{ const d=f?new Date(f):null; return d&&!isNaN(d)?String(d.getFullYear()):''; };
+const fMes=f=>{ const d=f?new Date(f):null; return d&&!isNaN(d)?String(d.getMonth()+1):''; };
+const barra=(l,pct,txt,c)=>`<div class="nc-bar"><span class="nc-bl" title="${esc(l)}">${esc(trunc(l,34))}</span><span class="nc-bt"><i style="width:${Math.max(0,Math.min(100,pct))}%;background:${c}"></i></span><b>${txt}</b></div>`;
+const selFiltro=(fn,k,ph,vals,cur,lab)=>`<select class="nc-sel" onchange="${fn}('${k}',this.value)"><option value="">${ph}</option>${vals.map(v=>`<option value="${esc(v)}" ${String(v)===String(cur)?'selected':''}>${esc(lab?lab(v):v)}</option>`).join('')}</select>`;
+const MAQS_BASE=['AREA DE INGENIERIA','BANCO Y/O MATRICERIA','CALIDAD','CNC # 1 (MAPLE)','CNC # 2 (MAPLE)','EDM','ESMERIL','ESMERIL DE PULIMENTO','FRESADORA # 1 (ACMA)','FRESADORA # 2 (KONDOR)','FRESADORA # 3 (ACMA)','HILO','MANTENIMIENTO','RECTIFICADORA # 1 (PEQUEÑA)','RECTIFICADORA # 2 (GRANDE)','SIERRAS SIN FIN','SOLDADURA','TORNO CNC','TORNO CONVENCIONAL','N/A'];
+const maqLista=()=>[...new Set([...MAQS_BASE,...(DB.maqs||[])])];
+function optsColab(sel){ const n=colabNombres(); const l=sel&&!n.includes(sel)?[sel,...n]:n; return '<option value=""></option>'+l.map(x=>`<option ${x===sel?'selected':''}>${esc(x)}</option>`).join(''); }
+// foto múltiple (5 S)
+const _NCFS={};
+function ncFoto2HTML(p,titulo){ return `<div class="field"><label>${titulo}</label><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('${p}-cam').click()">📷</button><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('${p}-gal').click()">🖼️</button><button type="button" id="${p}-fq" class="btn btn-ghost btn-sm" style="display:none;color:var(--danger)" onclick="ncFoto2Quitar('${p}')">✕</button></div><input type="file" id="${p}-cam" accept="image/*" capture="environment" hidden onchange="ncFoto2Elegida(this,'${p}')"><input type="file" id="${p}-gal" accept="image/*" hidden onchange="ncFoto2Elegida(this,'${p}')"><img id="${p}-prev" alt="" style="display:none;max-width:100%;max-height:150px;border-radius:8px;margin-top:6px;border:1px solid var(--border)"></div>`; }
+async function ncFoto2Elegida(inp,p){ const f=inp.files&&inp.files[0]; if(!f) return; try{ _NCFS[p]=await ncFotoComprimir(f); const im=document.getElementById(p+'-prev'); im.src=_NCFS[p]; im.style.display='block'; document.getElementById(p+'-fq').style.display='inline-block'; }catch(e){ toast('No se pudo leer la foto','error'); } inp.value=''; }
+function ncFoto2Quitar(p){ delete _NCFS[p]; const im=document.getElementById(p+'-prev'); im.removeAttribute('src'); im.style.display='none'; document.getElementById(p+'-fq').style.display='none'; }
+
+// ── EPP ────────────────────────────────────────────────────────────
+const EPP_ITEMS=[['botas','Botas'],['gafas','Gafas'],['auditivo','Prot. auditivo'],['guantes','Guantes'],['respirador','Respirador'],['careta','Careta'],['delantal','Delantal'],['casco','Casco']];
+const EPP_UT=[['LO PORTA','Lo porta','ok'],['NO LO PORTA','No lo porta','bad'],['LO PORTA PERO NO LO USA','Porta, no usa','warn'],['N/A','N/A','na']];
+const EPP_ES=['BUENO','REGULAR','MALO','NO TIENE','NO APLICA'];
+const eppApl=it=>!!(it&&it.u&&it.u!=='N/A');
+function eppHall(r){
+  const h=[]; EPP_ITEMS.forEach(([k,l])=>{ const it=(r.items||{})[k]||{};
+    if(it.u==='NO LO PORTA') h.push(l+': no lo porta'); else if(it.u==='LO PORTA PERO NO LO USA') h.push(l+': lo porta pero no lo usa');
+    if(it.e==='REGULAR'||it.e==='MALO'||it.e==='NO TIENE') h.push(l+': estado '+it.e.toLowerCase()); });
+  return h;
+}
+const _EF={anio:'',mes:'',colab:'',maq:'',est:''};
+async function cargarEpp(force){ if(DB.epp&&!force) return; DB.epp=await GETALL('nc_epp','select=*&order=fecha.desc.nullslast,id.asc'); }
+function eppSetF(k,v){ _EF[k]=v; pgReset(); epp(); }
+function eppFiltrados(){ return (DB.epp||[]).filter(r=>(!_EF.anio||fAnio(r.fecha)===_EF.anio)&&(!_EF.mes||fMes(r.fecha)===_EF.mes)&&(!_EF.colab||r.colaborador===_EF.colab)&&(!_EF.maq||r.maquina===_EF.maq)&&(!_EF.est||(_EF.est==='hall'?eppHall(r).length>0:eppHall(r).length===0))); }
+async function epp(){
+  if(!DB.epp) loading(); await cargarEpp();
+  const all=DB.epp, L=eppFiltrados(); const tot=L.length, ch=L.filter(r=>eppHall(r).length).length, cum=tot?Math.round((tot-ch)/tot*100):0;
+  const pe=EPP_ITEMS.map(([k,l])=>{ let a=0,o=0; L.forEach(r=>{ const it=(r.items||{})[k]; if(eppApl(it)){ a++; if(it.u==='LO PORTA') o++; } }); return [l,a,a?Math.round(o/a*100):null]; }).filter(x=>x[1]);
+  const cnt=(f)=>{ const m={}; L.forEach(r=>{ const n=eppHall(r).length; const k=f(r); if(k&&n){ m[k]=(m[k]||0)+1; } }); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8); };
+  const cc=v=>v>=95?'#16a34a':v>=85?'#eab308':'#dc2626';
+  const anios=uniq(all,r=>fAnio(r.fecha)).reverse(), colabs=uniq(all,r=>r.colaborador), maqs=uniq(all,r=>r.maquina);
+  const fila=r=>{ const h=eppHall(r); return `<tr onclick="eppDetalle('${jsq(r.id)}')"><td style="white-space:nowrap">${fdt(r.fecha)}</td><td>${esc(r.colaborador||'—')}</td><td>${esc(r.maquina||'—')}</td><td>${h.length?`<span class="badge rojo">${h.length} hallazgo${h.length>1?'s':''}</span>`:'<span class="badge verde">Cumple</span>'}</td><td style="max-width:360px;font-size:12px">${esc(trunc(h.join(' · '),130))}</td></tr>`; };
+  const pg=pgSlice('epp',L);
+  setContent(moduleBanner('🦺','Elementos de protección personal',tot+' de '+all.length+' evaluaciones',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="eppForm()">➕ Nueva evaluación</button>`:'')
+   +`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('eppSetF','anio','Año',anios,_EF.anio)}${selFiltro('eppSetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_EF.mes,m=>MESES[m-1])}${selFiltro('eppSetF','colab','Colaborador',colabs,_EF.colab)}${selFiltro('eppSetF','maq','Máquina / área',maqs,_EF.maq)}${selFiltro('eppSetF','est','Resultado',['hall','ok'],_EF.est,v=>v==='hall'?'Con hallazgos':'Cumple')}${(_EF.anio||_EF.mes||_EF.colab||_EF.maq||_EF.est)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_EF).forEach(k=>_EF[k]='');epp()">Quitar filtros</button>`:''}</div></div>
+   <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Evaluaciones</div></div><div class="kpi-card ${cum>=95?'teal':cum>=85?'warn':'danger'}"><div class="kpi-value">${cum}%</div><div class="kpi-label">Evaluaciones sin hallazgos</div></div><div class="kpi-card danger"><div class="kpi-value">${ch}</div><div class="kpi-label">Con hallazgos</div></div></div>
+   <div class="nc-grid2"><div class="nc-box"><h4>Uso correcto por EPP (lo porta / aplica)</h4>${pe.length?pe.map(([l,a,p])=>barra(l+' ('+a+')',p,p+'%',cc(p))).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
+   <div class="nc-box"><h4>Colaboradores con más hallazgos</h4>${cnt(r=>r.colaborador).map(([k,v],i,a)=>barra(k,v/a[0][1]*100,v,'#ef4444')).join('')||'<p style="font-size:12px;color:var(--muted)">Sin hallazgos 🎉</p>'}</div>
+   <div class="nc-box"><h4>Máquinas / áreas con más hallazgos</h4>${cnt(r=>r.maquina).map(([k,v],i,a)=>barra(k,v/a[0][1]*100,v,'#f59e0b')).join('')||'<p style="font-size:12px;color:var(--muted)">Sin hallazgos 🎉</p>'}</div></div></div>
+   <div style="padding:14px 12px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina / área</th><th>Resultado</th><th>Hallazgos</th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('epp',L)}`:empty('No hay evaluaciones con esos filtros','📭')}</div>`);
+}
+const eppDe=id=>(DB.epp||[]).find(r=>r.id===id);
+function eppDetalle(id){
+  const r=eppDe(id); if(!r) return; const h=eppHall(r);
+  const bu=u=>{ const x=EPP_UT.find(a=>a[0]===u); return u?`<span class="badge ${x&&x[2]==='ok'?'verde':x&&x[2]==='bad'?'rojo':x&&x[2]==='warn'?'naranja':'gris'}">${esc(u)}</span>`:'—'; };
+  const be=e=>e?`<span class="badge ${e==='BUENO'?'verde':e==='REGULAR'?'naranja':e==='MALO'||e==='NO TIENE'?'rojo':'gris'}">${esc(e)}</span>`:'—';
+  openDetail('EPP · '+(r.colaborador||''),`<div class="dp-section">${dr('Fecha',fdt(r.fecha))}${dr('Colaborador',esc(r.colaborador||'—'))}${dr('Máquina / área',esc(r.maquina||'—'))}${dr('Registró',esc(r.creado_por||'—'))}${dr('Resultado',h.length?`<span class="badge rojo">${h.length} hallazgo(s)</span>`:'<span class="badge verde">Cumple</span>')}</div>
+   <div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>EPP</th><th>Utilización</th><th>Estado</th></tr></thead><tbody>${EPP_ITEMS.map(([k,l])=>{ const it=(r.items||{})[k]||{}; return `<tr><td><b>${l}</b></td><td>${bu(it.u)}</td><td>${be(it.e)}</td></tr>`; }).join('')}</tbody></table></div></div>`,
+   puedeNC()?`<button class="btn btn-ghost" onclick="eppForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="nuevoElim('nc_epp','${jsq(id)}','Evaluación EPP')">🗑 Eliminar</button>`:'');
+  document.getElementById('dp-actions').style.display='flex';
+}
+async function nuevoElim(tabla,id,nom){
+  if(!confirm('¿Eliminar esta evaluación? Queda en la papelera 6 meses.')) return;
+  const r=await sbRun(()=>sb.rpc('nc_eliminar',{p_tabla:tabla,p_id:id}),'🗑 '+nom+' eliminada (está en la papelera)'); if(r){ if(tabla==='nc_epp') await cargarEpp(true); else await cargar5s(true); closeDetail(); refreshCurrentView(); }
+}
+async function sbRun(fn,okMsg){ showBusy(); try{ const r=await fn(); if(okMsg) toast(okMsg); return r===undefined||r===null?true:r; }catch(e){ toast('❌ '+errMsg(e),'error'); return null; }finally{ hideBusy(); } }
+let _EPPF=null;
+const eppDefault=()=>Object.fromEntries(EPP_ITEMS.map(([k])=>[k,['botas','gafas','auditivo'].includes(k)?{u:'LO PORTA',e:'BUENO'}:{u:'N/A',e:'NO APLICA'}]));
+function eppItemsHTML(){
+  return EPP_ITEMS.map(([k,l])=>{ const st=_EPPF.items[k]||{};
+   return `<div class="epp-it"><div class="epp-n">${l}</div><div class="epp-pills">${EPP_UT.map(([u,t,c])=>`<button type="button" class="epp-pill${st.u===u?' on '+c:''}" onclick="eppSet('${k}','u','${u}')">${t}</button>`).join('')}</div>${st.u==='N/A'?'':`<select class="nc-sel" onchange="eppSet('${k}','e',this.value)">${EPP_ES.filter(e=>e!=='NO APLICA'||!st.u).map(e=>`<option ${st.e===e?'selected':''}>${e}</option>`).join('')}</select>`}</div>`; }).join('');
+}
+function eppSet(k,campo,v){ const it=_EPPF.items[k]=_EPPF.items[k]||{}; it[campo]=v; if(campo==='u'){ if(v==='N/A') it.e='NO APLICA'; else if(!it.e||it.e==='NO APLICA') it.e='BUENO'; } document.getElementById('epp-items').innerHTML=eppItemsHTML(); }
+function eppForm(id){
+  if(!soloNC()) return; const r=id?eppDe(id):null; closeDetail();
+  _EPPF={id:id||null,items:r?JSON.parse(JSON.stringify(r.items||{})):eppDefault()}; EPP_ITEMS.forEach(([k])=>{ if(!_EPPF.items[k]) _EPPF.items[k]={u:'N/A',e:'NO APLICA'}; });
+  openModal(id?'✏️ Editar evaluación EPP':'➕ Nueva evaluación EPP',`${dl('dl-maq2',maqLista())}<div class="form-grid"><div class="field"><label>Colaborador</label><select id="ep-col">${optsColab(r&&r.colaborador)}</select></div>${fld('Máquina / área','ep-maq',r?r.maquina||'':'','list="dl-maq2" autocomplete="off"')}</div><div id="epp-items" style="margin-top:10px">${eppItemsHTML()}</div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${id?'':`<button class="btn btn-ghost" onclick="eppGuardar(true)">💾 Guardar y otro</button>`}<button class="btn btn-primary" onclick="eppGuardar(false)">💾 Guardar</button>`);
+}
+async function eppGuardar(otro){
+  const colaborador=gv('ep-col'); if(!colaborador){ toast('Elige el colaborador','error'); return; }
+  const r=await sbRun(()=>sb.rpc('nc_epp_guardar',{p:{id:_EPPF.id,colaborador,maquina:gv('ep-maq'),items:_EPPF.items}}),'✅ Evaluación guardada'); if(!r) return; await cargarEpp(true);
+  if(otro){ _EPPF.items=eppDefault(); document.getElementById('ep-col').value=''; document.getElementById('epp-items').innerHTML=eppItemsHTML(); }
+  else { closeModal(); }
+  if(MOD==='epp') epp();
+}
+
+// ── 5 S ────────────────────────────────────────────────────────────
+const S5_GRP=[['c','Clasificar (Seiri)','🗂️',['Espacios de almacenamiento identificados','Materiales y planos en su caja de trabajo','Sobrantes identificados y bien dispuestos']],['o','Ordenar (Seiton)','📐',['No hay mezclas de herramientas o piezas en caja','En la mesa solo están las herramientas en uso','Herramientas no usadas están almacenadas correctamente']],['l','Limpiar (Seiso)','🧽',['Piso limpio y sin obstáculos','Equipos, herramientas y gavetas sin polvo ni grasa','Mesa y plano de trabajo limpio']]];
+const s5Prom=(r,g)=>{ const v=[1,2,3].map(i=>(r.items||{})[g+i]).filter(x=>typeof x==='number'); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; };
+const s5Total=r=>{ const p=['c','o','l'].map(g=>s5Prom(r,g)).filter(x=>x!=null); return p.length?p.reduce((a,b)=>a+b,0)/p.length:null; };
+const s5Pct=x=>x==null?null:Math.round(x/4*100);
+const s5Col=p=>p==null?'#94a3b8':p>=85?'#16a34a':p>=70?'#eab308':p>=50?'#f97316':'#dc2626';
+const _SF={anio:'',mes:'',colab:'',maq:''};
+async function cargar5s(force){ if(DB.s5&&!force) return; DB.s5=await GETALL('nc_5s','select=id,fecha,colaborador,maquina,items,plan_5s,n_fotos,creado_por&order=fecha.desc.nullslast,id.asc'); }
+function s5SetF(k,v){ _SF[k]=v; pgReset(); cincoS(); }
+function s5Filtrados(){ return (DB.s5||[]).filter(r=>(!_SF.anio||fAnio(r.fecha)===_SF.anio)&&(!_SF.mes||fMes(r.fecha)===_SF.mes)&&(!_SF.colab||r.colaborador===_SF.colab)&&(!_SF.maq||r.maquina===_SF.maq)); }
+const avgPct=a=>{ const v=a.map(s5Total).filter(x=>x!=null); return v.length?s5Pct(v.reduce((x,y)=>x+y,0)/v.length):null; };
+async function cincoS(){
+  if(!DB.s5) loading(); await cargar5s();
+  const all=DB.s5, L=s5Filtrados(), tot=L.length;
+  const pS=g=>{ const v=L.map(r=>s5Prom(r,g)).filter(x=>x!=null); return v.length?s5Pct(v.reduce((a,b)=>a+b,0)/v.length):null; };
+  const gen=avgPct(L), pc=pS('c'), po=pS('o'), pl=pS('l');
+  const grupo=(f,min)=>{ const m={}; L.forEach(r=>{ const k=f(r); if(k){ (m[k]=m[k]||[]).push(r); } }); return Object.entries(m).filter(([k,a])=>a.length>=min).map(([k,a])=>[k,avgPct(a),a.length]).filter(x=>x[1]!=null).sort((a,b)=>a[1]-b[1]); };
+  const meses={}; L.forEach(r=>{ const d=r.fecha?new Date(r.fecha):null; if(d&&!isNaN(d)){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); (meses[k]=meses[k]||[]).push(r); } });
+  const tend=Object.keys(meses).sort().slice(-12).map(k=>[MESES[Number(k.slice(5))-1]+' '+k.slice(2,4),avgPct(meses[k]),meses[k].length]);
+  const anios=uniq(all,r=>fAnio(r.fecha)).reverse(), colabs=uniq(all,r=>r.colaborador), maqs=uniq(all,r=>r.maquina);
+  const chip=p=>`<span class="s5-chip" style="background:${s5Col(p)}">${p==null?'—':p+'%'}</span>`;
+  const fila=r=>`<tr onclick="s5Detalle('${jsq(r.id)}')"><td style="white-space:nowrap">${fdt(r.fecha)}</td><td>${esc(r.colaborador||'—')}</td><td>${esc(r.maquina||'—')}</td><td>${chip(s5Pct(s5Prom(r,'c')))}</td><td>${chip(s5Pct(s5Prom(r,'o')))}</td><td>${chip(s5Pct(s5Prom(r,'l')))}</td><td>${chip(s5Pct(s5Total(r)))}</td><td>${r.n_fotos?'📷 '+r.n_fotos:''}</td></tr>`;
+  const pg=pgSlice('s5',L);
+  setContent(moduleBanner('🧹','5 S',tot+' de '+all.length+' evaluaciones',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="s5Form()">➕ Nueva evaluación</button>`:'')
+   +`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('s5SetF','anio','Año',anios,_SF.anio)}${selFiltro('s5SetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_SF.mes,m=>MESES[m-1])}${selFiltro('s5SetF','colab','Colaborador',colabs,_SF.colab)}${selFiltro('s5SetF','maq','Máquina / área',maqs,_SF.maq)}${(_SF.anio||_SF.mes||_SF.colab||_SF.maq)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_SF).forEach(k=>_SF[k]='');cincoS()">Quitar filtros</button>`:''}</div></div>
+   <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Evaluaciones</div></div><div class="kpi-card" style="--k:${s5Col(gen)}"><div class="kpi-value" style="color:${s5Col(gen)}">${gen==null?'—':gen+'%'}</div><div class="kpi-label">Puntaje general</div></div><div class="kpi-card teal"><div class="kpi-value">${pc==null?'—':pc+'%'}</div><div class="kpi-label">Clasificar</div></div><div class="kpi-card gold"><div class="kpi-value">${po==null?'—':po+'%'}</div><div class="kpi-label">Ordenar</div></div><div class="kpi-card pink"><div class="kpi-value">${pl==null?'—':pl+'%'}</div><div class="kpi-label">Limpiar</div></div></div>
+   <div class="nc-grid2"><div class="nc-box"><h4>Evolución mensual (puntaje %)</h4>${tend.map(([l,p,n])=>barra(l+' ('+n+')',p||0,p==null?'—':p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
+   <div class="nc-box"><h4>Áreas / máquinas con menor puntaje</h4>${grupo(r=>r.maquina,3).slice(0,8).map(([k,p,n])=>barra(k+' ('+n+')',p,p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
+   <div class="nc-box"><h4>Colaboradores con menor puntaje (mín. 3 evaluaciones)</h4>${grupo(r=>r.colaborador,3).slice(0,8).map(([k,p,n])=>barra(k+' ('+n+')',p,p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div></div></div>
+   <div style="padding:14px 12px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina / área</th><th>Clasificar</th><th>Ordenar</th><th>Limpiar</th><th>Total</th><th></th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('s5',L)}`:empty('No hay evaluaciones con esos filtros','📭')}</div>`);
+}
+const s5De=id=>(DB.s5||[]).find(r=>r.id===id);
+function s5Detalle(id){
+  const r=s5De(id); if(!r) return; const sc=v=>v==null?'—':`<span class="s5-chip" style="background:${v==='N/A'?'#94a3b8':s5Col(v/4*100)}">${v}</span>`;
+  openDetail('5 S · '+(r.colaborador||''),`<div class="dp-section">${dr('Fecha',fdt(r.fecha))}${dr('Colaborador',esc(r.colaborador||'—'))}${dr('Máquina / área',esc(r.maquina||'—'))}${dr('Registró',esc(r.creado_por||'—'))}${dr('Puntaje general',`<b>${s5Pct(s5Total(r))??'—'}${s5Total(r)==null?'':'%'}</b>`)}${r.plan_5s?dr('Plan 5 S','Sí'):''}</div>
+   ${S5_GRP.map(([g,t,ic,cr])=>`<div class="dp-section"><h4>${ic} ${t} · ${s5Pct(s5Prom(r,g))??'—'}${s5Prom(r,g)==null?'':'%'}</h4>${cr.map((c,i)=>`<div class="dp-row"><span class="dp-label" style="max-width:70%">${c}</span><span class="dp-val">${sc((r.items||{})[g+(i+1)])}</span></div>`).join('')}</div>`).join('')}
+   <div class="dp-section" id="s5-fotos" style="display:none"><h4>Fotos</h4><div id="s5-fotos-c" style="display:grid;gap:8px"></div></div>${r.n_fotos&&!/^\d+$/.test('x')?'':''}`,
+   puedeNC()?`<button class="btn btn-ghost" onclick="s5Form('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="nuevoElim('nc_5s','${jsq(id)}','Evaluación 5 S')">🗑 Eliminar</button>`:'');
+  document.getElementById('dp-actions').style.display='flex';
+  if(r.n_fotos) GET('nc_5s','select=foto_c,foto_o,foto_l&id='+eq(id)).then(x=>{ const f=x[0]; if(!f||!document.getElementById('s5-fotos')) return; const im=[['Clasificar',f.foto_c],['Ordenar',f.foto_o],['Limpiar',f.foto_l]].filter(a=>/^data:image\//.test(a[1]||'')); if(!im.length){ return; } document.getElementById('s5-fotos').style.display=''; document.getElementById('s5-fotos-c').innerHTML=im.map(([t,s])=>`<div><div style="font-size:11px;color:var(--muted)">${t}</div><img src="${s}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)"></div>`).join(''); }).catch(()=>{});
+}
+let _S5F=null;
+const s5Default=()=>Object.fromEntries(['c','o','l'].flatMap(g=>[1,2,3].map(i=>[g+i,4])));
+function s5Pills(k){ const v=_S5F.items[k]; return ['1','2','3','4','N/A'].map(o=>{ const val=o==='N/A'?'N/A':Number(o); const on=v===val; return `<button type="button" class="epp-pill${on?' on '+(val==='N/A'?'na':val>=4?'ok':val===3?'warn':'bad'):''}" style="min-width:42px" onclick="s5Set('${k}',${o==='N/A'?"'N/A'":o})">${o}</button>`; }).join(''); }
+function s5Set(k,v){ _S5F.items[k]=v; const el=document.getElementById('s5p-'+k); if(el) el.innerHTML=s5Pills(k); }
+function s5Form(id){
+  if(!soloNC()) return; const r=id?s5De(id):null; closeDetail(); Object.keys(_NCFS).forEach(k=>delete _NCFS[k]);
+  _S5F={id:id||null,items:{...s5Default(),...(r?r.items||{}:{})}};
+  openModal(id?'✏️ Editar evaluación 5 S':'➕ Nueva evaluación 5 S',`${dl('dl-maq2',maqLista())}<div class="form-grid"><div class="field"><label>Colaborador</label><select id="s5-col">${optsColab(r&&r.colaborador)}</select></div>${fld('Máquina / área','s5-maq',r?r.maquina||'':'','list="dl-maq2" autocomplete="off"')}</div>
+   <p class="wiz-hint" style="margin-top:10px">Califica de 1 a 4 (4 = cumple totalmente) o N/A si no aplica.</p>
+   ${S5_GRP.map(([g,t,ic,cr])=>`<div class="nc-sec" style="margin-bottom:10px"><b style="font-size:13px">${ic} ${t}</b>${cr.map((c,i)=>`<div class="epp-it"><div class="epp-n" style="font-weight:500">${c}</div><div class="epp-pills" id="s5p-${g}${i+1}">${s5Pills(g+(i+1))}</div></div>`).join('')}</div>`).join('')}
+   <div class="form-grid">${ncFoto2HTML('s5fc','Foto · Clasificar')}${ncFoto2HTML('s5fo','Foto · Ordenar')}${ncFoto2HTML('s5fl','Foto · Limpiar')}
+   <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px"><input type="checkbox" id="s5-plan" ${r&&r.plan_5s?'checked':''} style="width:auto"> Plan 5 S</label></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="s5Guardar()">💾 Guardar</button>`);
+}
+async function s5Guardar(){
+  const colaborador=gv('s5-col'); if(!colaborador){ toast('Elige el colaborador','error'); return; }
+  const r=await sbRun(()=>sb.rpc('nc_5s_guardar',{p:{id:_S5F.id,colaborador,maquina:gv('s5-maq'),items:_S5F.items,plan_5s:document.getElementById('s5-plan').checked,foto_c:_NCFS.s5fc||'',foto_o:_NCFS.s5fo||'',foto_l:_NCFS.s5fl||''}}),'✅ Evaluación guardada'); if(!r) return;
+  closeModal(); await cargar5s(true); if(MOD==='cincoS') cincoS();
+}
+// ── Importar EPP y 5 S (una vez) ──
+async function impEjecutar2(){
+  const log=document.getElementById('imp2-log'), btn=document.getElementById('imp2-btn'); const P=t=>{ log.textContent+=t+'\n'; };
+  btn.disabled=true; log.textContent='';
+  try{
+    if(!window.NC_HIST2_B64){ P('Cargando nc_historial2.js…'); await new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='nc_historial2.js?'+Date.now(); s.onload=ok; s.onerror=()=>ko(new Error('No se encontró nc_historial2.js junto al módulo (¿lo subiste a GitHub?)')); document.head.appendChild(s); }); }
+    const bin=Uint8Array.from(atob(window.NC_HIST2_B64),c=>c.charCodeAt(0));
+    const D=JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); let tot=0;
+    for(const [t,sz] of [['nc_epp',250],['nc_5s',250]]){ const rows=D[t]||[]; let ins=0; for(let i=0;i<rows.length;i+=sz){ const r=await sb.rpc('nc_importar',{p_tabla:t,p_rows:rows.slice(i,i+sz)}); ins+=(r&&r.insertadas)||0; log.textContent=log.textContent.replace(new RegExp('^'+t+' .*\\n?','m'),''); P(t+' … '+Math.min(i+sz,rows.length)+' / '+rows.length); }
+      log.textContent=log.textContent.replace(new RegExp('^'+t+' .*\\n?','m'),''); P('✓ '+t+': '+rows.length+' leídas, '+ins+' nuevas'); tot+=ins; }
+    DB.epp=null; DB.s5=null; P('\n✓ Listo. '+tot+' filas nuevas.'); toast('✅ EPP y 5 S importados');
+  }catch(e){ P('\n❌ '+errMsg(e)); toast('❌ '+errMsg(e),'error'); }
+  btn.disabled=false;
+}
+
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
@@ -1696,7 +1855,8 @@ function herramientas(){
    <p>Necesitas haber subido a GitHub el archivo <b>nc_historial.js</b> junto a este módulo.</p>
    <p style="margin-top:6px">Carga: <b>reportes, acciones (registro de no conformidad), causas, 5 porqués, espina de pescado, grupos, costos y fuentes</b>. Si lo ejecutas dos veces <b>no duplica</b>: lo que ya existe se omite.</p>
    <p style="margin-top:6px;color:var(--muted)">Actualmente en la base: ${(DB.registros||[]).length} acciones y ${(DB.reportes||[]).length} reportes.</p>
-   <button class="btn btn-primary" style="margin-top:12px" id="imp-btn" onclick="impEjecutar()">⬆️ Importar ahora</button><div id="imp-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
+   <button class="btn btn-primary" style="margin-top:12px" id="imp-btn" onclick="impEjecutar()">⬆️ Importar ahora</button><div id="imp-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div>
+   <div class="tbl-wrap" style="padding:14px;font-size:13px;line-height:1.6;margin-top:14px"><p><b>EPP y 5 S</b> (4.499 evaluaciones de EPP y 2.986 de 5 S). Necesitas haber subido <b>nc_historial2.js</b> junto a este módulo. Si lo ejecutas dos veces <b>no duplica</b>.</p><button class="btn btn-primary" style="margin-top:10px" id="imp2-btn" onclick="impEjecutar2()">⬆️ Importar EPP y 5 S</button><div id="imp2-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div></div></div>`);
 }
 async function impEjecutar(){
   const log=document.getElementById('imp-log'), btn=document.getElementById('imp-btn'); const P=t=>{ log.textContent+=t+'\n'; };
@@ -1730,6 +1890,11 @@ function ayudaAbrir(){
 #erp-inst.fl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:auto;padding:0 16px;height:40px;background:#fff;color:#1e293b;border:0;box-shadow:0 4px 18px rgba(0,0,0,.28);border-radius:99px;font-weight:800;font-size:13.5px;gap:7px;z-index:100000}
 #erp-ov{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:100001;display:none;align-items:flex-end;justify-content:center}
 #erp-ov.open{display:flex}#erp-ov>div{background:#fff;color:#1e293b;width:min(480px,100%);border-radius:20px 20px 0 0;padding:20px 18px 24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+.epp-it{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}.epp-it:last-child{border-bottom:none}
+.epp-n{flex:1 1 130px;font-weight:700;font-size:13px}.epp-pills{display:flex;gap:6px;flex-wrap:wrap}
+.epp-pill{padding:8px 11px;border:1.5px solid var(--border);border-radius:20px;background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)}
+.epp-pill.on.ok{background:#16a34a;border-color:#16a34a;color:#fff}.epp-pill.on.bad{background:#dc2626;border-color:#dc2626;color:#fff}.epp-pill.on.warn{background:#f59e0b;border-color:#f59e0b;color:#fff}.epp-pill.on.na{background:#64748b;border-color:#64748b;color:#fff}
+.s5-chip{display:inline-block;min-width:40px;text-align:center;padding:2px 8px;border-radius:10px;color:#fff;font-weight:700;font-size:12px}
 </style>
 <script>
 (function(){
