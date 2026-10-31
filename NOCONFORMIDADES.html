@@ -1374,15 +1374,15 @@ function _repFiltrados(){
 }
 function repSet(k,v){ _RF[k]=v; pgReset(); reportes(); }
 function reportes(){
-  const all=DB.reportes||[], L=_repFiltrados();
-  const tipos=uniq(all,r=>r.tipo_reproceso), resps=uniq(all,r=>r.responsable), anios=uniq(all,r=>anioDe(r.fecha));
-  const sel=(k,ph,vals)=>`<select class="nc-sel" onchange="repSet('${k}',this.value)"><option value="">${ph}</option>${vals.map(v=>`<option ${v===_RF[k]?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  const fila=r=>`<tr onclick="repDetalle('${jsq(r.id)}')"><td>${fmtDate(r.fecha)}</td><td><b>${r.op!=null?r.op:'—'}</b>${r.item?' · '+esc(r.item):''}</td><td>${esc(r.cliente||'—')}</td><td>${r.tipo_reproceso?`<span class="badge naranja" title="${esc(NC_RE[r.tipo_reproceso]||'')}">${esc(r.tipo_reproceso)}</span>${NC_RE[r.tipo_reproceso]?`<div style="font-size:10.5px;color:var(--muted);max-width:200px">${esc(trunc(NC_RE[r.tipo_reproceso].replace(/ \(.*$/,''),40))}</div>`:''}`:'—'}${r.tiene_foto?' 📷':''}</td><td>${esc(r.responsable||'—')}</td><td>${esc(r.reportado_por||'—')}</td><td>${esc(r.maquina||'—')}</td><td style="max-width:380px">${esc(trunc(r.comentarios,160))}</td></tr>`;
-  const pg=pgSlice('rep',L);
-  setContent(moduleBanner('📋','Reportes de no conformidad',L.length+' de '+all.length+' reportes',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="repForm()">➕ Nuevo reporte</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="impRepForm()" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar</button>`:''))
-   +`<div style="padding:10px 12px"><div class="filter-search-wrap"><input type="text" data-fkey="rq" placeholder="Buscar por OP, cliente, responsable, comentario…" value="${esc(_RF.q)}" autocomplete="off" oninput="_RF.q=this.value;clearTimeout(window._rqT);window._rqT=setTimeout(()=>{pgReset();reportes()},250)"></div>
-   <div class="nc-filtros">${sel('anio','Año',anios.reverse())}${sel('tipo','Tipo de reproceso',tipos)}${sel('resp','Responsable',resps)}${(_RF.tipo||_RF.resp||_RF.anio)?`<button class="btn btn-ghost btn-sm" onclick="_RF.tipo=_RF.resp=_RF.anio='';reportes()">Quitar filtros</button>`:''}</div></div>`
-   +`<div style="padding:0 12px 14px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>OP · ítem</th><th>Cliente</th><th>Tipo</th><th>Responsable</th><th>Reportó</th><th>Máquina</th><th>Comentarios</th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('rep',L)}`:empty('No hay reportes con esos filtros','📭')}</div>`);
+  const all=DB.reportes||[];
+  const act=(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="repForm()">➕ Nuevo reporte</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="impRepForm()" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar</button>`:'');
+  const cols=[{k:'fecha',t:'Fecha',f:r=>fmtDate(r.fecha)},{k:'op',t:'OP',v:r=>r.op!=null?Number(r.op):null,h:r=>`<b>${r.op!=null?r.op:'—'}</b>`},{k:'item',t:'Ítem'},{k:'cliente',t:'Cliente'},
+   {k:'tipo_reproceso',t:'Tipo',h:r=>r.tipo_reproceso?`<span class="badge naranja" title="${esc(NC_RE[r.tipo_reproceso]||'')}">${esc(r.tipo_reproceso)}</span>`:'—'},{k:'desc_re',t:'Descripción del tipo',v:r=>NC_RE[r.tipo_reproceso]||''},
+   {k:'responsable',t:'Responsable'},{k:'reportado_por',t:'Reportó'},{k:'maquina',t:'Máquina'},{k:'foto',t:'Foto',v:r=>r.tiene_foto?'Sí':'No',h:r=>r.tiene_foto?'📷':''},{k:'comentarios',t:'Comentarios'}];
+  const cuerpo=vwGet('reportes')==='d'?miniDash([[all.length,'Reportes de NC','pink'],[new Set(all.map(r=>r.op).filter(Boolean)).size,'OP distintas','info'],[all.filter(r=>r.tiene_foto).length,'Con foto','teal']],
+    [['Por tipo de reproceso',all,r=>r.tipo_reproceso?ncReTxt(r.tipo_reproceso):'','#f59e0b'],['Por responsable',all,r=>r.responsable,'#ef4444'],['Quién reporta',all,r=>r.reportado_por,'#0ea5e9'],['Por máquina',all,r=>r.maquina,'#3b82f6'],['Por cliente',all,r=>r.cliente,'#16a34a'],['Por año',all,r=>anioDe(r.fecha),'#8b5cf6']])
+    :xlTable('reportes',cols,all,{click:'repDetalle'});
+  setContent(moduleBanner('📋','Reportes de no conformidad',all.length+' reportes',act)+vwTabs('reportes')+cuerpo);
 }
 const repDe=id=>(DB.reportes||[]).find(r=>r.id===id);
 function repDetalle(id){
@@ -1439,17 +1439,16 @@ function _regFiltrados(){
 }
 function regSet(k,v){ _GF[k]=v; pgReset(); registros(); }
 function registros(){
-  const all=DB.registros||[], L=_regFiltrados();
-  const anios=uniq(all,r=>anioDe(r.fecha_reporte)).reverse();
+  const all=DB.registros||[];
+  const cols=[{k:'accion_no',t:'N°',v:r=>r.accion_no!=null?Number(r.accion_no):null,h:r=>`<b>${r.accion_no??'—'}</b>`},{k:'fecha_reporte',t:'Fecha',f:r=>fmtDate(r.fecha_reporte)},{k:'tipo_reporte',t:'Tipo',h:r=>bTipo(r.tipo_reporte)},{k:'proceso_area',t:'Proceso / área'},
+   {k:'op',t:'OP',v:r=>r.op!=null?Number(r.op):null},{k:'item',t:'Ítem'},{k:'cliente',t:'Cliente'},{k:'maquina',t:'Máquina'},{k:'fuente',t:'Fuente'},{k:'responsable_registro',t:'Registró'},
+   {k:'descripcion',t:'Descripción',v:r=>r.descripcion||r.desc_tipo_reporte||''},{k:'costos',t:'Costo',v:r=>Number(r.costos)||0,f:r=>Number(r.costos)?fmt(r.costos):'',h:r=>Number(r.costos)?fmt(r.costos):''},
+   {k:'estado',t:'Estado',v:r=>estadoReg(r),h:r=>bEstado(r)},{k:'pdf',t:'PDF',nf:1,h:r=>`<button class="btn btn-ghost btn-sm" title="PDF" onclick="event.stopPropagation();regPDF('${jsq(r.id)}')">📄</button>`}];
   const cnt=e=>all.filter(r=>estadoReg(r)===e).length;
-  const sel=(k,ph,vals)=>`<select class="nc-sel" onchange="regSet('${k}',this.value)"><option value="">${ph}</option>${vals.map(v=>`<option ${v===_GF[k]?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  const fila=r=>`<tr onclick="regDetalle('${jsq(r.id)}')"><td><b>${r.accion_no??'—'}</b></td><td>${fmtDate(r.fecha_reporte)}</td><td>${bTipo(r.tipo_reporte)}</td><td>${esc(r.proceso_area||'—')}</td><td>${opTxt(r)}</td><td>${esc(r.cliente||'—')}</td><td style="max-width:340px">${esc(trunc(r.descripcion||r.desc_tipo_reporte,150))}</td><td>${bEstado(r)}${prevista(r)&&!cerrada(r)?`<div style="font-size:10px;color:var(--muted)">prev. ${fmtDate(prevista(r))}</div>`:''}</td><td><button class="btn btn-ghost btn-sm" title="PDF" onclick="event.stopPropagation();regPDF('${jsq(r.id)}')">📄</button></td></tr>`;
-  const pg=pgSlice('reg',L);
-  setContent(moduleBanner('📝','Registro de acciones',L.length+' de '+all.length+' acciones',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="regForm()">➕ Nueva acción</button>`:'')
-   +`<div style="padding:10px 12px"><div class="filter-search-wrap"><input type="text" data-fkey="gq" placeholder="Buscar por N° de acción, OP, cliente, descripción…" value="${esc(_GF.q)}" autocomplete="off" oninput="_GF.q=this.value;clearTimeout(window._gqT);window._gqT=setTimeout(()=>{pgReset();registros()},250)"></div>
-   ${chipsH([['','Todas',all.length],['ABIERTA','Abiertas',cnt('ABIERTA')],['VENCIDA','Cierre vencido',cnt('VENCIDA')],['CERRADA','Cerradas',cnt('CERRADA')]],_GF.estado,'regEst')}
-   <div class="nc-filtros">${sel('anio','Año',anios)}${sel('tipo','Tipo de reporte',TIPOS_REPORTE)}${sel('area','Proceso / área',AREAS)}${(_GF.tipo||_GF.area||_GF.anio)?`<button class="btn btn-ghost btn-sm" onclick="_GF.tipo=_GF.area=_GF.anio='';registros()">Quitar filtros</button>`:''}</div></div>`
-   +`<div style="padding:0 12px 14px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>N°</th><th>Fecha</th><th>Tipo</th><th>Proceso / área</th><th>OP · ítem</th><th>Cliente</th><th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('reg',L)}`:empty('No hay acciones con esos filtros','📭')}</div>`);
+  const cuerpo=vwGet('registros')==='d'?miniDash([[all.length,'Acciones','info'],[cnt('ABIERTA'),'Abiertas','warn'],[cnt('VENCIDA'),'Cierre vencido','danger'],[cnt('CERRADA'),'Cerradas','teal'],[fmt(all.reduce((x,r)=>x+(Number(r.costos)||0),0)),'Costo registrado','gold']],
+    [['Por tipo de reporte',all,r=>r.tipo_reporte,'#ef4444'],['Por proceso / área',all,r=>r.proceso_area,'#8b5cf6'],['Por cliente',all,r=>r.cliente,'#16a34a'],['Por fuente',all,r=>r.fuente,'#0ea5e9'],['Por máquina',all,r=>r.maquina,'#3b82f6'],['Por año',all,r=>anioDe(r.fecha_reporte),'#f59e0b']])
+    :xlTable('registros',cols,all,{click:'regDetalle'});
+  setContent(moduleBanner('📝','Registro de acciones',all.length+' acciones',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="regForm()">➕ Nueva acción</button>`:'')+vwTabs('registros')+cuerpo);
 }
 function regEst(k){ _GF.estado=k; pgReset(); registros(); }
 const regDe=id=>(DB.registros||[]).find(r=>r.id===id);
@@ -1741,13 +1740,15 @@ async function epp(){
   const anios=uniq(all,r=>fAnio(r.fecha)).reverse(), colabs=uniq(all,r=>r.colaborador), maqs=uniq(all,r=>r.maquina);
   const fila=r=>{ const h=eppHall(r); return `<tr onclick="eppDetalle('${jsq(r.id)}')"><td style="white-space:nowrap">${fdt(r.fecha)}</td><td>${esc(r.colaborador||'—')}</td><td>${esc(r.maquina||'—')}</td><td>${h.length?`<span class="badge rojo">${h.length} hallazgo${h.length>1?'s':''}</span>`:'<span class="badge verde">Cumple</span>'}</td><td style="max-width:360px;font-size:12px">${esc(trunc(h.join(' · '),130))}</td></tr>`; };
   const pg=pgSlice('epp',L);
-  setContent(moduleBanner('🦺','Elementos de protección personal',tot+' de '+all.length+' evaluaciones',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="eppForm()">➕ Nueva evaluación</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')">⬆️ Importar historial</button>`:''))
-   +`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('eppSetF','anio','Año',anios,_EF.anio)}${selFiltro('eppSetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_EF.mes,m=>MESES[m-1])}${selFiltro('eppSetF','colab','Colaborador',colabs,_EF.colab)}${selFiltro('eppSetF','maq','Máquina / área',maqs,_EF.maq)}${selFiltro('eppSetF','est','Resultado',['hall','ok'],_EF.est,v=>v==='hall'?'Con hallazgos':'Cumple')}${(_EF.anio||_EF.mes||_EF.colab||_EF.maq||_EF.est)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_EF).forEach(k=>_EF[k]='');epp()">Quitar filtros</button>`:''}</div></div>
+  const eppC=[{k:'fecha',t:'Fecha',f:r=>fdt(r.fecha)},{k:'colaborador',t:'Colaborador'},{k:'maquina',t:'Máquina / área'},{k:'res',t:'Resultado',v:r=>eppHall(r).length?'Con hallazgos':'Cumple',h:r=>eppHall(r).length?`<span class="badge rojo">${eppHall(r).length} hallazgo${eppHall(r).length>1?'s':''}</span>`:'<span class="badge verde">Cumple</span>'},{k:'nh',t:'N° hallazgos',v:r=>eppHall(r).length},
+   ...EPP_ITEMS.map(([k,l])=>({k:'i_'+k,t:l,v:r=>{ const it=(r.items||{})[k]; return it&&it.u&&it.u!=='N/A'?(it.u==='LO PORTA'?'Sí'+(it.e&&it.e!=='N/A'&&it.e!=='BUENO'?' ('+it.e.toLowerCase()+')':''):it.u==='NO LO PORTA'?'NO LO PORTA':it.u):''; },h:r=>{ const it=(r.items||{})[k]; if(!it||!it.u||it.u==='N/A') return ''; const bad=it.u!=='LO PORTA'||(it.e&&it.e!=='BUENO'&&it.e!=='N/A'); return `<span class="${bad?'badge rojo':'badge verde'}">${esc(it.u==='LO PORTA'?(it.e&&it.e!=='N/A'?it.e.toLowerCase():'sí'):it.u.toLowerCase())}</span>`; }})),
+   {k:'hall',t:'Hallazgos',v:r=>eppHall(r).join(' · ')}];
+  setContent(moduleBanner('🦺','Elementos de protección personal',(vwGet('epp')==='d'?tot+' de '+all.length:all.length)+' evaluaciones',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="eppForm()">➕ Nueva evaluación</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar historial</button>`:''))+vwTabs('epp')
+   +(vwGet('epp')==='d'?`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('eppSetF','anio','Año',anios,_EF.anio)}${selFiltro('eppSetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_EF.mes,m=>MESES[m-1])}${selFiltro('eppSetF','colab','Colaborador',colabs,_EF.colab)}${selFiltro('eppSetF','maq','Máquina / área',maqs,_EF.maq)}${selFiltro('eppSetF','est','Resultado',['hall','ok'],_EF.est,v=>v==='hall'?'Con hallazgos':'Cumple')}${(_EF.anio||_EF.mes||_EF.colab||_EF.maq||_EF.est)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_EF).forEach(k=>_EF[k]='');epp()">Quitar filtros</button>`:''}</div></div>
    <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Evaluaciones</div></div><div class="kpi-card ${cum>=95?'teal':cum>=85?'warn':'danger'}"><div class="kpi-value">${cum}%</div><div class="kpi-label">Evaluaciones sin hallazgos</div></div><div class="kpi-card danger"><div class="kpi-value">${ch}</div><div class="kpi-label">Con hallazgos</div></div></div>
    <div class="nc-grid2"><div class="nc-box"><h4>Uso correcto por EPP (lo porta / aplica)</h4>${pe.length?pe.map(([l,a,p])=>barra(l+' ('+a+')',p,p+'%',cc(p))).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
    <div class="nc-box"><h4>Colaboradores con más hallazgos</h4>${cnt(r=>r.colaborador).map(([k,v],i,a)=>barra(k,v/a[0][1]*100,v,'#ef4444')).join('')||'<p style="font-size:12px;color:var(--muted)">Sin hallazgos 🎉</p>'}</div>
-   <div class="nc-box"><h4>Máquinas / áreas con más hallazgos</h4>${cnt(r=>r.maquina).map(([k,v],i,a)=>barra(k,v/a[0][1]*100,v,'#f59e0b')).join('')||'<p style="font-size:12px;color:var(--muted)">Sin hallazgos 🎉</p>'}</div></div></div>
-   <div style="padding:14px 12px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina / área</th><th>Resultado</th><th>Hallazgos</th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('epp',L)}`:empty('No hay evaluaciones con esos filtros','📭')}</div>`);
+   <div class="nc-box"><h4>Máquinas / áreas con más hallazgos</h4>${cnt(r=>r.maquina).map(([k,v],i,a)=>barra(k,v/a[0][1]*100,v,'#f59e0b')).join('')||'<p style="font-size:12px;color:var(--muted)">Sin hallazgos 🎉</p>'}</div></div></div>`:xlTable('epp',eppC,all,{click:'eppDetalle'})));
 }
 const eppDe=id=>(DB.epp||[]).find(r=>r.id===id);
 function eppDetalle(id){
@@ -1808,13 +1809,15 @@ async function cincoS(){
   const chip=p=>`<span class="s5-chip" style="background:${s5Col(p)}">${p==null?'—':p+'%'}</span>`;
   const fila=r=>`<tr onclick="s5Detalle('${jsq(r.id)}')"><td style="white-space:nowrap">${fdt(r.fecha)}</td><td>${esc(r.colaborador||'—')}</td><td>${esc(r.maquina||'—')}</td><td>${chip(s5Pct(s5Prom(r,'c')))}</td><td>${chip(s5Pct(s5Prom(r,'o')))}</td><td>${chip(s5Pct(s5Prom(r,'l')))}</td><td>${chip(s5Pct(s5Total(r)))}</td><td>${r.n_fotos?'📷 '+r.n_fotos:''}</td></tr>`;
   const pg=pgSlice('s5',L);
-  setContent(moduleBanner('🧹','5 S',tot+' de '+all.length+' evaluaciones',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="s5Form()">➕ Nueva evaluación</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')">⬆️ Importar historial</button>`:''))
-   +`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('s5SetF','anio','Año',anios,_SF.anio)}${selFiltro('s5SetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_SF.mes,m=>MESES[m-1])}${selFiltro('s5SetF','colab','Colaborador',colabs,_SF.colab)}${selFiltro('s5SetF','maq','Máquina / área',maqs,_SF.maq)}${(_SF.anio||_SF.mes||_SF.colab||_SF.maq)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_SF).forEach(k=>_SF[k]='');cincoS()">Quitar filtros</button>`:''}</div></div>
+  const s5C=[{k:'fecha',t:'Fecha',f:r=>fdt(r.fecha)},{k:'colaborador',t:'Colaborador'},{k:'maquina',t:'Máquina / área'},
+   ...[['c','Clasificar'],['o','Ordenar'],['l','Limpiar']].map(([g,t])=>({k:'g'+g,t,v:r=>s5Pct(s5Prom(r,g)),f:r=>{const x=s5Pct(s5Prom(r,g)); return x==null?'':x+'%';},h:r=>chip(s5Pct(s5Prom(r,g)))})),
+   {k:'tot',t:'Total',v:r=>s5Pct(s5Total(r)),f:r=>{const x=s5Pct(s5Total(r)); return x==null?'':x+'%';},h:r=>chip(s5Pct(s5Total(r)))},{k:'plan',t:'Plan 5 S',v:r=>r.plan_5s?'Sí':'No'},{k:'fotos',t:'Fotos',v:r=>r.n_fotos||0,h:r=>r.n_fotos?'📷 '+r.n_fotos:''},{k:'creado_por',t:'Registró'}];
+  setContent(moduleBanner('🧹','5 S',(vwGet('cincoS')==='d'?tot+' de '+all.length:all.length)+' evaluaciones',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="s5Form()">➕ Nueva evaluación</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="nav('herramientas')" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar historial</button>`:''))+vwTabs('cincoS')
+   +(vwGet('cincoS')==='d'?`<div style="padding:10px 12px"><div class="nc-filtros">${selFiltro('s5SetF','anio','Año',anios,_SF.anio)}${selFiltro('s5SetF','mes','Mes',[1,2,3,4,5,6,7,8,9,10,11,12],_SF.mes,m=>MESES[m-1])}${selFiltro('s5SetF','colab','Colaborador',colabs,_SF.colab)}${selFiltro('s5SetF','maq','Máquina / área',maqs,_SF.maq)}${(_SF.anio||_SF.mes||_SF.colab||_SF.maq)?`<button class="btn btn-ghost btn-sm" onclick="Object.keys(_SF).forEach(k=>_SF[k]='');cincoS()">Quitar filtros</button>`:''}</div></div>
    <div style="padding:0 12px"><div class="kpi-grid"><div class="kpi-card info"><div class="kpi-value">${tot}</div><div class="kpi-label">Evaluaciones</div></div><div class="kpi-card" style="--k:${s5Col(gen)}"><div class="kpi-value" style="color:${s5Col(gen)}">${gen==null?'—':gen+'%'}</div><div class="kpi-label">Puntaje general</div></div><div class="kpi-card teal"><div class="kpi-value">${pc==null?'—':pc+'%'}</div><div class="kpi-label">Clasificar</div></div><div class="kpi-card gold"><div class="kpi-value">${po==null?'—':po+'%'}</div><div class="kpi-label">Ordenar</div></div><div class="kpi-card pink"><div class="kpi-value">${pl==null?'—':pl+'%'}</div><div class="kpi-label">Limpiar</div></div></div>
    <div class="nc-grid2"><div class="nc-box"><h4>Evolución mensual (puntaje %)</h4>${tend.map(([l,p,n])=>barra(l+' ('+n+')',p||0,p==null?'—':p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
    <div class="nc-box"><h4>Áreas / máquinas con menor puntaje</h4>${grupo(r=>r.maquina,3).slice(0,8).map(([k,p,n])=>barra(k+' ('+n+')',p,p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>
-   <div class="nc-box"><h4>Colaboradores con menor puntaje (mín. 3 evaluaciones)</h4>${grupo(r=>r.colaborador,3).slice(0,8).map(([k,p,n])=>barra(k+' ('+n+')',p,p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div></div></div>
-   <div style="padding:14px 12px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina / área</th><th>Clasificar</th><th>Ordenar</th><th>Limpiar</th><th>Total</th><th></th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('s5',L)}`:empty('No hay evaluaciones con esos filtros','📭')}</div>`);
+   <div class="nc-box"><h4>Colaboradores con menor puntaje (mín. 3 evaluaciones)</h4>${grupo(r=>r.colaborador,3).slice(0,8).map(([k,p,n])=>barra(k+' ('+n+')',p,p+'%',s5Col(p))).join('')||'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div></div></div>`:xlTable('cincoS',s5C,all,{click:'s5Detalle'})));
 }
 const s5De=id=>(DB.s5||[]).find(r=>r.id===id);
 function s5Detalle(id){
@@ -1860,6 +1863,61 @@ async function impEjecutar2(){
   btn.disabled=false;
 }
 
+// ══ TABLA TIPO EXCEL (orden por columna + filtro desplegable) y pestañas Tabla/Dashboard ══
+const VW={}; const vwGet=m=>VW[m]||'t';
+const vwTabs=m=>`<div class="vw-tabs"><button class="${vwGet(m)==='t'?'on':''}" onclick="vwSet('${m}','t')">📋 Tabla</button><button class="${vwGet(m)==='d'?'on':''}" onclick="vwSet('${m}','d')">📊 Dashboard</button></div>`;
+function vwSet(m,v){ VW[m]=v; xlClose(); refreshCurrentView(); }
+const XL={}, XLC={}; let XLP=null;
+const xlSt=id=>XL[id]||(XL[id]={q:'',sort:null,f:{},n:300});
+const xlVal=(c,r)=>c.v?c.v(r):r[c.k];
+const xlLbl=(c,r)=>{ const v=xlVal(c,r); const s=c.f?c.f(r):(v==null?'':String(v)); return s===''?'(Vacías)':s; };
+function xlCmp(x,y){ const ex=x==null||x==='', ey=y==null||y==='';
+  if(ex||ey) return ex&&ey?0:ex?1:-1;
+  if(typeof x==='number'&&typeof y==='number') return x-y;
+  return String(x).localeCompare(String(y),'es',{numeric:true}); }
+function xlRows(id,skip){ const {cols,rows}=XLC[id], st=xlSt(id), q=_norm(st.q);
+  return rows.filter(r=>{ if(q&&!cols.some(c=>_norm(xlLbl(c,r)).includes(q))) return false;
+    for(const k in st.f){ if(k===skip) continue; const c=cols.find(x=>x.k===k); if(c&&!st.f[k].has(xlLbl(c,r))) return false; } return true; }); }
+function xlSorted(id,L){ const st=xlSt(id); if(!st.sort) return L; const c=XLC[id].cols.find(x=>x.k===st.sort.k); if(!c) return L; const d=st.sort.d;
+  return L.slice().sort((a,b)=>{ const x=xlVal(c,a), y=xlVal(c,b); const ex=x==null||x==='', ey=y==null||y===''; if(ex||ey) return ex&&ey?0:ex?1:-1; return xlCmp(x,y)*d; }); }
+function xlTable(id,cols,rows,opts={}){ XLC[id]={cols,rows,opts}; const st=xlSt(id);
+  return `<div class="xl-wrap"><div class="xl-bar"><div class="filter-search-wrap" style="flex:1;min-width:180px;margin:0"><input type="text" id="xl-q-${id}" placeholder="Buscar en toda la tabla…" value="${esc(st.q)}" autocomplete="off" oninput="xlQ('${id}',this.value)"></div><span class="xl-cnt" id="xl-cnt-${id}"></span><button class="btn btn-ghost btn-sm" id="xl-clr-${id}" onclick="xlClear('${id}')">✖ Quitar filtros</button><button class="btn btn-ghost btn-sm" onclick="xlCsv('${id}')">⬇ Excel (CSV)</button></div><div class="xl-scroll" id="xl-body-${id}">${xlBody(id)}</div></div>`; }
+function xlBody(id){ const {cols,opts}=XLC[id], st=xlSt(id); const L=xlSorted(id,xlRows(id)); const show=L.slice(0,st.n);
+  setTimeout(()=>{ const c=document.getElementById('xl-cnt-'+id); if(c) c.textContent=L.length+' de '+XLC[id].rows.length+' filas'; const b=document.getElementById('xl-clr-'+id); if(b) b.style.display=(st.q||Object.keys(st.f).length||st.sort)?'':'none'; },0);
+  const th=cols.map(c=>{ if(c.nf) return `<th>${c.t}</th>`; const on=!!st.f[c.k]; const so=st.sort&&st.sort.k===c.k?(st.sort.d>0?' ▲':' ▼'):'';
+    return `<th class="${on?'xl-on':''}"><span class="xl-t" onclick="xlSort('${id}','${c.k}')">${c.t}${so}</span><button class="xl-dd" title="Filtrar" onclick="event.stopPropagation();xlOpen('${id}','${c.k}',this)">${on?'⧩':'▾'}</button></th>`; }).join('');
+  const tr=show.map((r,i)=>`<tr${opts.click?` onclick="${opts.click}('${jsq(r.id)}')"`:''}><td class="xl-n">${i+1}</td>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${c.h?c.h(r):esc(xlLbl(c,r)==='(Vacías)'?'':xlLbl(c,r))}</td>`).join('')}</tr>`).join('');
+  return `<table class="xl-tbl"><thead><tr><th class="xl-n">#</th>${th}</tr></thead><tbody>${tr||`<tr><td colspan="${cols.length+1}" style="text-align:center;padding:30px;color:var(--muted)">Sin filas con esos filtros</td></tr>`}</tbody></table>${L.length>st.n?`<div style="text-align:center;padding:10px"><button class="btn btn-ghost" onclick="xlMas('${id}')">Mostrar más · viendo ${st.n} de ${L.length}</button></div>`:''}`; }
+function xlRef(id){ const b=document.getElementById('xl-body-'+id); if(b) b.innerHTML=xlBody(id); }
+let _xlT; function xlQ(id,v){ clearTimeout(_xlT); _xlT=setTimeout(()=>{ const st=xlSt(id); st.q=v; st.n=300; xlRef(id); },200); }
+function xlMas(id){ xlSt(id).n+=300; const b=document.getElementById('xl-body-'+id), t=b?b.scrollTop:0; xlRef(id); if(b) b.scrollTop=t; }
+function xlSort(id,k,d){ const st=xlSt(id); st.sort=d?{k,d}:(st.sort&&st.sort.k===k?(st.sort.d>0?{k,d:-1}:null):{k,d:1}); xlClose(); xlRef(id); }
+function xlClear(id){ const st=xlSt(id); st.q=''; st.f={}; st.sort=null; st.n=300; const i=document.getElementById('xl-q-'+id); if(i) i.value=''; xlRef(id); }
+function xlClose(){ document.getElementById('xl-pop')?.remove(); XLP=null; document.removeEventListener('mousedown',xlOut,true); }
+function xlOut(e){ const p=document.getElementById('xl-pop'); if(p&&!p.contains(e.target)) xlClose(); }
+function xlOpen(id,k,btn){ const same=XLP&&XLP.id===id&&XLP.k===k; xlClose(); if(same) return;
+  const c=XLC[id].cols.find(x=>x.k===k), st=xlSt(id); const raw=new Map();
+  xlRows(id,k).forEach(r=>{ const l=xlLbl(c,r); if(!raw.has(l)) raw.set(l,{v:xlVal(c,r),n:0}); raw.get(l).n++; });
+  const vals=[...raw.keys()].sort((a,b)=>xlCmp(raw.get(a).v,raw.get(b).v)); const cur=st.f[k];
+  XLP={id,k,vals,raw,sel:new Set(cur?vals.filter(v=>cur.has(v)):vals),q:''};
+  const p=document.createElement('div'); p.id='xl-pop'; p.className='xl-pop';
+  p.innerHTML=`<button class="xl-opt" onclick="xlSort('${id}','${k}',1)">↑ Ordenar de menor a mayor (A→Z)</button><button class="xl-opt" onclick="xlSort('${id}','${k}',-1)">↓ Ordenar de mayor a menor (Z→A)</button><hr><input type="text" id="xl-ps" placeholder="Buscar…" autocomplete="off" oninput="xlPS(this.value)"><div class="xl-list" id="xl-pl"></div><div class="xl-pf"><button class="btn btn-ghost btn-sm" onclick="xlClose()">Cancelar</button>${cur?`<button class="btn btn-ghost btn-sm" onclick="xlPDel()">Borrar filtro</button>`:''}<button class="btn btn-primary btn-sm" onclick="xlPOk()">Aceptar</button></div>`;
+  document.body.appendChild(p); const r=btn.getBoundingClientRect(); p.style.left=Math.max(6,Math.min(r.left,innerWidth-266))+'px'; p.style.top=Math.min(r.bottom+4,innerHeight-380>0?innerHeight-380:6)+'px';
+  xlPL(); setTimeout(()=>{ document.addEventListener('mousedown',xlOut,true); document.getElementById('xl-ps')?.focus(); },0); }
+function xlVis(){ const q=_norm(XLP.q); return XLP.vals.filter(v=>!q||_norm(v).includes(q)); }
+function xlPL(){ const vis=xlVis(), all=vis.length&&vis.every(v=>XLP.sel.has(v));
+  document.getElementById('xl-pl').innerHTML=`<label><input type="checkbox" ${all?'checked':''} onchange="xlPAll(this.checked)"> <b>(Seleccionar todo)</b></label>`+vis.slice(0,400).map(v=>`<label><input type="checkbox" ${XLP.sel.has(v)?'checked':''} onchange="xlPTog(this.dataset.v,this.checked)" data-v="${esc(v)}"> ${esc(v)} <span class="xl-c">${XLP.raw.get(v).n}</span></label>`).join('')+(vis.length>400?`<p style="font-size:11px;color:var(--muted);margin:6px 0">+${vis.length-400} más: usa el buscador</p>`:''); }
+function xlPS(q){ XLP.q=q; if(q) XLP.sel=new Set(xlVis()); else XLP.sel=new Set(XLP.vals); xlPL(); }
+function xlPAll(on){ xlVis().forEach(v=>on?XLP.sel.add(v):XLP.sel.delete(v)); xlPL(); }
+function xlPTog(v,on){ on?XLP.sel.add(v):XLP.sel.delete(v); xlPL(); }
+function xlPOk(){ const {id,k,vals,sel}=XLP, st=xlSt(id); if(sel.size===vals.length) delete st.f[k]; else st.f[k]=new Set(sel); st.n=300; xlClose(); xlRef(id); }
+function xlPDel(){ const {id,k}=XLP; delete xlSt(id).f[k]; xlClose(); xlRef(id); }
+function xlCsv(id){ const {cols}=XLC[id]; const L=xlSorted(id,xlRows(id)); const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const csv='﻿'+[cols.filter(c=>!c.nf).map(c=>q(c.t)).join(';')].concat(L.map(r=>cols.filter(c=>!c.nf).map(c=>{ const l=xlLbl(c,r); return q(l==='(Vacías)'?'':l); }).join(';'))).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='NC_'+id+'_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
+// Dashboard sencillo (KPIs + barras) para vistas que no lo tenían
+function miniDash(kpis,grupos){ const top=(arr,f,n=8)=>{ const m={}; arr.forEach(x=>{ const k=f(x); if(k&&k!=='N/A') m[k]=(m[k]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n); };
+  return `<div style="padding:12px"><div class="kpi-grid">${kpis.map(([v,l,c])=>`<div class="kpi-card ${c}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`).join('')}</div><div class="nc-grid2">${grupos.map(([t,arr,f,col])=>{ const d=top(arr,f); const mx=Math.max(1,...d.map(x=>x[1])); return `<div class="nc-box"><h4>${t}</h4>${d.length?d.map(([k,v])=>`<div class="nc-bar"><span class="nc-bl" title="${esc(k)}">${esc(trunc(k,34))}</span><span class="nc-bt"><i style="width:${Math.round(v/mx*100)}%;background:${col}"></i></span><b>${v}</b></div>`).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>`; }).join('')}</div></div><div style="height:80px"></div>`; }
 // ── PAPELERA ───────────────────────────────────────────────────────
 async function papelera(){
   let rows; try{ rows=await sb.rpc('papelera_listar',{p_mod:PAP_MOD,p_dias:90})||[]; }catch(e){ _vistaError(e); return; }
@@ -1929,6 +1987,18 @@ function ayudaAbrir(){
 .epp-pill{padding:8px 11px;border:1.5px solid var(--border);border-radius:20px;background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)}
 .epp-pill.on.ok{background:#16a34a;border-color:#16a34a;color:#fff}.epp-pill.on.bad{background:#dc2626;border-color:#dc2626;color:#fff}.epp-pill.on.warn{background:#f59e0b;border-color:#f59e0b;color:#fff}.epp-pill.on.na{background:#64748b;border-color:#64748b;color:#fff}
 .s5-chip{display:inline-block;min-width:40px;text-align:center;padding:2px 8px;border-radius:10px;color:#fff;font-weight:700;font-size:12px}
+.vw-tabs{display:flex;gap:6px;padding:10px 12px 0}.vw-tabs button{padding:8px 16px;border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--card2);color:var(--muted);font-weight:800;font-size:13px;cursor:pointer}.vw-tabs button.on{background:var(--card);color:var(--text);box-shadow:0 2px 0 var(--card)}
+.xl-wrap{padding:8px 12px 14px}.xl-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.xl-cnt{font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
+.xl-scroll{overflow:auto;max-height:calc(100vh - 235px);border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.xl-tbl{border-collapse:collapse;width:max-content;min-width:100%;font-size:12.5px}.xl-tbl th,.xl-tbl td{border:1px solid var(--border);padding:5px 8px;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.xl-tbl thead th{position:sticky;top:0;z-index:2;background:var(--card2);color:var(--text);font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:0}.xl-tbl thead th:not(.xl-n){padding:0 0 0 8px}.xl-t{cursor:pointer;user-select:none;display:inline-block;padding:7px 4px 7px 0}
+.xl-dd{border:none;background:transparent;cursor:pointer;font-size:13px;padding:7px 8px;color:var(--muted)}.xl-dd:hover{background:rgba(0,0,0,.08)}.xl-on{background:#fde68a!important}.xl-on .xl-dd{color:#b45309}
+.xl-n{background:var(--card2);color:var(--muted);text-align:center!important;font-size:10px;width:34px;padding:5px 4px!important;position:sticky;left:0}.xl-tbl tbody tr:nth-child(even) td:not(.xl-n){background:rgba(0,0,0,.02)}.xl-tbl tbody tr{cursor:pointer}.xl-tbl tbody tr:hover td{background:rgba(47,109,246,.09)!important}
+.xl-pop{position:fixed;z-index:900;width:260px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:8px;font-size:12.5px}.xl-pop hr{border:none;border-top:1px solid var(--border);margin:6px 0}
+.xl-opt{display:block;width:100%;text-align:left;border:none;background:transparent;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--text)}.xl-opt:hover{background:var(--card2)}
+.xl-pop input[type=text]{width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg);color:var(--text)}
+.xl-list{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px 6px}.xl-list label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer}.xl-c{margin-left:auto;color:var(--muted);font-size:11px}.xl-pf{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+.xl-bar input[type=text]{padding-left:34px}
 </style>
 <script>
 (function(){
