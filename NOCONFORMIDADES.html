@@ -635,6 +635,37 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 .nc-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px}.nc-box h4{margin:0 0 8px;font-size:13px}
 .nc-bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}.nc-bl{width:42%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .nc-bt{flex:1;background:var(--card2);border-radius:6px;height:10px;overflow:hidden}.nc-bt i{display:block;height:100%;border-radius:6px}
+.wiz{position:fixed;inset:0;z-index:700;background:var(--bg);display:flex;flex-direction:column}
+.wiz-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)}.wiz-head h3{margin:0;font-size:15px}
+.wiz-x{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.wiz-steps{display:flex;gap:4px;overflow-x:auto;padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border)}
+.wiz-st{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:20px;padding:5px 11px;font-size:12px;cursor:pointer;color:var(--muted)}
+.wiz-st em{font-style:normal}.wiz-st.done{color:#16a34a;border-color:#a8ddb5}.wiz-st.on{background:#14532d;color:#fff;border-color:#14532d;font-weight:700}
+.wiz-body{flex:1;overflow-y:auto;padding:14px;max-width:980px;width:100%;margin:0 auto}
+.wiz-t{margin:0 0 12px;font-size:16px}.wiz-hint{font-size:12px;color:var(--muted);margin:0 0 12px}
+.wiz-foot{display:flex;gap:8px;align-items:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border)}
+.wiz-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.wiz-pill{flex:1;min-width:140px;padding:12px 10px;border:2px solid var(--border);border-radius:14px;background:var(--card);font-weight:700;font-size:13px;cursor:pointer}
+.wiz-pill.on{border-color:#14532d;background:#ecfdf5;color:#14532d}
+.why-wrap{max-width:640px;margin:0 auto}
+.why-problem{background:#fee2e2;border:2px solid #fca5a5;border-radius:14px;padding:10px 14px}.why-problem b,.why-root b{font-size:11px;letter-spacing:.5px}
+.why-root{background:#dcfce7;border:2px solid #86efac;border-radius:14px;padding:10px 14px}.why-root textarea{width:100%;margin-top:6px}
+.why-arrow{text-align:center;color:#94a3b8;font-size:16px;line-height:20px}
+.why-card{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-left:5px solid #f59e0b;border-radius:14px;padding:10px 12px}
+.why-n{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:#f59e0b;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.why-f{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.why-f label{font-size:11px;color:var(--muted);text-transform:uppercase}.why-f textarea{width:100%}
+.fb{display:grid;grid-template-columns:1fr 170px;grid-template-rows:auto auto auto;gap:0 12px;margin-top:6px}
+.fb-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;grid-column:1}
+.fb-cat{position:relative;border:1px solid var(--border);border-radius:12px;background:var(--card);padding:8px}
+.fb-lab{font-size:11px;font-weight:800;text-transform:uppercase;color:#14532d;margin-bottom:4px}.fb-cat textarea{width:100%;font-size:12px}.fb-txt{font-size:12px;line-height:1.4}
+.fb-spine{grid-column:1;position:relative;height:4px;background:#334155;border-radius:2px;margin:26px 0}
+.fb-spine::after{content:'';position:absolute;right:-12px;top:-8px;border-left:14px solid #334155;border-top:10px solid transparent;border-bottom:10px solid transparent}
+.fb-row:first-child .fb-cat::after,.fb-row:nth-child(3) .fb-cat::after{content:'';position:absolute;left:50%;width:3px;height:30px;background:#64748b;border-radius:2px}
+.fb-row:first-child .fb-cat::after{top:100%;transform:rotate(-28deg);transform-origin:top}
+.fb-row:nth-child(3) .fb-cat::after{bottom:100%;transform:rotate(28deg);transform-origin:bottom}
+.fb-eff{grid-column:2;grid-row:1/4;align-self:center;background:#fef3c7;border:2px solid #fcd34d;border-radius:14px;padding:10px}.fb-eff textarea{width:100%}
+@media(max-width:760px){.fb{grid-template-columns:1fr}.fb-row{grid-template-columns:1fr 1fr}.fb-spine{display:none}.fb-cat::after{display:none!important}.fb-eff{grid-column:1;grid-row:auto;order:-1;margin-bottom:10px}}
+.wiz textarea,.wiz select{font-family:inherit;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--card);color:var(--text)}
 </style>
 <!-- WEDM-FAVICON --><script>(function(){try{var t=setInterval(function(){if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){clearInterval(t);var l=document.querySelector('link[rel=icon]')||document.createElement('link');l.rel='icon';l.type='image/png';l.href=LOGO_B64_PNG;document.head.appendChild(l);}},100);setTimeout(function(){clearInterval(t)},8000);}catch(e){}})();</script><!-- /WEDM-FAVICON -->
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="No conformidades">
@@ -1335,7 +1366,7 @@ async function opBuscar(pref){
   try{ const r=await GET('produccion','select=id,op,item_num,empresa,descripcion,maquina&op=eq.'+op+'&order=item_num.asc');
     if(!r.length){ const h=document.getElementById(pref+'-ophint'); if(h) h.textContent='No existe esa OP en el ERP'; return; }
     const it=gv(pref+'-item'); const p=(it&&r.find(x=>String(x.item_num)===it))||r[0];
-    const c=document.getElementById(pref+'-cli'); if(c&&!c.value) c.value=p.empresa||'';
+    const c=document.getElementById(pref+'-cli')||document.getElementById(pref+'-cliente'); if(c&&!c.value) c.value=p.empresa||'';
     const itEl=document.getElementById(pref+'-item'); if(itEl&&!itEl.value) itEl.value=String(p.item_num);
     const h=document.getElementById(pref+'-ophint'); if(h) h.textContent='✓ '+(p.empresa||'')+' · ítem '+p.item_num+': '+trunc(p.descripcion,70)+(r.length>1?' ('+r.length+' ítems en la OP)':'');
   }catch(e){}
@@ -1412,9 +1443,9 @@ async function regDetalle(id){
 function regHijosPintar(r,H){
   const set=(id,h)=>{ const el=document.getElementById(id); if(el) el.innerHTML=h; };
   set('nc-t-cau',H.causas.length?`<div class="dp-section">${H.causas.map((c,i)=>`<div class="nc-item"><b>Causa ${i+1}</b> ${c.tipo_causa?`<span class="badge gris">${esc(c.tipo_causa)}</span>`:''}${c.codigo?` <span class="badge azul">${esc(c.codigo)}</span>`:''}<p class="nc-p">${nl2br(c.causa)}</p></div>`).join('')}</div>`:mutedP('Sin causas registradas.'));
-  set('nc-t-por',H.porques.length?`<div class="dp-section">${H.porques.map((p,i)=>`<div class="nc-item"><b>${i+1}. ¿Por qué?</b><p class="nc-p">${nl2br(p.porque||'')}</p>${p.descripcion?`<p class="nc-p" style="color:var(--muted)">→ ${nl2br(p.descripcion)}</p>`:''}</div>`).join('')}</div>`:mutedP('Sin análisis de 5 porqués.'));
+  set('nc-t-por',H.porques.length?whyHTML(r.descripcion,H.porques,r.causa_raiz,false):mutedP('Sin análisis de 5 porqués.'));
   const e=H.espina;
-  set('nc-t-esp',e?`<div class="nc-espina">${ESPINA_CAMPOS.map(([k,l])=>`<div class="nc-esp-box"><b>${l}</b><p class="nc-p">${e[k]?nl2br(e[k]):'<span style="color:var(--muted)">—</span>'}</p></div>`).join('')}<div class="nc-esp-box nc-esp-efecto"><b>EFECTO</b><p class="nc-p">${e.efecto?nl2br(e.efecto):'—'}</p></div></div>`:mutedP('Sin diagrama de espina de pescado.'));
+  set('nc-t-esp',e?espinaHTML(e,false):mutedP('Sin diagrama de espina de pescado.'));
   set('nc-t-gru',H.grupo.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Rol</th><th>Nombre</th><th>Cargo</th></tr></thead><tbody>${H.grupo.map(g=>`<tr><td>${esc(g.rol||'')}</td><td>${esc(g.nombre||'')}</td><td>${esc(g.cargo||'')}</td></tr>`).join('')}</tbody></table></div></div>`:mutedP('Sin grupo de trabajo.'));
   const c=H.costos, tot=(Number(r.mano_obra)||0)+(Number(r.materiales)||0)+(Number(r.servicio_externo)||0);
   set('nc-t-cos',`<div class="dp-section">${dr('Mano de obra',fmt(r.mano_obra))}${dr('Materiales',fmt(r.materiales))}${dr('Servicio externo',fmt(r.servicio_externo))}${dr('Costo total registrado',`<b>${fmt(r.costos||tot)}</b>`)}</div>${c?`<div class="dp-section"><h4>Desglose (OP ${esc(c.op??'')} · ítem ${esc(c.item??'')})</h4>${dr('Costos',fmt(c.costos))}${dr('Mano de obra',fmt(c.mano_obra))}${dr('Tiempo en máquina',fmt(c.tiempo_maquina))}${dr('Materia prima',fmt(c.materia_prima))}${dr('Otros',fmt(c.otros))}</div>`:''}`);
@@ -1423,61 +1454,93 @@ async function regEliminar(id){
   if(!confirm('¿Eliminar esta acción con sus causas, 5 porqués, espina y grupo? Queda en la papelera 6 meses.')) return;
   const r=await rpcN('nc_eliminar',{p_tabla:'nc_registros',p_id:id},'🗑 Acción eliminada (está en la papelera)'); if(r){ closeDetail(); refreshCurrentView(); }
 }
-// Formulario completo (acción + causas + 5 porqués + espina + grupo + costos)
-let _RGF=null;
-async function regForm(id){
+// ── ASISTENTE DE ACCIÓN (paso a paso: General → Contención → Causas → 5 porqués → Espina → Grupo → Plan → Costos → Revisar) ──
+const FB_TOP=[['mano_obra','Mano de obra'],['metodos','Métodos'],['management','Management'],['medio_ambiente','Medio ambiente']];
+const FB_BOT=[['maquinaria','Maquinaria'],['materiales','Materiales'],['medicion','Medición']];
+function espinaHTML(v,ed){
+  v=v||{};
+  const box=([k,l])=>`<div class="fb-cat"><div class="fb-lab">${l}</div>${ed?`<textarea data-k="e_${k}" rows="3" placeholder="¿Qué causas hay en ${l.toLowerCase()}?">${esc(v[k]||'')}</textarea>`:`<div class="fb-txt">${v[k]?nl2br(v[k]):'<span style="color:var(--muted)">—</span>'}</div>`}</div>`;
+  return `<div class="fb"><div class="fb-row">${FB_TOP.map(box).join('')}</div><div class="fb-spine"><i></i></div><div class="fb-row">${FB_BOT.map(box).join('')}<span></span></div><div class="fb-eff"><div class="fb-lab">EFECTO</div>${ed?`<textarea data-k="e_efecto" rows="4" placeholder="El problema (cabeza del pescado)">${esc(v.efecto||'')}</textarea>`:`<div class="fb-txt">${v.efecto?nl2br(v.efecto):'—'}</div>`}</div></div>`;
+}
+function whyHTML(problema,porques,raiz,ed){
+  const card=(p,i)=>ed?`<div class="why-card" data-l="porques" data-i="${i}"><div class="why-n">${i+1}</div><div class="why-f"><label>¿Por qué?</label><textarea data-c="porque" rows="2">${esc(p.porque)}</textarea><label>Porque…</label><textarea data-c="descripcion" rows="2">${esc(p.descripcion)}</textarea></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);align-self:flex-start" onclick="wizDel('porques',${i})" title="Quitar">✕</button></div>`
+   :`<div class="why-card"><div class="why-n">${i+1}</div><div class="why-f"><b style="font-size:12px">${nl2br(p.porque||'')}</b>${p.descripcion?`<div class="nc-p" style="color:var(--muted)">→ ${nl2br(p.descripcion)}</div>`:''}</div></div>`;
+  return `<div class="why-wrap"><div class="why-problem"><b>PROBLEMA</b><p class="nc-p">${esc(trunc(problema,320))||'<span style="color:var(--muted)">(escribe la descripción en el paso General)</span>'}</p></div>${porques.map((p,i)=>`<div class="why-arrow">▼</div>${card(p,i)}`).join('')}${ed?`<div style="text-align:center;margin:8px 0"><button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('porques')">＋ Agregar otro porqué</button></div>`:''}<div class="why-arrow">▼</div><div class="why-root"><b>CAUSA RAÍZ</b>${ed?`<textarea data-k="causa_raiz" rows="2" placeholder="Conclusión del análisis">${esc(raiz||'')}</textarea>`:`<p class="nc-p">${raiz?nl2br(raiz):'—'}</p>`}</div></div>`;
+}
+const WSTEPS=[['General','📋'],['Contención','🛑'],['Causas','🔍'],['5 porqués','❓'],['Espina','🐟'],['Grupo','👥'],['Plan y cierre','📅'],['Costos','💲'],['Revisar','✅']];
+let _W=null;
+const WK=['tipo_reporte','fecha_reporte','responsable_registro','cargo','fuente','numeral_norma','proceso_area','op','item','cliente','maquina','tipo_reproceso','significativo','responsable_nc','proveedor','descripcion','acciones_contencion','correcciones','acciones_planificadas','desc_tipo_reporte','plan_definido_por','resp_implementacion','resp_seguimiento','fecha_prevista_cierre','fecha_real_cierre','n_revisiones','causa_raiz','mano_obra','materiales','servicio_externo','costos'];
+async function wizOpen(id){
   if(!soloNC()) return; const r=id?regDe(id):{}; let H={causas:[],porques:[],espina:null,grupo:[],costos:null};
   if(id){ showBusy(); try{ H=await regHijos(id); }catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); return; } hideBusy(); }
-  _RGF={causas:H.causas.map(c=>({tipo_causa:c.tipo_causa||'',causa:c.causa||'',codigo:c.codigo||''})),porques:H.porques.map(p=>({porque:p.porque||'',descripcion:p.descripcion||''})),grupo:H.grupo.map(g=>({rol:g.rol||'',nombre:g.nombre||'',cargo:g.cargo||''}))};
-  if(!id){ _RGF.porques=[{porque:'',descripcion:''}]; _RGF.causas=[{tipo_causa:'',causa:'',codigo:''}]; _RGF.grupo=[{rol:ROLES_GRUPO[0],nombre:'',cargo:''}]; }
-  const e=H.espina||{}, all=DB.registros||[]; const nom=(DB.colab||[]).map(c=>c.nombre_registro||c.nombre_corto).filter(Boolean);
-  const fuentes=(DB.fuentes||[]).map(f=>f.tipo_reporte);
-  const sec=(t,b,open)=>`<details class="nc-sec" ${open?'open':''}><summary>${t}</summary><div class="form-grid" style="margin-top:10px">${b}</div></details>`;
-  openModal(id?'✏️ Editar acción #'+(r.accion_no??''):'➕ Nueva acción (no conformidad)',`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-tipo',uniq([...(DB.reportes||[]),...all],x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...(DB.reportes||[]),...all],x=>x.maquina))}${dl('dl-cli',uniq([...(DB.reportes||[]),...all],x=>x.cliente))}${dl('dl-fuente',fuentes)}${dl('dl-grol',ROLES_GRUPO)}
-   ${sec('1 · Datos generales',`${selF('Tipo de reporte','gf-tipo',r.tipo_reporte||'ACCIÓN CORRECTIVA',TIPOS_REPORTE)}${fld('Fecha del reporte','gf-fecha',(r.fecha_reporte||hoyISO()).slice(0,10),'type="date"')}
-     ${fld('Responsable del registro','gf-rr',r.responsable_registro||(_SESSION&&_SESSION.nombre)||'','list="dl-resp"')}${fld('Cargo','gf-cargo',r.cargo||'')}
-     ${fld('Fuente','gf-fuente',r.fuente||'','list="dl-fuente" onchange="gfFuente()"',true)}${fld('Numeral de la norma','gf-num',r.numeral_norma||'')}${selF('Proceso / área','gf-area',r.proceso_area||'',AREAS)}
-     ${fld('OP','gf-op',r.op??'','inputmode="numeric" onblur="opBuscar(\'gf\')"')}${fld('Ítem','gf-item',r.item||'','onblur="opBuscar(\'gf\')"')}<div class="field span2" style="margin-top:-6px"><span id="gf-ophint" style="font-size:11px;color:var(--muted)"></span></div>
-     ${fld('Cliente (externo o interno)','gf-cli',r.cliente||'','list="dl-cli"',true)}${fld('Máquina','gf-maq',r.maquina||'','list="dl-maq"')}${fld('Tipo de reproceso','gf-rep',r.tipo_reproceso||'','list="dl-tipo"')}
-     ${selF('¿Significativo?','gf-sig',r.significativo||'',['SI','NO'])}${fld('Responsable de la NC','gf-rnc',r.responsable_nc||'','list="dl-resp"')}${fld('Proveedor (si aplica)','gf-prov',r.proveedor||'')}
-     ${area('Descripción de la no conformidad u oportunidad de mejora (cantidades, cómo, qué, dónde, cuándo, por qué y repercusiones)','gf-desc',r.descripcion||'',5)}`,true)}
-   ${sec('2 · Contención y correcciones',`<div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13px"><input type="checkbox" id="gf-cont" ${r.contencion_requerida?'checked':''} style="width:auto"> Contención requerida</label></div>${area('Acciones de contención','gf-acont',r.acciones_contencion||'',3)}${area('Correcciones','gf-corr',r.correcciones||'',3)}${area('Acciones planificadas por la organización','gf-plan',r.acciones_planificadas||'',3)}`)}
-   <details class="nc-sec"><summary>3 · Causas</summary><div id="gf-lcau" style="margin-top:10px"></div><button type="button" class="btn btn-ghost btn-sm" onclick="gfAdd('causas')">＋ Agregar causa</button></details>
-   <details class="nc-sec"><summary>4 · 5 porqués</summary><div id="gf-lpor" style="margin-top:10px"></div><button type="button" class="btn btn-ghost btn-sm" onclick="gfAdd('porques')">＋ Agregar porqué</button></details>
-   ${sec('5 · Espina de pescado (Ishikawa)',`${ESPINA_CAMPOS.map(([k,l])=>area(l,'ge-'+k,e[k]||'',2,false)).join('')}${area('EFECTO (problema)','ge-efecto',e.efecto||'',2)}`)}
-   <details class="nc-sec"><summary>6 · Grupo de trabajo</summary><div id="gf-lgru" style="margin-top:10px"></div><button type="button" class="btn btn-ghost btn-sm" onclick="gfAdd('grupo')">＋ Agregar integrante</button></details>
-   ${sec('7 · Plan de acción y cierre',`${area('Descripción de la acción correctiva, preventiva o de mejora','gf-dtr',r.desc_tipo_reporte||'',3)}${fld('Plan definido por','gf-pdp',r.plan_definido_por||'')}<div class="field"><label style="visibility:hidden">.</label><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13px;margin-top:6px"><input type="checkbox" id="gf-apr" ${r.aprobacion?'checked':''} style="width:auto"> Plan aprobado</label></div>
-     ${fld('Responsable de implementación','gf-ri',r.resp_implementacion||r.resp_impl_rep||'','list="dl-resp"')}${fld('Responsable de seguimiento','gf-rs',r.resp_seguimiento||r.resp_seg_rep||'','list="dl-resp"')}
-     ${fld('Fecha prevista de cierre','gf-fp',(prevista(r)||'').slice(0,10),'type="date"')}${fld('Fecha real de cierre','gf-fr',(r.fecha_real_cierre||r.real_cierre_rep||'').slice(0,10),'type="date"')}${fld('N.º de revisiones','gf-rev',r.n_revisiones||'')}${area('Causa raíz (resumen)','gf-craiz',r.causa_raiz||'',2)}`)}
-   ${sec('8 · Costos de la no conformidad',`${fld('Mano de obra ($)','gf-cmo',r.mano_obra??'','inputmode="decimal" oninput="gfCosto()"')}${fld('Materiales ($)','gf-cma',r.materiales??'','inputmode="decimal" oninput="gfCosto()"')}${fld('Servicio externo ($)','gf-cse',r.servicio_externo??'','inputmode="decimal" oninput="gfCosto()"')}${fld('Costo total ($)','gf-ctot',r.costos??'','inputmode="decimal"')}`)}`,
-   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="regGuardar('${jsq(id||'')}')">💾 Guardar acción</button>`);
-  gfPintar();
+  const d={}; WK.forEach(k=>d[k]=r[k]??''); d.contencion_requerida=!!r.contencion_requerida; d.aprobacion=!!r.aprobacion;
+  d.fecha_prevista_cierre=(prevista(r)||'').slice(0,10); d.fecha_real_cierre=(r.fecha_real_cierre||r.real_cierre_rep||'').slice(0,10); d.fecha_reporte=(r.fecha_reporte||hoyISO()).slice(0,10);
+  d.resp_implementacion=r.resp_implementacion||r.resp_impl_rep||''; d.resp_seguimiento=r.resp_seguimiento||r.resp_seg_rep||'';
+  if(!id){ d.tipo_reporte='ACCIÓN CORRECTIVA'; d.responsable_registro=(_SESSION&&_SESSION.nombre)||''; }
+  const e=H.espina||{}; FB_TOP.concat(FB_BOT).forEach(([k])=>d['e_'+k]=e[k]||''); d.e_efecto=e.efecto||'';
+  _W={id:id||null,step:0,d,dirty:false,
+    causas:H.causas.map(c=>({tipo_causa:c.tipo_causa||'',causa:c.causa||'',codigo:c.codigo||''})),
+    porques:H.porques.map(p=>({porque:p.porque||'',descripcion:p.descripcion||''})),
+    grupo:H.grupo.map(g=>({rol:g.rol||'',nombre:g.nombre||'',cargo:g.cargo||''}))};
+  if(!id){ _W.causas=[{tipo_causa:'',causa:'',codigo:''}]; _W.porques=[0,1,2,3,4].map(()=>({porque:'',descripcion:''})); _W.grupo=[{rol:ROLES_GRUPO[0],nombre:'',cargo:''}]; }
+  closeDetail(); document.getElementById('wiz')?.remove();
+  const all=DB.registros||[], rp=DB.reportes||[]; const nom=(DB.colab||[]).map(c=>c.nombre_registro||c.nombre_corto).filter(Boolean);
+  const w=document.createElement('div'); w.id='wiz'; w.className='wiz';
+  w.innerHTML=`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-tipo',uniq([...rp,...all],x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...rp,...all],x=>x.maquina))}${dl('dl-cli',uniq([...rp,...all],x=>x.cliente))}${dl('dl-fuente',(DB.fuentes||[]).map(f=>f.tipo_reporte))}${dl('dl-tcausa',FB_TOP.concat(FB_BOT).map(x=>x[1]))}
+   <div class="wiz-head"><button type="button" class="wiz-x" onclick="wizCerrar()">✕</button><h3>${id?'Editar acción #'+(r.accion_no??''):'Nueva acción · no conformidad'}</h3></div><div class="wiz-steps" id="wiz-steps"></div><div class="wiz-body" id="wiz-body"></div><div class="wiz-foot" id="wiz-foot"></div>`;
+  document.body.appendChild(w); wizPintar();
 }
-function gfFuente(){ const f=(DB.fuentes||[]).find(x=>x.tipo_reporte===gv('gf-fuente')); if(f){ const n=document.getElementById('gf-num'); if(n&&!n.value) n.value=f.numeral||''; } }
-function gfCosto(){ const t=gn('gf-cmo')+gn('gf-cma')+gn('gf-cse'); const el=document.getElementById('gf-ctot'); if(el&&t) el.value=t; }
-function gfLeer(){ // pasa lo escrito en las listas dinámicas al estado antes de repintar
-  if(!_RGF) return; const rd=(pref,key,campos)=>{ document.querySelectorAll(`[data-l="${pref}"]`).forEach(row=>{ const i=Number(row.dataset.i); campos.forEach(c=>{ const el=row.querySelector(`[data-c="${c}"]`); if(el&&_RGF[key][i]) _RGF[key][i][c]=el.value; }); }); };
-  rd('causas','causas',['tipo_causa','causa','codigo']); rd('porques','porques',['porque','descripcion']); rd('grupo','grupo',['rol','nombre','cargo']);
+function regForm(id){ return wizOpen(id); }
+function wizCerrar(){ if(_W&&_W.dirty&&!confirm('¿Salir sin guardar los cambios?')) return; document.getElementById('wiz')?.remove(); _W=null; }
+function wizLeer(){
+  if(!_W) return; const b=document.getElementById('wiz-body'); if(!b) return;
+  b.querySelectorAll('[data-k]').forEach(el=>{ const k=el.dataset.k, v=el.type==='checkbox'?el.checked:el.value; if(_W.d[k]!==v){ _W.d[k]=v; _W.dirty=true; } });
+  ['causas','porques','grupo'].forEach(key=>b.querySelectorAll(`[data-l="${key}"]`).forEach(row=>{ const i=Number(row.dataset.i); row.querySelectorAll('[data-c]').forEach(el=>{ if(_W[key][i]&&_W[key][i][el.dataset.c]!==el.value){ _W[key][i][el.dataset.c]=el.value; _W.dirty=true; } }); }));
 }
-function gfAdd(k){ gfLeer(); _RGF[k].push(k==='causas'?{tipo_causa:'',causa:'',codigo:''}:k==='porques'?{porque:'',descripcion:''}:{rol:ROLES_GRUPO[2],nombre:'',cargo:''}); gfPintar(); }
-function gfDel(k,i){ gfLeer(); _RGF[k].splice(i,1); gfPintar(); }
-function gfPintar(){
-  const x=(k,i)=>`<button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="gfDel('${k}',${i})" title="Quitar">✕</button>`;
-  const cau=document.getElementById('gf-lcau'); if(cau) cau.innerHTML=_RGF.causas.map((c,i)=>`<div class="nc-lrow" data-l="causas" data-i="${i}"><div class="field"><label>Causa ${i+1}</label><textarea data-c="causa" rows="2">${esc(c.causa)}</textarea></div><div class="field" style="max-width:150px"><label>Tipo</label><input data-c="tipo_causa" value="${esc(c.tipo_causa)}" list="dl-tcausa"></div><div class="field" style="max-width:90px"><label>Código</label><input data-c="codigo" value="${esc(c.codigo)}"></div>${x('causas',i)}</div>`).join('')+dl('dl-tcausa',TIPOS_REPORTE);
-  const por=document.getElementById('gf-lpor'); if(por) por.innerHTML=_RGF.porques.map((p,i)=>`<div class="nc-lrow" data-l="porques" data-i="${i}"><div class="field"><label>${i+1}. ¿Por qué?</label><textarea data-c="porque" rows="2">${esc(p.porque)}</textarea></div><div class="field"><label>Porque… (respuesta)</label><textarea data-c="descripcion" rows="2">${esc(p.descripcion)}</textarea></div>${x('porques',i)}</div>`).join('');
-  const gru=document.getElementById('gf-lgru'); if(gru) gru.innerHTML=_RGF.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><input data-c="rol" value="${esc(g.rol)}" list="dl-grol"></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="dl-resp"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div>${x('grupo',i)}</div>`).join('');
+function wizIr(n){ wizLeer(); _W.step=Math.max(0,Math.min(WSTEPS.length-1,n)); wizPintar(); }
+function wizAdd(k){ wizLeer(); _W[k].push(k==='causas'?{tipo_causa:'',causa:'',codigo:''}:k==='porques'?{porque:'',descripcion:''}:{rol:ROLES_GRUPO[2],nombre:'',cargo:''}); _W.dirty=true; wizPintar(true); }
+function wizDel(k,i){ wizLeer(); _W[k].splice(i,1); _W.dirty=true; wizPintar(true); }
+function wizTipo(t){ wizLeer(); _W.d.tipo_reporte=t; _W.dirty=true; wizPintar(true); }
+function wizFuente(){ wizLeer(); const f=(DB.fuentes||[]).find(x=>x.tipo_reporte===_W.d.fuente); if(f&&!_W.d.numeral_norma){ _W.d.numeral_norma=f.numeral||''; const n=document.getElementById('gf-numeral_norma'); if(n) n.value=_W.d.numeral_norma; } }
+function wizGrupoNombre(el){ const row=el.closest('[data-l]'); const c=(DB.colab||[]).find(x=>(x.nombre_registro||x.nombre_corto)===el.value); const cg=row&&row.querySelector('[data-c="cargo"]'); if(c&&cg&&!cg.value) cg.value=c.cargo||''; }
+function wizCosto(){ const g=k=>Number(document.getElementById('gf-'+k)?.value)||0; const t=g('mano_obra')+g('materiales')+g('servicio_externo'); const el=document.getElementById('gf-costos'); if(el&&t) el.value=t; }
+const _wv=k=>_W.d[k]??'';
+const wf=(l,k,o={})=>`<div class="field${o.span?' span2':''}"><label>${l}</label><input id="gf-${k}" data-k="${k}" type="${o.type||'text'}" value="${esc(_wv(k))}" ${o.list?`list="${o.list}" autocomplete="off"`:''} ${o.extra||''}></div>`;
+const wa=(l,k,rows=3,ph='')=>`<div class="field span2"><label>${l}</label><textarea id="gf-${k}" data-k="${k}" rows="${rows}" placeholder="${esc(ph)}" style="resize:vertical">${esc(_wv(k))}</textarea></div>`;
+const wsel=(l,k,opts,span)=>`<div class="field${span?' span2':''}"><label>${l}</label><select id="gf-${k}" data-k="${k}"><option value=""></option>${opts.map(o=>`<option ${o===_wv(k)?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+const wchk=(l,k)=>`<div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px;cursor:pointer"><input type="checkbox" data-k="${k}" ${_W.d[k]?'checked':''} style="width:auto"> ${l}</label></div>`;
+const WSTEP_HTML=[
+ ()=>`<div class="wiz-pills">${TIPOS_REPORTE.map(t=>`<button type="button" class="wiz-pill${_W.d.tipo_reporte===t?' on':''}" onclick="wizTipo('${t}')">${t==='ACCIÓN CORRECTIVA'?'🛠️':t==='CORRECCIÓN'?'🩹':'💡'} ${t}</button>`).join('')}</div>
+  <div class="form-grid">${wf('Fecha del reporte','fecha_reporte',{type:'date'})}${wf('Responsable del registro','responsable_registro',{list:'dl-resp'})}${wf('Cargo','cargo')}${wsel('Proceso / área','proceso_area',AREAS)}
+  ${wf('Fuente','fuente',{list:'dl-fuente',extra:'onchange="wizFuente()"'})}${wf('Numeral de la norma','numeral_norma')}
+  ${wf('OP','op',{extra:'inputmode="numeric" onblur="opBuscar(\'gf\')"'})}${wf('Ítem','item',{extra:'onblur="opBuscar(\'gf\')"'})}<div class="field span2" style="margin-top:-6px"><span id="gf-ophint" style="font-size:11px;color:var(--muted)"></span></div>
+  ${wf('Cliente (externo o interno)','cliente',{list:'dl-cli',span:true})}${wf('Máquina','maquina',{list:'dl-maq'})}${wf('Tipo de reproceso','tipo_reproceso',{list:'dl-tipo'})}${wsel('¿Significativo?','significativo',['SI','NO'])}${wf('Responsable de la NC','responsable_nc',{list:'dl-resp'})}${wf('Proveedor (si aplica)','proveedor',{span:true})}
+  ${wa('Descripción de la no conformidad u oportunidad de mejora','descripcion',5,'Cantidades, cómo, qué, dónde, cuándo, por qué y repercusiones')}</div>`,
+ ()=>`<div class="form-grid">${wchk('Se requiere contención','contencion_requerida')}${wa('Acciones de contención','acciones_contencion',3,'Qué se hizo de inmediato para evitar que el problema siga')}${wa('Correcciones','correcciones',3)}${wa('Acciones planificadas por la organización','acciones_planificadas',3)}</div>`,
+ ()=>`<p class="wiz-hint">Escribe cada causa que encuentres. Elige a qué categoría de la espina pertenece.</p>${_W.causas.map((c,i)=>`<div class="nc-lrow" data-l="causas" data-i="${i}"><div class="field"><label>Causa ${i+1}</label><textarea data-c="causa" rows="2">${esc(c.causa)}</textarea></div><div class="field" style="max-width:180px"><label>Categoría</label><input data-c="tipo_causa" value="${esc(c.tipo_causa)}" list="dl-tcausa"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('causas',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('causas')">＋ Agregar causa</button>`,
+ ()=>`<p class="wiz-hint">Pregúntate «¿por qué?» hasta llegar a la causa raíz.</p>${whyHTML(_W.d.descripcion,_W.porques,_W.d.causa_raiz,true)}`,
+ ()=>{ if(!_W.d.e_efecto&&_W.d.descripcion) _W.d.e_efecto=trunc(_W.d.descripcion,200); const v={efecto:_W.d.e_efecto}; FB_TOP.concat(FB_BOT).forEach(([k])=>v[k]=_W.d['e_'+k]); return `<p class="wiz-hint">Escribe en cada «espina» las causas de esa categoría; todo apunta al efecto.</p>${espinaHTML(v,true)}`; },
+ ()=>`<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="dl-resp" autocomplete="off" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`,
+ ()=>`<div class="form-grid">${wa('Descripción de la acción correctiva, preventiva o de mejora','desc_tipo_reporte',4)}${wf('Plan definido por','plan_definido_por')}${wchk('Plan aprobado','aprobacion')}${wf('Responsable de implementación','resp_implementacion',{list:'dl-resp'})}${wf('Responsable de seguimiento','resp_seguimiento',{list:'dl-resp'})}${wf('Fecha prevista de cierre','fecha_prevista_cierre',{type:'date'})}${wf('Fecha real de cierre','fecha_real_cierre',{type:'date'})}${wf('N.º de revisiones','n_revisiones')}</div>`,
+ ()=>`<div class="form-grid">${wf('Mano de obra ($)','mano_obra',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Materiales ($)','materiales',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Servicio externo ($)','servicio_externo',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Costo total ($)','costos',{extra:'inputmode="decimal"'})}</div>`,
+ ()=>{ const d=_W.d; const row=(l,v)=>`<div class="dp-row"><span class="dp-label">${l}</span><span class="dp-val">${v||'—'}</span></div>`; const falta=!d.descripcion; return `${falta?`<div class="callout" style="margin-bottom:10px">⚠️ Falta la descripción de la no conformidad (paso General).</div>`:''}<div class="dp-section">${row('Tipo',esc(d.tipo_reporte))}${row('Fecha',fmtDate(d.fecha_reporte))}${row('Área',esc(d.proceso_area))}${row('OP · ítem',d.op?'OP-'+esc(d.op)+(d.item?' · '+esc(d.item):''):'')}${row('Cliente',esc(d.cliente))}${row('Descripción',esc(trunc(d.descripcion,200)))}${row('Causas',_W.causas.filter(c=>c.causa).length)}${row('5 porqués',_W.porques.filter(p=>p.porque||p.descripcion).length)}${row('Causa raíz',esc(trunc(d.causa_raiz,160)))}${row('Grupo',_W.grupo.filter(g=>g.nombre).map(g=>esc(g.nombre)).join(', '))}${row('Cierre previsto',fmtDate(d.fecha_prevista_cierre))}${row('Costo total',d.costos?fmt(d.costos):'')}</div>`; }
+];
+function wizPintar(keepScroll){
+  const w=document.getElementById('wiz'); if(!w) return; const n=_W.step, last=n===WSTEPS.length-1;
+  document.getElementById('wiz-steps').innerHTML=WSTEPS.map(([l,ic],i)=>`<button type="button" class="wiz-st${i===n?' on':''}${i<n?' done':''}" onclick="wizIr(${i})"><span>${i<n?'✓':ic}</span><em>${l}</em></button>`).join('');
+  const b=document.getElementById('wiz-body'), sc=b.scrollTop; b.innerHTML=`<h4 class="wiz-t">${WSTEPS[n][1]} ${n+1}. ${WSTEPS[n][0]}</h4>`+WSTEP_HTML[n]();
+  b.scrollTop=keepScroll?sc:0;
+  document.getElementById('wiz-foot').innerHTML=`<button type="button" class="btn btn-ghost" onclick="wizIr(${n-1})" ${n?'':'disabled style="visibility:hidden"'}>← Atrás</button><span style="flex:1;text-align:center;font-size:11px;color:var(--muted)">Paso ${n+1} de ${WSTEPS.length}</span>${last?'':`<button type="button" class="btn btn-ghost" onclick="wizGuardar()">💾 Guardar</button>`}${last?`<button type="button" class="btn btn-primary" onclick="wizGuardar()">💾 Guardar acción</button>`:`<button type="button" class="btn btn-primary" onclick="wizIr(${n+1})">Siguiente →</button>`}`;
 }
-async function regGuardar(id){
-  gfLeer(); const g=gv;
-  if(!g('gf-desc')&&!g('gf-dtr')){ toast('Escribe la descripción de la no conformidad','error'); return; }
-  const d={id:id||null,tipo_reporte:g('gf-tipo'),fecha_reporte:g('gf-fecha'),responsable_registro:g('gf-rr'),cargo:g('gf-cargo'),fuente:g('gf-fuente'),fuente_id:((DB.fuentes||[]).find(f=>f.tipo_reporte===g('gf-fuente'))||{}).id||'',numeral_norma:g('gf-num'),proceso_area:g('gf-area'),
-    op:g('gf-op'),item:g('gf-item'),cliente:g('gf-cli'),maquina:g('gf-maq'),tipo_reproceso:g('gf-rep'),significativo:g('gf-sig'),responsable_nc:g('gf-rnc'),proveedor:g('gf-prov'),descripcion:g('gf-desc'),
-    contencion_requerida:!!document.getElementById('gf-cont').checked,acciones_contencion:g('gf-acont'),correcciones:g('gf-corr'),acciones_planificadas:g('gf-plan'),
-    desc_tipo_reporte:g('gf-dtr'),plan_definido_por:g('gf-pdp'),aprobacion:!!document.getElementById('gf-apr').checked,resp_implementacion:g('gf-ri'),resp_seguimiento:g('gf-rs'),fecha_prevista_cierre:g('gf-fp'),fecha_real_cierre:g('gf-fr'),n_revisiones:g('gf-rev'),causa_raiz:g('gf-craiz'),
-    mano_obra:g('gf-cmo'),materiales:g('gf-cma'),servicio_externo:g('gf-cse'),costos:g('gf-ctot'),
-    causas:_RGF.causas.map(c=>({...c,fecha:g('gf-fecha'),tipo_reporte:g('gf-tipo')})),porques:_RGF.porques,grupo:_RGF.grupo,
-    espina:Object.fromEntries([...ESPINA_CAMPOS.map(([k])=>[k,g('ge-'+k)]),['efecto',g('ge-efecto')]])};
-  const r=await rpcN('nc_registro_guardar',{p:d},'✅ Acción guardada'); if(r){ closeModal(); closeDetail(); refreshCurrentView(); }
+async function wizGuardar(){
+  wizLeer(); const d=_W.d;
+  if(!d.descripcion){ toast('Escribe la descripción de la no conformidad','error'); wizIr(0); return; }
+  const p={id:_W.id||null,fuente_id:((DB.fuentes||[]).find(f=>f.tipo_fuente===d.fuente||f.tipo_reporte===d.fuente)||{}).id||''};
+  WK.forEach(k=>p[k]=d[k]); p.contencion_requerida=!!d.contencion_requerida; p.aprobacion=!!d.aprobacion;
+  p.causas=_W.causas.filter(c=>c.causa||c.tipo_causa).map(c=>({...c,fecha:d.fecha_reporte,tipo_reporte:d.tipo_reporte}));
+  p.porques=_W.porques.filter(x=>x.porque||x.descripcion); p.grupo=_W.grupo.filter(g=>g.nombre||g.cargo);
+  p.espina=Object.fromEntries([...FB_TOP.concat(FB_BOT).map(([k])=>[k,d['e_'+k]||'']),['efecto',d.e_efecto||'']]);
+  const r=await rpcN('nc_registro_guardar',{p},'✅ Acción guardada'); if(r){ _W.dirty=false; document.getElementById('wiz')?.remove(); _W=null; closeDetail(); refreshCurrentView(); }
 }
 
 // ── REPROCESOS (análisis) ──────────────────────────────────────────
