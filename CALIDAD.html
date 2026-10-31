@@ -666,6 +666,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="solicitudes" onclick="nav('solicitudes')"><span class="nav-icon">📋</span>Solicitudes Externas</div>
     <div class="nav-item" data-m="certificados" onclick="nav('certificados')"><span class="nav-icon">🏅</span>Certificados</div>
     <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">📄</span>Remisiones</div>
+    <div class="nav-item" data-m="remamcor" onclick="nav('remamcor')"><span class="nav-icon">🏭</span>Remisiones AMCOR</div>
     <div class="nav-item" onclick="closeSidebar();ncReportar('')"><span class="nav-icon">🚨</span>Reportar reproceso</div>
     <div class="nav-item" data-m="repcausa" onclick="nav('repcausa')"><span class="nav-icon">🔧</span>Reprocesos por causa</div>
     <div class="nav-item" data-m="ambiente" onclick="nav('ambiente')"><span class="nav-icon">🌡️</span>Temperatura y humedad</div>
@@ -1164,7 +1165,7 @@ async function doLogin(){
 //  Reemplaza el módulo de Calidad anterior (Google Sheets / GAS). Todo se escribe por RPC calidad_* (ver AYUDA y el informe).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={papelera:'Papelera',dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',repcausa:'Reprocesos por causa',ambiente:'Temperatura y humedad',avances:'Avances en producción',buscar:'Búsqueda'};
+const TITLES={papelera:'Papelera',dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',remamcor:'Remisiones AMCOR',repcausa:'Reprocesos por causa',ambiente:'Temperatura y humedad',avances:'Avances en producción',buscar:'Búsqueda'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
@@ -3009,7 +3010,74 @@ async function papBorrar(id){
   try{ showBusy(); await sb.rpc('papelera_vaciar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('Eliminado definitivamente'); papelera(); }
   catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
-function refreshCurrentView(){ const mods={papelera,dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,repcausa,ambiente,avances,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+
+// ══ REMISIONES AMCOR (devoluciones / sin costo: acta de entrega + remisión) ══
+const _RA={q:'',rows:[]};
+const _RA_CL={nombre:'AMCOR HOLDINGS AUSTRALIA PTY LTD SUCURSAL COLOMBIA',nit:'900078003',dir:'ZONA FRANCA PALMASECA BODEGA A5A',ciudad:'PALMIRA'};
+const _raFechaLarga=iso=>{ const [y,m,d]=String(iso).slice(0,10).split('-').map(Number); return ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][m-1]?(d+' de '+['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][m-1]+' de '+y):iso; };
+const _raFechaCorta=iso=>{ const [y,m,d]=String(iso).slice(0,10).split('-'); return d+'/'+m+'/'+y; };
+const _raActaDef=(fmm)=>'Por medio de la presente reportamos devolución de repuesto relacionado al '+(fmm||'FMM______')+' no se le hizo ninguna intervención por lo tanto no genera costo $0.';
+async function remamcor(){
+  try{ _RA.rows=await GETALL('remisiones_amcor','select=*&order=fecha.desc,created_at.desc'); }catch(e){ _vistaError(e); return; }
+  const q=_norm(_RA.q||''); const data=_RA.rows.filter(r=>!q||_norm([r.numero,r.cotizacion,r.proyecto,r.encargado,r.fmm].join(' ')).includes(q));
+  const edit=puedeCal();
+  const filas=data.map(r=>`<tr><td><b>${esc(r.numero)}</b></td><td>${esc(_raFechaCorta(r.fecha))}</td><td>${esc(r.cotizacion||'')}</td><td>${esc(r.proyecto||'')}</td><td>${esc(r.encargado||'')}</td><td style="white-space:nowrap"><button class="btn btn-sm" style="background:#1a3a6b;color:#fff" onclick="raImprimir('${r.id}')">🖨️ PDF</button> ${edit?`<button class="btn btn-ghost btn-sm" onclick="raForm('${r.id}')">✏️</button> <button class="btn btn-ghost btn-sm" onclick="raEliminar('${r.id}')">🗑️</button>`:''}</td></tr>`).join('');
+  setContent(moduleBanner('🏭','Remisiones AMCOR','Acta de entrega + remisión (devoluciones y trabajos sin costo)',edit?`<button class="btn btn-sm" style="background:#fff;color:#1a3a6b;font-weight:800" onclick="raForm('')">＋ Nueva</button>`:'')
+   +`<div style="padding:10px 12px"><input id="ra-q" value="${esc(_RA.q)}" placeholder="🔍 Buscar N°, cotización, proyecto, FMM…" oninput="_RA.q=this.value;clearTimeout(window._raT);window._raT=setTimeout(remamcor,350)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px"></div>
+   <div style="padding:0 12px 14px;overflow-x:auto"><table class="data-tbl" style="width:100%"><thead><tr><th>N°</th><th>Fecha</th><th>Cotización</th><th>Proyecto</th><th>Encargado</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">Sin remisiones AMCOR. Usa «＋ Nueva».</td></tr>'}</tbody></table></div>`);
+  const i=document.getElementById('ra-q'); if(i&&_RA.q){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
+}
+function raForm(id){
+  const r=id?_RA.rows.find(x=>x.id===id):null; const it=(r&&r.items&&r.items.length?r.items:[{cant:'',desc:''}]);
+  const inp=(i,l,v,ex)=>`<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:var(--muted)">${l}</label><input id="${i}" value="${esc(v==null?'':v)}" ${ex||''} style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px"></div>`;
+  openModal(r?'✏️ Editar remisión AMCOR':'🏭 Nueva remisión AMCOR',
+   `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-num','N° de remisión',r?r.numero:'','inputmode="numeric"')}${inp('ra-fec','Fecha',r?String(r.fecha).slice(0,10):hoyISO(),'type="date"')}</div>
+    ${inp('ra-cot','Cotización',r?r.cotizacion:'')}${inp('ra-pro','Proyecto',r?r.proyecto:'')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${inp('ra-enc','Encargado',r?r.encargado:'')}${inp('ra-tel','Teléfono',r?r.telefono:'')}</div>
+    <div style="margin:6px 0 4px;font-size:11px;font-weight:700;color:var(--muted)">ÍTEMS</div><div id="ra-items">${it.map(x=>raItemH(x)).join('')}</div>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ra-items').insertAdjacentHTML('beforeend',raItemH({}))">＋ Ítem</button>
+    <div style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:8px"><label style="font-weight:700;font-size:13px"><input type="checkbox" id="ra-acta" ${!r||r.con_acta?'checked':''} onchange="document.getElementById('ra-actab').style.display=this.checked?'':'none'"> Incluir acta de entrega (carta a Zona Franca)</label>
+    <div id="ra-actab" style="${!r||r.con_acta?'':'display:none'};margin-top:8px">${inp('ra-fmm','FMM',r?r.fmm:'')}<label style="font-size:11px;font-weight:700;color:var(--muted)">Texto del acta (si lo dejas vacío usa el texto de devolución sin costo)</label><textarea id="ra-at" rows="4" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:13px">${esc(r?r.acta_texto||'':'')}</textarea></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" style="background:#1a3a6b;color:#fff" onclick="raGuardar('${id||''}')">💾 Guardar</button>`);
+}
+const raItemH=x=>`<div style="display:grid;grid-template-columns:60px 1fr 32px;gap:6px;margin-bottom:6px"><input class="ra-c" inputmode="numeric" placeholder="Cant" value="${esc(x.cant==null?'':x.cant)}" style="padding:8px;border:1px solid var(--border);border-radius:6px"><textarea class="ra-d" rows="2" placeholder="Descripción" style="padding:8px;border:1px solid var(--border);border-radius:6px">${esc(x.desc||'')}</textarea><button class="btn btn-ghost btn-sm" onclick="this.parentNode.remove()">✕</button></div>`;
+async function raGuardar(id){
+  const g=k=>(document.getElementById(k)||{}).value||'';
+  const items=[...document.querySelectorAll('#ra-items > div')].map(d=>({cant:d.querySelector('.ra-c').value.trim(),desc:d.querySelector('.ra-d').value.trim()})).filter(x=>x.cant||x.desc);
+  const con=document.getElementById('ra-acta').checked;
+  const d={numero:g('ra-num').trim(),fecha:g('ra-fec'),cotizacion:g('ra-cot').trim(),proyecto:g('ra-pro').trim(),encargado:g('ra-enc').trim(),telefono:g('ra-tel').trim(),items,con_acta:con,fmm:con?g('ra-fmm').trim():'',acta_texto:con?g('ra-at').trim():'',creado_por:_SESSION?.nombre||''};
+  if(!d.numero){ toast('Falta el N° de remisión','error'); return; }
+  showBusy();
+  try{ await sb.rpc('rem_amcor_guardar',{p_id:id||null,p_data:d}); closeModal(); toast('✅ Remisión AMCOR guardada'); await remamcor(); }
+  catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
+}
+async function raEliminar(id){
+  const r=_RA.rows.find(x=>x.id===id); if(!r||!confirm('¿Eliminar la remisión AMCOR '+r.numero+'?')) return;
+  showBusy(); try{ await sb.rpc('rem_amcor_eliminar',{p_id:id}); toast('Eliminada'); await remamcor(); }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
+}
+function raHtml(r){
+  const E=EMPRESA_WEDM, C=_RA_CL, f=String(r.fecha).slice(0,10);
+  const items=(r.items||[]).map((x,i)=>`<tr><td class="center" style="width:50px">${i+1}</td><td class="center" style="width:60px">${esc(x.cant)}</td><td>${esc(x.desc).replace(/\n/g,'<br>')}</td></tr>`).join('');
+  const pie=`<div style="position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:9px;color:#444;line-height:1.5">Dirección: ${esc(E.dir)}.<br>Teléfono: 379 7352 - 308 7376 - 345 1648 Celular: 300 886 0468<br>${esc(E.email)}<br>Cali - Valle</div>`;
+  const acta=r.con_acta?`<div style="position:relative;min-height:240mm;font-size:12px;line-height:1.6"><div style="text-align:center;margin-bottom:10px"><img src="${LOGO_WEDM_URL}" style="height:50px"></div>
+    <p style="margin-top:20px">Cali, ${esc(_raFechaLarga(f))}</p><p style="margin-top:22px">Señores<br>Zona Franca<br>Cordial Saludo</p>
+    <p style="text-align:center;font-weight:800;font-size:15px;margin:40px 0 30px">ACTA DE ENTREGA</p>
+    <p style="text-align:justify">${esc(r.acta_texto||_raActaDef(r.fmm)).replace(/\n/g,'<br>')}</p>
+    <p style="margin-top:40px">Cordialmente</p><p style="margin-top:60px"><b>Mauricio Andrés García Posada</b><br>Gerente General<br>GRUPO WEDM</p>${pie}</div><div style="page-break-after:always"></div>`:'';
+  const css=`*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;padding:14mm 18mm;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;border:1px solid #999}.azul{background:#1a3a6b!important;color:#fff!important;font-weight:700}.center{text-align:center}@page{size:letter portrait;margin:6mm}@media print{.no-print{display:none!important}}`;
+  const fila=(l,v)=>`<tr><td style="border:0;width:105px;font-weight:700;color:#1a3a6b;padding:2px 6px">${l}:</td><td style="border:0;padding:2px 6px">${v}</td></tr>`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>REMISIÓN ${esc(r.numero)} AMCOR</title><style>${css}</style></head><body>
+  <div class="no-print" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:0;padding:10px 20px;border-radius:6px;font-weight:700">🖨️ Imprimir / Guardar PDF</button></div>
+  ${acta}
+  <table style="border:0;margin-bottom:14px"><tr><td style="border:0;width:50%;vertical-align:top;line-height:1.7"><img src="${LOGO_WEDM_URL}" style="height:52px"><br><i>${esc(E.lema)}</i><br>${esc(E.dir)}<br>Tel: ${esc(E.tel)} Cel: ${esc(E.cel)}<br>Email: ${esc(E.email)}<br>NIT: ${esc(E.nit)}<br>${esc(E.ciudad)}</td>
+  <td style="border:0;vertical-align:top"><table style="border:0">${fila('FECHA',esc(_raFechaCorta(f)))}${fila('SEÑORES',esc(C.nombre))}${fila('NIT',C.nit)}${fila('DIRECCIÓN',C.dir)}${fila('CIUDAD',C.ciudad)}${fila('ENCARGADO',esc(r.encargado||''))}${fila('TELÉFONO',esc(r.telefono||''))}</table></td></tr></table>
+  <table style="margin-bottom:12px"><tr><td class="azul" style="width:110px">PROYECTO:</td><td>${esc(r.proyecto||'')}</td></tr><tr><td class="azul">REMISIÓN:</td><td><b>${esc(r.numero)}</b></td></tr></table>
+  <table><thead><tr><th class="azul" colspan="3" style="text-align:left">COTIZACIÓN &nbsp; ${esc(r.cotizacion||'')}</th></tr><tr class="azul"><th class="azul">ITEM</th><th class="azul">CANT</th><th class="azul">DESCRIPCIÓN</th></tr></thead><tbody>${items}</tbody></table>
+  <div style="margin-top:50px;text-align:center"><b>ATENTAMENTE</b><br><br><br>Mauricio García<br>${esc(E.nombre)}</div></body></html>`;
+}
+function raImprimir(id){ const r=_RA.rows.find(x=>x.id===id); if(!r) return; _abrirDocParaImprimir(raHtml(r),'REM_'+r.numero+'_AMCOR','remisiones'); }
+
+function refreshCurrentView(){ const mods={papelera,dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,remamcor,repcausa,ambiente,avances,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
