@@ -716,6 +716,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="matprima" onclick="nav('matprima')"><span class="nav-icon">📦</span>Inspección materia prima</div>
     <div class="nav-item" data-m="rrhh" onclick="nav('rrhh')"><span class="nav-icon">👥</span>Política RRHH</div>
     <div class="nav-section">Ayuda</div>
+    <div class="nav-item" data-m="colaboradores" onclick="nav('colaboradores')"><span class="nav-icon">🧑‍🤝‍🧑</span>Colaboradores y líderes</div>
     <div class="nav-item solo-dev" data-m="herramientas" onclick="nav('herramientas')" style="display:none"><span class="nav-icon">⬆️</span>Importar historial</div>
     <div class="nav-item" data-m="papelera" onclick="nav('papelera')"><span class="nav-icon">🗑️</span>Papelera</div>
   </div>
@@ -1210,14 +1211,17 @@ async function doLogin(){
 //  Las OP, clientes, colaboradores se toman del ERP (produccion, plan_colaboradores).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='inicio';
-const TITLES={inicio:'Gestión de no conformidades',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial'};
+const TITLES={inicio:'Gestión de no conformidades',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const puedeNC=()=>puede('calidad','administracion','produccion');
 function soloNC(){ if(puedeNC()) return true; toast('Tu rol solo puede consultar','error'); return false; }
 function _vistaError(e){ setContent(errorView(e)); }
 const TIPOS_REPORTE=['ACCIÓN CORRECTIVA','CORRECCIÓN','ACCIÓN DE MEJORA'];
 const AREAS=['PRODUCCIÓN','PROVEEDOR EXTERNO','DISEÑO E INGENIERIA','CALIDAD','COMPRAS','ADMINISTRACIÓN','COMERCIAL'];
-const ROLES_GRUPO=['Líder (Dueño del Proceso)','Facilitador','Miembro del grupo','Secretario','Asesor'];
+const ROLES_GRUPO=['Líder (Dueño del Proceso)','Facilitador (Quien Reporta)','Miembro del Equipo (Miembro experimentado)','Miembro del Equipo (Equipo interdisciplinario) Opcional','Facilitador (Coordinador de Calidad)','Responsable No Conformidad'];
+const esRolLider=r=>/^líder/i.test(r||'');
+const colabAct=()=>(DB.colab||[]).filter(c=>c.activo!==false);
+const colabNombres=(soloLid)=>colabAct().filter(c=>!soloLid||c.es_lider).map(c=>c.nombre);
 const PAP_MOD='noconformidades';
 const PAP_T={nc_reportes:'Reporte NC',nc_registros:'Acción NC',nc_causas:'Causa',nc_porques:'5 porqués',nc_espina:'Espina de pescado',nc_grupo:'Grupo',nc_costos:'Costos'};
 let _PAPQ='';
@@ -1231,8 +1235,8 @@ async function cargarTodo(){
     GETALL('nc_reportes','select=*&order=fecha.desc.nullslast,created_at.desc.nullslast,id.asc'),
     GETALL('nc_registros','select=*&order=accion_no.desc.nullslast,id.asc'),
     GET('nc_fuentes','select=*&order=id').catch(()=>[]),
-    GET('plan_colaboradores','select=nombre_registro,nombre_corto,cargo,activo').catch(()=>[])]);
-  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=(col||[]).filter(c=>c.activo!==false); _SYNC.init=true;
+    GET('nc_colaboradores','select=*&order=orden.asc,nombre.asc').catch(()=>[])]);
+  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=col||[]; _SYNC.init=true;
 }
 async function recargar(){ await cargarTodo(); }
 async function rpcN(fn,params,okMsg){
@@ -1267,7 +1271,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp:()=>proximamente('epp'),cincoS:()=>proximamente('cincoS'),matprima:()=>proximamente('matprima'),rrhh:()=>proximamente('rrhh'),papelera,herramientas});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp:()=>proximamente('epp'),cincoS:()=>proximamente('cincoS'),matprima:()=>proximamente('matprima'),rrhh:()=>proximamente('rrhh'),papelera,herramientas,colaboradores});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1373,7 +1377,7 @@ async function opBuscar(pref){
 }
 function repForm(id){
   if(!soloNC()) return; const r=id?repDe(id):{}; const all=DB.reportes||[];
-  const nom=(DB.colab||[]).map(c=>c.nombre_registro||c.nombre_corto).filter(Boolean);
+  const nom=colabNombres();
   openModal(id?'✏️ Editar reporte':'➕ Nuevo reporte de no conformidad',`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable)])])}${dl('dl-tipo',uniq(all,x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...all,...(DB.registros||[])],x=>x.maquina))}${dl('dl-cli',uniq([...all,...(DB.registros||[])],x=>x.cliente))}
    <div class="form-grid">${fld('OP','rf-op',r.op??'','inputmode="numeric" onblur="opBuscar(\'rf\')"')}${fld('Ítem','rf-item',r.item||'','onblur="opBuscar(\'rf\')"')}
    <div class="field span2" style="margin-top:-6px"><span id="rf-ophint" style="font-size:11px;color:var(--muted)"></span></div>
@@ -1484,9 +1488,9 @@ async function wizOpen(id){
     grupo:H.grupo.map(g=>({rol:g.rol||'',nombre:g.nombre||'',cargo:g.cargo||''}))};
   if(!id){ _W.causas=[{tipo_causa:'',causa:'',codigo:''}]; _W.porques=[0,1,2,3,4].map(()=>({porque:'',descripcion:''})); _W.grupo=[{rol:ROLES_GRUPO[0],nombre:'',cargo:''}]; }
   closeDetail(); document.getElementById('wiz')?.remove();
-  const all=DB.registros||[], rp=DB.reportes||[]; const nom=(DB.colab||[]).map(c=>c.nombre_registro||c.nombre_corto).filter(Boolean);
+  const all=DB.registros||[], rp=DB.reportes||[]; const nom=colabNombres();
   const w=document.createElement('div'); w.id='wiz'; w.className='wiz';
-  w.innerHTML=`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-tipo',uniq([...rp,...all],x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...rp,...all],x=>x.maquina))}${dl('dl-cli',uniq([...rp,...all],x=>x.cliente))}${dl('dl-fuente',(DB.fuentes||[]).map(f=>f.tipo_reporte))}${dl('dl-tcausa',FB_TOP.concat(FB_BOT).map(x=>x[1]))}
+  w.innerHTML=`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-lider',colabNombres(true))}${dl('dl-tipo',uniq([...rp,...all],x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...rp,...all],x=>x.maquina))}${dl('dl-cli',uniq([...rp,...all],x=>x.cliente))}${dl('dl-fuente',(DB.fuentes||[]).map(f=>f.tipo_reporte))}${dl('dl-tcausa',FB_TOP.concat(FB_BOT).map(x=>x[1]))}
    <div class="wiz-head"><button type="button" class="wiz-x" onclick="wizCerrar()">✕</button><h3>${id?'Editar acción #'+(r.accion_no??''):'Nueva acción · no conformidad'}</h3></div><div class="wiz-steps" id="wiz-steps"></div><div class="wiz-body" id="wiz-body"></div><div class="wiz-foot" id="wiz-foot"></div>`;
   document.body.appendChild(w); wizPintar();
 }
@@ -1502,7 +1506,8 @@ function wizAdd(k){ wizLeer(); _W[k].push(k==='causas'?{tipo_causa:'',causa:'',c
 function wizDel(k,i){ wizLeer(); _W[k].splice(i,1); _W.dirty=true; wizPintar(true); }
 function wizTipo(t){ wizLeer(); _W.d.tipo_reporte=t; _W.dirty=true; wizPintar(true); }
 function wizFuente(){ wizLeer(); const f=(DB.fuentes||[]).find(x=>x.tipo_reporte===_W.d.fuente); if(f&&!_W.d.numeral_norma){ _W.d.numeral_norma=f.numeral||''; const n=document.getElementById('gf-numeral_norma'); if(n) n.value=_W.d.numeral_norma; } }
-function wizGrupoNombre(el){ const row=el.closest('[data-l]'); const c=(DB.colab||[]).find(x=>(x.nombre_registro||x.nombre_corto)===el.value); const cg=row&&row.querySelector('[data-c="cargo"]'); if(c&&cg&&!cg.value) cg.value=c.cargo||''; }
+function wizRolCambio(el){ const row=el.closest('[data-l]'); const n=row&&row.querySelector('[data-c="nombre"]'); if(n){ n.setAttribute('list',esRolLider(el.value)?'dl-lider':'dl-resp'); n.placeholder=esRolLider(el.value)?'Solo líderes':''; const c=(DB.colab||[]).find(x=>x.nombre===n.value); if(esRolLider(el.value)&&c&&!c.es_lider){ n.value=''; toast('Ese colaborador no es líder','warn'); } } }
+function wizGrupoNombre(el){ const row0=el.closest('[data-l]'); const rs=row0&&row0.querySelector('[data-c="rol"]'); if(rs&&esRolLider(rs.value)){ const c0=(DB.colab||[]).find(x=>x.nombre===el.value); if(el.value&&!(c0&&c0.es_lider)){ el.value=''; toast('Para «Líder (Dueño del Proceso)» elige un líder de la lista','warn'); return; } } const row=el.closest('[data-l]'); const c=(DB.colab||[]).find(x=>x.nombre===el.value); const cg=row&&row.querySelector('[data-c="cargo"]'); if(c&&cg&&!cg.value) cg.value=c.cargo||''; }
 function wizCosto(){ const g=k=>Number(document.getElementById('gf-'+k)?.value)||0; const t=g('mano_obra')+g('materiales')+g('servicio_externo'); const el=document.getElementById('gf-costos'); if(el&&t) el.value=t; }
 const _wv=k=>_W.d[k]??'';
 const wf=(l,k,o={})=>`<div class="field${o.span?' span2':''}"><label>${l}</label><input id="gf-${k}" data-k="${k}" type="${o.type||'text'}" value="${esc(_wv(k))}" ${o.list?`list="${o.list}" autocomplete="off"`:''} ${o.extra||''}></div>`;
@@ -1520,7 +1525,7 @@ const WSTEP_HTML=[
  ()=>`<p class="wiz-hint">Escribe cada causa que encuentres. Elige a qué categoría de la espina pertenece.</p>${_W.causas.map((c,i)=>`<div class="nc-lrow" data-l="causas" data-i="${i}"><div class="field"><label>Causa ${i+1}</label><textarea data-c="causa" rows="2">${esc(c.causa)}</textarea></div><div class="field" style="max-width:180px"><label>Categoría</label><input data-c="tipo_causa" value="${esc(c.tipo_causa)}" list="dl-tcausa"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('causas',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('causas')">＋ Agregar causa</button>`,
  ()=>`<p class="wiz-hint">Pregúntate «¿por qué?» hasta llegar a la causa raíz.</p>${whyHTML(_W.d.descripcion,_W.porques,_W.d.causa_raiz,true)}`,
  ()=>{ if(!_W.d.e_efecto&&_W.d.descripcion) _W.d.e_efecto=trunc(_W.d.descripcion,200); const v={efecto:_W.d.e_efecto}; FB_TOP.concat(FB_BOT).forEach(([k])=>v[k]=_W.d['e_'+k]); return `<p class="wiz-hint">Escribe en cada «espina» las causas de esa categoría; todo apunta al efecto.</p>${espinaHTML(v,true)}`; },
- ()=>`<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="dl-resp" autocomplete="off" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`,
+ ()=>`<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol" onchange="wizRolCambio(this)">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="${esRolLider(g.rol)?'dl-lider':'dl-resp'}" autocomplete="off" placeholder="${esRolLider(g.rol)?'Solo líderes':''}" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`,
  ()=>`<div class="form-grid">${wa('Descripción de la acción correctiva, preventiva o de mejora','desc_tipo_reporte',4)}${wf('Plan definido por','plan_definido_por')}${wchk('Plan aprobado','aprobacion')}${wf('Responsable de implementación','resp_implementacion',{list:'dl-resp'})}${wf('Responsable de seguimiento','resp_seguimiento',{list:'dl-resp'})}${wf('Fecha prevista de cierre','fecha_prevista_cierre',{type:'date'})}${wf('Fecha real de cierre','fecha_real_cierre',{type:'date'})}${wf('N.º de revisiones','n_revisiones')}</div>`,
  ()=>`<div class="form-grid">${wf('Mano de obra ($)','mano_obra',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Materiales ($)','materiales',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Servicio externo ($)','servicio_externo',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Costo total ($)','costos',{extra:'inputmode="decimal"'})}</div>`,
  ()=>{ const d=_W.d; const row=(l,v)=>`<div class="dp-row"><span class="dp-label">${l}</span><span class="dp-val">${v||'—'}</span></div>`; const falta=!d.descripcion; return `${falta?`<div class="callout" style="margin-bottom:10px">⚠️ Falta la descripción de la no conformidad (paso General).</div>`:''}<div class="dp-section">${row('Tipo',esc(d.tipo_reporte))}${row('Fecha',fmtDate(d.fecha_reporte))}${row('Área',esc(d.proceso_area))}${row('OP · ítem',d.op?'OP-'+esc(d.op)+(d.item?' · '+esc(d.item):''):'')}${row('Cliente',esc(d.cliente))}${row('Descripción',esc(trunc(d.descripcion,200)))}${row('Causas',_W.causas.filter(c=>c.causa).length)}${row('5 porqués',_W.porques.filter(p=>p.porque||p.descripcion).length)}${row('Causa raíz',esc(trunc(d.causa_raiz,160)))}${row('Grupo',_W.grupo.filter(g=>g.nombre).map(g=>esc(g.nombre)).join(', '))}${row('Cierre previsto',fmtDate(d.fecha_prevista_cierre))}${row('Costo total',d.costos?fmt(d.costos):'')}</div>`; }
@@ -1559,6 +1564,39 @@ function reprocesos(){
    <div class="kpi-grid"><div class="kpi-card pink"><div class="kpi-value">${P.length}</div><div class="kpi-label">Reportes de NC</div></div><div class="kpi-card info"><div class="kpi-value">${R.length}</div><div class="kpi-label">Acciones registradas</div></div><div class="kpi-card gold"><div class="kpi-value">${fmt(R.reduce((s,r)=>s+(Number(r.costos)||0),0))}</div><div class="kpi-label">Costo registrado</div></div></div>
    <div class="nc-grid2">${barras('Por tipo de reproceso',top(todos,x=>x.tipo_reproceso),'#f59e0b')}${barras('Por responsable de la NC',top(todos,x=>x.responsable||x.responsable_nc),'#ef4444')}${barras('Por máquina',top(todos,x=>x.maquina),'#3b82f6')}${barras('Por cliente',top(todos,x=>x.cliente),'#16a34a')}${barras('Acciones por proceso / área',top(R,x=>x.proceso_area),'#8b5cf6')}
    <div class="nc-box"><h4>Costo registrado por cliente</h4>${cc.length?cc.map(([k,v])=>`<div class="nc-bar"><span class="nc-bl" title="${esc(k)}">${esc(trunc(k,30))}</span><span class="nc-bt"><i style="width:${Math.round(v/cc[0][1]*100)}%;background:#d97706"></i></span><b>${fmt(v)}</b></div>`).join(''):'<p style="font-size:12px;color:var(--muted)">Sin costos registrados</p>'}</div></div></div>`);
+}
+
+// ── COLABORADORES Y LÍDERES ────────────────────────────────────────
+let _CQ='', _CINACT=false;
+function colaboradores(){
+  const all=DB.colab||[], q=_norm(_CQ); const L=all.filter(c=>(_CINACT||c.activo!==false)&&(!q||_norm(c.nombre+' '+(c.cargo||'')).includes(q)));
+  const nl=all.filter(c=>c.es_lider&&c.activo!==false).length, ina=all.filter(c=>c.activo===false).length;
+  const fila=c=>`<tr style="${c.activo===false?'opacity:.5':''}"><td><b>${esc(c.nombre)}</b>${c.nuevo_vs_plan?' <span class="badge azul" title="No está en la lista de Planeación">solo NC</span>':''}</td><td style="font-size:12px">${esc(c.cargo||'')}</td>
+   <td style="text-align:center"><input type="checkbox" ${c.es_lider?'checked':''} ${puedeNC()?'':'disabled'} onchange="colToggle(${c.id},'es_lider',this.checked)"></td>
+   <td style="text-align:center"><input type="checkbox" ${c.activo!==false?'checked':''} ${puedeNC()?'':'disabled'} onchange="colToggle(${c.id},'activo',this.checked)"></td>
+   <td>${puedeNC()?`<button class="btn btn-ghost btn-sm" onclick="colForm(${c.id})">✏️</button>`:''}</td></tr>`;
+  setContent(moduleBanner('🧑‍🤝‍🧑','Colaboradores y líderes',nl+' líderes · '+(all.length-ina)+' activos'+(ina?' · '+ina+' deshabilitados':''),puedeNC()?`<button class="btn btn-primary btn-sm" onclick="colForm()">➕ Nuevo</button>`:'')
+   +`<div style="padding:10px 12px"><div class="filter-search-wrap"><input type="text" data-fkey="cq" placeholder="Buscar por nombre o cargo…" value="${esc(_CQ)}" autocomplete="off" oninput="_CQ=this.value;clearTimeout(window._cqT);window._cqT=setTimeout(colaboradores,250)"></div>
+   <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:8px;cursor:pointer"><input type="checkbox" ${_CINACT?'checked':''} onchange="_CINACT=this.checked;colaboradores()"> Mostrar deshabilitados</label>
+   <p style="font-size:11px;color:var(--muted);margin:8px 0 0">Los <b>líderes</b> son los únicos que salen como «Líder (Dueño del Proceso)». Un colaborador <b>deshabilitado</b> deja de salir en las listas, pero se conserva en lo ya registrado.</p></div>
+   <div style="padding:0 12px 90px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Nombre</th><th>Cargo</th><th style="text-align:center">Líder</th><th style="text-align:center">Activo</th><th></th></tr></thead><tbody>${L.map(fila).join('')}</tbody></table></div></div>`:empty('Sin resultados','🔎')}</div>`);
+}
+async function colToggle(id,campo,v){
+  if(!soloNC()){ colaboradores(); return; } const c=(DB.colab||[]).find(x=>x.id===id); if(!c) return;
+  const d={id:c.id,nombre:c.nombre,cargo:c.cargo,es_lider:c.es_lider,activo:c.activo!==false}; d[campo]=v;
+  const r=await rpcN('nc_colaborador_guardar',{p:d},v?(campo==='activo'?'✅ Habilitado':'✅ Marcado como líder'):(campo==='activo'?'Deshabilitado: ya no sale en las listas':'Ya no es líder')); colaboradores();
+}
+function colForm(id){
+  if(!soloNC()) return; const c=id?(DB.colab||[]).find(x=>x.id===id):{activo:true};
+  openModal(id?'✏️ Editar colaborador':'➕ Nuevo colaborador',`<div class="form-grid">${fld('Nombre completo','cf-nom',c.nombre||'','',true)}${fld('Cargo','cf-cargo',c.cargo||'','',true)}
+   <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px"><input type="checkbox" id="cf-lid" ${c.es_lider?'checked':''} style="width:auto"> Es líder (puede ser «Dueño del Proceso»)</label></div>
+   <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px"><input type="checkbox" id="cf-act" ${c.activo!==false?'checked':''} style="width:auto"> Activo (sale en las listas)</label></div></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="colGuardar(${id||'null'})">💾 Guardar</button>`);
+}
+async function colGuardar(id){
+  const d={id:id,nombre:gv('cf-nom'),cargo:gv('cf-cargo'),es_lider:document.getElementById('cf-lid').checked,activo:document.getElementById('cf-act').checked};
+  if(!d.nombre){ toast('Escribe el nombre','error'); return; }
+  const r=await rpcN('nc_colaborador_guardar',{p:d},'✅ Guardado'); if(r){ closeModal(); colaboradores(); }
 }
 
 // ── PAPELERA ───────────────────────────────────────────────────────
