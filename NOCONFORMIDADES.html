@@ -1957,7 +1957,7 @@ const MP_VER=[['emp','Estado del empaque'],['sol','Cantidad solicitada'],['rec',
 const MP_INSP=['Cristian Posada',"Jeremy's Barros Catalán",'Carlos Lasso'];
 const MP_MD=[['diam','Diámetro'],['largo','Largo']], MP_MR=[['esp','Espesor'],['ancho','Ancho'],['largo','Largo']];
 const _MF={anio:'',mes:'',prov:'',insp:'',est:''}; let _MPF=null;
-async function cargarMp(force){ if(DB.mp&&!force) return; DB.mp=await GETALL('nc_inspmp','select=id,fecha,op,item,inspector,proveedor,cliente,factura,estado,datos,materiales,req_accion,registro_id,creado_por,id_prod&order=fecha.desc.nullslast,id.asc'); }
+async function cargarMp(force){ if(DB.mp&&!force) return; DB.mp=await GETALL('nc_inspmp','select=id,fecha,op,item,inspector,proveedor,cliente,factura,estado,datos,materiales,req_accion,registro_id,creado_por,id_prod&order=fecha.desc.nullslast,id.asc'); try{ const w=await GETALL('nc_inspmp','select=id&factura_adj=not.is.null'); const s=new Set(w.map(x=>x.id)); DB.mp.forEach(r=>r.tiene_fac=s.has(r.id)); }catch(e){} }
 const mpDe=id=>(DB.mp||[]).find(r=>r.id===id);
 function mpHall(r){ const h=[], d=r.datos||{}, q=d.req||{}, v=d.ver||{};
   MP_REQ.forEach(([k,l])=>{ const x=q[k]; if(x&&String(x.v).toUpperCase()==='NO') h.push(l+': NO'+(x.o&&!/^ning/i.test(x.o)?' ('+x.o+')':'')); });
@@ -1993,7 +1993,7 @@ function mpDetalle(id){
    <div class="dp-section"><h4>Verificar y asegurar</h4><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><tbody>${MP_VER.map(([k,l])=>{ const x=v[k]||{}; return `<tr><td>${l}</td><td>${mpVBadge(x.v)}</td><td style="font-size:12px">${esc(x.d||x.o||'')}</td></tr>`; }).join('')}</tbody></table></div></div></div>
    ${(r.materiales||[]).length?`<div class="dp-section"><h4>Dimensiones (solicitado → recibido)</h4><div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><tbody>${r.materiales.map(mpMatTxt).join('')}</tbody></table></div></div></div>`:''}
    <div class="dp-section" id="mp-foto" style="display:none"><h4>Foto de evidencia</h4><div id="mp-foto-c"></div></div>`,
-   `<button class="btn btn-primary" onclick="mpPDF('${jsq(id)}')">📄 PDF</button>`+(puedeNC()?`${r.estado==='RECHAZADO'&&!r.registro_id?`<button class="btn btn-ghost" onclick="mpCrearAccion('${jsq(id)}')">🛠️ Crear acción</button>`:''}<button class="btn btn-ghost" onclick="mpForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="mpElim('${jsq(id)}')">🗑 Eliminar</button>`:''));
+   `<button class="btn btn-primary" onclick="mpPDF('${jsq(id)}')">📄 PDF</button>${r.tiene_fac?`<button class="btn btn-ghost" onclick="mpFacVer('${jsq(id)}')">🧾 Ver factura</button>`:''}`+(puedeNC()?`${r.estado==='RECHAZADO'&&!r.registro_id?`<button class="btn btn-ghost" onclick="mpCrearAccion('${jsq(id)}')">🛠️ Crear acción</button>`:''}<button class="btn btn-ghost" onclick="mpForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="mpElim('${jsq(id)}')">🗑 Eliminar</button>`:''));
   document.getElementById('dp-actions').style.display='flex';
   GET('nc_inspmp','select=foto&id='+eq(id)).then(x=>{ const f=x[0]&&x[0].foto; if(!f||!document.getElementById('mp-foto')) return; document.getElementById('mp-foto').style.display=''; document.getElementById('mp-foto-c').innerHTML=/^data:image\//.test(f)?`<img src="${f}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)">`:''; if(!/^data:image\//.test(f)) document.getElementById('mp-foto').style.display='none'; }).catch(()=>{});
 }
@@ -2019,13 +2019,13 @@ function mpMatDel(i){ _MPF.mats.splice(i,1); mpBlocks(); }
 function mpMatAdd(t){ _MPF.mats.push({tipo:t||'Rectangular'}); mpBlocks(); }
 function mpForm(id){
   if(!soloNC()) return; const r=id?mpDe(id):null; closeDetail(); const d=(r&&r.datos)||{};
-  _MPF={id:id||null,req:JSON.parse(JSON.stringify(d.req||{})),ver:JSON.parse(JSON.stringify(d.ver||{})),mats:JSON.parse(JSON.stringify((r&&r.materiales)||[])),keepFoto:!!id}; delete _NCFS.mpf;
+  _MPF={id:id||null,req:JSON.parse(JSON.stringify(d.req||{})),ver:JSON.parse(JSON.stringify(d.ver||{})),mats:JSON.parse(JSON.stringify((r&&r.materiales)||[])),keepFoto:!!id,facOld:!!(r&&r.tiene_fac)}; delete _NCFS.mpf;
   const ses=(_SESSION&&_SESSION.nombre)||'';
   openModal(id?'✏️ Editar inspección':'➕ Nueva inspección de materia prima',`${dl('dl-mpprov',uniq(DB.mp||[],x=>x.proveedor))}${dl('dl-mpins',uniq(DB.mp||[],x=>x.inspector).concat(colabNombres()))}
    <p class="wiz-hint">FT-05-01-01 · Recepción técnica de insumos y suministros</p>
    <div class="form-grid">${ncFoto2HTML('mpf','Foto de evidencia del material')}${fld('Fecha de inspección','mp-fec',(r&&r.fecha?String(r.fecha).slice(0,10):hoyISO()),'type="date"')}
-   ${fld('Proveedor / fabricante','mp-prov',r?r.proveedor||'':'','list="dl-mpprov" autocomplete="off"')}${fld('# Factura','mp-fac',r?r.factura||'':'','autocomplete="off"')}
-   ${fld('# OP (opcional · de Control de producción)','mp-op',r&&r.op!=null?r.op:'','inputmode="numeric" oninput="clearTimeout(window._mpT);window._mpT=setTimeout(()=>mpOpBuscar(),400)"')}<div class="field"><label># Ítem (de la OP)</label><select id="mp-item" onchange="mpItemSel()"><option value=""></option></select></div>
+   ${fld('Proveedor / fabricante','mp-prov',r?r.proveedor||'':'','list="dl-mpprov" autocomplete="off"')}${fld('# Factura','mp-fac',r?r.factura||'':'','autocomplete="off" oninput="mpFacUI()"')}${mpFacHTML()}
+   ${dl('dl-mpop',[])}${fld('# OP (opcional · de Control de producción)','mp-op',r&&r.op!=null?r.op:'','list="dl-mpop" inputmode="numeric" oninput="clearTimeout(window._mpT);window._mpT=setTimeout(()=>mpOpBuscar(),400)"')}<div class="field"><label># Ítem (de la OP)</label><select id="mp-item" onchange="mpItemSel()"><option value=""></option></select></div>
    ${fld('Cliente (opcional)','mp-cli',r?r.cliente||'':'','autocomplete="off"')}<div class="field"><label>Inspector</label><select id="mp-ins">${(()=>{ const L=MP_INSP.slice(); const cur=r?r.inspector||'':(L.includes(ses)?ses:''); if(cur&&!L.includes(cur)) L.unshift(cur); return '<option value=""></option>'+L.map(x=>`<option ${x===cur?'selected':''}>${esc(x)}</option>`).join(''); })()}</select></div>
    <div class="field span2"><small id="mp-ophint" style="color:var(--muted)"></small></div></div>
    <h4 style="margin:12px 0 4px">Requisitos del proveedor</h4><div id="mp-req"></div>
@@ -2034,9 +2034,22 @@ function mpForm(id){
    <div id="mp-rej" style="display:none;margin-top:12px;padding:10px;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:13px">⚠️ Hay un rechazo: <b>poner el material en cuarentena</b> y activar el procedimiento de salidas no conformes.</div>
    <div class="form-grid" style="margin-top:12px"><div class="field"><label>Estado</label><select id="mp-est" onchange="mpBlocks()"><option value=""></option><option ${r&&r.estado==='APROBADO'?'selected':''}>APROBADO</option><option ${r&&r.estado==='RECHAZADO'?'selected':''}>RECHAZADO</option></select></div></div>`,
    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="mpGuardar()">💾 Guardar</button>`);
-  mpBlocks(); if(r&&r.op!=null) mpOpBuscar(r.item);
+  mpBlocks(); mpOpsCargar(); mpFacUI(); if(r&&r.op!=null) mpOpBuscar(r.item);
 }
-let _MPI=[];
+let _MPI=[], _MPOPS=null;
+async function mpOpsCargar(){ try{ if(!_MPOPS){ const x=await GET('produccion','select=op,empresa&order=op.desc&limit=800'); const m=new Map(); x.forEach(a=>{ if(a.op!=null&&!m.has(a.op)) m.set(a.op,a.empresa||''); }); _MPOPS=[...m]; } const d=document.getElementById('dl-mpop'); if(d) d.innerHTML=_MPOPS.map(([o,e])=>`<option value="${o}">${esc(e)}</option>`).join(''); }catch(e){} }
+// ── Adjunto de la factura (foto o PDF) ──
+function mpFacHTML(){ return `<div class="field span2" id="mp-facbox" style="display:none"><label>Factura adjunta (foto o PDF)</label><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('mp-fcam').click()">📷 Foto</button><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('mp-ffile').click()">📎 Adjuntar archivo / PDF</button><button type="button" id="mp-fq" class="btn btn-ghost btn-sm" style="display:none;color:var(--danger)" onclick="mpFacQuitar()">✕ Quitar</button><span id="mp-fname" style="font-size:12px;color:var(--muted)"></span></div><input type="file" id="mp-fcam" accept="image/*" capture="environment" hidden onchange="mpFacElegida(this)"><input type="file" id="mp-ffile" accept="image/*,application/pdf" hidden onchange="mpFacElegida(this)"><img id="mp-fprev" alt="" style="display:none;max-width:100%;max-height:160px;border-radius:8px;margin-top:6px;border:1px solid var(--border)"></div>`; }
+function mpFacUI(){ const b=document.getElementById('mp-facbox'); if(!b) return; const tiene=!!(gv('mp-fac')||_MPF.facOld||_MPF.fac); b.style.display=tiene?'':'none';
+  const has=_MPF.fac||(_MPF.facOld&&_MPF.fac===undefined); document.getElementById('mp-fq').style.display=has?'':'none';
+  const im=document.getElementById('mp-fprev'); const nm=document.getElementById('mp-fname');
+  if(_MPF.fac){ if(/^data:image\//.test(_MPF.fac)){ im.src=_MPF.fac; im.style.display='block'; nm.textContent='Foto lista'; } else { im.style.display='none'; nm.textContent='📄 PDF listo'; } }
+  else if(_MPF.facOld&&_MPF.fac===undefined){ im.style.display='none'; nm.textContent='Ya tiene factura adjunta (se conserva)'; } else { im.style.display='none'; nm.textContent=''; } }
+async function mpFacElegida(inp){ const f=inp.files&&inp.files[0]; if(!f) return;
+  try{ if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){ if(f.size>4*1048576){ toast('El PDF pesa más de 4 MB','error'); inp.value=''; return; } _MPF.fac=await new Promise((ok,ko)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=ko; r.readAsDataURL(f); }); }
+    else _MPF.fac=await ncFotoComprimir(f); mpFacUI(); }catch(e){ toast('No se pudo leer el archivo','error'); } inp.value=''; }
+function mpFacQuitar(){ _MPF.fac=''; mpFacUI(); }
+async function mpFacVer(id){ try{ const x=(await GET('nc_inspmp','select=factura_adj&id='+eq(id)))[0]; const f=x&&x.factura_adj; if(!f){ toast('Sin factura adjunta','error'); return; } const b=await (await fetch(f)).blob(); window.open(URL.createObjectURL(b),'_blank'); }catch(e){ toast('No se pudo abrir','error'); } }
 async function mpOpBuscar(pre){
   const op=gv('mp-op'), sel=document.getElementById('mp-item'), h=document.getElementById('mp-ophint'); if(!sel) return; _MPF.opOk=null;
   if(!/^\d+$/.test(op)){ sel.innerHTML='<option value=""></option>'; _MPI=[]; if(h) h.textContent=''; return; }
@@ -2058,6 +2071,7 @@ async function mpGuardar(){
   const mats=_MPF.mats.map(m=>Object.fromEntries(Object.entries(m).filter(([k,v])=>v!==''&&v!=null))).filter(m=>Object.keys(m).length>1);
   const p={id:_MPF.id,fecha:gv('mp-fec'),proveedor:prov,inspector:ins,factura:gv('mp-fac'),op:gv('mp-op'),item:gv('mp-item'),cliente:gv('mp-cli'),estado:gv('mp-est'),datos,materiales:mats};
   if(_NCFS.mpf) p.foto=_NCFS.mpf;
+  if(_MPF.fac!==undefined) p.factura_adj=_MPF.fac;
   const r=await sbRun(()=>sb.rpc('nc_inspmp_guardar',{p}),'✅ Inspección guardada'); if(!r) return;
   closeModal(); await cargarMp(true); if(MOD==='matprima') mp();
   if(p.estado==='RECHAZADO'&&r.id&&confirm('La inspección quedó RECHAZADA. ¿Crear ahora la acción correctiva?')) mpCrearAccion(r.id);
