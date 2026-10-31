@@ -1763,5 +1763,28 @@ function ayudaAbrir(){
 })();
 </script>
 <!-- /WEDM-INSTALAR -->
+<script>
+/* WEDM-SYNC0: Sincronizar desde cero — borra lo guardado en el equipo (cachés y service worker) y vuelve a descargar todo. La sesión se conserva. */
+(function(){
+ window.wedmRecargaLimpia=async function(){
+  try{ if(navigator.serviceWorker){ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){ return r.unregister(); })); } }catch(e){}
+  try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+  var u=new URL(location.href); u.searchParams.set('v',String(Date.now())); location.replace(u.toString());
+ };
+ async function syncCero(){
+  if(navigator.onLine===false){ alert('Sin internet no se puede sincronizar desde cero.'); return; }
+  if(!confirm('¿Sincronizar desde cero?\nSe vuelve a descargar todo y la pantalla se reinicia.')) return;
+  var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,.85);color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px system-ui,sans-serif;text-align:center;padding:20px'; ov.innerHTML='🔄 Sincronizando desde cero…'; document.body.appendChild(ov);
+  wedmRecargaLimpia();
+ }
+ function navSync(){ try{
+  if(!document.getElementById('sync0-btn')){ var r=document.getElementById('refresh-btn'); if(r&&r.parentNode){ var b=document.createElement('div'); b.id='sync0-btn'; b.title='Sincronizar desde cero'; b.setAttribute('role','button'); b.textContent='🔄'; b.style.cssText='width:36px;height:36px;min-width:36px;border-radius:10px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:6px;-webkit-tap-highlight-color:transparent'; b.onclick=syncCero; r.parentNode.insertBefore(b,r.nextSibling); } }
+  if(!document.getElementById('nav-sync')){ var sc=document.querySelector('#sidebar .nav-scroll'); if(sc){ var d=document.createElement('div'); d.className='nav-item'; d.id='nav-sync'; d.innerHTML='<span class="nav-icon">🔄</span>Sincronizar desde cero'; d.onclick=function(){ try{ closeSidebar(); }catch(e){} syncCero(); }; sc.appendChild(d); } }
+ }catch(e){} }
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',navSync); else navSync();
+ setTimeout(navSync,1500); setInterval(navSync,3000);
+ window.syncCeroNC=syncCero;
+})();
+</script>
 </body>
 </html>
