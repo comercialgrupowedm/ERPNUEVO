@@ -666,6 +666,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="solicitudes" onclick="nav('solicitudes')"><span class="nav-icon">📋</span>Solicitudes Externas</div>
     <div class="nav-item" data-m="certificados" onclick="nav('certificados')"><span class="nav-icon">🏅</span>Certificados</div>
     <div class="nav-item" data-m="remisiones" onclick="nav('remisiones')"><span class="nav-icon">📄</span>Remisiones</div>
+    <div class="nav-item" onclick="closeSidebar();ncReportar('')"><span class="nav-icon">🚨</span>Reportar reproceso</div>
     <div class="nav-item" data-m="repcausa" onclick="nav('repcausa')"><span class="nav-icon">🔧</span>Reprocesos por causa</div>
     <div class="nav-item" data-m="ambiente" onclick="nav('ambiente')"><span class="nav-icon">🌡️</span>Temperatura y humedad</div>
     <div class="nav-item" onclick="location.href='NOCONFORMIDADES.html'"><span class="nav-icon">🛡️</span>Gestión de no conformidades</div>
@@ -1443,6 +1444,7 @@ function detailItem(id,foco){
   if(cal&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
+  if(cal) A.push(['🚨','#ea580c','REPORTAR REPROCESO (NC)',`ncReportar('${j}')`]);
   if(puedeCal()) A.push(['🏅','#b7791f','CERTIFICADO',certVigente(id)?`detailCert('${jsq(certVigente(id).id)}')`:`editorCert(null,'${j}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
   const tl=`<div class="dp-section"><h4>🗓️ Etapas</h4>${timelineEtapas(o)}</div>`;
@@ -5769,5 +5771,50 @@ window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.a
 })();
 </script>
 
+<script>
+/* WEDM-NC-REPORTAR: Calidad reporta un reproceso (no conformidad) con foto, sin salir del módulo. Se guarda en nc_reportes (módulo Gestión de no conformidades). */
+// ── FOTO DE EVIDENCIA (cámara de la tablet/celular) ──
+const NC_RE={'RE-01':'Medida fuera de especificación (No cumplen con las dimensiones ni tolerancias)','RE-02':'Apariencia deficiente (Rayones, talladuras, golpes, rebabas y avellanes etc...)','RE-03':'Rosca no funcional (Tornillo o tuerca no pasa, roscas torcidas)','RE-04':'Machuelo partido','RE-05':'Pieza dañada o perdida (Enterrón de herramienta, perdida de material)','RE-06':'Material virgen defectuoso o fuera de especificacion','RE-07':'Geometria diferente a la esperada','RE-08':'Plano, Solido y/o programa incompleto o erroneo','RE-09':'Diseño o ingenieria no funcional','RE-10':'Falta de compromiso con la calidad','N/A':'Sin reproceso'};
+const ncReTxt=c=>NC_RE[c]?c+' · '+NC_RE[c]:(c||'—');
+const ncReOpts=sel=>'<option value=""></option>'+Object.keys(NC_RE).map(k=>`<option value="${k}" ${k===sel?'selected':''}>${String(ncReTxt(k)).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('')+(sel&&!NC_RE[sel]?`<option selected>${String(sel).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`:'');
+let _NCF=null,_NCQ=false;
+async function ncFotoComprimir(file){
+  let bmp; try{ bmp=await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ bmp=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=URL.createObjectURL(file); }); }
+  const w=bmp.width||bmp.naturalWidth, h=bmp.height||bmp.naturalHeight, k=Math.min(1,1280/Math.max(w,h)); const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k));
+  const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(bmp,0,0,c.width,c.height); return c.toDataURL('image/jpeg',.78);
+}
+function ncFotoHTML(p){
+  return `<div class="field span2"><label>Foto de evidencia</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('${p}-cam').click()">📷 Tomar foto</button><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('${p}-gal').click()">🖼️ Elegir de la galería</button><button type="button" id="${p}-fq" class="btn btn-ghost btn-sm" style="display:none;color:var(--danger)" onclick="ncFotoQuitar('${p}')">✕ Quitar foto</button></div>
+  <input type="file" id="${p}-cam" accept="image/*" capture="environment" hidden onchange="ncFotoElegida(this,'${p}')"><input type="file" id="${p}-gal" accept="image/*" hidden onchange="ncFotoElegida(this,'${p}')"><img id="${p}-prev" alt="" style="display:none;max-width:100%;max-height:240px;border-radius:10px;margin-top:8px;border:1px solid var(--border)"></div>`;
+}
+async function ncFotoElegida(inp,p){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  try{ _NCF=await ncFotoComprimir(f); _NCQ=false; const im=document.getElementById(p+'-prev'); im.src=_NCF; im.style.display='block'; document.getElementById(p+'-fq').style.display='inline-block'; }
+  catch(e){ toast('No se pudo leer la foto','error'); } inp.value='';
+}
+function ncFotoQuitar(p){ _NCF=null; _NCQ=true; const im=document.getElementById(p+'-prev'); im.removeAttribute('src'); im.style.display='none'; document.getElementById(p+'-fq').style.display='none'; }
+function ncFotoMostrar(p,src){ const im=document.getElementById(p+'-prev'); if(!im||!src) return; im.src=src; im.style.display='block'; document.getElementById(p+'-fq').style.display='inline-block'; }
+
+async function ncReportar(id){
+  if(!puede('calidad','administracion')){ toast('Tu rol no puede reportar reprocesos','error'); return; }
+  const o=id?opDe(id):null; let nombres=[],maqs=[]; _NCF=null; _NCQ=false;
+  showBusy();
+  try{ const [c,m]=await Promise.all([GET('nc_colaboradores','select=nombre&activo=eq.true&order=nombre.asc').catch(()=>[]),GET('tiempos_maquinas','select=maquina').catch(()=>[])]); nombres=c.map(x=>x.nombre); maqs=[...new Set(m.map(x=>x.maquina).filter(Boolean))].sort(); }catch(e){} hideBusy();
+  const dl=(i,a)=>`<datalist id="${i}">${a.map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
+  const f=(l,i,v,ex='',sp)=>`<div class="field${sp?' span2':''}"><label>${l}</label><input id="${i}" value="${esc(v??'')}" ${ex}></div>`;
+  openModal('🚨 Reportar reproceso',`${dl('rpt-dl-n',nombres)}${dl('rpt-dl-m',maqs)}<div class="form-grid">
+   ${f('OP','rpt-op',o?o.op:'','inputmode="numeric"')}${f('Ítem','rpt-item',o?o.item_num:'')}${f('Cliente','rpt-cli',o?o.empresa:'','',true)}
+   <div class="field span2"><label>Tipo de reproceso</label><select id="rpt-tipo">${ncReOpts('')}</select></div>
+   ${f('Responsable de la no conformidad (quién lo hizo)','rpt-resp','','list="rpt-dl-n" autocomplete="off"',true)}${f('Máquina','rpt-maq','','list="rpt-dl-m" autocomplete="off"',true)}
+   <div class="field span2"><label>Qué pasó (cantidad no conforme, qué se hizo)</label><textarea id="rpt-com" rows="4" style="resize:vertical"></textarea></div>${ncFotoHTML('rpt')}</div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="rpt-ok" onclick="ncReportarGuardar()">📨 Enviar reporte</button>`);
+}
+async function ncReportarGuardar(){
+  const tipo=gv('rpt-tipo'); if(!tipo){ toast('Elige el tipo de reproceso','error'); return; } if(!gv('rpt-com')){ toast('Escribe qué pasó','error'); return; }
+  const b=document.getElementById('rpt-ok'); b.disabled=true;
+  try{ showBusy(); await sb.rpc('nc_reporte_guardar',{p:{op:gv('rpt-op'),item:gv('rpt-item'),cliente:gv('rpt-cli'),responsable:gv('rpt-resp'),reportado_por:(_SESSION&&_SESSION.nombre)||'',tipo_reproceso:tipo,maquina:gv('rpt-maq'),comentarios:gv('rpt-com'),foto:_NCF||''}}); hideBusy(); closeModal(); toast('✅ Reporte de reproceso enviado'); _NCF=null; }
+  catch(e){ hideBusy(); b.disabled=false; toast('❌ '+errMsg(e),'error'); }
+}
+</script>
 </body>
 </html>

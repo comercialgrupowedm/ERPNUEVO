@@ -1216,6 +1216,29 @@ async function doLogin(){
 const DB={}; const _SYNC={init:false}; let MOD='inicio';
 const TITLES={inicio:'Gestión de no conformidades',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
 const PG_BASE=(window.innerWidth<700?20:25);
+const REPORTA_DEFAULT='Carlos Lasso';
+// ── FOTO DE EVIDENCIA (cámara de la tablet/celular) ──
+const NC_RE={'RE-01':'Medida fuera de especificación (No cumplen con las dimensiones ni tolerancias)','RE-02':'Apariencia deficiente (Rayones, talladuras, golpes, rebabas y avellanes etc...)','RE-03':'Rosca no funcional (Tornillo o tuerca no pasa, roscas torcidas)','RE-04':'Machuelo partido','RE-05':'Pieza dañada o perdida (Enterrón de herramienta, perdida de material)','RE-06':'Material virgen defectuoso o fuera de especificacion','RE-07':'Geometria diferente a la esperada','RE-08':'Plano, Solido y/o programa incompleto o erroneo','RE-09':'Diseño o ingenieria no funcional','RE-10':'Falta de compromiso con la calidad','N/A':'Sin reproceso'};
+const ncReTxt=c=>NC_RE[c]?c+' · '+NC_RE[c]:(c||'—');
+const ncReOpts=sel=>'<option value=""></option>'+Object.keys(NC_RE).map(k=>`<option value="${k}" ${k===sel?'selected':''}>${String(ncReTxt(k)).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('')+(sel&&!NC_RE[sel]?`<option selected>${String(sel).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`:'');
+let _NCF=null,_NCQ=false;
+async function ncFotoComprimir(file){
+  let bmp; try{ bmp=await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ bmp=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=URL.createObjectURL(file); }); }
+  const w=bmp.width||bmp.naturalWidth, h=bmp.height||bmp.naturalHeight, k=Math.min(1,1280/Math.max(w,h)); const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k));
+  const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(bmp,0,0,c.width,c.height); return c.toDataURL('image/jpeg',.78);
+}
+function ncFotoHTML(p){
+  return `<div class="field span2"><label>Foto de evidencia</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('${p}-cam').click()">📷 Tomar foto</button><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('${p}-gal').click()">🖼️ Elegir de la galería</button><button type="button" id="${p}-fq" class="btn btn-ghost btn-sm" style="display:none;color:var(--danger)" onclick="ncFotoQuitar('${p}')">✕ Quitar foto</button></div>
+  <input type="file" id="${p}-cam" accept="image/*" capture="environment" hidden onchange="ncFotoElegida(this,'${p}')"><input type="file" id="${p}-gal" accept="image/*" hidden onchange="ncFotoElegida(this,'${p}')"><img id="${p}-prev" alt="" style="display:none;max-width:100%;max-height:240px;border-radius:10px;margin-top:8px;border:1px solid var(--border)"></div>`;
+}
+async function ncFotoElegida(inp,p){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  try{ _NCF=await ncFotoComprimir(f); _NCQ=false; const im=document.getElementById(p+'-prev'); im.src=_NCF; im.style.display='block'; document.getElementById(p+'-fq').style.display='inline-block'; }
+  catch(e){ toast('No se pudo leer la foto','error'); } inp.value='';
+}
+function ncFotoQuitar(p){ _NCF=null; _NCQ=true; const im=document.getElementById(p+'-prev'); im.removeAttribute('src'); im.style.display='none'; document.getElementById(p+'-fq').style.display='none'; }
+function ncFotoMostrar(p,src){ const im=document.getElementById(p+'-prev'); if(!im||!src) return; im.src=src; im.style.display='block'; document.getElementById(p+'-fq').style.display='inline-block'; }
+
 const puedeNC=()=>puede('calidad','administracion','produccion');
 function soloNC(){ if(puedeNC()) return true; toast('Tu rol solo puede consultar','error'); return false; }
 function _vistaError(e){ setContent(errorView(e)); }
@@ -1234,12 +1257,13 @@ const trunc=(s,n)=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length
 const nl2br=s=>esc(s).replace(/\n/g,'<br>');
 
 async function cargarTodo(){
-  const [rep,reg,fue,col]=await Promise.all([
-    GETALL('nc_reportes','select=*&order=fecha.desc.nullslast,created_at.desc.nullslast,id.asc'),
+  const [rep,reg,fue,col,mq]=await Promise.all([
+    GETALL('nc_reportes','select=id,cliente,op,item,id_prod,responsable,reportado_por,tipo_reproceso,comentarios,fecha,maquina,ref_op,creado_por,created_at,updated_at,tiene_foto&order=fecha.desc.nullslast,created_at.desc.nullslast,id.asc'),
     GETALL('nc_registros','select=*&order=accion_no.desc.nullslast,id.asc'),
     GET('nc_fuentes','select=*&order=id').catch(()=>[]),
-    GET('nc_colaboradores','select=*&order=orden.asc,nombre.asc').catch(()=>[])]);
-  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=col||[]; _SYNC.init=true;
+    GET('nc_colaboradores','select=*&order=orden.asc,nombre.asc').catch(()=>[]),
+    GET('tiempos_maquinas','select=maquina').catch(()=>[])]);
+  DB.reportes=rep; DB.registros=reg; DB.fuentes=fue||[]; DB.colab=col||[]; DB.maqs=[...new Set((mq||[]).map(x=>x.maquina).filter(Boolean))].sort(); _SYNC.init=true;
 }
 async function recargar(){ await cargarTodo(); }
 async function rpcN(fn,params,okMsg){
@@ -1344,29 +1368,34 @@ function proximamente(k){
 const _RF={q:'',tipo:'',resp:'',anio:''};
 function _repFiltrados(){
   const q=_norm(_RF.q); return (DB.reportes||[]).filter(r=>(!_RF.tipo||r.tipo_reproceso===_RF.tipo)&&(!_RF.resp||r.responsable===_RF.resp)&&(!_RF.anio||anioDe(r.fecha)===_RF.anio)
-    &&(!q||_norm([r.cliente,r.op,r.item,r.responsable,r.tipo_reproceso,r.comentarios,r.maquina].join(' ')).includes(q)));
+    &&(!q||_norm([r.cliente,r.op,r.item,r.responsable,r.reportado_por,r.tipo_reproceso,r.comentarios,r.maquina].join(' ')).includes(q)));
 }
 function repSet(k,v){ _RF[k]=v; pgReset(); reportes(); }
 function reportes(){
   const all=DB.reportes||[], L=_repFiltrados();
   const tipos=uniq(all,r=>r.tipo_reproceso), resps=uniq(all,r=>r.responsable), anios=uniq(all,r=>anioDe(r.fecha));
   const sel=(k,ph,vals)=>`<select class="nc-sel" onchange="repSet('${k}',this.value)"><option value="">${ph}</option>${vals.map(v=>`<option ${v===_RF[k]?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  const fila=r=>`<tr onclick="repDetalle('${jsq(r.id)}')"><td>${fmtDate(r.fecha)}</td><td><b>${r.op!=null?r.op:'—'}</b>${r.item?' · '+esc(r.item):''}</td><td>${esc(r.cliente||'—')}</td><td>${r.tipo_reproceso?`<span class="badge naranja">${esc(r.tipo_reproceso)}</span>`:'—'}</td><td>${esc(r.responsable||'—')}</td><td>${esc(r.maquina||'—')}</td><td style="max-width:380px">${esc(trunc(r.comentarios,160))}</td></tr>`;
+  const fila=r=>`<tr onclick="repDetalle('${jsq(r.id)}')"><td>${fmtDate(r.fecha)}</td><td><b>${r.op!=null?r.op:'—'}</b>${r.item?' · '+esc(r.item):''}</td><td>${esc(r.cliente||'—')}</td><td>${r.tipo_reproceso?`<span class="badge naranja" title="${esc(NC_RE[r.tipo_reproceso]||'')}">${esc(r.tipo_reproceso)}</span>${NC_RE[r.tipo_reproceso]?`<div style="font-size:10.5px;color:var(--muted);max-width:200px">${esc(trunc(NC_RE[r.tipo_reproceso].replace(/ \(.*$/,''),40))}</div>`:''}`:'—'}${r.tiene_foto?' 📷':''}</td><td>${esc(r.responsable||'—')}</td><td>${esc(r.reportado_por||'—')}</td><td>${esc(r.maquina||'—')}</td><td style="max-width:380px">${esc(trunc(r.comentarios,160))}</td></tr>`;
   const pg=pgSlice('rep',L);
-  setContent(moduleBanner('📋','Reportes de no conformidad',L.length+' de '+all.length+' reportes',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="repForm()">➕ Nuevo reporte</button>`:'')
+  setContent(moduleBanner('📋','Reportes de no conformidad',L.length+' de '+all.length+' reportes',(puedeNC()?`<button class="btn btn-primary btn-sm" onclick="repForm()">➕ Nuevo reporte</button>`:'')+(_esAdmin()?` <button class="btn btn-ghost btn-sm" onclick="impRepForm()" style="color:#fff;border-color:rgba(255,255,255,.5)">⬆️ Importar</button>`:''))
    +`<div style="padding:10px 12px"><div class="filter-search-wrap"><input type="text" data-fkey="rq" placeholder="Buscar por OP, cliente, responsable, comentario…" value="${esc(_RF.q)}" autocomplete="off" oninput="_RF.q=this.value;clearTimeout(window._rqT);window._rqT=setTimeout(()=>{pgReset();reportes()},250)"></div>
    <div class="nc-filtros">${sel('anio','Año',anios.reverse())}${sel('tipo','Tipo de reproceso',tipos)}${sel('resp','Responsable',resps)}${(_RF.tipo||_RF.resp||_RF.anio)?`<button class="btn btn-ghost btn-sm" onclick="_RF.tipo=_RF.resp=_RF.anio='';reportes()">Quitar filtros</button>`:''}</div></div>`
-   +`<div style="padding:0 12px 14px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>OP · ítem</th><th>Cliente</th><th>Tipo</th><th>Responsable</th><th>Máquina</th><th>Comentarios</th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('rep',L)}`:empty('No hay reportes con esos filtros','📭')}</div>`);
+   +`<div style="padding:0 12px 14px">${L.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Fecha</th><th>OP · ítem</th><th>Cliente</th><th>Tipo</th><th>Responsable</th><th>Reportó</th><th>Máquina</th><th>Comentarios</th></tr></thead><tbody>${pg.map(fila).join('')}</tbody></table></div></div>${pgMore('rep',L)}`:empty('No hay reportes con esos filtros','📭')}</div>`);
 }
 const repDe=id=>(DB.reportes||[]).find(r=>r.id===id);
 function repDetalle(id){
   const r=repDe(id); if(!r) return;
-  openDetail('Reporte NC · '+opTxt(r),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha))}${dr('Cliente',esc(r.cliente||'—'))}${dr('OP · ítem',opTxt(r))}${dr('Responsable de la NC',esc(r.responsable||'—'))}${dr('Tipo de reproceso',esc(r.tipo_reproceso||'—'))}${dr('Máquina',esc(r.maquina||'—'))}${dr('Registrado por',esc(r.creado_por||'—'))}</div>
+  openDetail('Reporte NC · '+opTxt(r),`<div class="dp-section">${dr('Fecha',fmtDate(r.fecha))}${dr('Cliente',esc(r.cliente||'—'))}${dr('OP · ítem',opTxt(r))}${dr('Responsable de la NC',esc(r.responsable||'—'))}${dr('Quién reportó',esc(r.reportado_por||'—'))}${dr('Tipo de reproceso',esc(ncReTxt(r.tipo_reproceso)))}${dr('Máquina',esc(r.maquina||'—'))}${dr('Registrado por',esc(r.creado_por||'—'))}</div>
    <div class="dp-section"><h4>Comentarios</h4><p style="font-size:13px;line-height:1.5">${nl2br(r.comentarios||'—')}</p></div>
-   ${r.foto?`<div class="dp-section"><h4>Foto</h4><p style="font-size:12px;color:var(--muted)">${/^https?:/i.test(r.foto)?`<a href="${esc(r.foto)}" target="_blank">Abrir foto</a>`:esc(r.foto)+' (archivo del sistema anterior)'}</p></div>`:''}
+   <div class="dp-section" id="rp-foto" style="display:none"><h4>Foto</h4><div id="rp-foto-c"></div></div>
    ${r.id_prod?`<div class="dp-section"><h4>OP en el ERP</h4><p style="font-size:12px;color:var(--muted)">Ligada a la OP-${r.op} del módulo de producción.</p></div>`:''}`,
    puedeNC()?`<button class="btn btn-ghost" onclick="repForm('${jsq(id)}')">✏️ Editar</button><button class="btn btn-ghost" style="color:var(--danger)" onclick="repEliminar('${jsq(id)}')">🗑 Eliminar</button>`:'');
   document.getElementById('dp-actions').style.display='flex';
+  repFotoCargar(id);
+}
+async function repFotoCargar(id){
+  try{ const x=(await GET('nc_reportes','select=foto&id='+eq(id)))[0]; const f=x&&x.foto; if(!f||!document.getElementById('rp-foto')) return; document.getElementById('rp-foto').style.display='';
+    document.getElementById('rp-foto-c').innerHTML=/^data:image\//.test(f)?`<img src="${f}" style="max-width:100%;border-radius:10px;border:1px solid var(--border)" alt="Foto del reporte">`:`<p style="font-size:12px;color:var(--muted)">${esc(f)} (foto del sistema anterior, no se trajo)</p>`; }catch(e){}
 }
 async function opBuscar(pref){
   const op=gv(pref+'-op'); if(!/^\d+$/.test(op)) return;
@@ -1381,16 +1410,17 @@ async function opBuscar(pref){
 function repForm(id){
   if(!soloNC()) return; const r=id?repDe(id):{}; const all=DB.reportes||[];
   const nom=colabNombres();
-  openModal(id?'✏️ Editar reporte':'➕ Nuevo reporte de no conformidad',`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable)])])}${dl('dl-tipo',uniq(all,x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...all,...(DB.registros||[])],x=>x.maquina))}${dl('dl-cli',uniq([...all,...(DB.registros||[])],x=>x.cliente))}
+  openModal(id?'✏️ Editar reporte':'➕ Nuevo reporte de no conformidad',`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable)])])}${dl('dl-tipo',uniq(all,x=>x.tipo_reproceso))}${dl('dl-maq',[...new Set([...(DB.maqs||[]),...uniq([...all,...(DB.registros||[])],x=>x.maquina)])])}${dl('dl-cli',uniq([...all,...(DB.registros||[])],x=>x.cliente))}
    <div class="form-grid">${fld('OP','rf-op',r.op??'','inputmode="numeric" onblur="opBuscar(\'rf\')"')}${fld('Ítem','rf-item',r.item||'','onblur="opBuscar(\'rf\')"')}
    <div class="field span2" style="margin-top:-6px"><span id="rf-ophint" style="font-size:11px;color:var(--muted)"></span></div>
-   ${fld('Cliente','rf-cli',r.cliente||'','list="dl-cli"',true)}${fld('Responsable de la no conformidad','rf-resp',r.responsable||'','list="dl-resp" autocomplete="off"',true)}
-   ${fld('Tipo de reproceso (RE-01…)','rf-tipo',r.tipo_reproceso||'','list="dl-tipo"')}${fld('Máquina','rf-maq',r.maquina||'','list="dl-maq"')}
-   ${fld('Fecha','rf-fecha',(r.fecha||hoyISO()).slice(0,10),'type="date"')}${area('Comentarios (qué pasó, cantidad no conforme, qué se hizo)','rf-com',r.comentarios||'',5)}</div>`,
+   ${fld('Cliente','rf-cli',r.cliente||'','list="dl-cli"',true)}${fld('Responsable de la no conformidad','rf-resp',r.responsable||'','list="dl-resp" autocomplete="off"',true)}${fld('Quién reporta el reproceso','rf-rpt',id?(r.reportado_por||''):REPORTA_DEFAULT,'list="dl-resp" autocomplete="off"',true)}
+   <div class="field span2"><label>Tipo de reproceso</label><select id="rf-tipo">${ncReOpts(r.tipo_reproceso||'')}</select></div>${fld('Máquina','rf-maq',r.maquina||'','list="dl-maq" autocomplete="off"',true)}
+   ${fld('Fecha','rf-fecha',(r.fecha||hoyISO()).slice(0,10),'type="date"')}${area('Comentarios (qué pasó, cantidad no conforme, qué se hizo)','rf-com',r.comentarios||'',5)}${ncFotoHTML('rf')}</div>`,
    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="repGuardar('${jsq(id||'')}')">💾 Guardar</button>`);
+  _NCF=null; _NCQ=false; if(id&&r.tiene_foto) GET('nc_reportes','select=foto&id='+eq(id)).then(x=>{ if(x[0]&&/^data:image\//.test(x[0].foto||'')&&!_NCQ&&!_NCF) ncFotoMostrar('rf',x[0].foto); }).catch(()=>{});
 }
 async function repGuardar(id){
-  const d={id:id||null,op:gv('rf-op'),item:gv('rf-item'),cliente:gv('rf-cli'),responsable:gv('rf-resp'),tipo_reproceso:gv('rf-tipo'),maquina:gv('rf-maq'),fecha:gv('rf-fecha'),comentarios:gv('rf-com')};
+  const d={id:id||null,op:gv('rf-op'),item:gv('rf-item'),cliente:gv('rf-cli'),responsable:gv('rf-resp'),reportado_por:gv('rf-rpt'),tipo_reproceso:gv('rf-tipo'),maquina:gv('rf-maq'),fecha:gv('rf-fecha'),comentarios:gv('rf-com'),foto:_NCF||'',quitar_foto:(_NCQ&&!_NCF)?'1':''};
   if(!d.comentarios&&!d.cliente){ toast('Escribe al menos el cliente o los comentarios','error'); return; }
   const r=await rpcN('nc_reporte_guardar',{p:d},'✅ Reporte guardado'); if(r){ closeModal(); closeDetail(); refreshCurrentView(); }
 }
@@ -1461,6 +1491,34 @@ async function regEliminar(id){
   if(!confirm('¿Eliminar esta acción con sus causas, 5 porqués, espina y grupo? Queda en la papelera 6 meses.')) return;
   const r=await rpcN('nc_eliminar',{p_tabla:'nc_registros',p_id:id},'🗑 Acción eliminada (está en la papelera)'); if(r){ closeDetail(); refreshCurrentView(); }
 }
+// ── IMPORTAR REPORTES desde el Excel/CSV de la hoja REPORTE ──
+function impRepForm(){
+  openModal('⬆️ Importar reportes',`<p style="font-size:13px;line-height:1.5">Elige el archivo (Excel o CSV) de la pestaña <b>REPORTE</b> de Google Sheets. Los reportes que ya están en el sistema se <b>omiten</b>; solo entran los nuevos.</p><input type="file" id="ir-file" accept=".xlsx,.xls,.csv" style="margin-top:10px"><div id="ir-log" style="margin-top:12px;font-size:12px;font-family:var(--mono);white-space:pre-wrap"></div>`,
+   `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" id="ir-btn" onclick="impRepEjecutar()">⬆️ Importar</button>`);
+}
+function _impFecha(v){
+  if(v instanceof Date&&!isNaN(v)) return new Date(v.getTime()+12*36e5).toISOString().slice(0,10);
+  const t=String(v||'').trim(); if(!t) return null; let m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  m=t.match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[0]:null;
+}
+async function impRepEjecutar(){
+  const log=document.getElementById('ir-log'), f=document.getElementById('ir-file').files[0], btn=document.getElementById('ir-btn');
+  if(!f){ toast('Elige el archivo','error'); return; } btn.disabled=true; log.textContent='Leyendo archivo…\n';
+  try{
+    if(!window.XLSX) await new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=ok; s.onerror=()=>ko(new Error('No se pudo cargar el lector de Excel')); document.head.appendChild(s); });
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}); const ws=wb.Sheets['REPORTE']||wb.Sheets[wb.SheetNames[0]];
+    const raw=XLSX.utils.sheet_to_json(ws,{defval:''}); const g=(r,k)=>{ for(const kk in r){ if(kk.trim().toUpperCase()===k) return r[kk]; } return ''; };
+    const str=v=>{ const t=String(v??'').trim(); return t||null; };
+    const rows=raw.map(r=>({id:str(g(r,'ID')),cliente:str(g(r,'CLIENTE')),op:Number(g(r,'OP'))||null,item:str(g(r,'ITEM')),responsable:str(g(r,'RESPONSABLE NO CONFORMIDAD')),tipo_reproceso:str(g(r,'TIPO DE REPROCESO')),comentarios:str(g(r,'COMENTARIOS')),foto:str(g(r,'FOTO')),ref_op:str(g(r,'REF_OP')),fecha:_impFecha(g(r,'FECHA')),maquina:str(g(r,'MAQUINA')),creado_por:'Importado'})).filter(r=>r.id);
+    if(!rows.length) throw new Error('No encontré filas con ID (¿es la pestaña REPORTE?)');
+    log.textContent+=rows.length+' filas leídas\n'; let nuevas=0;
+    for(let i=0;i<rows.length;i+=60){ const r=await sb.rpc('nc_importar',{p_tabla:'nc_reportes',p_rows:rows.slice(i,i+60)}); nuevas+=(r&&r.insertadas)||0; }
+    const fin=await sb.rpc('nc_importar_fin'); await recargar();
+    log.textContent+='✓ Listo: '+nuevas+' reportes nuevos, '+(rows.length-nuevas)+' ya existían.\n'; toast('✅ Reportes importados'); reportes();
+  }catch(e){ log.textContent+='❌ '+errMsg(e)+'\n'; toast('❌ '+errMsg(e),'error'); }
+  btn.disabled=false;
+}
+
 // ── ASISTENTE DE ACCIÓN (paso a paso: General → Contención → Causas → 5 porqués → Espina → Grupo → Plan → Costos → Revisar) ──
 const FB_TOP=[['mano_obra','Mano de obra'],['metodos','Métodos'],['management','Management'],['medio_ambiente','Medio ambiente']];
 const FB_BOT=[['maquinaria','Maquinaria'],['materiales','Materiales'],['medicion','Medición']];
@@ -1493,7 +1551,7 @@ async function wizOpen(id){
   closeDetail(); document.getElementById('wiz')?.remove();
   const all=DB.registros||[], rp=DB.reportes||[]; const nom=colabNombres();
   const w=document.createElement('div'); w.id='wiz'; w.className='wiz';
-  w.innerHTML=`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-lider',colabNombres(true))}${dl('dl-tipo',uniq([...rp,...all],x=>x.tipo_reproceso))}${dl('dl-maq',uniq([...rp,...all],x=>x.maquina))}${dl('dl-cli',uniq([...rp,...all],x=>x.cliente))}${dl('dl-fuente',(DB.fuentes||[]).map(f=>f.tipo_reporte))}${dl('dl-tcausa',FB_TOP.concat(FB_BOT).map(x=>x[1]))}
+  w.innerHTML=`${dl('dl-resp',[...new Set([...nom,...uniq(all,x=>x.responsable_nc),...uniq(all,x=>x.responsable_registro)])])}${dl('dl-lider',colabNombres(true))}${dl('dl-tipo',uniq([...rp,...all],x=>x.tipo_reproceso))}${dl('dl-maq',[...new Set([...(DB.maqs||[]),...uniq([...rp,...all],x=>x.maquina)])])}${dl('dl-cli',uniq([...rp,...all],x=>x.cliente))}${dl('dl-fuente',(DB.fuentes||[]).map(f=>f.tipo_reporte))}${dl('dl-tcausa',FB_TOP.concat(FB_BOT).map(x=>x[1]))}
    <div class="wiz-head"><button type="button" class="wiz-x" onclick="wizCerrar()">✕</button><h3>${id?'Editar acción #'+(r.accion_no??''):'Nueva acción · no conformidad'}</h3></div><div class="wiz-steps" id="wiz-steps"></div><div class="wiz-body" id="wiz-body"></div><div class="wiz-foot" id="wiz-foot"></div>`;
   document.body.appendChild(w); wizPintar();
 }
@@ -1509,6 +1567,11 @@ function wizAdd(k){ wizLeer(); _W[k].push(k==='causas'?{tipo_causa:'',causa:'',c
 function wizDel(k,i){ wizLeer(); _W[k].splice(i,1); _W.dirty=true; wizPintar(true); }
 function wizTipo(t){ wizLeer(); _W.d.tipo_reporte=t; _W.dirty=true; wizPintar(true); }
 function wizFuente(){ wizLeer(); const f=(DB.fuentes||[]).find(x=>x.tipo_reporte===_W.d.fuente); if(f&&!_W.d.numeral_norma){ _W.d.numeral_norma=f.numeral||''; const n=document.getElementById('gf-numeral_norma'); if(n) n.value=_W.d.numeral_norma; } }
+function wizGrupoDef(){ // reproceso nuevo: Carlos Lasso es quien reporta (Facilitador)
+  if(!_W||_W.id||_W.defRep) return; const t=(_W.d.tipo_reproceso||'').trim(); if(!t||t==='N/A') return; _W.defRep=true;
+  if(_W.grupo.some(g=>/Quien Reporta/i.test(g.rol)&&g.nombre)) return;
+  const c=(DB.colab||[]).find(x=>x.nombre===REPORTA_DEFAULT&&x.activo!==false); if(!c) return;
+  const vac=_W.grupo.find(g=>/Quien Reporta/i.test(g.rol)&&!g.nombre); if(vac){ vac.nombre=c.nombre; vac.cargo=c.cargo||''; } else _W.grupo.push({rol:ROLES_GRUPO[1],nombre:c.nombre,cargo:c.cargo||''}); _W.dirty=true; }
 function wizRolCambio(el){ const row=el.closest('[data-l]'); const n=row&&row.querySelector('[data-c="nombre"]'); if(n){ n.setAttribute('list',esRolLider(el.value)?'dl-lider':'dl-resp'); n.placeholder=esRolLider(el.value)?'Solo líderes':''; const c=(DB.colab||[]).find(x=>x.nombre===n.value); if(esRolLider(el.value)&&c&&!c.es_lider){ n.value=''; toast('Ese colaborador no es líder','warn'); } } }
 function wizGrupoNombre(el){ const row0=el.closest('[data-l]'); const rs=row0&&row0.querySelector('[data-c="rol"]'); if(rs&&esRolLider(rs.value)){ const c0=(DB.colab||[]).find(x=>x.nombre===el.value); if(el.value&&!(c0&&c0.es_lider)){ el.value=''; toast('Para «Líder (Dueño del Proceso)» elige un líder de la lista','warn'); return; } } const row=el.closest('[data-l]'); const c=(DB.colab||[]).find(x=>x.nombre===el.value); const cg=row&&row.querySelector('[data-c="cargo"]'); if(c&&cg&&!cg.value) cg.value=c.cargo||''; }
 function wizCosto(){ const g=k=>Number(document.getElementById('gf-'+k)?.value)||0; const t=g('mano_obra')+g('materiales')+g('servicio_externo'); const el=document.getElementById('gf-costos'); if(el&&t) el.value=t; }
@@ -1522,13 +1585,13 @@ const WSTEP_HTML=[
   <div class="form-grid">${wf('Fecha del reporte','fecha_reporte',{type:'date'})}${wf('Responsable del registro','responsable_registro',{list:'dl-resp'})}${wf('Cargo','cargo')}${wsel('Proceso / área','proceso_area',AREAS)}
   ${wf('Fuente','fuente',{list:'dl-fuente',extra:'onchange="wizFuente()"'})}${wf('Numeral de la norma','numeral_norma')}
   ${wf('OP','op',{extra:'inputmode="numeric" onblur="opBuscar(\'gf\')"'})}${wf('Ítem','item',{extra:'onblur="opBuscar(\'gf\')"'})}<div class="field span2" style="margin-top:-6px"><span id="gf-ophint" style="font-size:11px;color:var(--muted)"></span></div>
-  ${wf('Cliente (externo o interno)','cliente',{list:'dl-cli',span:true})}${wf('Máquina','maquina',{list:'dl-maq'})}${wf('Tipo de reproceso','tipo_reproceso',{list:'dl-tipo'})}${wsel('¿Significativo?','significativo',['SI','NO'])}${wf('Responsable de la NC','responsable_nc',{list:'dl-resp'})}${wf('Proveedor (si aplica)','proveedor',{span:true})}
+  ${wf('Cliente (externo o interno)','cliente',{list:'dl-cli',span:true})}${wf('Máquina','maquina',{list:'dl-maq'})}<div class="field"><label>Tipo de reproceso</label><select id="gf-tipo_reproceso" data-k="tipo_reproceso">${ncReOpts(_wv('tipo_reproceso'))}</select></div>${wsel('¿Significativo?','significativo',['SI','NO'])}${wf('Responsable de la NC','responsable_nc',{list:'dl-resp'})}${wf('Proveedor (si aplica)','proveedor',{span:true})}
   ${wa('Descripción de la no conformidad u oportunidad de mejora','descripcion',5,'Cantidades, cómo, qué, dónde, cuándo, por qué y repercusiones')}</div>`,
  ()=>`<div class="form-grid">${wchk('Se requiere contención','contencion_requerida')}${wa('Acciones de contención','acciones_contencion',3,'Qué se hizo de inmediato para evitar que el problema siga')}${wa('Correcciones','correcciones',3)}${wa('Acciones planificadas por la organización','acciones_planificadas',3)}</div>`,
  ()=>`<p class="wiz-hint">Escribe cada causa que encuentres. Elige a qué categoría de la espina pertenece.</p>${_W.causas.map((c,i)=>`<div class="nc-lrow" data-l="causas" data-i="${i}"><div class="field"><label>Causa ${i+1}</label><textarea data-c="causa" rows="2">${esc(c.causa)}</textarea></div><div class="field" style="max-width:180px"><label>Categoría</label><input data-c="tipo_causa" value="${esc(c.tipo_causa)}" list="dl-tcausa"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('causas',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('causas')">＋ Agregar causa</button>`,
  ()=>`<p class="wiz-hint">Pregúntate «¿por qué?» hasta llegar a la causa raíz.</p>${whyHTML(_W.d.descripcion,_W.porques,_W.d.causa_raiz,true)}`,
  ()=>{ if(!_W.d.e_efecto&&_W.d.descripcion) _W.d.e_efecto=trunc(_W.d.descripcion,200); const v={efecto:_W.d.e_efecto}; FB_TOP.concat(FB_BOT).forEach(([k])=>v[k]=_W.d['e_'+k]); return `<p class="wiz-hint">Escribe en cada «espina» las causas de esa categoría; todo apunta al efecto.</p>${espinaHTML(v,true)}`; },
- ()=>`<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol" onchange="wizRolCambio(this)">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="${esRolLider(g.rol)?'dl-lider':'dl-resp'}" autocomplete="off" placeholder="${esRolLider(g.rol)?'Solo líderes':''}" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`,
+ ()=>{ wizGrupoDef(); return `<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol" onchange="wizRolCambio(this)">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="${esRolLider(g.rol)?'dl-lider':'dl-resp'}" autocomplete="off" placeholder="${esRolLider(g.rol)?'Solo líderes':''}" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`; },
  ()=>`<div class="form-grid">${wa('Descripción de la acción correctiva, preventiva o de mejora','desc_tipo_reporte',4)}${wf('Plan definido por','plan_definido_por')}${wchk('Plan aprobado','aprobacion')}${wf('Responsable de implementación','resp_implementacion',{list:'dl-resp'})}${wf('Responsable de seguimiento','resp_seguimiento',{list:'dl-resp'})}${wf('Fecha prevista de cierre','fecha_prevista_cierre',{type:'date'})}${wf('Fecha real de cierre','fecha_real_cierre',{type:'date'})}${wf('N.º de revisiones','n_revisiones')}</div>`,
  ()=>`<div class="form-grid">${wf('Mano de obra ($)','mano_obra',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Materiales ($)','materiales',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Servicio externo ($)','servicio_externo',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Costo total ($)','costos',{extra:'inputmode="decimal"'})}</div>`,
  ()=>{ const d=_W.d; const row=(l,v)=>`<div class="dp-row"><span class="dp-label">${l}</span><span class="dp-val">${v||'—'}</span></div>`; const falta=!d.descripcion; return `${falta?`<div class="callout" style="margin-bottom:10px">⚠️ Falta la descripción de la no conformidad (paso General).</div>`:''}<div class="dp-section">${row('Tipo',esc(d.tipo_reporte))}${row('Fecha',fmtDate(d.fecha_reporte))}${row('Área',esc(d.proceso_area))}${row('OP · ítem',d.op?'OP-'+esc(d.op)+(d.item?' · '+esc(d.item):''):'')}${row('Cliente',esc(d.cliente))}${row('Descripción',esc(trunc(d.descripcion,200)))}${row('Causas',_W.causas.filter(c=>c.causa).length)}${row('5 porqués',_W.porques.filter(p=>p.porque||p.descripcion).length)}${row('Causa raíz',esc(trunc(d.causa_raiz,160)))}${row('Grupo',_W.grupo.filter(g=>g.nombre).map(g=>esc(g.nombre)).join(', '))}${row('Cierre previsto',fmtDate(d.fecha_prevista_cierre))}${row('Costo total',d.costos?fmt(d.costos):'')}</div>`; }
@@ -1565,7 +1628,7 @@ function reprocesos(){
   setContent(moduleBanner('♻️','Reprocesos','Dónde y por qué se generan las no conformidades')
    +`<div style="padding:12px"><div class="nc-filtros"><select class="nc-sel" onchange="rpAnio(this.value)"><option value="">Todos los años</option>${anios.map(a=>`<option ${a===_RPA?'selected':''}>${a}</option>`).join('')}</select></div>
    <div class="kpi-grid"><div class="kpi-card pink"><div class="kpi-value">${P.length}</div><div class="kpi-label">Reportes de NC</div></div><div class="kpi-card info"><div class="kpi-value">${R.length}</div><div class="kpi-label">Acciones registradas</div></div><div class="kpi-card gold"><div class="kpi-value">${fmt(R.reduce((s,r)=>s+(Number(r.costos)||0),0))}</div><div class="kpi-label">Costo registrado</div></div></div>
-   <div class="nc-grid2">${barras('Por tipo de reproceso',top(todos,x=>x.tipo_reproceso),'#f59e0b')}${barras('Por responsable de la NC',top(todos,x=>x.responsable||x.responsable_nc),'#ef4444')}${barras('Por máquina',top(todos,x=>x.maquina),'#3b82f6')}${barras('Por cliente',top(todos,x=>x.cliente),'#16a34a')}${barras('Acciones por proceso / área',top(R,x=>x.proceso_area),'#8b5cf6')}
+   <div class="nc-grid2">${barras('Por tipo de reproceso',top(todos,x=>x.tipo_reproceso).map(([k,v])=>[ncReTxt(k),v]),'#f59e0b')}${barras('Por responsable de la NC',top(todos,x=>x.responsable||x.responsable_nc),'#ef4444')}${barras('Quién reporta los reprocesos',top(P,x=>x.reportado_por),'#0ea5e9')}${barras('Por máquina',top(todos,x=>x.maquina),'#3b82f6')}${barras('Por cliente',top(todos,x=>x.cliente),'#16a34a')}${barras('Acciones por proceso / área',top(R,x=>x.proceso_area),'#8b5cf6')}
    <div class="nc-box"><h4>Costo registrado por cliente</h4>${cc.length?cc.map(([k,v])=>`<div class="nc-bar"><span class="nc-bl" title="${esc(k)}">${esc(trunc(k,30))}</span><span class="nc-bt"><i style="width:${Math.round(v/cc[0][1]*100)}%;background:#d97706"></i></span><b>${fmt(v)}</b></div>`).join(''):'<p style="font-size:12px;color:var(--muted)">Sin costos registrados</p>'}</div></div></div>`);
 }
 
