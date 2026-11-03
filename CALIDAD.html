@@ -2503,7 +2503,7 @@ function avRender(){
   const barra=(av)=>`<div style="min-width:90px"><div style="font-size:11px;font-weight:800;color:${avColor(av)}">${av}%</div><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${av}%;background:${avColor(av)}"></div></div></div>`;
   const dtag=d=>d==null?'<span style="color:var(--muted)">—</span>':d<0?`<span class="badge rojo">Vencido ${-d}d</span>`:d===0?'<span class="badge rojo">Hoy</span>':d<=3?`<span class="badge naranja">${d}d</span>`:`<span class="badge gris">${d}d</span>`;
   const chipsMaq=o=>{ const ps=avPasos(o); const act=ps.find(s=>s.b!=='externo'&&s.pct<100); return ps.map(s=>s.b==='externo'?`<span class="badge gris" title="${esc(s.raw)}">🚚 ${esc(s.raw.slice(0,12))}</span>`:`<span class="badge" style="background:${avColor(s.pct)}1a;color:${avColor(s.pct)};border:1px solid ${avColor(s.pct)}55;margin:1px;${act&&act.i===s.i?'font-weight:800;box-shadow:0 0 0 2px '+avColor(s.pct)+'33':''}">${s.pct>=100?'✓ ':''}${esc(AV_MAQ[s.b]||s.b)} ${s.pct}%</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">Sin ruta</span>'; };
-  const btnAv=o=>puedeCal()?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();avAbrir('${o.id}')">📈 Avance</button>`:'';
+  const btnAv=o=>puedeCal()?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();avAbrir('${o.id}')">📈 Avance</button> <button class="btn btn-sm" style="background:#ea580c;color:#fff" title="Registrar reproceso" onclick="event.stopPropagation();ncReportar('${o.id}')">🚨</button>`:'';
   const itemRow=(o,conOp)=>{ const d=dias(o); const av=Math.round(Number(o.avance)||0);
     return `<tr onclick="avAbrir('${o.id}')" style="cursor:pointer">${conOp?`<td><b style="color:var(--info)">OP-${o.op}</b></td><td style="font-weight:600;max-width:170px">${esc(o.empresa||'—')}</td>`:''}<td class="td-center"><b>${o.item_num??'—'}</b></td><td style="max-width:260px">${esc(o.descripcion||'—')}</td><td class="td-center">${o.unidades??''}</td><td style="min-width:200px">${chipsMaq(o)}</td><td>${barra(av)}</td><td>${dtag(d)}</td><td>${btnAv(o)}</td></tr>`; };
   let body;
@@ -2541,7 +2541,7 @@ function avAbrir(id){
       <input type="range" min="0" max="100" step="1" value="${s.pct}" id="ave-r${s.i}" oninput="avSet(${s.i},this.value)" style="accent-color:${avColor(s.pct)}">
       <div class="avp-q">${[0,25,50,75,100].map(q=>`<button type="button" onclick="avSet(${s.i},${q})">${q}</button>`).join('')}</div></div>`).join('');
   openModal(`📈 OP-${o.op} · Ítem ${o.item_num??''} — ${esc(o.empresa||'')}`,ayudaForm('Mueve la barra o toca 0/25/50/75/100 en cada máquina. Al guardar, el **avance global** se recalcula solo (promedio ponderado por las horas de cada máquina). Los servicios externos no cuentan.')+hero+blocks,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="avGuardar()">💾 Guardar avance</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" style="background:#ea580c;color:#fff" onclick="closeModal();ncReportar('${o.id}')">🚨 Registrar reproceso</button><button class="btn btn-primary" onclick="avGuardar()">💾 Guardar avance</button>`);
   avPrev();
 }
 function avSet(i,v){ if(!_AVE) return; v=Math.max(0,Math.min(100,Math.round(Number(v)||0))); const r=document.getElementById('ave-r'+i); if(!r) return; _AVE.val[i]=v; r.value=v; r.style.accentColor=avColor(v); const p=document.getElementById('ave-p'+i); if(p){ p.textContent=v+'%'; p.style.color=avColor(v); } avPrev(); }
@@ -5910,7 +5910,7 @@ function ncFotoMostrar(p,src){ const im=document.getElementById(p+'-prev'); if(!
 
 async function ncReportar(id){
   if(!puede('calidad','administracion')){ toast('Tu rol no puede reportar reprocesos','error'); return; }
-  const o=id?opDe(id):null; let nombres=[],maqs=[]; _NCF=null; _NCQ=false;
+  const o=id?(opDe(id)||(typeof _AVR!=='undefined'&&_AVR[id])||null):null; let nombres=[],maqs=[]; _NCF=null; _NCQ=false;
   showBusy();
   try{ const [c,m]=await Promise.all([GET('nc_colaboradores','select=nombre&activo=eq.true&order=nombre.asc').catch(()=>[]),GET('tiempos_maquinas','select=maquina').catch(()=>[])]); nombres=c.map(x=>x.nombre); maqs=[...new Set(m.map(x=>x.maquina).filter(Boolean))].sort(); }catch(e){} hideBusy();
   const dl=(i,a)=>`<datalist id="${i}">${a.map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
