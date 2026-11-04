@@ -1587,9 +1587,15 @@ function ppRender(){ const el=document.getElementById('pp-lines'); if(!el) retur
   const f=()=>document.querySelectorAll('#pp-lines .pp-ta').forEach(erFit); f(); setTimeout(f,60); setTimeout(f,350); }
 function ppAgregar(){ _PP.lineas.push({item:_PP.lineas.length+1,cant:1,desc:''}); ppRender(); }
 function ppQuitar(i){ _PP.lineas.splice(i,1); ppRender(); }
+const PP_CLI=[
+ {n:'ROTORCLIP COMPANY',cli:'ROTORCLIP COMPANY',nit:'22 - 3615709',dir:'187 DAVIDSON AVENUE 08873',ciu:'SOMERSET, NJ - USA',con:'LISA COIRO',tel:'(+1) (732) 469 7333 ext. 2297'},
+ {n:'AEROTOOLS CONNECTION',cli:'AEROTOOLS CONNECTION LLC',nit:'47-4639152',dir:'12625-SW 134CT STE 208-209 MIAMI. FL. 33186',ciu:'MIAMI, FL - USA',con:'DINNO ARMETTA',tel:'+1 305-234-3034'},
+ {n:'EMW LÁSER',cli:'EWM LÁSER INC',nit:'',dir:'6840 114TH AVE NORTH.',ciu:'LARGO, FL 33773, USA',con:'JACK DUGAN',tel:'+1(828) 712-7727'}];
+function ppCliSel(i){ const c=PP_CLI[i]; if(!c) return; const set=(k,v)=>{ const e=document.getElementById(k); if(e) e.value=v; }; set('pp-cli',c.cli); set('pp-nit',c.nit); set('pp-dir',c.dir); set('pp-ciu',c.ciu); set('pp-con',c.con); set('pp-tel',c.tel); }
 function formPackingEn(id){
   const m=remDe(id); if(!m) return; const b=ppBase(m); _PP={id,lineas:b.lineas};
   openModal('✏️ Packing List (EN) — '+remNum(m),`<div class="callout" style="margin:0 0 12px">Everything here is for the <b>Packing List in English</b>. It does not change the Spanish remisión. Fields start with the remisión data: translate what you need.</div><div class="form-grid">
+    <div class="field span2"><label>MOSAT customer (autofill)</label><select onchange="ppCliSel(this.value)"><option value="">— Select —</option>${PP_CLI.map((c,i)=>`<option value="${i}">${c.n}</option>`).join('')}</select></div>
     <div class="field"><label>Date</label><input type="date" id="pp-fec" value="${esc(b.fecha)}"></div>${fldR('Packing list No.','pp-num',b.numero,'inputmode="numeric"')}
     ${fldR('Messrs. (customer)','pp-cli',b.cliente,'',true)}${fldR('EIN','pp-nit',b.nit)}${fldR('City','pp-ciu',b.ciudad)}${fldR('Address','pp-dir',b.direccion,'',true)}${fldR('Attendant','pp-con',b.encargado)}${fldR('Phone','pp-tel',b.telefono)}
     ${fldR('Project','pp-pro',b.proyecto,'',true)}${fldR('Purchase order','pp-oc',b.oc)}${fldR('Signature — name','pp-fn',b.firma_nombre)}${fldR('Signature — title','pp-fc',b.firma_cargo,'',true)}
