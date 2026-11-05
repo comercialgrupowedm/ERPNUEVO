@@ -1537,13 +1537,33 @@ function modalRechazo(id,desdeQA){
       <div class="field"><label>Proceso con problema</label><select id="nc-proc"><option value="">— Seleccionar —</option>${procs.map((p,i)=>`<option value="${esc((i+1)+'. '+p)}">${i+1}. ${esc(p)}</option>`).join('')}<option value="Otro">Otro</option></select></div>
       <div class="field span2"><label>Tipo de no conformidad *</label><select id="nc-tipo"><option value="">— Seleccionar —</option>${TIPOS_NC.map(t=>`<option>${esc(t)}</option>`).join('')}</select></div>
       <div class="field span2"><label>Descripción del problema *</label><textarea id="nc-desc" placeholder="Describe el problema encontrado…"></textarea></div>
+      <div class="field span2"><label>👷 ¿Quién hizo el trabajo? (responsable)</label><div id="nc-resp" style="border:1px solid var(--border);border-radius:10px;padding:8px 10px;max-height:170px;overflow:auto;font-size:12.5px"><span style="color:var(--muted)">Buscando quién registró horas…</span></div><input id="nc-resp-otro" placeholder="Otro (escribe el nombre si no está en la lista)" style="margin-top:6px"></div>
       <div class="field span2"><label>Acción correctiva propuesta</label><textarea id="nc-acc" placeholder="Acción a tomar…" style="min-height:52px"></textarea></div>
       <div class="field span2"><label>Evidencia (foto, opcional)</label>${puedeSubirFoto()
         ?`<button type="button" class="btn btn-ghost btn-sm" onclick="ncFoto()">📷 Tomar / elegir foto</button><div id="nc-foto" style="font-size:12px;color:var(--muted);margin-top:4px">Sin foto</div>`
         :`<div style="font-size:12px;color:var(--muted)">Tu rol (${esc(rolActual())}) no puede adjuntar archivos: la base solo lo permite a calidad, comercial, diseño, producción y admin. Describe bien el problema en el texto.</div>`}</div>
     </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="guardarRechazo('${idq(o)}')">⚠️ Registrar reproceso</button>`);
+  ncCargarResp(o);
 }
+
+// Quién registró horas en esta OP/ítem (tabla registro_tiempos): para señalar al responsable del reproceso
+async function ncCargarResp(o){
+  const el=document.getElementById('nc-resp'); if(!el) return;
+  try{
+    const rows=await GET('registro_tiempos','select=colaborador,item_num,duracion_horas,fecha&op=eq.'+encodeURIComponent(o.op)+'&limit=2000');
+    const mp=new Map();
+    (rows||[]).forEach(r=>{ const n=String(r.colaborador||'').replace(/\s+/g,' ').trim(); if(!n) return; const m=mp.get(n)||{n,item:0,otros:0,h:0,f:''};
+      if(r.item_num==null||Number(r.item_num)===Number(o.item_num)) m.item++; else m.otros++; m.h+=Number(r.duracion_horas)||0; if(r.fecha&&r.fecha>m.f) m.f=r.fecha; mp.set(n,m); });
+    const lista=[...mp.values()].sort((a,b)=>(b.item>0)-(a.item>0)||b.item-a.item||b.otros-a.otros);
+    const fila=m=>`<label style="display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer"><input type="checkbox" class="nc-resp-ck" value="${esc(m.n)}"><span style="flex:1">${esc(m.n)}</span><small style="color:var(--muted)">${m.item+(m.item?0:m.otros)} reg.${m.h?' · '+m.h.toFixed(1)+' h':''}</small></label>`;
+    const deItem=lista.filter(m=>m.item>0), otros=lista.filter(m=>!m.item);
+    if(!lista.length){ el.innerHTML='<span style="color:var(--muted)">Nadie registró horas en esta OP. Escribe el nombre abajo.</span>'; return; }
+    el.innerHTML=(deItem.length?'<div style="font-size:11px;color:var(--muted);margin-bottom:2px">Registraron tiempo en este ítem:</div>'+deItem.map(fila).join(''):'<div style="font-size:11.5px;color:var(--muted)">Nadie registró tiempo en este ítem.</div>')
+      +(otros.length?`<details style="margin-top:6px"${deItem.length?'':' open'}><summary style="font-size:11.5px;cursor:pointer;color:var(--muted)">Otros que trabajaron en la OP (${otros.length})</summary>${otros.map(fila).join('')}</details>`:'');
+  }catch(e){ el.innerHTML='<span style="color:var(--muted)">No se pudo cargar la lista. Escribe el nombre abajo.</span>'; }
+}
+function ncResp(){ const v=[...document.querySelectorAll('.nc-resp-ck:checked')].map(x=>x.value); const o=(gv('nc-resp-otro')||'').trim(); if(o) v.push(o); return v.join(', '); }
 function ncFoto(){ pickFile('image/*',f=>{ _evidTmp=f; const el=document.getElementById('nc-foto'); if(el) el.textContent='📷 '+(f.name||'foto')+' lista'; }); }
 async function guardarRechazo(id){
   const o=opDe(id); if(!o) return;
@@ -1555,7 +1575,7 @@ async function guardarRechazo(id){
     evid=await subirArchivo({id_prod:id},'evidencia',_evidTmp);
     if(!evid&&!confirm('No se pudo subir la foto. ¿Registrar el reproceso sin evidencia?')) return;
   }
-  const r=await rpcC('calidad_rechazar',{p_id:id,p_cantidad:cant,p_motivo:desc,p_evidencia:evid,p_tipo_nc:tipo,p_proceso:gv('nc-proc')||null,p_accion:gv('nc-acc')||null},'⚠️ Reproceso registrado');
+  const r=await rpcC('calidad_rechazar',{p_id:id,p_cantidad:cant,p_motivo:desc,p_evidencia:evid,p_tipo_nc:tipo,p_proceso:gv('nc-proc')||null,p_accion:gv('nc-acc')||null,...(ncResp()?{p_responsable:ncResp()}:{})},'⚠️ Reproceso registrado');
   if(r){ _evidTmp=null; trasGuardar(id); if(r.id_reproceso) setTimeout(()=>imprimirReproceso(r.id_reproceso),300); }
 }
 function modalCerrarRep(repId){
@@ -2665,12 +2685,31 @@ function docRemision(id){
 let _BQ='';
 function _gsLocal(v){ var i=document.querySelector('#content input[data-fkey$="q"], #content .filter-search-wrap input, #content input[id$="-q"]:not(#cb-q):not(#cc-q), #content input[placeholder^="🔍"]:not(#cb-q):not(#cc-q), #content input[placeholder^="Buscar"]:not([list])'); if(!i) return false; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return true; }
 function onGlobalSearch(v){ if(MOD!=='buscar'&&_gsLocal(v)) return; _BQ=v; if(!String(v).trim()){ if(MOD==='buscar') nav('dashboard'); return; } if(MOD!=='buscar') nav('buscar',true); else buscar(); }
+
+// OP ya despachadas (ya no están en la lista activa): se buscan en la base por N° de OP, cotización o cliente, para poder abrirlas y adjuntar el registro de calidad escaneado
+let _BQC=0;
+async function buscarCerradas(q){
+  const tk=++_BQC; const el=()=>document.getElementById('bq-cerr'); const s=String(q||'').trim(); const n=s.replace(/^(op|cot)[-\s]*/i,'').trim();
+  if(!el()) return;
+  if(!/^\d+$/.test(n)&&s.length<3){ el().innerHTML=mutedP('Escribe el N° de OP, la cotización o el cliente (mínimo 3 letras).'); return; }
+  try{
+    const f=/^\d+$/.test(n)?'or=(op.eq.'+n+',cot_num.eq.'+n+')':'empresa=ilike.'+encodeURIComponent('*'+s+'*');
+    const rows=await GET('produccion','select='+PROD_SEL_C+'&'+f+'&order=op.desc,item_num.asc&limit=40');
+    if(tk!==_BQC||!el()) return;
+    const ya=new Set((DB.produccion||[]).map(x=>x.id));
+    const nuevos=(rows||[]).filter(x=>!ya.has(x.id));
+    DB.extra=DB.extra||[]; nuevos.forEach(x=>{ if(!DB.extra.some(e=>e.id===x.id)) DB.extra.push(x); });
+    el().innerHTML=nuevos.length?`<div class="card-list">${nuevos.map(o=>itemCard(o)).join('')}</div><div style="font-size:11.5px;color:var(--muted);margin-top:6px">Abre el ítem → 📋 Inspección QA → 📎 Subir registro escaneado.</div>`:mutedP('Sin OP cerradas o despachadas con esa búsqueda.');
+  }catch(e){ if(el()) el().innerHTML=mutedP('No se pudo buscar: '+esc(errMsg(e))); }
+}
 function buscar(){
   const q=_BQ; const items=(DB.produccion||[]).concat(DB.extra||[]).filter(o=>buscaOP(o,q)).slice(0,40);
   const certs=(DB.certificados||[]).filter(c=>_norm([c.numero,certNum(c),'OP-'+c.op,c.op,c.cot_num,'COT-'+c.cot_num,c.empresa,c.referencia].join(' ')).includes(_norm(q))).slice(0,20);
   setContent(moduleBanner('🔍','Búsqueda',`«${esc(q)}» · ${items.length} ítem(s) · ${certs.length} certificado(s)`)
-    +`<div class="dp-section" style="margin-top:12px"><h4>📦 Ítems</h4>${items.length?`<div class="card-list">${items.map(o=>itemCard(o)).join('')}</div>`:mutedP('Sin ítems (solo se buscan ítems no despachados y los ligados a reprocesos, certificados o solicitudes).')}</div>`
-    +`<div class="dp-section"><h4>🏅 Certificados</h4>${certs.length?certs.map(c=>`<div class="cm-line" style="cursor:pointer" onclick="detailCert('${jsq(c.id)}')"><div class="cm-t">N° ${certNum(c)} · OP-${esc(String(c.op??''))}<small>${esc(c.empresa||'')} · ${fmtDate(c.fecha_emision)}</small></div>${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':''}</div>`).join(''):mutedP('Sin certificados.')}</div><div style="height:80px"></div>`);
+    +`<div class="dp-section" style="margin-top:12px"><h4>📦 Ítems</h4>${items.length?`<div class="card-list">${items.map(o=>itemCard(o)).join('')}</div>`:mutedP('Sin ítems en curso con esa búsqueda.')}</div>`
+    +`<div class="dp-section"><h4>🏅 Certificados</h4>${certs.length?certs.map(c=>`<div class="cm-line" style="cursor:pointer" onclick="detailCert('${jsq(c.id)}')"><div class="cm-t">N° ${certNum(c)} · OP-${esc(String(c.op??''))}<small>${esc(c.empresa||'')} · ${fmtDate(c.fecha_emision)}</small></div>${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':''}</div>`).join(''):mutedP('Sin certificados.')}</div>`
+    +`<div class="dp-section"><h4>🗄️ OP cerradas / despachadas</h4><div id="bq-cerr">${mutedP('Buscando…')}</div></div><div style="height:80px"></div>`);
+  buscarCerradas(q);
 }
 
 // ══ DOCUMENTOS IMPRIMIBLES ══
@@ -2854,7 +2893,8 @@ function imprimirReproceso(repId){
     `<table style="margin-bottom:10px"><tr>${cel('Fecha',fmtDate(r.created_at))}${cel('OP',`OP-${esc(String(o.op??'—'))}`)}${cel('Ítem',esc(String(o.item_num??'—')))}${cel('Estado',r.estado==='ABIERTO'?'ABIERTO':'CERRADO '+fmtDate(r.cerrado_at))}</tr>
       <tr>${cel('Cliente',esc(o.empresa||'—'),'colspan="2"')}${cel('Piezas afectadas',esc(String(r.cantidad))+' de '+esc(String(o.unidades??'—')))}${cel('Cotización',esc(String(o.cot_num??'—')))}</tr>
       <tr>${cel('Descripción del ítem',esc(o.descripcion||'—'),'colspan="4"')}</tr>
-      <tr>${cel('Proceso con problema',esc(r.proceso||'—'),'colspan="2"')}${cel('Tipo de no conformidad',esc(r.tipo_nc||'—'),'colspan="2"')}</tr></table>
+      <tr>${cel('Proceso con problema',esc(r.proceso||'—'),'colspan="2"')}${cel('Tipo de no conformidad',esc(r.tipo_nc||'—'),'colspan="2"')}</tr>
+      <tr>${cel('Responsable (quién hizo el trabajo)',esc(r.responsable||'—'),'colspan="4"')}</tr></table>
     <table style="margin-bottom:10px"><tr><th class="azul" style="text-align:left">DESCRIPCIÓN DEL PROBLEMA</th></tr><tr><td style="min-height:60px;height:60px;vertical-align:top;white-space:pre-wrap;font-size:11px">${esc(r.motivo||'')}</td></tr></table>
     <table style="margin-bottom:10px"><tr><th class="azul" style="text-align:left">ACCIÓN CORRECTIVA</th></tr><tr><td style="height:50px;vertical-align:top;white-space:pre-wrap;font-size:11px">${esc(r.accion_correctiva||'')}</td></tr></table>
     ${r.estado!=='ABIERTO'?`<table style="margin-bottom:10px"><tr><th class="az2" style="text-align:left">CIERRE</th></tr><tr><td>${fmtDT(r.cerrado_at)} · ${esc(r.cerrado_por||'')}${r.nota_cierre?' — '+esc(r.nota_cierre):''}</td></tr></table>`:''}
