@@ -1311,11 +1311,11 @@ async function lzThumbs(){
 
 // ── Tarjeta de ítem (común a las colas) ──
 function itemCard(o,extra='',acts=''){
-  const d=diasPactada(o);
-  return `<div class="list-card" onclick="detailItem('${idq(o)}')">
+  const d=diasPactada(o); const nrep=repAbiertos(o.id).length;
+  return `<div class="list-card" ${nrep?'style="border-left:5px solid #dc2626;background:#fef2f2"':''} onclick="detailItem('${idq(o)}')">
     <div style="display:flex;gap:10px;align-items:flex-start">${thumbProd(o,48)}
       <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="lc-id">${opTitulo(o)}</div>${bCal(o)}</div><div class="lc-title" style="word-break:normal;overflow-wrap:anywhere">${esc(o.empresa||'—')}</div><div class="lc-sub">${esc(String(o.descripcion||'').slice(0,90))}</div></div></div>
-    <div class="lc-meta">${bGar(o)}${bQA(o)}<span style="font-size:11px;color:var(--muted)">${esc(String(o.unidades??'—'))} und</span>${d!=null&&!o.despachado?`<span style="font-size:11px;color:var(--muted);margin-left:auto">📅 ${fmtDate(o.fecha_pactada)} ${diasTag(d)}</span>`:''}</div>
+    <div class="lc-meta">${nrep?'<span class="badge rojo" style="font-weight:800">⚠️ EN REPROCESO</span>':''}${bGar(o)}${bQA(o)}<span style="font-size:11px;color:var(--muted)">${esc(String(o.unidades??'—'))} und</span>${d!=null&&!o.despachado?`<span style="font-size:11px;color:var(--muted);margin-left:auto">📅 ${fmtDate(o.fecha_pactada)} ${diasTag(d)}</span>`:''}</div>
     ${extra}
     ${acts?`<div class="avq-acts" onclick="event.stopPropagation()">${acts}</div>`:''}
   </div>`;
