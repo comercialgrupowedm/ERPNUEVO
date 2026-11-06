@@ -1081,7 +1081,52 @@ const DB={}; const _SYNC={init:false}; let MOD='dashboard';
 const TITLES={papelera:'Papelera',dashboard:'Inicio',remisiones:'Remisiones',porpedir:'Por pedir',marquillas:'Cotizar marquillas',mqlista:'Marquillas',cotizaciones:'Cotizaciones',elementos:'Elementos / Ítems'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REM_EST={PEDIDA:['Pedida','naranja'],SELECCIONADA:['Seleccionada','azul'],GENERADA:['Generada','urg'],DESPACHADA:['Despachada','verde'],CANCELADA:['Cancelada','rojo']};
-const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor';
+const PROD_SEL_R='id,op,item_num,cot_num,empresa,descripcion,unidades,cant_despachada,calidad_estado,despachado,es_garantia,asesor,tiene_imagen,imagen_drive_id';
+
+// ── Imagen de la OP (misma lógica que Diseño / Calidad) ──
+const driveImg=(id,w=200)=>`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
+const imgSrcOP=(p,w=200)=>p.imagen_thumb||(p.imagen_drive_id?driveImg(p.imagen_drive_id,w):'');
+const _imgVar=(id,w)=>[`https://lh3.googleusercontent.com/d/${id}=w${w}`,`https://drive.google.com/thumbnail?id=${id}&sz=w${w}`,`https://drive.google.com/uc?export=view&id=${id}`];
+function imgErr(el){
+  const id=el.dataset.did; if(!id){ el.style.visibility='hidden'; return; }
+  const n=Number(el.dataset.n||0)+1; el.dataset.n=n; const v=_imgVar(id,el.dataset.w||200);
+  if(n<v.length){ setTimeout(()=>{ el.src=v[n]; },400*n); return; }
+  const ph=document.createElement('div'); ph.setAttribute('style',(el.getAttribute('style')||'')+';display:flex;align-items:center;justify-content:center;background:var(--card2);color:var(--muted)'); ph.textContent='🔩'; el.replaceWith(ph);
+}
+const imgTag=(p,w,style)=>{ const s=imgSrcOP(p,w); if(!s) return ''; const d=(!p.imagen_thumb&&p.imagen_drive_id)?` data-did="${esc(p.imagen_drive_id)}" data-w="${w}"`:''; return `<img src="${esc(s)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${d} onerror="imgErr(this)"${style?` style="${style}"`:''}>`; };
+const _thSt=sz=>`width:${sz}px;height:${sz}px;border-radius:8px;flex-shrink:0`;
+const thumbProd=(p,sz=38)=>imgSrcOP(p,sz*3)
+  ?imgTag(p,sz*3,`${_thSt(sz)};object-fit:cover;border:1px solid var(--border);background:#fff`)
+  :(p.tiene_imagen?`<div class="lz-th" data-pid="${esc(p.id)}" data-sz="${sz}" style="${_thSt(sz)};background:var(--card2)"></div>`
+  :`<div style="${_thSt(sz)};background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted)">🔩</div>`);
+const IMGC={};
+let _pmA=null,_pmN=-1,_pm=null;
+function _prodImg(id){
+  const a=DB.prods||[]; if(a!==_pmA||a.length!==_pmN){ _pmA=a; _pmN=a.length; _pm=new Map(a.map(x=>[x.id,x])); }
+  return _pm.get(id)||IMGC[id]||null;
+}
+// Miniatura por id de ítem: usa lo ya cargado; si no lo conoce, lo pide en lote al aparecer en pantalla
+function thumbDe(id,sz=36){
+  if(!id) return '';
+  const p=_prodImg(id);
+  if(p) return thumbProd(p,sz);
+  return `<div class="lz-th" data-pid="${esc(id)}" data-sz="${sz}" style="${_thSt(sz)};background:var(--card2)"></div>`;
+}
+async function lzThumbs(){
+  const els=[...document.querySelectorAll('.lz-th[data-pid]')]; if(!els.length) return;
+  const ids=[...new Set(els.map(e=>e.dataset.pid))].slice(0,80);
+  try{
+    const rows=await GET('produccion','select=id,imagen_thumb,imagen_drive_id,tiene_imagen&id=in.('+ids.map(i=>'"'+i+'"').join(',')+')');
+    const got=new Set();
+    (rows||[]).forEach(r=>{ got.add(r.id); const o=(DB.prods||[]).find(x=>x.id===r.id); if(o) Object.assign(o,{imagen_thumb:r.imagen_thumb||'',imagen_drive_id:r.imagen_drive_id,tiene_imagen:r.tiene_imagen}); else IMGC[r.id]={id:r.id,imagen_thumb:r.imagen_thumb||'',imagen_drive_id:r.imagen_drive_id,tiene_imagen:r.tiene_imagen}; });
+    document.querySelectorAll('.lz-th[data-pid]').forEach(e=>{ if(!ids.includes(e.dataset.pid)) return; const id=e.dataset.pid; const p=_prodImg(id)||(got.has(id)?null:{id,tiene_imagen:false}); const sz=Number(e.dataset.sz)||38; e.outerHTML=p?thumbProd(Object.assign({},p,{tiene_imagen:false}),sz):`<div style="${_thSt(sz)};background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted)">🔩</div>`; });
+  }catch(e){}
+  if(document.querySelector('.lz-th[data-pid]')) setTimeout(lzThumbs,50);
+}
+// Cualquier tabla que se dibuje (modales, panel, formularios) pide sus miniaturas pendientes
+(function(){ let t=null; const go=()=>{ clearTimeout(t); t=setTimeout(()=>{ if(document.querySelector('.lz-th[data-pid]')) lzThumbs(); },120); };
+  const start=()=>{ try{ new MutationObserver(go).observe(document.body,{childList:true,subtree:true}); }catch(e){} go(); };
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded',start); })();
 const bRem=e=>{ const [l,c]=REM_EST[e]||[e||'—','gris']; return `<span class="badge ${c}">${esc(l)}</span>`; };
 const opR=m=>m.op!=null?'OP-'+m.op:'Sin OP';
 const remUnd=m=>(m.lineas||[]).reduce((s,l)=>s+Number(l.cantidad||0),0);
@@ -1165,7 +1210,7 @@ function remxTog(id){
   const tr=document.querySelector('tr[data-rid="'+id+'"]'); if(!tr) return; const btn=tr.querySelector('button'); const nx=tr.nextElementSibling;
   if(nx&&nx.dataset.rx===id){ nx.remove(); if(btn) btn.textContent='▸'; pinQuitar('rem-'+id); return; }
   const m=remDe(id); if(!m) return; const ls=m.lineas||[];
-  const det=ls.length?`<table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Cant</th><th>Descripción</th></tr></thead><tbody>${ls.map((l,i)=>`<tr onclick="detalleRem('${m.id}')" style="cursor:pointer" title="Abrir la remisión"><td class="td-center"><b>${l.item??i+1}</b></td><td class="td-center">${esc(String(l.cantidad??''))}</td><td style="white-space:pre-wrap;max-width:520px">${esc(String(l.descripcion||'—').slice(0,260))}</td></tr>`).join('')}</tbody></table>`:'<span style="color:var(--muted);font-size:12px">Esta remisión no tiene ítems.</span>';
+  const det=ls.length?`<table class="data-tbl" style="width:100%"><thead><tr><th style="width:44px"></th><th>Ítem</th><th>Cant</th><th>Descripción</th></tr></thead><tbody>${ls.map((l,i)=>`<tr onclick="detalleRem('${m.id}')" style="cursor:pointer" title="Abrir la remisión"><td class="td-center">${thumbDe(l.id_prod,38)}</td><td class="td-center"><b>${l.item??i+1}</b></td><td class="td-center">${esc(String(l.cantidad??''))}</td><td style="white-space:pre-wrap;max-width:520px">${esc(String(l.descripcion||'—').slice(0,260))}</td></tr>`).join('')}</tbody></table>`:'<span style="color:var(--muted);font-size:12px">Esta remisión no tiene ítems.</span>';
   tr.insertAdjacentHTML('afterend',`<tr data-rx="${id}"><td></td><td colspan="12" style="padding:4px 0 10px">${det}</td></tr>`); if(btn) btn.textContent='▾';
   pinFijar('rem-'+id,(m.numero?'REM-'+m.numero:'Remisión')+' · '+(m.empresa||''),'tr[data-rid="'+id+'"]');
 }
@@ -1244,7 +1289,7 @@ function detalleRem(id){
     ${stepperH(m)}
     ${(m.pedida_por||m.pedida_unidades!=null)?`<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.3);font-size:15px">🙋 <b>Pidió:</b> ${esc(m.pedida_por||'—')}${m.pedida_fecha?' · '+fmtDT(m.pedida_fecha):''}<br>📦 <b>Unidades pedidas:</b> ${m.pedida_unidades!=null?Number(m.pedida_unidades)+' und':'—'}${m.pedida_nota?'<br>📝 '+esc(m.pedida_nota):''}</div>`:''}
     ${b.length?`<div class="cot-action-grid" style="margin-top:12px">${b.join('')}</div>`:''}
-    <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:340px;font-size:15px"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map((l,i)=>`<tr><td class="td-center" style="font-weight:700">${l.item??i+1}</td><td style="max-width:230px;white-space:normal">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:800">${l.cantidad}${l.unidades&&Number(l.unidades)!==Number(l.cantidad)?`<div style="font-size:12px;color:var(--muted);font-weight:500">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP('Sin ítems seleccionados todavía')}</div>
+    <div class="dp-section" style="margin-top:14px"><h4>📦 Ítems de la remisión</h4>${ls.length?`<div class="tbl-wrap" style="max-height:none"><table class="data-tbl" style="min-width:340px;font-size:15px"><thead><tr><th style="width:52px"></th><th>Ítem</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>${ls.map((l,i)=>`<tr><td class="td-center">${thumbDe(l.id_prod,48)}</td><td class="td-center" style="font-weight:700">${l.item??i+1}</td><td style="max-width:230px;white-space:normal">${esc(l.descripcion||'—')}</td><td class="td-center" style="font-weight:800">${l.cantidad}${l.unidades&&Number(l.unidades)!==Number(l.cantidad)?`<div style="font-size:12px;color:var(--muted);font-weight:500">de ${l.unidades}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:mutedP('Sin ítems seleccionados todavía')}</div>
     <div class="dp-section" style="margin-top:14px"><h4>🏢 Destinatario</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">${dr('Señores',m.empresa)}${dr('NIT',m.nit)}${dr('Dirección',m.direccion)}${dr('Ciudad',m.ciudad)}${dr('Encargado',m.contacto)}${dr('Teléfono',m.telefono)}${dr('Orden de compra del cliente',m.oc_cliente)}${dr('Fecha del documento',fmtDate(fFecha(m)))}</div>${dr('Proyecto',m.proyecto)}${dr('Observaciones',m.observaciones)}</div>`);
 }
 
@@ -1297,7 +1342,7 @@ function remYaDesp(op){
   const its=(DB.prods||[]).filter(p=>p.op===op&&!p.despachado).sort((a,b)=>(a.item_num||0)-(b.item_num||0));
   if(!its.length){ toast('La OP-'+op+' no tiene ítems pendientes de despacho','warn'); return; }
   const hoy=new Date(Date.now()-5*3600*1000).toISOString().slice(0,10);
-  const filas=its.map(p=>{ const f=Math.max(0,Number(p.unidades||0)-Number(p.cant_despachada||0)); return `<div class="cm-line" style="align-items:center;gap:8px"><input type="checkbox" class="yd-ck" data-id="${esc(p.id)}" ${f>0?'checked':'disabled'} style="width:18px;height:18px"><div class="cm-t" style="flex:1;min-width:0">Ítem ${p.item_num??'—'} · ${esc(String(p.descripcion||'—').slice(0,90))}<small>Quedan ${f} de ${p.unidades??'—'} und por despachar</small></div><input type="number" class="yd-q" data-id="${esc(p.id)}" min="1" max="${f}" step="any" value="${f}" style="width:80px" ${f>0?'':'disabled'}></div>`; }).join('');
+  const filas=its.map(p=>{ const f=Math.max(0,Number(p.unidades||0)-Number(p.cant_despachada||0)); return `<div class="cm-line" style="align-items:center;gap:8px"><input type="checkbox" class="yd-ck" data-id="${esc(p.id)}" ${f>0?'checked':'disabled'} style="width:18px;height:18px">${thumbProd(p,44)}<div class="cm-t" style="flex:1;min-width:0">Ítem ${p.item_num??'—'} · ${esc(String(p.descripcion||'—').slice(0,90))}<small>Quedan ${f} de ${p.unidades??'—'} und por despachar</small></div><input type="number" class="yd-q" data-id="${esc(p.id)}" min="1" max="${f}" step="any" value="${f}" style="width:80px" ${f>0?'':'disabled'}></div>`; }).join('');
   openModal(`📮 Ya se despachó — OP-${op}`,
     `<div class="callout" style="margin:0 0 12px">Para cosas que <b>ya se entregaron</b> y hay que liberar. Escribe el <b>número de remisión</b> que se les dio: se guarda en Remisiones con estos ítems y se marcan como despachados en producción. <b>No usa el consecutivo automático.</b></div>
     <div class="form-grid"><div class="field"><label>N° de remisión *</label><input id="yd-num" inputmode="numeric" autocomplete="off" oninput="remYaAviso(${op})"></div><div class="field"><label>Fecha de despacho</label><input id="yd-fec" type="date" value="${hoy}"></div></div>
@@ -1329,7 +1374,7 @@ function formSelRem(id){
   const cur={}; (m.lineas||[]).forEach(l=>{ cur[l.id_prod]=Number(l.cantidad); });
   openModal('☑️ ¿Qué se despacha?',`${ayudaForm(`Escribe la **cantidad** de cada ítem que sale hoy; puede ser parcial. Solo aparece lo que calidad ya aprobó. Toca **Todo lo disponible** para marcar el máximo de cada uno.`)}<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(m.empresa||'')} · OP-${m.op}. Indica la cantidad de cada ítem (solo lo aprobado por calidad). Puedes despachar parcial o todo.</div>
     <div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value=i.dataset.max)">Todo lo disponible</button><button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.rsel').forEach(i=>i.value='')">Limpiar</button></div>
-    ${rows.map(({p,disp})=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div class="lc-title">Ítem ${p.item_num}${p.es_garantia?' 🛡️':''}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div>
+    ${rows.map(({p,disp})=>`<div class="list-card" style="cursor:default;margin-bottom:8px"><div style="display:flex;gap:10px;align-items:center">${thumbProd(p,52)}<div style="min-width:0;flex:1"><div class="lc-title">Ítem ${p.item_num}${p.es_garantia?' 🛡️':''}</div><div class="lc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.descripcion||'—')}</div></div></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><div class="field" style="margin:0;width:96px"><input type="number" class="rsel" data-p="${p.id}" data-max="${disp}" min="0" max="${disp}" step="1" value="${cur[p.id]??''}" placeholder="0"></div><span style="font-size:12px;color:var(--muted)">de ${disp} por despachar (total ${p.unidades})</span><button class="btn btn-ghost btn-sm" onclick="this.parentNode.querySelector('.rsel').value=${disp}">Todo</button></div></div>`).join('')}`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarSelRem('${id}')">Guardar selección</button>`);
 }
@@ -2018,14 +2063,14 @@ function rlItemsHtml(){
   }
   const marcados=new Set((_RL.lineas||[]).map(l=>l.id_prod).filter(Boolean));
   return `<div class="field span2"><label>Ítems con saldo pendiente — marca los que van en esta remisión</label>
-    <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th style="width:34px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>
-    ${its.map(x=>`<tr><td class="td-center"><input type="checkbox" ${marcados.has(x.id_prod)?'checked':''} onchange="rlToggleItem('${x.id_prod}',this.checked)"></td><td class="td-center">OP-${x.op}</td><td class="td-center">${x.item}</td><td style="font-size:12px">${esc(x.descripcion)}</td><td class="td-center">${x.unidades}</td></tr>`).join('')}
+    <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th style="width:34px"></th><th style="width:46px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>
+    ${its.map(x=>`<tr><td class="td-center"><input type="checkbox" ${marcados.has(x.id_prod)?'checked':''} onchange="rlToggleItem('${x.id_prod}',this.checked)"></td><td class="td-center">${thumbDe(x.id_prod,36)}</td><td class="td-center">OP-${x.op}</td><td class="td-center">${x.item}</td><td style="font-size:12px">${esc(x.descripcion)}</td><td class="td-center">${x.unidades}</td></tr>`).join('')}
     </tbody></table></div><div style="font-size:11px;color:var(--muted);margin-top:4px">El saldo ya descuenta lo despachado y lo reservado en otras remisiones. Ajusta la cantidad de cada uno marcado en la tabla de abajo.</div></div>`;
 }
 function rlTablaHtml(){
   const ls=_RL.lineas||[];
-  return `<table class="data-tbl" style="min-width:0"><thead><tr><th style="width:30px">#</th><th style="width:60px">Cant.</th><th>Descripción</th><th style="width:36px"></th></tr></thead><tbody>
-    ${ls.map((l,i)=>`<tr><td class="td-center">${i+1}</td><td class="td-center"><input type="number" value="${l.cantidad}" style="width:50px;text-align:center;border:1px solid var(--border);border-radius:6px" onchange="_RL.lineas[${i}].cantidad=Number(this.value)||0"></td><td><textarea style="width:100%;min-height:30px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12.5px" oninput="_RL.lineas[${i}].descripcion=this.value">${esc(l.descripcion)}</textarea></td><td><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="rlQuitarLinea(${i})">✕</button></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">Sin ítems todavía</td></tr>`}
+  return `<table class="data-tbl" style="min-width:0"><thead><tr><th style="width:30px">#</th><th style="width:46px"></th><th style="width:60px">Cant.</th><th>Descripción</th><th style="width:36px"></th></tr></thead><tbody>
+    ${ls.map((l,i)=>`<tr><td class="td-center">${i+1}</td><td class="td-center">${l.id_prod?thumbDe(l.id_prod,36):''}</td><td class="td-center"><input type="number" value="${l.cantidad}" style="width:50px;text-align:center;border:1px solid var(--border);border-radius:6px" onchange="_RL.lineas[${i}].cantidad=Number(this.value)||0"></td><td><textarea style="width:100%;min-height:30px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12.5px" oninput="_RL.lineas[${i}].descripcion=this.value">${esc(l.descripcion)}</textarea></td><td><button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="rlQuitarLinea(${i})">✕</button></td></tr>`).join('')||`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">Sin ítems todavía</td></tr>`}
     </tbody></table><button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="rlAgregarManual()">＋ Agregar ítem manual</button>`;
 }
 function rlRefrescarTabla(){ const el=document.getElementById('rl-tabla'); if(el) el.innerHTML=rlTablaHtml(); }
@@ -2065,10 +2110,10 @@ function rlResumenHtml(rows){
     const r=Math.max(sum,Number(p.cant_despachada)||0); const pe=Math.max(0,u-r);
     tu+=u; tr+=r; tp+=pe;
     const col=pe===0?'var(--success,#16a34a)':(r>0?'#d97706':'var(--muted)');
-    return `<tr><td class="td-center">OP-${p.op}</td><td class="td-center">${p.item_num}</td><td style="font-size:12px">${esc(p.descripcion)}</td><td class="td-center">${u}</td><td class="td-center">${r}</td><td class="td-center" style="font-weight:700;color:${col}">${pe}</td><td style="font-size:11.5px">${refs.join(' · ')||(r>0?'<span style="color:var(--muted)">despachado antes del sistema</span>':'—')}</td></tr>`;
+    return `<tr><td class="td-center">${thumbDe(p.id,36)}</td><td class="td-center">OP-${p.op}</td><td class="td-center">${p.item_num}</td><td style="font-size:12px">${esc(p.descripcion)}</td><td class="td-center">${u}</td><td class="td-center">${r}</td><td class="td-center" style="font-weight:700;color:${col}">${pe}</td><td style="font-size:11.5px">${refs.join(' · ')||(r>0?'<span style="color:var(--muted)">despachado antes del sistema</span>':'—')}</td></tr>`;
   }).join('');
   return `<div class="field span2"><label>Estado de despacho de lo seleccionado — ${tu} und · <b>${tr} remisionadas</b> · <b>${tp} pendientes</b></label>
-    <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Total</th><th style="width:70px">Remision.</th><th style="width:66px">Pendiente</th><th>Remisiones</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+    <div class="tbl-wrap"><table class="data-tbl" style="min-width:0"><thead><tr><th style="width:46px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Total</th><th style="width:70px">Remision.</th><th style="width:66px">Pendiente</th><th>Remisiones</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
 }
 let _rlSelT=null;
 function rlSel(which,fin){
@@ -3560,16 +3605,16 @@ function yaHtml(){
   const ids=new Set((R.items||[]).map(x=>x.id_prod)), rem=(DB.remisiones||[]).filter(m=>m.estado!=='CANCELADA'&&m.estado!=='ANULADA'&&m.id!==R.id);
   const rows=(R.todos||[]).filter(p=>!ids.has(p.id)).map(p=>{ const refs=[];
     rem.forEach(m=>(m.lineas||[]).forEach(l=>{ if(l.id_prod===p.id){ const n=m.numero?'REM-'+m.numero:'sin número'; refs.push((typeof detalleRem==='function'?`<a href="#" onclick="event.preventDefault();closeModal();detalleRem('${E(m.id)}')" style="color:#1d4ed8;font-weight:700">${E(n)}</a>`:`<b>${E(n)}</b>`)+' ('+E(l.cantidad)+')'); } }));
-    return `<tr><td style="text-align:center">OP-${E(p.op)}</td><td style="text-align:center">${E(p.item_num)}</td><td style="padding:3px 6px">${E(p.descripcion)}</td><td style="text-align:center">${E(p.unidades)}</td><td style="padding:3px 6px">${refs.join(' · ')||'despachado antes del sistema'}</td></tr>`; });
+    return `<tr><td style="text-align:center">${thumbDe(p.id,34)}</td><td style="text-align:center">OP-${E(p.op)}</td><td style="text-align:center">${E(p.item_num)}</td><td style="padding:3px 6px">${E(p.descripcion)}</td><td style="text-align:center">${E(p.unidades)}</td><td style="padding:3px 6px">${refs.join(' · ')||'despachado antes del sistema'}</td></tr>`; });
   if(!rows.length) return '';
-  return `<div style="margin-top:8px;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4"><div style="padding:4px 8px;font-size:11px;font-weight:700;color:#166534">✅ Ya remisionados completos — no se pueden volver a escoger</div><table class="fe-rows"><thead><tr><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Und</th><th>Remisión</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  return `<div style="margin-top:8px;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4"><div style="padding:4px 8px;font-size:11px;font-weight:700;color:#166534">✅ Ya remisionados completos — no se pueden volver a escoger</div><table class="fe-rows"><thead><tr><th style="width:42px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Und</th><th>Remisión</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 }
 function itemsHtml(){ return itemsHtml0()+yaHtml(); }
 function itemsHtml0(){
   const its=R.items||[];
   if(!its.length) return `<div style="padding:12px;border:1.5px dashed #94a3b8;border-radius:8px;text-align:center;color:#64748b;font-size:11px">Escribe una OP o una cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
   const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
-  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"><input type="checkbox" style="width:auto" title="Marcar todos" onchange="feRemTodos(this.checked)"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Pendiente</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El pendiente ya descuenta lo despachado y lo reservado en otras remisiones. Al marcar un ítem entra con todo su pendiente; ajusta la cantidad en la tabla de abajo.</div>`;
+  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"><input type="checkbox" style="width:auto" title="Marcar todos" onchange="feRemTodos(this.checked)"></th><th style="width:42px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Pendiente</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">${thumbDe(x.id_prod,34)}</td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El pendiente ya descuenta lo despachado y lo reservado en otras remisiones. Al marcar un ítem entra con todo su pendiente; ajusta la cantidad en la tabla de abajo.</div>`;
 }
 function espejo(){ const a=$('fr-op-v'),b=$('fr-cot-v'); if(a) a.textContent=gv('fr-op')||'—'; if(b) b.textContent=gv('fr-cot')||'—'; }
 function refrescar(){ espejo(); const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); tot(); }

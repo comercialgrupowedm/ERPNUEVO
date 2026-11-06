@@ -963,6 +963,7 @@ function openModal(title,body,foot=''){
   document.getElementById('modal-body').innerHTML=body;
   document.getElementById('modal-foot').innerHTML=foot;
   document.getElementById('modal-overlay').classList.add('open');
+  if(String(body).indexOf('lz-th')>-1) setTimeout(()=>{ try{ lzThumbs(); }catch(e){} },0);
 }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
 let _detailOpen=false, _navFromPopstate=false, _navFromNav=false;
@@ -971,6 +972,7 @@ function openDetail(title,body,actions=''){
   document.getElementById('dp-body').innerHTML=body;
   document.getElementById('dp-actions').innerHTML=actions;
   document.getElementById('detail-panel').classList.add('open');
+  if(String(body).indexOf('lz-th')>-1) setTimeout(()=>{ try{ lzThumbs(); }catch(e){} },0);
   document.getElementById('content').style.overflow='hidden';
   if(!_detailOpen){ _detailOpen=true; try{ history.pushState({mod:MOD,detail:true},'','#'+MOD+'-detail'); }catch(e){} }
 }
@@ -1309,6 +1311,7 @@ async function lzThumbs(){
   }catch(e){}
 }
 
+const thumbDe=(id,sz)=>{ const o=opDe(id); return o?thumbProd(o,sz):''; };
 // ── Tarjeta de ítem (común a las colas) ──
 function itemCard(o,extra='',acts=''){
   const d=diasPactada(o); const nrep=repAbiertos(o.id).length;
@@ -2164,9 +2167,10 @@ function solicitudes(){
   const fb=filtroBusqueda('sol-q',_solF.q,"solSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar OP, servicio, proveedor, quién pidió…');
   if(!data.length){ setContent(banner+fb+empty('Sin solicitudes en esta vista','📋')); return; }
   const card=s=>{ const o=opDe(s.id_prod);
-    return `<div class="list-card" onclick="detailSol('${jsq(s.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">${o?opTitulo(o):'OP —'} · ${o?esc(o.empresa||''):''}</div><div class="lc-title">${esc(s.material||'—')}</div><div class="lc-sub">${esc(s.detalle||'')}</div></div><div style="text-align:right;flex-shrink:0">${bSol(s.estado)}</div></div>
+    return `<div class="list-card" onclick="detailSol('${jsq(s.id)}')"><div class="lc-top"><div style="flex-shrink:0;margin-right:10px">${thumbDe(s.id_prod,48)}</div><div style="min-width:0;flex:1"><div class="lc-id">${o?opTitulo(o):'OP —'} · ${o?esc(o.empresa||''):''}</div><div class="lc-title">${esc(s.material||'—')}</div><div class="lc-sub">${esc(s.detalle||'')}</div></div><div style="text-align:right;flex-shrink:0">${bSol(s.estado)}</div></div>
       <div class="lc-meta" style="font-size:11px;color:var(--muted)">${s.cantidad!=null?`<b style="color:var(--text)">${esc(String(s.cantidad))} ${esc(s.unidad||'')}</b>`:''}<span>🏷️ ${esc(s.proveedor||'Sin proveedor')}</span>${Number(s.costo_cotizado)?`<span>${fmt(s.costo_cotizado)}</span>`:''}<span style="margin-left:auto">${fmtDate(s.solicitado_at)} · ${esc(s.solicitado_por||'')}</span></div></div>`; };
   const cols=[
+    {h:'',w:'46px',v:s=>thumbDe(s.id_prod,34),s:()=>''},
     {h:'OP · Ítem',v:s=>{ const o=opDe(s.id_prod); return o?'<b style="white-space:nowrap">'+opTitulo(o)+'</b>':'—'; },s:s=>{ const o=opDe(s.id_prod)||{}; return (Number(o.op)||0)*1000+(Number(o.item_num)||0); }},
     {h:'Cliente',v:s=>{ const o=opDe(s.id_prod); return esc(o?o.empresa||'—':'—'); },s:s=>(opDe(s.id_prod)||{}).empresa||''},
     {h:'Servicio',v:s=>`<div style="min-width:170px;max-width:300px;overflow-wrap:anywhere"><b>${esc(s.material||'—')}</b>${s.detalle?`<div style="color:var(--muted);font-size:11px">${esc(String(s.detalle).slice(0,90))}</div>`:''}</div>`,s:s=>s.material||''},
@@ -2297,12 +2301,13 @@ function certificados(){
   const fb=filtroBusqueda('cert-q',_certF.q,"certSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar N°, OP, cliente, referencia, OC…');
   if(!data.length){ setContent(banner+fb+empty(all.length?'Sin certificados en esta vista':'Aún no hay certificados. Emítelos desde Pendiente Despacho o con «Nuevo certificado».','🏅')); return; }
   const card=c=>{ const r=certResumen(c);
-    return `<div class="list-card" onclick="detailCert('${jsq(c.id)}')"><div class="lc-top"><div style="min-width:0;flex:1"><div class="lc-id">CERTIFICADO N° ${certNum(c)}</div><div class="lc-title">${esc(c.empresa||'—')}</div><div class="lc-sub">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''} · ${esc(String(c.referencia||'').slice(0,70))}</div></div>
+    return `<div class="list-card" onclick="detailCert('${jsq(c.id)}')"><div class="lc-top"><div style="flex-shrink:0;margin-right:10px">${thumbDe(c.id_prod,48)}</div><div style="min-width:0;flex:1"><div class="lc-id">CERTIFICADO N° ${certNum(c)}</div><div class="lc-title">${esc(c.empresa||'—')}</div><div class="lc-sub">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · Ítem '+c.item_num:''} · ${esc(String(c.referencia||'').slice(0,70))}</div></div>
       <div style="text-align:right;flex-shrink:0">${c.estado==='ANULADO'?'<span class="badge rojo">Anulado</span>':r.nc?`<span class="badge rojo">${r.nc} cota(s) NC</span>`:r.medidas?'<span class="badge verde">✓ Conforme</span>':'<span class="badge gris">Sin mediciones</span>'}</div></div>
       <div class="lc-meta" style="font-size:11px;color:var(--muted)"><span>📅 ${fmtDate(c.fecha_emision)}</span><span>${(c.cotas||[]).length} cotas · ${c.piezas_medidas||1} pieza(s)</span>${c.orden_compra?`<span>OC ${esc(c.orden_compra)}</span>`:''}<span style="margin-left:auto">👤 ${esc(c.inspector||'')}</span></div></div>`; };
   const cols=[
     {h:'N°',v:c=>'<b style="white-space:nowrap;color:var(--accent)">'+certNum(c)+'</b>',s:c=>Number(c.numero)||0},
     {h:'Cliente',v:c=>esc(c.empresa||'—'),s:c=>c.empresa||''},
+    {h:'',w:'46px',v:c=>thumbDe(c.id_prod,34),s:()=>''},
     {h:'OP · Ítem',v:c=>`<span style="white-space:nowrap">OP-${esc(String(c.op??'—'))}${c.item_num!=null?' · '+c.item_num:''}</span>`,s:c=>Number(c.op)||0},
     {h:'Referencia',v:c=>`<div style="min-width:150px;max-width:260px;overflow-wrap:anywhere">${esc(String(c.referencia||'—').slice(0,90))}</div>`,s:c=>c.referencia||''},
     {h:'Cotas',cls:'td-center',v:c=>(c.cotas||[]).length+' · '+(c.piezas_medidas||1)+' pz',s:c=>(c.cotas||[]).length},
@@ -4529,8 +4534,8 @@ function repcausa(){
   // ítems con más reprocesos
   const it=new Map(); R.forEach(r=>{ const o=opDe(r.id_prod)||{}; const key=_normK(o.descripcion||r.id_prod); const e=it.get(key)||it.set(key,{desc:o.descripcion||'(ítem)',emp:o.empresa||'',n:0,und:0,id:r.id_prod,causas:{}}).get(key); e.n++; e.und+=num(r.cantidad); const c=r.tipo_nc||r.motivo||'(sin dato)'; e.causas[c]=(e.causas[c]||0)+1; });
   const items=[...it.values()].sort((a,b)=>b.n-a.n).slice(0,15);
-  const tblIt=items.length?LV.render('rc_it',items,{card:x=>`<div class="list-card" onclick="detailItem('${x.id}')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-title" style="white-space:normal">${esc(x.desc)}</div><div class="lc-sub">${esc(x.emp)} · ${x.und} und</div></div><b style="font-family:var(--mono)">${x.n}×</b></div></div>`,
-    cols:[{h:'Ítem',v:x=>`<div style="min-width:220px;max-width:340px;overflow-wrap:anywhere;font-weight:600">${esc(x.desc)}</div>`,s:x=>x.desc},{h:'Cliente',v:x=>esc(x.emp||'—'),s:x=>x.emp},{h:'Reprocesos',cls:'td-center',v:x=>x.n,s:x=>x.n},{h:'Unidades',cls:'td-center',v:x=>x.und,s:x=>x.und},{h:'Causa principal',v:x=>esc(Object.entries(x.causas).sort((a,b)=>b[1]-a[1])[0][0]),s:x=>Object.keys(x.causas)[0]}],click:x=>`detailItem('${x.id}')`}):mutedP('Sin reprocesos registrados todavía');
+  const tblIt=items.length?LV.render('rc_it',items,{card:x=>`<div class="list-card" onclick="detailItem('${x.id}')"><div class="lc-top"><div style="flex-shrink:0;margin-right:10px">${thumbDe(x.id,44)}</div><div style="flex:1;min-width:0"><div class="lc-title" style="white-space:normal">${esc(x.desc)}</div><div class="lc-sub">${esc(x.emp)} · ${x.und} und</div></div><b style="font-family:var(--mono)">${x.n}×</b></div></div>`,
+    cols:[{h:'',w:'46px',v:x=>thumbDe(x.id,34),s:()=>''},{h:'Ítem',v:x=>`<div style="min-width:220px;max-width:340px;overflow-wrap:anywhere;font-weight:600">${esc(x.desc)}</div>`,s:x=>x.desc},{h:'Cliente',v:x=>esc(x.emp||'—'),s:x=>x.emp},{h:'Reprocesos',cls:'td-center',v:x=>x.n,s:x=>x.n},{h:'Unidades',cls:'td-center',v:x=>x.und,s:x=>x.und},{h:'Causa principal',v:x=>esc(Object.entries(x.causas).sort((a,b)=>b[1]-a[1])[0][0]),s:x=>Object.keys(x.causas)[0]}],click:x=>`detailItem('${x.id}')`}):mutedP('Sin reprocesos registrados todavía');
   const vacio=!R.length&&!T.length;
   const aviso=_RC.rt==null?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Cargando horas registradas por operarios…</div>`:'';
   setContent(banner+kpis+aviso+(vacio&&_RC.rt?`<div class="callout" style="margin-top:14px">Aún no hay reprocesos registrados. Cuando Calidad registre una no conformidad, aquí se verá por causa, proceso, responsable e ítem.</div>`:'')+
