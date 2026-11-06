@@ -2203,7 +2203,7 @@ async function planosCargar(op){
     const rows=await GET('prod_archivos',q)||[];
     const b=document.getElementById('pl-box'); if(!b||b.dataset.id!==String(op.id)) return;
     b.innerHTML=rows.length?rows.map(a=>{ const im=/^image\//.test(a.mime||''), pdf=/pdf/i.test(a.mime||''); const ic=a.tipo==='dwg'?'📐':(im?'🖼️':(pdf?'📄':'📎'));
-      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-size:22px">${ic}</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow-wrap:anywhere">${esc(a.nombre||'Plano')}</div><div style="font-size:11px;color:var(--muted)">${a.created_at?fmtDT(a.created_at):''}${a.created_by?' · '+esc(a.created_by):''}${a.tipo==='dwg'?' · DWG':''}</div></div><button class="btn btn-primary btn-sm" onclick="planoVer(${a.id})">👁 Ver</button></div>`; }).join('')
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-size:22px">${ic}</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow-wrap:anywhere">${esc(a.nombre||'Plano')}</div><div style="font-size:11px;color:var(--muted)">${a.created_at?fmtDT(a.created_at):''}${a.created_by?' · '+esc(a.created_by):''}${a.tipo==='dwg'?' · DWG':''}</div></div><button class="btn btn-primary btn-sm" onclick="planoVer('${String(a.id).replace(/[^\w-]/g,'')}')">👁 Ver</button></div>`; }).join('')
       :mutedP('Este ítem todavía no tiene plano cargado.');
   }catch(e){ const b=document.getElementById('pl-box'); if(b) b.innerHTML=mutedP('No se pudieron cargar los planos.'); }
 }
