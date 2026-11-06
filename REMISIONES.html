@@ -1560,7 +1560,8 @@ function _abrirDocParaImprimir(html,filename,carpeta){
     const old=document.getElementById('_print_iframe'); if(old) old.remove();
     const f=document.createElement('iframe'); f.id='_print_iframe'; f.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0'; document.body.appendChild(f);
     const doc=f.contentDocument||f.contentWindow.document; doc.open(); doc.write(html); doc.close();
-    f.onload=()=>esperar(doc,()=>setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(()=>f.remove(),2000); },150));
+    let _hecho=false; const _go=()=>{ if(_hecho) return; _hecho=true; esperar(doc,()=>setTimeout(()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast('No se pudo abrir la impresión','error'); } setTimeout(()=>f.remove(),2000); },150)); };
+    f.onload=_go; setTimeout(_go,60);
     return;
   }catch(e){}
   const w=window.open('','_blank','width=900,height=1200'); if(!w){ toast('Permite ventanas emergentes para imprimir','error'); return; }
@@ -1660,8 +1661,8 @@ async function ppGuardar(id,imp){
 async function ppReset(id){ if(!confirm('Restore the packing list to the remisión data? Your English edits will be lost.')) return; closeModal(); if(await rpcR('remision_packing_guardar',{p_id:id,p_data:null},'↺ Restored')) afterRem(id); }
 function docRemision(id,tipo){
   const m=remDe(id); if(!m){ toast('Remisión no encontrada','error'); return; }
-  if(!m.numero&&tipo!=='despacho'){ toast('La remisión aún no tiene número','error'); return; }
-  _abrirDocParaImprimir(docHtmlRem(m,tipo||'remision'),_nomRem(m,tipo||'remision'),tipo==='despacho'?null:'remisiones');
+  if(!m.numero&&tipo!=='despacho'&&!(tipo==='packing'&&m.packing)){ toast('La remisión aún no tiene número','error'); return; }
+  _abrirDocParaImprimir(docHtmlRem(m,tipo||'remision'),_nomRem(tipo==='packing'?ppAplicar(m):m,tipo||'remision'),tipo==='despacho'?null:'remisiones');
 }
 
 // ── POR PEDIR (calidad pide la remisión de una OP) ─────────────────
