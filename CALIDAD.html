@@ -2478,7 +2478,7 @@ function ambColor(v){ const t=parseFloat(v); if(isNaN(t)) return ''; const x=Mat
 
 // ══ AVANCES EN PRODUCCIÓN: calidad va alimentando el % de cada proceso de la ruta (el servidor recalcula el avance global por horas) ══
 const AV_MAQ={cnc:'Centro Mecan.',torno:'Torno',fresadora:'Fresadora',banco:'Banco',edm:'EDM',rectificadora:'Rectificadora',hilo:'Hilo',soldadura:'Soldadura',ingenieria:'Ingeniería',externo:'Externo'};
-const AV_COLS='id,op,item_num,cot_num,empresa,descripcion,unidades,estado,avance,fecha_pactada,fecha_entrega_prod,tipo,despachado,terminado,diseno_ok,externo,avance_pasos,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria,hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_edm,hrs_rectificadora,hrs_hilo,hrs_soldadura,hrs_ingenieria';
+const AV_COLS='id,op,item_num,cot_num,empresa,descripcion,unidades,estado,avance,fecha_pactada,fecha_entrega_prod,tipo,despachado,terminado,diseno_ok,externo,avance_pasos,ruta_mq1,ruta_mq2,ruta_mq3,ruta_mq4,ruta_mq5,ruta_mq6,ruta_mq7,ruta_mq8,ruta_mq9,ruta_mq10,avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura,avance_ingenieria,hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_edm,hrs_rectificadora,hrs_hilo,hrs_soldadura,hrs_ingenieria,tiene_imagen,imagen_drive_id';
 let _AVF={q:'',chip:'todas',vista:'op',emp:'',maq:'',av:'',ent:'',tipo:'',fb:false}, _AVR={}, _AVE=null, _AVOPEN=new Set();
 function avBucket(nombre){
   const n=String(nombre??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim().replace(/\s+/g,' ');
