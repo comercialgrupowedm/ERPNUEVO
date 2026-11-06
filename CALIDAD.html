@@ -1301,17 +1301,23 @@ const thumbProd=(p,sz=38)=>imgSrcOP(p,sz*3)
   ?imgTag(p,sz*3,`width:${sz}px;height:${sz}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;background:#fff`)
   :(p.tiene_imagen?`<div class="lz-th" data-pid="${esc(p.id)}" data-sz="${sz}" style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`
   :`<div style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`);
+const IMGC={};
 async function lzThumbs(){
   const els=[...document.querySelectorAll('.lz-th[data-pid]')]; if(!els.length) return;
   const ids=[...new Set(els.map(e=>e.dataset.pid))].slice(0,80);
   try{
-    const rows=await GET('produccion','select=id,imagen_thumb&id=in.('+ids.map(i=>'"'+i+'"').join(',')+')');
-    (rows||[]).forEach(r=>{ const p=opDe(r.id); if(p) p.imagen_thumb=r.imagen_thumb||''; });
-    document.querySelectorAll('.lz-th[data-pid]').forEach(e=>{ const p=opDe(e.dataset.pid); if(p&&p.imagen_thumb) e.outerHTML=thumbProd(p,Number(e.dataset.sz)||38); });
+    const rows=await GET('produccion','select=id,imagen_thumb,imagen_drive_id,tiene_imagen&id=in.('+ids.map(i=>'"'+i+'"').join(',')+')');
+    const got=new Set();
+    (rows||[]).forEach(r=>{ got.add(r.id); const p=opDe(r.id); const d={imagen_thumb:r.imagen_thumb||'',imagen_drive_id:r.imagen_drive_id,tiene_imagen:r.tiene_imagen}; if(p) Object.assign(p,d); else IMGC[r.id]=Object.assign({id:r.id},d); });
+    document.querySelectorAll('.lz-th[data-pid]').forEach(e=>{ const id=e.dataset.pid; if(!ids.includes(id)) return; const sz=Number(e.dataset.sz)||38; const p=opDe(id)||IMGC[id]; e.outerHTML=p?thumbProd(Object.assign({},p,{tiene_imagen:false}),sz):`<div style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0">🔩</div>`; });
   }catch(e){}
+  if(document.querySelector('.lz-th[data-pid]')) setTimeout(lzThumbs,50);
 }
-
-const thumbDe=(id,sz)=>{ const o=opDe(id); return o?thumbProd(o,sz):''; };
+// Cualquier tabla que se dibuje (formularios, modales) pide sus miniaturas pendientes
+(function(){ let t=null; const go=()=>{ clearTimeout(t); t=setTimeout(()=>{ if(document.querySelector('.lz-th[data-pid]')) lzThumbs(); },120); };
+  const start=()=>{ try{ new MutationObserver(go).observe(document.body,{childList:true,subtree:true}); }catch(e){} go(); };
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded',start); })();
+const thumbDe=(id,sz)=>{ if(!id) return ''; const o=opDe(id)||IMGC[id]; return o?thumbProd(o,sz):`<div class="lz-th" data-pid="${esc(id)}" data-sz="${sz}" style="width:${sz}px;height:${sz}px;border-radius:8px;background:var(--card2);flex-shrink:0"></div>`; };
 // ── Tarjeta de ítem (común a las colas) ──
 function itemCard(o,extra='',acts=''){
   const d=diasPactada(o); const nrep=repAbiertos(o.id).length;
@@ -2530,19 +2536,19 @@ function avRender(){
   const chipsMaq=o=>{ const ps=avPasos(o); const act=ps.find(s=>s.b!=='externo'&&s.pct<100); return ps.map(s=>s.b==='externo'?`<span class="badge gris" title="${esc(s.raw)}">🚚 ${esc(s.raw.slice(0,12))}</span>`:`<span class="badge" style="background:${avColor(s.pct)}1a;color:${avColor(s.pct)};border:1px solid ${avColor(s.pct)}55;margin:1px;${act&&act.i===s.i?'font-weight:800;box-shadow:0 0 0 2px '+avColor(s.pct)+'33':''}">${s.pct>=100?'✓ ':''}${esc(AV_MAQ[s.b]||s.b)} ${s.pct}%</span>`).join('')||'<span style="font-size:11px;color:var(--muted)">Sin ruta</span>'; };
   const btnAv=o=>puedeCal()?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();avAbrir('${o.id}')">📈 Avance</button> <button class="btn btn-sm" style="background:#ea580c;color:#fff" title="Registrar reproceso" onclick="event.stopPropagation();ncReportar('${o.id}')">🚨</button>`:'';
   const itemRow=(o,conOp)=>{ const d=dias(o); const av=Math.round(Number(o.avance)||0);
-    return `<tr onclick="avAbrir('${o.id}')" style="cursor:pointer">${conOp?`<td><b style="color:var(--info)">OP-${o.op}</b></td><td style="font-weight:600;max-width:170px">${esc(o.empresa||'—')}</td>`:''}<td class="td-center"><b>${o.item_num??'—'}</b></td><td style="max-width:260px">${esc(o.descripcion||'—')}</td><td class="td-center">${o.unidades??''}</td><td style="min-width:200px">${chipsMaq(o)}</td><td>${barra(av)}</td><td>${dtag(d)}</td><td>${btnAv(o)}</td></tr>`; };
+    return `<tr onclick="avAbrir('${o.id}')" style="cursor:pointer"><td class="td-center">${thumbProd(o,38)}</td>${conOp?`<td><b style="color:var(--info)">OP-${o.op}</b></td><td style="font-weight:600;max-width:170px">${esc(o.empresa||'—')}</td>`:''}<td class="td-center"><b>${o.item_num??'—'}</b></td><td style="max-width:260px">${esc(o.descripcion||'—')}</td><td class="td-center">${o.unidades??''}</td><td style="min-width:200px">${chipsMaq(o)}</td><td>${barra(av)}</td><td>${dtag(d)}</td><td>${btnAv(o)}</td></tr>`; };
   let body;
   if(!data.length) body=mutedP('No hay ítems con ese filtro');
   else if(f.vista==='items'){
     const lim=data.slice().sort((a,b)=>{ const x=dias(a),y=dias(b); return (x==null?9999:x)-(y==null?9999:y)||(b.op-a.op)||((a.item_num||0)-(b.item_num||0)); }).slice(0,300);
-    body=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>OP</th><th>Cliente</th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${lim.map(o=>itemRow(o,true)).join('')}</tbody></table></div></div>${data.length>300?mutedP('Mostrando 300 de '+data.length+' · usa los filtros'):''}`;
+    body=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:46px"></th><th>OP</th><th>Cliente</th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${lim.map(o=>itemRow(o,true)).join('')}</tbody></table></div></div>${data.length>300?mutedP('Mostrando 300 de '+data.length+' · usa los filtros'):''}`;
   } else {
     const m=new Map(); data.forEach(o=>{ let g=m.get(o.op); if(!g){ g={op:o.op,emp:o.empresa,cot:o.cot_num,its:[]}; m.set(o.op,g); } g.its.push(o); });
     const gs=[...m.values()].map(g=>{ g.its.sort((a,b)=>(a.item_num||0)-(b.item_num||0)); g.av=Math.round(g.its.reduce((t,o)=>t+(Number(o.avance)||0),0)/g.its.length); const ds=g.its.map(dias).filter(x=>x!=null); g.d=ds.length?Math.min(...ds):null; return g; })
       .sort((a,b)=>(a.d==null?9999:a.d)-(b.d==null?9999:b.d)||(b.op-a.op)); _AVLAST=gs;
     body=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th style="width:28px"></th><th>OP</th><th>COT</th><th>Cliente</th><th>Ítems</th><th>Avance</th><th>Entrega</th></tr></thead><tbody>${gs.slice(0,200).map(g=>{ const on=_AVOPEN.has(String(g.op));
       return `<tr onclick="avTog('${g.op}')" style="cursor:pointer;${on?'background:var(--card2)':''}"><td style="font-size:14px;color:var(--muted)">${on?'▾':'▸'}</td><td><b style="color:var(--info)">OP-${g.op}</b></td><td>COT-${g.cot||'—'}</td><td style="font-weight:600">${esc(g.emp||'—')}</td><td class="td-center">${g.its.length}</td><td>${barra(g.av)}</td><td>${dtag(g.d)}</td></tr>`
-      +(on?`<tr><td></td><td colspan="6" style="padding:4px 0 12px"><table class="data-tbl" style="width:100%"><thead><tr><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${g.its.map(o=>itemRow(o,false)).join('')}</tbody></table></td></tr>`:''); }).join('')}</tbody></table></div></div>${gs.length>200?mutedP('Mostrando 200 de '+gs.length+' OP · usa los filtros'):''}`;
+      +(on?`<tr><td></td><td colspan="6" style="padding:4px 0 12px"><table class="data-tbl" style="width:100%"><thead><tr><th style="width:46px"></th><th>Ítem</th><th>Descripción</th><th>Cant</th><th>Máquinas</th><th>Avance</th><th>Entrega</th><th></th></tr></thead><tbody>${g.its.map(o=>itemRow(o,false)).join('')}</tbody></table></td></tr>`:''); }).join('')}</tbody></table></div></div>${gs.length>200?mutedP('Mostrando 200 de '+gs.length+' OP · usa los filtros'):''}`;
   }
   const vbtn=(k,l)=>`<button class="btn ${f.vista===k?'btn-primary':'btn-ghost'} btn-sm" onclick="avSet2('vista','${k}')">${l}</button>`;
   setContent(moduleBanner('📈','Avances en producción','Todo lo que está en proceso: despliega la OP y actualiza el avance de cada máquina')
@@ -3945,15 +3951,15 @@ function yaHtml(){
   const ids=new Set((R.items||[]).map(x=>x.id_prod)), rem=(DB.remisiones||[]).filter(m=>m.estado!=='CANCELADA'&&m.estado!=='ANULADA'&&m.id!==R.id);
   const rows=(R.todos||[]).filter(p=>!ids.has(p.id)).map(p=>{ const refs=[];
     rem.forEach(m=>(m.lineas||[]).forEach(l=>{ if(l.id_prod===p.id){ const n=m.numero?'REM-'+m.numero:'sin número'; refs.push((typeof detalleRem==='function'?`<a href="#" onclick="event.preventDefault();closeModal();detalleRem('${E(m.id)}')" style="color:#1d4ed8;font-weight:700">${E(n)}</a>`:`<b>${E(n)}</b>`)+' ('+E(l.cantidad)+')'); } }));
-    return `<tr><td style="text-align:center">OP-${E(p.op)}</td><td style="text-align:center">${E(p.item_num)}</td><td style="padding:3px 6px">${E(p.descripcion)}</td><td style="text-align:center">${E(p.unidades)}</td><td style="padding:3px 6px">${refs.join(' · ')||'despachado antes del sistema'}</td></tr>`; });
+    return `<tr><td style="text-align:center">${thumbDe(p.id,34)}</td><td style="text-align:center">OP-${E(p.op)}</td><td style="text-align:center">${E(p.item_num)}</td><td style="padding:3px 6px">${E(p.descripcion)}</td><td style="text-align:center">${E(p.unidades)}</td><td style="padding:3px 6px">${refs.join(' · ')||'despachado antes del sistema'}</td></tr>`; });
   if(!rows.length) return '';
-  return `<div style="margin-top:8px;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4"><div style="padding:4px 8px;font-size:11px;font-weight:700;color:#166534">✅ Ya remisionados completos — no se pueden volver a escoger</div><table class="fe-rows"><thead><tr><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Und</th><th>Remisión</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  return `<div style="margin-top:8px;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4"><div style="padding:4px 8px;font-size:11px;font-weight:700;color:#166534">✅ Ya remisionados completos — no se pueden volver a escoger</div><table class="fe-rows"><thead><tr><th style="width:42px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:56px">Und</th><th>Remisión</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 }
 function itemsHtml(){ return itemsHtml0()+yaHtml(); }
 function itemsHtml0(){
   const its=R.items||[]; if(!its.length) return `<div style="padding:12px;border:1.5px dashed #94a3b8;border-radius:8px;text-align:center;color:#64748b;font-size:11px">Escribe una OP o una cotización arriba para ver sus ítems con saldo pendiente por despachar.</div>`;
   const marc=new Set(R.lineas.map(l=>l.id_prod).filter(Boolean));
-  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El saldo ya descuenta lo despachado y lo reservado en otras remisiones.</div>`;
+  return `<table class="fe-rows" style="border-top:2px solid #1a3a6b"><thead><tr><th style="width:34px"></th><th style="width:42px"></th><th style="width:64px">OP</th><th style="width:44px">Ítem</th><th>Descripción</th><th style="width:64px">Saldo</th></tr></thead><tbody>${its.map(x=>`<tr><td style="text-align:center"><input type="checkbox" style="width:auto" ${marc.has(x.id_prod)?'checked':''} onchange="feRemTog('${E(x.id_prod)}',this.checked)"></td><td style="text-align:center">${thumbDe(x.id_prod,34)}</td><td style="text-align:center">OP-${E(x.op)}</td><td style="text-align:center">${E(x.item)}</td><td style="padding:3px 6px">${E(x.descripcion)}</td><td style="text-align:center;font-weight:700">${E(x.unidades)}</td></tr>`).join('')}</tbody></table><div style="font-size:10px;color:#64748b;margin-top:3px">El saldo ya descuenta lo despachado y lo reservado en otras remisiones.</div>`;
 }
 function refrescar(){ const a=$('fr-items'); if(a) a.innerHTML=itemsHtml(); const b=$('fr-body'); if(b) b.innerHTML=lineasHtml(); const t=$('fr-tot'); if(t) t.textContent=R.lineas.reduce((s,l)=>s+(Number(l.cantidad)||0),0)+' und'; }
 window.feRemTog=(id,ck)=>{ const it=R.items.find(x=>x.id_prod===id); if(!it) return; if(ck){ if(!R.lineas.some(l=>l.id_prod===id)) R.lineas.push({id_prod:id,descripcion:it.descripcion,cantidad:Number(it.unidades)||1}); } else R.lineas=R.lineas.filter(l=>l.id_prod!==id); refrescar(); };
