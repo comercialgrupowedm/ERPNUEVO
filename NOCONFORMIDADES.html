@@ -719,6 +719,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="cincoS" onclick="nav('cincoS')"><span class="nav-icon">🧹</span>5 S</div>
     <div class="nav-item" data-m="matprima" onclick="nav('matprima')"><span class="nav-icon">📦</span>Inspección materia prima</div>
     <div class="nav-item" data-m="rrhh" onclick="nav('rrhh')"><span class="nav-icon">👥</span>Política RRHH</div>
+    <div class="nav-item" data-m="tiempos" onclick="nav('tiempos')"><span class="nav-icon">⏱️</span>Registro de tiempos</div>
     <div class="nav-item" data-m="informes" onclick="nav('informes')"><span class="nav-icon">📊</span>Informes</div>
     <div class="nav-section">Ayuda</div>
     <div class="nav-item" id="nav-inst" onclick="closeSidebar();erpInstalar()"><span class="nav-icon">📲</span>Instalar esta app</div>
@@ -1229,7 +1230,7 @@ async function doLogin(){
 //  Las OP, clientes, colaboradores se toman del ERP (produccion, plan_colaboradores).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='inicio';
-const TITLES={inicio:'Menú',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',informes:'Informes',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores'};
+const TITLES={inicio:'Menú',reportes:'Reportes de no conformidad',registros:'Registro de acciones (NC)',reprocesos:'Reprocesos',epp:'Elementos de protección',cincoS:'5 S',matprima:'Inspección materia prima',rrhh:'Política RRHH',informes:'Informes',papelera:'Papelera',herramientas:'Importar historial',colaboradores:'Colaboradores',tiempos:'Registro de tiempos'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const REPORTA_DEFAULT='Carlos Lasso';
 // ── FOTO DE EVIDENCIA (cámara de la tablet/celular) ──
@@ -1290,6 +1291,7 @@ async function rpcN(fn,params,okMsg){
   finally{ hideBusy(); }
 }
 const cerrada=r=>!!(r.fecha_real_cierre||r.real_cierre_rep);
+const gestionada=r=>!!(r.aprobacion&&cerrada(r));   // gestionada = cerrada y aprobada por la Dirección de Calidad
 const prevista=r=>r.fecha_prevista_cierre||r.prevista_cierre_rep||null;
 const vencida=r=>{ if(cerrada(r)) return false; const p=prevista(r); return !!p&&String(p).slice(0,10)<hoyISO(); };
 const estadoReg=r=>cerrada(r)?'CERRADA':(vencida(r)?'VENCIDA':'ABIERTA');
@@ -1303,6 +1305,63 @@ const area=(l,id,v,rows=3,span=true)=>`<div class="field${span?' span2':''}"><la
 const selF=(l,id,v,opts,span)=>`<div class="field${span?' span2':''}"><label>${l}</label><select id="${id}"><option value=""></option>${opts.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
 
 // ── NAVEGACIÓN ─────────────────────────────────────────────────────
+// ── REGISTRO DE TIEMPOS (solo consulta: quién registró horas, dónde y cuánto) ──
+const _TI={d1:'',d2:'',op:'',col:'',tipo:'',q:'',rows:null,n:300,busy:false};
+const _tiF=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const _tiE=v=>esc(v==null?'':String(v));
+function _tiIni(){ if(!_TI.d1){ const h=new Date(); _TI.d1=_tiF(new Date(h.getTime()-6*864e5)); _TI.d2=_tiF(h); } }
+async function tiempos(){ _tiIni(); if(_TI.rows===null) await tiCargar(); else tiPintar(); }
+async function tiCargar(){
+  _tiIni(); _TI.busy=true; _TI.n=300; tiPintar();
+  try{
+    let q='select=id,fecha,colaborador,maquina,tipo_registro,op,item_num,item_raw,hora_inicio,hora_fin,duracion_horas,turno,tipo_parada,observacion_inicio&order=fecha.desc,marca_temporal.desc&limit=5000&and=(fecha.gte.'+_TI.d1+',fecha.lte.'+_TI.d2+')';
+    if(String(_TI.op).trim()) q+='&op=eq.'+encodeURIComponent(String(_TI.op).trim());
+    _TI.rows=(await GET('registro_tiempos',q))||[];
+  }catch(e){ _TI.rows=[]; try{ toast('No se pudo cargar el registro de tiempos','error'); }catch(_){} }
+  _TI.busy=false; tiPintar();
+}
+function tiSet(k,v){ _TI[k]=v; if(k==='d1'||k==='d2'||k==='op') tiCargar(); else { _TI.n=300; tiPintar(); } }
+function tiRango(dias){ const h=new Date(); _TI.d2=_tiF(h); _TI.d1=_tiF(new Date(h.getTime()-(dias-1)*864e5)); tiCargar(); }
+function tiFiltrados(){
+  const q=String(_TI.q||'').toLowerCase().trim();
+  return (_TI.rows||[]).filter(r=>(!_TI.col||r.colaborador===_TI.col)&&(!_TI.tipo||r.tipo_registro===_TI.tipo)&&(!q||[r.colaborador,r.maquina,r.tipo_registro,r.op,r.item_num,r.tipo_parada,r.observacion_inicio].join(' ').toLowerCase().includes(q)));
+}
+function tiCSV(){
+  const L=tiFiltrados(); const c=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const t=['Fecha','Colaborador','Máquina','Tipo','OP','Ítem','Inicio','Fin','Horas','Turno','Parada','Observación'].join(';')+'\n'+L.map(r=>[r.fecha,r.colaborador,r.maquina,r.tipo_registro,r.op,r.item_num??r.item_raw,r.hora_inicio,r.hora_fin,String(r.duracion_horas??'').replace('.',','),r.turno,r.tipo_parada,r.observacion_inicio].map(c).join(';')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+t],{type:'text/csv;charset=utf-8'})); a.download='registro_tiempos_'+_TI.d1+'_a_'+_TI.d2+'.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+function tiPintar(){
+  const rows=_TI.rows||[]; const L=tiFiltrados();
+  const cols=[...new Set(rows.map(r=>r.colaborador).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const tipos=[...new Set(rows.map(r=>r.tipo_registro).filter(Boolean))].sort();
+  const horas=L.reduce((s,r)=>s+(Number(r.duracion_horas)||0),0), ops=new Set(L.map(r=>r.op).filter(x=>x!=null)).size, cn=new Set(L.map(r=>r.colaborador)).size;
+  const por={}; L.forEach(r=>{ const k=r.colaborador||'—'; const e=por[k]=por[k]||{h:0,n:0}; e.h+=Number(r.duracion_horas)||0; e.n++; });
+  const top=Object.entries(por).sort((a,b)=>b[1].h-a[1].h).slice(0,12);
+  const fh=n=>(Math.round(n*100)/100).toLocaleString('es-CO');
+  const fd=d=>{ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m?m[3]+'/'+m[2]+'/'+m[1]:(d||''); };
+  const sel=(id,val,arr,ph)=>`<select onchange="tiSet('${id}',this.value)" style="min-width:140px"><option value="">${ph}</option>${arr.map(x=>`<option value="${_tiE(x)}" ${x===val?'selected':''}>${_tiE(x)}</option>`).join('')}</select>`;
+  const kp=(l,v,c)=>`<div class="kpi-card ${c||''}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`;
+  const body=L.slice(0,_TI.n).map(r=>`<tr><td>${fd(r.fecha)}</td><td><b>${_tiE(r.colaborador)}</b></td><td>${_tiE(r.maquina)}</td><td>${_tiE(r.tipo_registro)}${r.tipo_parada?' · '+_tiE(r.tipo_parada):''}</td><td>${r.op!=null?'OP-'+_tiE(r.op):'—'}</td><td style="text-align:center">${_tiE(r.item_num??r.item_raw)}</td><td>${_tiE(r.hora_inicio)}</td><td>${_tiE(r.hora_fin)}</td><td style="text-align:right"><b>${r.duracion_horas!=null?fh(Number(r.duracion_horas)):''}</b></td></tr>`).join('');
+  setContent(`<div style="padding:12px">
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+    <div class="field" style="margin:0"><label>Desde</label><input type="date" value="${_TI.d1}" onchange="tiSet('d1',this.value)"></div>
+    <div class="field" style="margin:0"><label>Hasta</label><input type="date" value="${_TI.d2}" onchange="tiSet('d2',this.value)"></div>
+    <div class="field" style="margin:0"><label>OP</label><input type="text" inputmode="numeric" value="${_tiE(_TI.op)}" placeholder="Ej. 13383" style="width:110px" onchange="tiSet('op',this.value)"></div>
+    <div class="field" style="margin:0"><label>Colaborador</label>${sel('col',_TI.col,cols,'Todos')}</div>
+    <div class="field" style="margin:0"><label>Tipo</label>${sel('tipo',_TI.tipo,tipos,'Todos')}</div>
+    <div class="field" style="margin:0"><label>Buscar</label><input type="text" value="${_tiE(_TI.q)}" placeholder="Máquina, parada…" style="width:150px" onchange="tiSet('q',this.value)"></div>
+   </div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><button class="btn btn-ghost btn-sm" onclick="tiRango(1)">Hoy</button><button class="btn btn-ghost btn-sm" onclick="tiRango(7)">7 días</button><button class="btn btn-ghost btn-sm" onclick="tiRango(30)">30 días</button><button class="btn btn-ghost btn-sm" onclick="tiRango(90)">90 días</button><button class="btn btn-ghost btn-sm" onclick="tiCSV()">⬇ Excel (CSV)</button></div>
+   ${_TI.busy?'<div style="padding:30px;text-align:center;color:var(--muted)">Cargando…</div>':`
+   <div class="kpi-grid">${kp('Registros',L.length.toLocaleString('es-CO'),'info')}${kp('Horas',fh(horas),'teal')}${kp('Colaboradores',cn,'warn')}${kp('OP distintas',ops,'')}</div>
+   ${rows.length>=5000?'<div class="callout" style="background:#fff7ed;border-color:#fdba74;color:#9a3412">Se muestran los 5.000 registros más recientes del rango. Acota las fechas para ver todo.</div>':''}
+   ${top.length?`<div class="dp-section" style="margin-top:12px"><h4>Horas por colaborador</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${top.map(([k,e])=>`<span class="badge gris" style="cursor:pointer" onclick="tiSet('col','${_tiE(k).replace(/'/g,'&#39;')}')">${_tiE(k)} · <b>${fh(e.h)} h</b> · ${e.n}</span>`).join('')}</div></div>`:''}
+   <div class="tbl-wrap" style="margin-top:12px"><div class="tbl-scroll"><table class="data-tbl" style="min-width:860px"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina</th><th>Tipo</th><th>OP</th><th>Ítem</th><th>Inicio</th><th>Fin</th><th style="text-align:right">Horas</th></tr></thead><tbody>${body||'<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">Sin registros con esos filtros</td></tr>'}</tbody></table></div></div>
+   ${L.length>_TI.n?`<div style="text-align:center;padding:12px"><button class="btn btn-ghost btn-sm" onclick="_TI.n+=300;tiPintar()">Ver más (${L.length-_TI.n} restantes)</button></div>`:''}`}
+  </div>`);
+}
+
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -1313,7 +1372,7 @@ function nav(m,keep){
   const c=document.getElementById('content'); if(c) c.scrollTop=0;
   refreshCurrentView();
 }
-const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh,informes,papelera,herramientas,colaboradores});
+const VISTAS=()=>({inicio,reportes,registros,reprocesos,epp,cincoS,matprima:mp,rrhh,informes,papelera,herramientas,colaboradores,tiempos});
 function refreshCurrentView(){ const f=VISTAS()[MOD]; if(f){ try{ const r=f(); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 async function refreshCurrent(){
   const btn=document.getElementById('refresh-btn'); if(btn) btn.classList.add('spinning');
@@ -1338,7 +1397,7 @@ async function iniciarApp(){
   hideSplash();
   const esDev=_esAdmin(); document.querySelectorAll('.solo-dev').forEach(el=>el.style.display=esDev?'':'none');
   const h=(location.hash||'').replace('#','').replace('-detail','');
-  _PEND_N=pendReps().length; pendBadge(); if(puedeNC()&&_PEND_N) setTimeout(()=>pendBar(),1200);
+  _PEND_N=pendReps().length; pendBadge(); if(puedeNC()&&(_PEND_N||pendAprob().length)) setTimeout(()=>pendBar(),1200);
   nav(TITLES[h]?h:'inicio');
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1355,11 +1414,12 @@ setInterval(async()=>{
 // ── INICIO (menú de tarjetas) ──────────────────────────────────────
 const MENU=[
  {k:'reprocesos',t:'REPROCESOS',ic:'♻️',c:'#2f6df6',n:()=> (DB.reportes||[]).length+' reportes'},
- {k:'registros',t:'REGISTROS',ic:'📝',c:'#2f6df6',n:()=> (DB.registros||[]).length+' acciones'},
+ {k:'registros',t:'REGISTROS',ic:'📝',c:'#2f6df6',n:()=> (DB.registros||[]).length+' acciones'+(pendAprob().length?' · ✔ '+pendAprob().length+' por aprobar':'')},
  {k:'epp',t:'ELEMENTOS DE PROTECCIÓN',ic:'🦺',c:'#2f6df6',n:()=>DB.epp?DB.epp.length+' evaluaciones':'Evaluaciones'},
  {k:'cincoS',t:'5 S',ic:'🧹',c:'#2f6df6',n:()=>DB.s5?DB.s5.length+' evaluaciones':'Evaluaciones'},
  {k:'matprima',t:'INSPECCIÓN MATERIA PRIMA',ic:'📦',c:'#2f6df6',n:()=>DB.mp?DB.mp.length+' inspecciones':'Inspecciones'},
  {k:'rrhh',t:'POLÍTICA RRHH',ic:'👥',c:'#4db3e0',n:()=>DB.rr?DB.rr.length+' registros':'Llamados de atención'},
+ {k:'tiempos',t:'REGISTRO DE TIEMPOS',ic:'⏱️',c:'#4db3e0',n:()=>'Horas por colaborador'},
  {k:'informes',t:'INFORMES',ic:'📊',c:'#16a34a',n:()=>'Gestión de indicadores'},
  {k:'reportes',t:'REPORTE',ic:'📋',c:'#4db3e0',n:()=> (DB.reportes||[]).length+' reportes'+(puedeNC()&&pendReps().length?' · ⏳ '+pendReps().length+' sin acción':'')}];
 function inicio(){
@@ -1454,11 +1514,11 @@ function registros(){
   const cols=[{k:'accion_no',t:'N°',v:r=>r.accion_no!=null?Number(r.accion_no):null,h:r=>`<b>${r.accion_no??'—'}</b>`},{k:'fecha_reporte',t:'Fecha',f:r=>fmtDate(r.fecha_reporte)},{k:'tipo_reporte',t:'Tipo',h:r=>bTipo(r.tipo_reporte)},{k:'proceso_area',t:'Proceso / área'},
    {k:'op',t:'OP',v:r=>r.op!=null?Number(r.op):null},{k:'item',t:'Ítem'},{k:'cliente',t:'Cliente'},{k:'maquina',t:'Máquina'},{k:'fuente',t:'Fuente'},{k:'responsable_registro',t:'Registró'},
    {k:'descripcion',t:'Descripción',v:r=>r.descripcion||r.desc_tipo_reporte||''},{k:'costos',t:'Costo',v:r=>Number(r.costos)||0,f:r=>Number(r.costos)?fmt(r.costos):'',h:r=>Number(r.costos)?fmt(r.costos):''},
-   {k:'estado',t:'Estado',v:r=>estadoReg(r),h:r=>bEstado(r)},{k:'pdf',t:'PDF',nf:1,h:r=>`<button class="btn btn-ghost btn-sm" title="PDF" onclick="event.stopPropagation();regPDF('${jsq(r.id)}')">📄</button>`}];
+   {k:'estado',t:'Estado',v:r=>estadoReg(r),h:r=>bEstado(r)},{k:'aprobacion',t:'Gestión',v:r=>gestionada(r)?'Gestionado':cerrada(r)?'Por aprobar':r.aprobacion?'Plan aprobado':'En curso',h:r=>gestionada(r)?'<span class="badge verde" title="Cerrada y aprobada por la Dirección de Calidad">✔ Gestionado</span>':cerrada(r)?'<span class="badge naranja" title="Ya se cerró: falta la aprobación del director de calidad">⏳ Por aprobar</span>':r.aprobacion?'<span class="badge azul" title="El plan está aprobado, la acción sigue abierta">Plan aprobado</span>':'<span style="color:var(--muted);font-size:12px">En curso</span>'},{k:'pdf',t:'PDF',nf:1,h:r=>`<button class="btn btn-ghost btn-sm" title="PDF" onclick="event.stopPropagation();regPDF('${jsq(r.id)}')">📄</button>`}];
   const cnt=e=>all.filter(r=>estadoReg(r)===e).length;
   const cuerpo=vwGet('registros')==='d'?miniDash([[all.length,'Acciones','info'],[cnt('ABIERTA'),'Abiertas','warn'],[cnt('VENCIDA'),'Cierre vencido','danger'],[cnt('CERRADA'),'Cerradas','teal'],[fmt(all.reduce((x,r)=>x+(Number(r.costos)||0),0)),'Costo registrado','gold']],
     [['Por tipo de reporte',all,r=>r.tipo_reporte,'#ef4444'],['Por proceso / área',all,r=>r.proceso_area,'#8b5cf6'],['Por cliente',all,r=>r.cliente,'#16a34a'],['Por fuente',all,r=>r.fuente,'#0ea5e9'],['Por máquina',all,r=>r.maquina,'#3b82f6'],['Por año',all,r=>anioDe(r.fecha_reporte),'#f59e0b']])
-    :xlTable('registros',cols,all,{click:'regDetalle'});
+    :xlTable('registros',cols,all,{click:'regDetalle',rowCls:r=>gestionada(r)?'nc-ok':''});
   setContent(moduleBanner('📝','Registro de acciones',all.length+' acciones',puedeNC()?`<button class="btn btn-primary btn-sm" onclick="regForm()">➕ Nueva acción</button>`:'')+vwTabs('registros')+cuerpo);
 }
 function regEst(k){ _GF.estado=k; pgReset(); registros(); }
@@ -1480,7 +1540,7 @@ async function regDetalle(id){
     ${r.contencion_requerida?`<div class="dp-section"><h4>Contención</h4><p class="nc-p">${nl2br(r.acciones_contencion||'Requerida (sin detalle)')}</p></div>`:''}
     ${r.correcciones?`<div class="dp-section"><h4>Correcciones</h4><p class="nc-p">${nl2br(r.correcciones)}</p></div>`:''}
     ${r.acciones_planificadas?`<div class="dp-section"><h4>Acciones planificadas</h4><p class="nc-p">${nl2br(r.acciones_planificadas)}</p></div>`:''}
-    <div class="dp-section"><h4>Plan de acción ${r.aprobacion?'<span class="badge verde">Aprobado</span>':''}</h4>${r.desc_tipo_reporte?`<p class="nc-p">${nl2br(r.desc_tipo_reporte)}</p>`:''}${dr('Plan definido por',esc(r.plan_definido_por||'—'))}${dr('Responsable de implementación',esc(r.resp_implementacion||r.resp_impl_rep||'—'))}${dr('Responsable de seguimiento',esc(r.resp_seguimiento||r.resp_seg_rep||'—'))}${dr('Fecha prevista de cierre',fmtDate(prevista(r)))}${dr('Fecha real de cierre',fmtDate(r.fecha_real_cierre||r.real_cierre_rep))}${r.n_revisiones?dr('N.º de revisiones',esc(r.n_revisiones)):''}</div>
+    <div class="dp-section"><h4>Plan de acción ${gestionada(r)?'<span class="badge verde">✔ Gestionado · aprobado por Dirección de Calidad</span>':r.aprobacion?'<span class="badge azul">Plan aprobado</span>':cerrada(r)?'<span class="badge naranja">⏳ Por aprobar</span>':''}</h4>${r.desc_tipo_reporte?`<p class="nc-p">${nl2br(r.desc_tipo_reporte)}</p>`:''}${dr('Plan definido por',esc(r.plan_definido_por||'—'))}${dr('Responsable de implementación',esc(r.resp_implementacion||r.resp_impl_rep||'—'))}${dr('Responsable de seguimiento',esc(r.resp_seguimiento||r.resp_seg_rep||'—'))}${dr('Fecha prevista de cierre',fmtDate(prevista(r)))}${dr('Fecha real de cierre',fmtDate(r.fecha_real_cierre||r.real_cierre_rep))}${r.n_revisiones?dr('N.º de revisiones',esc(r.n_revisiones)):''}</div>
     ${r.causa_raiz?`<div class="dp-section"><h4>Causa raíz</h4><p class="nc-p">${nl2br(r.causa_raiz)}</p></div>`:''}
     ${r.reporte_pdf?`<div class="dp-section"><h4>Reporte anterior</h4><p style="font-size:11px;color:var(--muted)">${esc(r.reporte_pdf)} (PDF del sistema anterior)</p></div>`:''}</div>
    <div class="dp-tabpanel" data-panel="cau" id="nc-t-cau">${mutedP('Cargando…')}</div><div class="dp-tabpanel" data-panel="por" id="nc-t-por"></div><div class="dp-tabpanel" data-panel="esp" id="nc-t-esp"></div><div class="dp-tabpanel" data-panel="gru" id="nc-t-gru"></div><div class="dp-tabpanel" data-panel="cos" id="nc-t-cos"></div>`,
@@ -1629,6 +1689,7 @@ const _wv=k=>_W.d[k]??'';
 const wf=(l,k,o={})=>`<div class="field${o.span?' span2':''}"><label>${l}</label><input id="gf-${k}" data-k="${k}" type="${o.type||'text'}" value="${esc(_wv(k))}" ${o.list?`list="${o.list}" autocomplete="off"`:''} ${o.extra||''}></div>`;
 const wa=(l,k,rows=3,ph='')=>`<div class="field span2"><label>${l}</label><textarea id="gf-${k}" data-k="${k}" rows="${rows}" placeholder="${esc(ph)}" style="resize:vertical">${esc(_wv(k))}</textarea></div>`;
 const wsel=(l,k,opts,span)=>`<div class="field${span?' span2':''}"><label>${l}</label><select id="gf-${k}" data-k="${k}"><option value=""></option>${opts.map(o=>`<option ${o===_wv(k)?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+const wchkAdm=(l,k)=>{ const ok=_esAdmin(); return `<div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px;cursor:${ok?'pointer':'not-allowed'};${ok?'':'opacity:.65'}"><input type="checkbox" data-k="${k}" ${_W.d[k]?'checked':''} ${ok?'':'disabled'} style="width:auto"> ${l}</label>${ok?'':'<div style="font-size:11px;color:var(--muted);margin:2px 0 0 26px">Solo el director de calidad (administrador) puede aprobar.</div>'}</div>`; };
 const wchk=(l,k)=>`<div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px;cursor:pointer"><input type="checkbox" data-k="${k}" ${_W.d[k]?'checked':''} style="width:auto"> ${l}</label></div>`;
 const RE_CAUSAS=[[1,'Planeación o ingeniería'],[2,'Mantenimiento y estado de la máquina'],[3,'Orden y aseo 5´S'],[4,'Desconcentración'],[5,'Exceso de confianza'],[6,'Agente externo'],[7,'Falta capacidad técnica']];
 const RE_CAUSAS10=[[1,'Planeación o ingeniería'],[2,'Falta de compromiso con la calidad'],[4,'Desconcentración'],[7,'Falta capacidad técnica']];
@@ -1649,7 +1710,7 @@ const WSTEP_HTML=[
  ()=>`<p class="wiz-hint">Pregúntate «¿por qué?» hasta llegar a la causa raíz.</p>${whyHTML(_W.d.descripcion,_W.porques,_W.d.causa_raiz,true)}`,
  ()=>{ if(!_W.d.e_efecto&&_W.d.descripcion) _W.d.e_efecto=trunc(_W.d.descripcion,200); const v={efecto:_W.d.e_efecto}; FB_TOP.concat(FB_BOT).forEach(([k])=>v[k]=_W.d['e_'+k]); return `<p class="wiz-hint">Escribe en cada «espina» las causas de esa categoría; todo apunta al efecto.</p>${espinaHTML(v,true)}`; },
  ()=>{ wizGrupoDef(); return `<p class="wiz-hint">Quiénes participaron en el análisis.</p>${_W.grupo.map((g,i)=>`<div class="nc-lrow" data-l="grupo" data-i="${i}"><div class="field"><label>Rol</label><select data-c="rol" onchange="wizRolCambio(this)">${ROLES_GRUPO.map(r=>`<option ${r===g.rol?'selected':''}>${esc(r)}</option>`).join('')}${g.rol&&!ROLES_GRUPO.includes(g.rol)?`<option selected>${esc(g.rol)}</option>`:''}</select></div><div class="field"><label>Nombre</label><input data-c="nombre" value="${esc(g.nombre)}" list="${esRolLider(g.rol)?'dl-lider':'dl-resp'}" autocomplete="off" placeholder="${esRolLider(g.rol)?'Solo líderes':''}" onchange="wizGrupoNombre(this)"></div><div class="field"><label>Cargo</label><input data-c="cargo" value="${esc(g.cargo)}"></div><button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="wizDel('grupo',${i})">✕</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" onclick="wizAdd('grupo')">＋ Agregar integrante</button>`; },
- ()=>`<div class="form-grid">${wa('Descripción de la acción correctiva, preventiva o de mejora','desc_tipo_reporte',4)}${wf('Plan definido por','plan_definido_por')}${wchk('Plan aprobado','aprobacion')}${wf('Responsable de implementación','resp_implementacion',{list:'dl-resp'})}${wf('Responsable de seguimiento','resp_seguimiento',{list:'dl-resp'})}${wf('Fecha prevista de cierre','fecha_prevista_cierre',{type:'date'})}${wf('Fecha real de cierre','fecha_real_cierre',{type:'date'})}${wf('N.º de revisiones','n_revisiones')}</div>`,
+ ()=>`<div class="form-grid">${wa('Descripción de la acción correctiva, preventiva o de mejora','desc_tipo_reporte',4)}${wf('Plan definido por','plan_definido_por')}${wchkAdm('✔ Aprobado por la Dirección de Calidad — acción gestionada','aprobacion')}${wf('Responsable de implementación','resp_implementacion',{list:'dl-resp'})}${wf('Responsable de seguimiento','resp_seguimiento',{list:'dl-resp'})}${wf('Fecha prevista de cierre','fecha_prevista_cierre',{type:'date'})}${wf('Fecha real de cierre','fecha_real_cierre',{type:'date'})}${wf('N.º de revisiones','n_revisiones')}</div>`,
  ()=>`<div class="form-grid">${wf('Mano de obra ($)','mano_obra',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Materiales ($)','materiales',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Servicio externo ($)','servicio_externo',{extra:'inputmode="decimal" oninput="wizCosto()"'})}${wf('Costo total ($)','costos',{extra:'inputmode="decimal"'})}</div>`,
  ()=>{ const d=_W.d; const row=(l,v)=>`<div class="dp-row"><span class="dp-label">${l}</span><span class="dp-val">${v||'—'}</span></div>`; const falta=!d.descripcion; return `${falta?`<div class="callout" style="margin-bottom:10px">⚠️ Falta la descripción de la no conformidad (paso General).</div>`:''}<div class="dp-section">${row('Tipo',esc(d.tipo_reporte))}${row('Fecha',fmtDate(d.fecha_reporte))}${row('Área',esc(d.proceso_area))}${row('OP · ítem',d.op?'OP-'+esc(d.op)+(d.item?' · '+esc(d.item):''):'')}${row('Cliente',esc(d.cliente))}${row('Descripción',esc(trunc(d.descripcion,200)))}${row('Causas',_W.causas.filter(c=>c.causa).length)}${row('5 porqués',_W.porques.filter(p=>p.porque||p.descripcion).length)}${row('Causa raíz',esc(trunc(d.causa_raiz,160)))}${row('Grupo',_W.grupo.filter(g=>g.nombre).map(g=>esc(g.nombre)).join(', '))}${row('Cierre previsto',fmtDate(d.fecha_prevista_cierre))}${row('Costo total',d.costos?fmt(d.costos):'')}</div>`; }
 ];
@@ -1909,7 +1970,7 @@ function xlBody(id){ const {cols,opts}=XLC[id], st=xlSt(id); const L=xlSorted(id
   setTimeout(()=>{ const c=document.getElementById('xl-cnt-'+id); if(c) c.textContent=L.length+' de '+XLC[id].rows.length+' filas'; const b=document.getElementById('xl-clr-'+id); if(b) b.style.display=(st.q||Object.keys(st.f).length||st.sort)?'':'none'; },0);
   const th=cols.map(c=>{ if(c.nf) return `<th>${c.t}</th>`; const on=!!st.f[c.k]; const so=st.sort&&st.sort.k===c.k?(st.sort.d>0?' ▲':' ▼'):'';
     return `<th class="${on?'xl-on':''}"><span class="xl-t" onclick="xlSort('${id}','${c.k}')">${c.t}${so}</span><button class="xl-dd" title="Filtrar" onclick="event.stopPropagation();xlOpen('${id}','${c.k}',this)">${on?'⧩':'▾'}</button></th>`; }).join('');
-  const tr=show.map((r,i)=>`<tr${opts.click?` onclick="${opts.click}('${jsq(r.id)}')"`:''}><td class="xl-n">${i+1}</td>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${c.h?c.h(r):esc(xlLbl(c,r)==='(Vacías)'?'':xlLbl(c,r))}</td>`).join('')}</tr>`).join('');
+  const tr=show.map((r,i)=>`<tr${opts.rowCls&&opts.rowCls(r)?` class="${opts.rowCls(r)}"`:''}${opts.click?` onclick="${opts.click}('${jsq(r.id)}')"`:''}><td class="xl-n">${i+1}</td>${cols.map(c=>`<td${c.cls?` class="${c.cls}"`:''}>${c.h?c.h(r):esc(xlLbl(c,r)==='(Vacías)'?'':xlLbl(c,r))}</td>`).join('')}</tr>`).join('');
   return `<table class="xl-tbl"><thead><tr><th class="xl-n">#</th>${th}</tr></thead><tbody>${tr||`<tr><td colspan="${cols.length+1}" style="text-align:center;padding:30px;color:var(--muted)">Sin filas con esos filtros</td></tr>`}</tbody></table>${L.length>st.n?`<div style="text-align:center;padding:10px"><button class="btn btn-ghost" onclick="xlMas('${id}')">Mostrar más · viendo ${st.n} de ${L.length}</button></div>`:''}`; }
 function xlRef(id){ const b=document.getElementById('xl-body-'+id); if(b) b.innerHTML=xlBody(id); }
 let _xlT; function xlQ(id,v){ clearTimeout(_xlT); _xlT=setTimeout(()=>{ const st=xlSt(id); st.q=v; st.n=300; xlRef(id); },200); }
@@ -1943,9 +2004,14 @@ function miniDash(kpis,grupos){ const top=(arr,f,n=8)=>{ const m={}; arr.forEach
   return `<div style="padding:12px"><div class="kpi-grid">${kpis.map(([v,l,c])=>`<div class="kpi-card ${c}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`).join('')}</div><div class="nc-grid2">${grupos.map(([t,arr,f,col])=>{ const d=top(arr,f); const mx=Math.max(1,...d.map(x=>x[1])); return `<div class="nc-box"><h4>${t}</h4>${d.length?d.map(([k,v])=>`<div class="nc-bar"><span class="nc-bl" title="${esc(k)}">${esc(trunc(k,34))}</span><span class="nc-bt"><i style="width:${Math.round(v/mx*100)}%;background:${col}"></i></span><b>${v}</b></div>`).join(''):'<p style="font-size:12px;color:var(--muted)">Sin datos</p>'}</div>`; }).join('')}</div></div><div style="height:80px"></div>`; }
 // ── ENLACE REPORTE → ACCIÓN CORRECTIVA ──
 const pendReps=()=>(DB.reportes||[]).filter(r=>r.req_accion&&!r.registro_id);
+// Acciones ya cerradas que esperan la aprobación del director de calidad (solo se avisa al administrador)
+const pendAprob=()=>_esAdmin()?(DB.registros||[]).filter(r=>cerrada(r)&&!r.aprobacion):[];
 let _PEND_N=null;
-function pendBadge(){ const n=puedeNC()?pendReps().length:0; const b=document.getElementById('fab-badge'); if(b){ b.textContent=n>99?'99+':n; b.style.display=n?'flex':'none'; } }
-function pendBar(msg){ document.getElementById('pend-bar')?.remove(); const n=pendReps().length; if(!n) return; const d=document.createElement('div'); d.id='pend-bar'; d.innerHTML=`<span>🔔 ${msg||('Hay '+n+' reporte'+(n>1?'s':'')+' de reproceso sin acción correctiva')}</span><button onclick="document.getElementById('pend-bar').remove();verPendientes()">Ver</button><button class="x" onclick="document.getElementById('pend-bar').remove()">✕</button>`; document.body.appendChild(d); setTimeout(()=>d.remove(),15000); }
+function pendBadge(){ const n=puedeNC()?pendReps().length+pendAprob().length:0; const b=document.getElementById('fab-badge'); if(b){ b.textContent=n>99?'99+':n; b.style.display=n?'flex':'none'; } }
+function pendBar(msg){ document.getElementById('pend-bar')?.remove(); const n=pendReps().length, a=pendAprob().length; if(!n&&!a) return; const d=document.createElement('div'); d.id='pend-bar';
+  const t1=n?('Hay '+n+' reporte'+(n>1?'s':'')+' de reproceso sin acción correctiva'):'', t2=a?(a+' acción'+(a>1?'es':'')+' cerrada'+(a>1?'s':'')+' por aprobar'):'';
+  d.innerHTML=`<span>🔔 ${msg||[t1,t2].filter(Boolean).join(' · ')}</span><button onclick="document.getElementById('pend-bar').remove();${n?'verPendientes()':'verPorAprobar()'}">Ver</button><button class="x" onclick="document.getElementById('pend-bar').remove()">✕</button>`; document.body.appendChild(d); if(!_esAdmin()) setTimeout(()=>d.remove(),15000); }
+function verPorAprobar(){ _GF.estado='CERRADA'; VW.registros='t'; nav('registros'); }
 function verPendientes(){ const st=xlSt('reportes'); st.q=''; st.sort=null; st.n=300; st.f={accion:new Set(['Pendiente de acción'])}; VW.reportes='t'; nav('reportes'); }
 async function pendPoll(){ if(!puedeNC()||document.hidden||!_SYNC.init) return;
   try{ const x=await GET('nc_reportes','select=id&req_accion=eq.true&registro_id=is.null'); const n=x.length;
@@ -2452,6 +2518,7 @@ function ayudaAbrir(){
 .fab{width:42px;height:42px;font-size:22px}.fab-menu{bottom:8px;font-size:18px}.fab-add{right:14px;bottom:8px}#fab-more{right:14px;bottom:58px}
 .xl-wrap{padding:6px 8px 0}.xl-scroll{max-height:calc(100dvh - 118px)!important;min-height:120px}.xl-bar{margin-bottom:6px}
 #fab-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff}
+#app .xl-tbl tr.nc-ok td,.xl-tbl tr.nc-ok td{background:#ecfdf3!important}.xl-tbl tr.nc-ok td:nth-child(2){box-shadow:inset 4px 0 #16a34a}.xl-tbl tr.nc-ok:hover td{background:#d9f7e4!important}
 #pend-bar{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:950;background:#1f2937;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13px;font-weight:700;max-width:92vw}#pend-bar button{border:none;border-radius:8px;padding:6px 12px;background:#f59e0b;color:#111;font-weight:800;cursor:pointer}#pend-bar .x{background:transparent;color:#fff;padding:4px 6px}
 </style>
 <script>

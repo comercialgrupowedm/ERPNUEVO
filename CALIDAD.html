@@ -669,6 +669,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="remamcor" onclick="nav('remamcor')"><span class="nav-icon">🏭</span>Remisiones AMCOR</div>
     <div class="nav-item" onclick="closeSidebar();ncReportar('')"><span class="nav-icon">🚨</span>Reportar reproceso</div>
     <div class="nav-item" data-m="repcausa" onclick="nav('repcausa')"><span class="nav-icon">🔧</span>Reprocesos por causa</div>
+    <div class="nav-item" data-m="tiempos" onclick="nav('tiempos')"><span class="nav-icon">⏱️</span>Registro de tiempos</div>
     <div class="nav-item" data-m="ambiente" onclick="nav('ambiente')"><span class="nav-icon">🌡️</span>Temperatura y humedad</div>
     <div class="nav-item" onclick="location.href='NOCONFORMIDADES.html'"><span class="nav-icon">🛡️</span>Gestión de no conformidades</div>
     <div class="nav-section">Ayuda</div>
@@ -1167,7 +1168,7 @@ async function doLogin(){
 //  Reemplaza el módulo de Calidad anterior (Google Sheets / GAS). Todo se escribe por RPC calidad_* (ver AYUDA y el informe).
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={papelera:'Papelera',dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',remamcor:'Remisiones AMCOR',repcausa:'Reprocesos por causa',ambiente:'Temperatura y humedad',avances:'Avances en producción',buscar:'Búsqueda'};
+const TITLES={papelera:'Papelera',dashboard:'Inicio',pendiente:'Pendiente Calidad',externo:'Servicio Externo',despacho:'Pendiente Despacho',solicitudes:'Solicitudes Externas',certificados:'Certificados',remisiones:'Remisiones',remamcor:'Remisiones AMCOR',repcausa:'Reprocesos por causa',ambiente:'Temperatura y humedad',avances:'Avances en producción',tiempos:'Registro de tiempos',buscar:'Búsqueda'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
@@ -3154,7 +3155,64 @@ function raHtml(r){
 }
 function raImprimir(id){ const r=_RA.rows.find(x=>x.id===id); if(!r) return; _abrirDocParaImprimir(raHtml(r),'REM_'+r.numero+'_AMCOR','remisiones'); }
 
-function refreshCurrentView(){ const mods={papelera,dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,remamcor,repcausa,ambiente,avances,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={papelera,dashboard,pendiente,externo,despacho,solicitudes,certificados,remisiones,remamcor,repcausa,ambiente,avances,tiempos,buscar}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+// ── REGISTRO DE TIEMPOS (solo consulta: quién registró horas, dónde y cuánto) ──
+const _TI={d1:'',d2:'',op:'',col:'',tipo:'',q:'',rows:null,n:300,busy:false};
+const _tiF=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const _tiE=v=>esc(v==null?'':String(v));
+function _tiIni(){ if(!_TI.d1){ const h=new Date(); _TI.d1=_tiF(new Date(h.getTime()-6*864e5)); _TI.d2=_tiF(h); } }
+async function tiempos(){ _tiIni(); if(_TI.rows===null) await tiCargar(); else tiPintar(); }
+async function tiCargar(){
+  _tiIni(); _TI.busy=true; _TI.n=300; tiPintar();
+  try{
+    let q='select=id,fecha,colaborador,maquina,tipo_registro,op,item_num,item_raw,hora_inicio,hora_fin,duracion_horas,turno,tipo_parada,observacion_inicio&order=fecha.desc,marca_temporal.desc&limit=5000&and=(fecha.gte.'+_TI.d1+',fecha.lte.'+_TI.d2+')';
+    if(String(_TI.op).trim()) q+='&op=eq.'+encodeURIComponent(String(_TI.op).trim());
+    _TI.rows=(await GET('registro_tiempos',q))||[];
+  }catch(e){ _TI.rows=[]; try{ toast('No se pudo cargar el registro de tiempos','error'); }catch(_){} }
+  _TI.busy=false; tiPintar();
+}
+function tiSet(k,v){ _TI[k]=v; if(k==='d1'||k==='d2'||k==='op') tiCargar(); else { _TI.n=300; tiPintar(); } }
+function tiRango(dias){ const h=new Date(); _TI.d2=_tiF(h); _TI.d1=_tiF(new Date(h.getTime()-(dias-1)*864e5)); tiCargar(); }
+function tiFiltrados(){
+  const q=String(_TI.q||'').toLowerCase().trim();
+  return (_TI.rows||[]).filter(r=>(!_TI.col||r.colaborador===_TI.col)&&(!_TI.tipo||r.tipo_registro===_TI.tipo)&&(!q||[r.colaborador,r.maquina,r.tipo_registro,r.op,r.item_num,r.tipo_parada,r.observacion_inicio].join(' ').toLowerCase().includes(q)));
+}
+function tiCSV(){
+  const L=tiFiltrados(); const c=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const t=['Fecha','Colaborador','Máquina','Tipo','OP','Ítem','Inicio','Fin','Horas','Turno','Parada','Observación'].join(';')+'\n'+L.map(r=>[r.fecha,r.colaborador,r.maquina,r.tipo_registro,r.op,r.item_num??r.item_raw,r.hora_inicio,r.hora_fin,String(r.duracion_horas??'').replace('.',','),r.turno,r.tipo_parada,r.observacion_inicio].map(c).join(';')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+t],{type:'text/csv;charset=utf-8'})); a.download='registro_tiempos_'+_TI.d1+'_a_'+_TI.d2+'.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+function tiPintar(){
+  const rows=_TI.rows||[]; const L=tiFiltrados();
+  const cols=[...new Set(rows.map(r=>r.colaborador).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const tipos=[...new Set(rows.map(r=>r.tipo_registro).filter(Boolean))].sort();
+  const horas=L.reduce((s,r)=>s+(Number(r.duracion_horas)||0),0), ops=new Set(L.map(r=>r.op).filter(x=>x!=null)).size, cn=new Set(L.map(r=>r.colaborador)).size;
+  const por={}; L.forEach(r=>{ const k=r.colaborador||'—'; const e=por[k]=por[k]||{h:0,n:0}; e.h+=Number(r.duracion_horas)||0; e.n++; });
+  const top=Object.entries(por).sort((a,b)=>b[1].h-a[1].h).slice(0,12);
+  const fh=n=>(Math.round(n*100)/100).toLocaleString('es-CO');
+  const fd=d=>{ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m?m[3]+'/'+m[2]+'/'+m[1]:(d||''); };
+  const sel=(id,val,arr,ph)=>`<select onchange="tiSet('${id}',this.value)" style="min-width:140px"><option value="">${ph}</option>${arr.map(x=>`<option value="${_tiE(x)}" ${x===val?'selected':''}>${_tiE(x)}</option>`).join('')}</select>`;
+  const kp=(l,v,c)=>`<div class="kpi-card ${c||''}"><div class="kpi-value">${v}</div><div class="kpi-label">${l}</div></div>`;
+  const body=L.slice(0,_TI.n).map(r=>`<tr><td>${fd(r.fecha)}</td><td><b>${_tiE(r.colaborador)}</b></td><td>${_tiE(r.maquina)}</td><td>${_tiE(r.tipo_registro)}${r.tipo_parada?' · '+_tiE(r.tipo_parada):''}</td><td>${r.op!=null?'OP-'+_tiE(r.op):'—'}</td><td style="text-align:center">${_tiE(r.item_num??r.item_raw)}</td><td>${_tiE(r.hora_inicio)}</td><td>${_tiE(r.hora_fin)}</td><td style="text-align:right"><b>${r.duracion_horas!=null?fh(Number(r.duracion_horas)):''}</b></td></tr>`).join('');
+  setContent(`<div style="padding:12px">
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+    <div class="field" style="margin:0"><label>Desde</label><input type="date" value="${_TI.d1}" onchange="tiSet('d1',this.value)"></div>
+    <div class="field" style="margin:0"><label>Hasta</label><input type="date" value="${_TI.d2}" onchange="tiSet('d2',this.value)"></div>
+    <div class="field" style="margin:0"><label>OP</label><input type="text" inputmode="numeric" value="${_tiE(_TI.op)}" placeholder="Ej. 13383" style="width:110px" onchange="tiSet('op',this.value)"></div>
+    <div class="field" style="margin:0"><label>Colaborador</label>${sel('col',_TI.col,cols,'Todos')}</div>
+    <div class="field" style="margin:0"><label>Tipo</label>${sel('tipo',_TI.tipo,tipos,'Todos')}</div>
+    <div class="field" style="margin:0"><label>Buscar</label><input type="text" value="${_tiE(_TI.q)}" placeholder="Máquina, parada…" style="width:150px" onchange="tiSet('q',this.value)"></div>
+   </div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><button class="btn btn-ghost btn-sm" onclick="tiRango(1)">Hoy</button><button class="btn btn-ghost btn-sm" onclick="tiRango(7)">7 días</button><button class="btn btn-ghost btn-sm" onclick="tiRango(30)">30 días</button><button class="btn btn-ghost btn-sm" onclick="tiRango(90)">90 días</button><button class="btn btn-ghost btn-sm" onclick="tiCSV()">⬇ Excel (CSV)</button></div>
+   ${_TI.busy?'<div style="padding:30px;text-align:center;color:var(--muted)">Cargando…</div>':`
+   <div class="kpi-grid">${kp('Registros',L.length.toLocaleString('es-CO'),'info')}${kp('Horas',fh(horas),'teal')}${kp('Colaboradores',cn,'warn')}${kp('OP distintas',ops,'')}</div>
+   ${rows.length>=5000?'<div class="callout" style="background:#fff7ed;border-color:#fdba74;color:#9a3412">Se muestran los 5.000 registros más recientes del rango. Acota las fechas para ver todo.</div>':''}
+   ${top.length?`<div class="dp-section" style="margin-top:12px"><h4>Horas por colaborador</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${top.map(([k,e])=>`<span class="badge gris" style="cursor:pointer" onclick="tiSet('col','${_tiE(k).replace(/'/g,'&#39;')}')">${_tiE(k)} · <b>${fh(e.h)} h</b> · ${e.n}</span>`).join('')}</div></div>`:''}
+   <div class="tbl-wrap" style="margin-top:12px"><div class="tbl-scroll"><table class="data-tbl" style="min-width:860px"><thead><tr><th>Fecha</th><th>Colaborador</th><th>Máquina</th><th>Tipo</th><th>OP</th><th>Ítem</th><th>Inicio</th><th>Fin</th><th style="text-align:right">Horas</th></tr></thead><tbody>${body||'<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">Sin registros con esos filtros</td></tr>'}</tbody></table></div></div>
+   ${L.length>_TI.n?`<div style="text-align:center;padding:12px"><button class="btn btn-ghost btn-sm" onclick="_TI.n+=300;tiPintar()">Ver más (${L.length-_TI.n} restantes)</button></div>`:''}`}
+  </div>`);
+}
+
 function nav(m,keep){
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
