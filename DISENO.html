@@ -1064,6 +1064,7 @@ const repsDe=id=>idxBy(DB.reprocesos,'id_prod','reps_prod').get(id)||[];
 const remsDeOp=op=>idxBy(DB.remisiones,'op','rem_op').get(op)||[];
 const repAbierto=p=>repsDe(p.id).some(r=>r.estado==='ABIERTO');
 const matsPend=p=>matsDe(p.id).filter(m=>m.estado==='PENDIENTE');
+const matEditable=m=>!!m&&['PENDIENTE','SOLICITADO','COMPRADO'].includes(m.estado);   // recibido o rechazado: ya no se edita
 
 const PROD_EST={'PENDIENTE MP Y DISEÑO':'naranja','PENDIENTE DISEÑO':'naranja','PENDIENTE MP':'naranja','EN PROCESO':'azul','TRABAJO EXTERNO':'urg','PENDIENTE DESPACHO':'azul','TERMINADO':'verde','CALIDAD APROBADA':'verde','REMISIÓN SOLICITADA':'urg','REMISIÓN GENERADA':'urg','REPROCESO':'rojo','DESPACHADO':'gris'};
 
@@ -1725,7 +1726,7 @@ function pdMateriales(p){
     ${mats.length?mats.map(m=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:13px">${esc(m.material)}</b>${m.detalle?`<div style="font-size:11px;color:var(--muted)">${esc(m.detalle)}</div>`:''}<div style="font-size:11px;color:var(--muted)">${String(m.material||'').startsWith('SERVICIO')?'servicio externo':Number(m.cantidad_kg||0)+' kg'}${m.proveedor?' · '+esc(m.proveedor):''}</div></div><span class="badge ${estCol[m.estado]||'gris'}">${m.estado}</span></div>
       <div style="display:flex;gap:14px;margin-top:6px;font-size:12px;font-family:var(--mono)"><span>Cotizado: <b>${fmt(m.costo_cotizado)}</b></span><span>Real: <b>${m.costo_real!=null?fmt(m.costo_real):'—'}</b></span></div>
       ${peSeguimiento(m)}
-      ${m.estado==='PENDIENTE'?`<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}','${m.id}')">✏️ Editar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delMatProd('${m.id}','${p.id}')">🗑</button></div>`:''}</div>`).join(''):mutedP('Sin materiales — agrega los que necesita la OP')}
+      ${matEditable(m)?`<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="formMatProd('${p.id}','${m.id}')">✏️ Editar</button>${m.estado==='PENDIENTE'?`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="delMatProd('${m.id}','${p.id}')">🗑</button>`:''}</div>`:''}</div>`).join(''):mutedP('Sin materiales — agrega los que necesita la OP')}
     ${mats.length?`<div style="margin-top:12px;background:var(--card2);border-radius:10px;padding:10px 12px;font-size:12.5px;font-family:var(--mono)">Total cotizado: <b>${fmt(cot)}</b><br>Total gastado: <b>${fmt(real)}</b></div>`:''}</div>`;
 }
 
@@ -1775,7 +1776,9 @@ function pmCalc(){
 function formMatProd(pid,mid){
   const p=prodDe(pid); if(!okAjena(p)) return;
   const m=mid?(DB.prodMats||[]).find(x=>x.id===mid):null;
-  openModal(m?'Editar material':'Agregar material',`<div class="form-grid">
+  if(m&&!matEditable(m)){ toast('Este material ya está '+String(m.estado).toLowerCase()+': no se puede editar','error'); return; }
+  const env=m&&m.estado!=='PENDIENTE';
+  openModal(m?'Editar material':'Agregar material',`${env?`<div class="callout" style="margin-bottom:10px;font-size:12.5px">📨 Este pedido ya está <b>${esc(m.estado)}</b> en compras. Al guardar, compras recibe un aviso con lo que cambiaste.</div>`:''}<div class="form-grid">
     <div class="field span2"><label>Material</label><input id="pm1" list="pm-list" value="${esc(m?.material||'')}" placeholder="Elige del catálogo o escribe" oninput="pmCalc()"><datalist id="pm-list">${(DB.materiales||[]).map(x=>`<option value="${esc(x.material)}">`).join('')}</datalist></div>
     <div class="field"><label>Cantidad (kg)</label><input id="pm2" type="number" step="0.001" min="0" value="${m?m.cantidad_kg:''}" placeholder="0" oninput="pmCalc()"></div>
     <div class="field"><label>Costo cotizado ($)</label><input id="pm3" type="number" step="1" min="0" value="${m?m.costo_cotizado:''}" placeholder="0" oninput="this.dataset.auto='0'"></div>
@@ -1786,8 +1789,25 @@ async function guardarMatProd(pid,mid){
   const row={material:gv('pm1'),cantidad_kg:gn('pm2'),costo_cotizado:gn('pm3'),detalle:gv('pm4')||null};
   if(!row.material){ toast('Escribe el material','error'); return; }
   try{
+    let ant=null, p0=prodDe(pid);
+    if(mid){
+      const cur=(await GET('prod_materiales','select=id,estado,material,cantidad_kg,costo_cotizado,detalle&id=eq.'+encodeURIComponent(mid)))[0];
+      if(!cur){ toast('El material ya no existe','error'); return; }
+      if(!matEditable(cur)){ closeModal(); await prodRefreshAll(); toast('Ya está '+String(cur.estado).toLowerCase()+' en compras: no se puede editar','error'); afterAct(pid); return; }
+      ant=cur;
+    }
     if(mid) await PATCH('prod_materiales',mid,row); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
-    await prodRefreshAll(); closeModal(); toast('✅ Material guardado'); afterAct(pid);
+    if(ant&&ant.estado!=='PENDIENTE'){
+      const chk=(await GET('prod_materiales','select=material,cantidad_kg,costo_cotizado,detalle&id=eq.'+encodeURIComponent(mid)))[0];
+      if(!chk||chk.material!==row.material||Number(chk.cantidad_kg||0)!==Number(row.cantidad_kg||0)||Number(chk.costo_cotizado||0)!==Number(row.costo_cotizado||0)||(chk.detalle||null)!==(row.detalle||null)){ toast('❌ No se guardó el cambio (sin permiso sobre un pedido ya enviado)','error'); return; }
+      const dif=[]; const n=(k)=>Number(ant[k]||0)!==Number(row[k]||0);
+      if(ant.material!==row.material) dif.push('material: '+ant.material+' → '+row.material);
+      if(n('cantidad_kg')) dif.push('kg: '+Number(ant.cantidad_kg||0)+' → '+Number(row.cantidad_kg||0));
+      if(n('costo_cotizado')) dif.push('cotizado: '+fmt(ant.costo_cotizado)+' → '+fmt(row.costo_cotizado));
+      if((ant.detalle||'')!==(row.detalle||'')) dif.push('detalle: '+(ant.detalle||'—')+' → '+(row.detalle||'—'));
+      if(dif.length&&p0) wedmAvisar({para:'compras',id_prod:pid,op:p0.op,ref:'OP-'+p0.op+'-'+p0.item_num,texto:'✏️ Diseño EDITÓ un pedido '+ant.estado+' · OP-'+p0.op+' · ítem '+(p0.item_num??'—')+' · '+(p0.empresa||'')+' · '+row.material+' · '+dif.join(' · ')+(typeof ME!=='undefined'&&ME&&ME.nombre?' · por '+ME.nombre:'')});
+    }
+    await prodRefreshAll(); closeModal(); toast('✅ Material guardado'+(ant&&ant.estado!=='PENDIENTE'?' · compras avisada':'')); afterAct(pid);
     if(!mid&&confirm('Material guardado en la OP.\n\n¿Enviarlo YA a compras?\n(Si no lo envías, compras NO lo ve)')) await prodMatSolicitar(pid,true);
   }catch(e){ toast('❌ '+errMsg(e),'error'); }
 }
@@ -4168,7 +4188,7 @@ function pedidos(){
   const card=({m,p})=>{ const [lbl,cls]=PE_EST[m.estado]||[m.estado,'gris'];
     return `<div class="list-card" onclick="detalleProd('${p.id}','materiales')"><div class="lc-top"><div style="flex:1;min-width:0"><div class="lc-id">OP-${p.op} · ÍTEM ${p.item_num??'—'} · ${esc(p.empresa||'')}</div><div class="lc-title">${esc(m.material)}</div>${m.detalle?`<div class="lc-sub">${esc(m.detalle)}</div>`:''}</div><span class="badge ${cls}">${lbl}</span></div>
       <div class="lc-meta"><span style="font-size:12px">⚖️ ${Number(m.cantidad_kg||0)} kg</span><span style="font-size:12px;color:var(--muted)">Cotizado ${fmt(m.costo_cotizado)}${m.costo_real?` · Real <b>${fmt(m.costo_real)}</b>`:''}</span>${m.proveedor?`<span style="font-size:11px;color:var(--muted)">🏷️ ${esc(m.proveedor)}</span>`:''}${disBadge(p)}</div>
-      ${peSeguimiento(m)}</div>`; };
+      ${peSeguimiento(m)}${matEditable(m)?`<div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();formMatProd('${p.id}','${m.id}')">✏️ Editar</button></div>`:''}</div>`; };
   const cols=[
     {h:'OP · Ítem',v:({p})=>`<b style="white-space:nowrap;color:var(--info)">OP-${p.op}</b> · ${p.item_num??'—'}`,s:({p})=>(Number(p.op)||0)*1000+(Number(p.item_num)||0)},
     {h:'Cliente',v:({p})=>esc(p.empresa||'—'),s:({p})=>p.empresa||''},
@@ -4178,7 +4198,8 @@ function pedidos(){
     {h:'Real',cls:'td-num',v:({m})=>m.costo_real?fmt(m.costo_real):'—',s:({m})=>Number(m.costo_real)||0},
     {h:'Proveedor',v:({m})=>esc(m.proveedor||'—'),s:({m})=>m.proveedor||''},
     {h:'Estado',v:({m})=>{ const [l,c]=PE_EST[m.estado]||[m.estado,'gris']; return `<span class="badge ${c}">${l}</span>`; },s:({m})=>m.estado||''},
-    {h:'Seguimiento',v:({m})=>`<div style="min-width:200px;max-width:320px">${peSeguimiento(m)}</div>`,s:()=>''}];
+    {h:'Seguimiento',v:({m})=>`<div style="min-width:200px;max-width:320px">${peSeguimiento(m)}</div>`,s:()=>''},
+    {h:'',v:({p,m})=>matEditable(m)?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();formMatProd('${p.id}','${m.id}')">✏️ Editar</button>`:'',s:()=>''}];
   setContent(`${banner}${kp}${fb}${rows.length?LV.render('pe',rows,{card,cols,click:({p})=>`detalleProd('${p.id}','materiales')`}):empty(base.length?'Sin resultados':'No hay pedidos de material en esta vista',base.length?'🔍':'🧱')}`);
 }
 function peScope(k){ peSet('scope',k); }
