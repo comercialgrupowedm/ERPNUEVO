@@ -3828,14 +3828,18 @@ window.feHdr=hdr; window.feAbrir=feAbrir; window.feE=E;
 /* ========== SOLICITUD DE BIENES Y SERVICIOS EXTERNOS (COMPRAS-FO-002) ========== */
 let S=null;
 const opsLista=()=>{ const m=new Map(); [...(DB.produccion||[]),...(DB.extra||[])].forEach(o=>{ if(o.op!=null&&!m.has(String(o.op))) m.set(String(o.op),o); }); return [...m.keys()].sort((a,b)=>b-a); };
-const itemsDeOp=op=>[...(DB.produccion||[]),...(DB.extra||[])].filter(o=>String(o.op)===String(op)&&!o.despachado&&o.estado!=='CANCELADO').sort((a,b)=>Number(a.item_num)-Number(b.item_num));
+const itemsDeOp=(op,conDesp)=>[...(DB.produccion||[]),...(DB.extra||[])].filter(o=>String(o.op)===String(op)&&(conDesp||!o.despachado)&&o.estado!=='CANCELADO').sort((a,b)=>Number(a.item_num)-Number(b.item_num));
 function filaSol(d){ d=d||{}; return `<tr><td style="width:8%"><input class="s-c" style="text-align:center" value="${E(d.cantidad??'')}"></td><td style="width:27%"><input class="s-d" list="fe-dl-desc" value="${E(d.descripcion||'')}"></td><td style="width:22%"><input class="s-t" list="fe-dl-svc" style="text-align:center" value="${E(d.tipo_servicio||'')}"></td><td style="width:21%"><input class="s-m" list="fe-dl-mat" autocomplete="off" placeholder="Elegir material" style="text-align:center" value="${E(d.material||'')}"></td><td style="width:12%"><input class="s-u" style="text-align:center" value="${E(d.dureza||'')}"></td><td style="width:10%"><input class="s-p" inputmode="decimal" style="text-align:right;padding-right:18px" value="${E(d.precio??'')}"><button type="button" class="x" onclick="feSolQuitar(this)" title="Quitar fila">✕</button></td></tr>`; }
 window.feSolFila=function(d){ document.getElementById('fs-body').insertAdjacentHTML('beforeend',filaSol(d)); };
 window.feSolQuitar=function(b){ const tr=b.closest('tr'); if(document.querySelectorAll('#fs-body tr').length<=1){ tr.querySelectorAll('input').forEach(i=>i.value=''); return; } tr.remove(); };
-window.feSolOp=function(pref){
-  const v=document.getElementById('fs-op').value.trim(); const its=itemsDeOp(v); const sel=document.getElementById('fs-item');
+window.feSolOp=async function(pref){
+  const v=document.getElementById('fs-op').value.trim(); let its=itemsDeOp(v,true); const sel=document.getElementById('fs-item');
+  // OP ya despachada/facturada: no está en la lista activa → se trae de la base para poder pedir el servicio externo igual
+  if(!its.length&&/^\d{3,}$/.test(v)){ try{ const r=await GET('produccion','select='+PROD_SEL_C+'&op=eq.'+v+'&estado=neq.CANCELADO&order=item_num.asc,id.asc'); DB.extra=DB.extra||[]; (r||[]).forEach(x=>{ if(!DB.extra.some(e=>e.id===x.id)) DB.extra.push(x); }); }catch(e){} if(document.getElementById('fs-op').value.trim()!==v) return; its=itemsDeOp(v,true); }
   sel.innerHTML=its.length?its.map(o=>`<option value="${E(o.id)}">${o.item_num} — ${E(String(o.descripcion||'').slice(0,40))}</option>`).join(''):'<option value="">— sin ítems —</option>';
-  if(pref&&its.some(x=>x.id===pref)) sel.value=pref; const o=its.find(x=>x.id===sel.value)||its[0]; document.getElementById('fs-cot').value=o?(o.cot_num||''):''; document.getElementById('fs-cli').textContent=o?(o.empresa||''):'';
+  if(pref&&its.some(x=>x.id===pref)) sel.value=pref; const o=its.find(x=>x.id===sel.value)||its[0];
+  const _ex=document.getElementById('fs-ext'); if(_ex&&o&&o.despachado){ _ex.checked=false; }
+  document.getElementById('fs-cot').value=o?(o.cot_num||''):''; document.getElementById('fs-cli').textContent=o?(o.empresa||''):'';
   document.getElementById('fe-dl-desc').innerHTML=its.map(o=>`<option value="ÍTEM ${o.item_num} - ${E(String(o.descripcion||'').slice(0,80))}">`).join('');
   feSolItem();
 };
