@@ -2056,7 +2056,7 @@ function pickItem(titulo,filtro,fn){
 function pickRender(){
   const el=document.getElementById('pk-res'); if(!el||!_PK) return;
   const rows=(DB.produccion||[]).filter(_PK.filtro).filter(o=>buscaOP(o,_PK.q)).slice(0,40);
-  el.innerHTML=rows.length?rows.map(o=>`<div class="pick-row" onclick="closeModal();setTimeout(()=>${_PK.fn}('${idq(o)}'),60)">${thumbProd(o,36)}<div style="flex:1;min-width:0"><div class="lc-id">${opTitulo(o)}</div><div style="font-size:12.5px;font-weight:700">${esc(o.empresa||'—')}</div><div style="font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.descripcion||'')}</div></div>${bCal(o)}</div>`).join(''):mutedP('Sin resultados');
+  el.innerHTML=rows.length?rows.map(o=>`<div class="pick-row" onclick="closeModal();setTimeout(()=>${_PK.fn}('${idq(o)}'),60)">${thumbProd(o,36)}<div style="flex:1;min-width:0"><div class="lc-id">${opTitulo(o)}</div><div style="font-size:12.5px;font-weight:700">${esc(o.empresa||'—')}</div><div style="font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.descripcion||'')}</div></div>${bCal(o)}</div>`).join(''):mutedP('Sin resultados')+(_PK.q?`<div class="callout" style="margin-top:8px;font-size:12.5px">¿La OP ya está despachada o facturada? Aquí solo salen ítems activos. Para pedir el servicio usa <b>📝 Solicitar servicio</b> (en el menú ➕ de esta pestaña).</div>`:'');
 }
 
 // ── PESTAÑA: PENDIENTE DESPACHO (aprobados por calidad, sin despachar) ──
