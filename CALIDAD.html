@@ -3919,7 +3919,7 @@ window.feSolGuardar=async function(){
   if(!soloCal()) return; const id=document.getElementById('fs-item').value; const o=opDe(id); if(!o){ toast('Elige una OP e ítem válidos','error'); return; }
   const lineas=leeFilas(); if(!lineas.length){ toast('Agrega al menos una fila','error'); return; }
   if(lineas.some(l=>(l.descripcion||l.tipo_servicio).length<3)){ toast('Cada fila necesita descripción o tipo de servicio','error'); return; }
-  if(!leeCab().proveedor){ toast('Escribe o elige el proveedor','error'); return; }
+  if(!leeCab().proveedor){ toast('Falta el PROVEEDOR: escríbelo o elígelo en el campo marcado en rojo (abajo)','error'); const pv=document.getElementById('fs-prov'); if(pv){ pv.style.outline='3px solid #dc2626'; try{ pv.scrollIntoView({block:'center'}); pv.focus(); }catch(e){} pv.addEventListener('input',()=>{ pv.style.outline=''; },{once:true}); } return; }
   const cab=leeCab(); const marcar=document.getElementById('fs-ext')&&document.getElementById('fs-ext').checked;
   const r=await rpcC('calidad_solicitar_servicio',{p_id_prod:id,p_data:Object.assign({},cab,{lineas})},'📋 Solicitud enviada a Compras'); if(!r) return;
   if(marcar){ try{ await sb.rpc('calidad_servicio_externo',{p_id:id,p_externo:true,p_detalle:[lineas[0].tipo_servicio||lineas[0].descripcion,cab.proveedor].filter(Boolean).join(' · '),p_hasta:cab.fecha_retorno||null}); await recargar(); }catch(e){ toast('⚠️ La solicitud se creó, pero no se pudo marcar el ítem en externo','error'); } }
