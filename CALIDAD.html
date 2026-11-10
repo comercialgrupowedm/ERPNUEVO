@@ -1225,6 +1225,7 @@ const repAbiertos=id=>repsDe(id).filter(r=>r.estado==='ABIERTO');
 const certsDe=id=>(DB.certificados||[]).filter(c=>c.id_prod===id);
 const certVigente=id=>certsDe(id).find(c=>c.estado!=='ANULADO')||null;
 const solsDe=id=>(DB.solicitudes||[]).filter(s=>s.id_prod===id);
+const solsAb=id=>solsDe(id).filter(s=>s.estado!=='RECHAZADO');
 const vivo=o=>!o.despachado&&o.estado!=='CANCELADO';
 // Pendiente de calidad: producción ya lo entregó (terminado) y calidad aún no lo aprueba
 const pendCal=o=>vivo(o)&&!!o.terminado&&!aprobada(o);
@@ -2022,25 +2023,28 @@ function externo(){
   const base=(DB.produccion||[]).filter(enExterno);
   const venc=o=>{ const d=diasDe(o.externo_hasta); return d!=null&&d<0; };
   const sinF=o=>!o.externo_hasta;
-  const cnt={todas:base.length,venc:base.filter(venc).length,sinf:base.filter(sinF).length,sol:base.filter(o=>solsDe(o.id).length).length};
-  const data=base.filter(o=>{
+  // Solicitudes de servicio creadas que siguen abiertas (sin recibir ni rechazar), aunque el ítem no esté marcado «en servicio externo» (p. ej. OP ya despachada)
+  const pendItems=[...new Set((DB.solicitudes||[]).filter(s=>!['RECIBIDO','RECHAZADO'].includes(s.estado)).map(s=>s.id_prod))].map(opDe).filter(Boolean);
+  const cnt={todas:base.length,venc:base.filter(venc).length,sinf:base.filter(sinF).length,sol:base.filter(o=>solsAb(o.id).length).length,pend:pendItems.length};
+  const lista=_extF.chip==='pend'?pendItems:base;
+  const data=lista.filter(o=>{
     if(_extF.chip==='venc'&&!venc(o)) return false;
     if(_extF.chip==='sinf'&&!sinF(o)) return false;
-    if(_extF.chip==='sol'&&!solsDe(o.id).length) return false;
+    if(_extF.chip==='sol'&&!solsAb(o.id).length) return false;
     return buscaOP(o,_extF.q);
   }).sort((a,b)=>(diasDe(a.externo_hasta)??9999)-(diasDe(b.externo_hasta)??9999));
   const banner=moduleBanner('🚚','Servicio Externo','Ítems que están afuera con un proveedor (temple, anodizado, rectificado…)',
-    chipsH([['todas','Todas',cnt.todas],['venc','Regreso vencido',cnt.venc],['sinf','Sin fecha de regreso',cnt.sinf],['sol','Con solicitud',cnt.sol]],_extF.chip,'extChip')
+    chipsH([['todas','Todas',cnt.todas],['venc','Regreso vencido',cnt.venc],['sinf','Sin fecha de regreso',cnt.sinf],['sol','Con solicitud',cnt.sol],['pend','📋 Solicitudes pendientes',cnt.pend]],_extF.chip,'extChip')
     );
-  const fb=filtroBusqueda('ext-q',_extF.q,"extSet('q',this.value)",data.length+'/'+base.length);
-  if(!data.length){ setContent(banner+fb+empty('Sin ítems en servicio externo','🚚')); return; }
-  const extA=o=>{ const j=idq(o); return puedeCal()?actBtn('📥 Recibir',`recibirExterno('${j}')`)+actBtn('✏️ Editar',`modalExterno('${j}')`)+actBtn('📝 Solicitud',`modalSolicitud('${j}')`):''; };
-  const card=o=>{ const ss=solsDe(o.id);
-    const extra=extLinea(o)+(ss.length?`<div class="lc-meta" style="font-size:11px;color:var(--muted)">📋 ${ss.length} solicitud(es): ${esc(ss.slice(0,2).map(s=>s.material+(s.proveedor?' · '+s.proveedor:'')).join(' / '))} ${bSol(ss[0].estado)}</div>`:'');
+  const fb=filtroBusqueda('ext-q',_extF.q,"extSet('q',this.value)",data.length+'/'+lista.length);
+  if(!data.length){ setContent(banner+fb+empty(_extF.chip==='pend'?'No hay solicitudes de servicio pendientes':'Sin ítems en servicio externo','🚚')); return; }
+  const extA=o=>{ const j=idq(o); return puedeCal()?(enExterno(o)?actBtn('📥 Recibir',`recibirExterno('${j}')`)+actBtn('✏️ Editar',`modalExterno('${j}')`):'')+actBtn('📝 Solicitud',`modalSolicitud('${j}')`):''; };
+  const card=o=>{ const ss=solsAb(o.id), an=solsDe(o.id).filter(s=>s.estado==='RECHAZADO');
+    const extra=extLinea(o)+(ss.length?`<div class="lc-meta" style="font-size:11px;color:var(--muted)">📋 ${ss.length} solicitud(es): ${esc(ss.slice(0,2).map(s=>s.material+(s.proveedor?' · '+s.proveedor:'')).join(' / '))} ${bSol(ss[0].estado)}</div>`:'')+(an.length?`<div class="lc-meta" style="font-size:11px"><span class="badge rojo">❌ ${an.length} solicitud(es) anulada(s) por Compras</span>${!ss.length&&enExterno(o)?'<span style="color:var(--muted)">El ítem sigue marcado en servicio externo: usa ✏️ Editar o 📥 Recibir para quitarlo.</span>':''}</div>`:'');
     return itemCard(o,extra,extA(o)); };
   const cols=itemCols([
     {h:'Regreso',v:o=>{ const d=diasDe(o.externo_hasta); return o.externo_hasta?`<span style="white-space:nowrap">${fmtDate(o.externo_hasta)} ${d!=null?`<b style="color:${d<0?'var(--danger)':'var(--text)'}">${d<0?'vencido '+(-d)+' d':'en '+d+' d'}</b>`:''}</span>`:'<span style="color:var(--muted)">sin fecha</span>'; },s:o=>o.externo_hasta||'9999'},
-    {h:'Proveedor / servicio',v:o=>{ const ss=solsDe(o.id); return `<div style="min-width:150px;font-size:11.5px">${esc(String(o.externo_detalle||(ss[0]&&ss[0].proveedor)||'—').slice(0,90))}${ss.length?`<div style="color:var(--muted)">📋 ${ss.length} solicitud(es) ${bSol(ss[0].estado)}</div>`:''}</div>`; }}
+    {h:'Proveedor / servicio',v:o=>{ const ss=solsAb(o.id); return `<div style="min-width:150px;font-size:11.5px">${esc(String(o.externo_detalle||(ss[0]&&ss[0].proveedor)||'—').slice(0,90))}${ss.length?`<div style="color:var(--muted)">📋 ${ss.length} solicitud(es) ${bSol(ss[0].estado)}</div>`:''}</div>`; }}
   ],extA);
   setContent(banner+fb+LV.render('ext',data,{card,cols,click:o=>`detailItem('${idq(o)}')`}));
 }
@@ -2151,7 +2155,7 @@ async function pedirRemision(op){ return solicitarRemisionOP(op); }
 // Decisión: en el sistema nuevo un servicio externo que se le pide a Compras es una línea de prod_materiales con tipo
 // 'SERVICIO EXTERNO' (la misma cola que maneja Compras: SOLICITADO → COMPRADO → RECIBIDO). Calidad las crea con
 // calidad_solicitar_servicio y aquí las ve todas (también las que creó Compras o Diseño) con su estado.
-const SOL_EST={PENDIENTE:['Pendiente','gris'],SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
+const SOL_EST={PENDIENTE:['Pendiente','gris'],SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Anulada','rojo']};
 function bSol(e){ const [l,c]=SOL_EST[e]||[e||'—','gris']; return `<span class="badge ${c}">${esc(l)}</span>`; }
 let _solF={chip:'abiertas',q:''};
 function solSet(k,v){ _solF[k]=v; pgReset(); solicitudes(); }
@@ -2169,7 +2173,7 @@ function solicitudes(){
     return true;
   });
   const banner=moduleBanner('📋','Solicitudes Externas','Servicios externos pedidos a Compras (formato COMPRAS-FO-002)',
-    chipsH([['abiertas','Abiertas',cnt.abiertas],['recibidas','Recibidas',cnt.recibidas],['rech','Rechazadas',cnt.rech],['mias','Mías',cnt.mias],['todas','Todas',cnt.todas]],_solF.chip,'solChip')
+    chipsH([['abiertas','Abiertas',cnt.abiertas],['recibidas','Recibidas',cnt.recibidas],['rech','Anuladas',cnt.rech],['mias','Mías',cnt.mias],['todas','Todas',cnt.todas]],_solF.chip,'solChip')
     );
   const fb=filtroBusqueda('sol-q',_solF.q,"solSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar OP, servicio, proveedor, quién pidió…');
   if(!data.length){ setContent(banner+fb+empty('Sin solicitudes en esta vista','📋')); return; }
@@ -2201,7 +2205,33 @@ function detailSol(id){
     ${s.comprado_at?dr('Comprado',fmtDT(s.comprado_at)):''}${s.recibido_at?dr('Recibido',fmtDT(s.recibido_at)):''}
     ${s.motivo_rechazo?dr('Motivo de rechazo',esc(s.motivo_rechazo)):''}${dr('Observaciones',esc(s.obs_compras||'—'))}
     <div style="font-size:11.5px;color:var(--muted);margin-top:10px">El precio, la compra, la orden de compra y la recepción los gestiona <b>Compras</b>. Para anular una solicitud pídeselo a Compras (la rechaza).</div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="imprimirSolicitud(${JSON.stringify(grupo.map(x=>x.id)).replace(/"/g,'&quot;')})">🖨️ Formato (${grupo.length} línea${grupo.length>1?'s':''})</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${puedeCal()&&['PENDIENTE','SOLICITADO'].includes(s.estado)?`<button class="btn btn-ghost" onclick="modalEditarSol('${jsq(s.id)}')">✏️ Editar</button>`:''}<button class="btn btn-primary" onclick="imprimirSolicitud(${JSON.stringify(grupo.map(x=>x.id)).replace(/"/g,'&quot;')})">🖨️ Formato (${grupo.length} línea${grupo.length>1?'s':''})</button>`);
+}
+// Editar una solicitud de servicio ya enviada, mientras Compras no la haya comprado
+function modalEditarSol(id){
+  const s=(DB.solicitudes||[]).find(x=>x.id===id); if(!s||!soloCal()) return;
+  if(!['PENDIENTE','SOLICITADO'].includes(s.estado)){ toast('Ya está '+String(SOL_EST[s.estado]?SOL_EST[s.estado][0]:s.estado).toLowerCase()+': no se puede editar','error'); return; }
+  const o=opDe(s.id_prod); const obs=String(s.obs_compras||'');
+  openModal('✏️ Editar solicitud de servicio'+(o?' — '+opTitulo(o):''),
+    `<div class="callout" style="margin-bottom:10px;font-size:12.5px">Estado: ${bSol(s.estado)} · Mientras no esté comprada la puedes cambiar. Compras recibe un aviso.</div>
+    <div class="form-grid"><div class="field span2"><label>Servicio / descripción</label><input id="es-mat" value="${esc(s.material||'')}"></div>
+    <div class="field span2"><label>Detalle (servicio, material, dureza)</label><textarea id="es-det" rows="2">${esc(s.detalle||'')}</textarea></div>
+    <div class="field"><label>Cantidad</label><input id="es-cant" type="number" step="any" value="${s.cantidad!=null?esc(String(s.cantidad)):''}"></div>
+    <div class="field"><label>Precio estimado ($)</label><input id="es-pre" type="number" step="1" value="${Number(s.costo_cotizado)||''}"></div>
+    <div class="field span2"><label>Proveedor</label><input id="es-prov" list="fe-dl-prov" value="${esc(s.proveedor||'')}"><datalist id="fe-dl-prov">${provsConocidos().map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
+    <div class="field"><label>Días estimados</label><input id="es-dias" type="number" min="0" value="${s.dias_entrega!=null?esc(String(s.dias_entrega)):''}"></div>
+    <div class="field span2"><label>Observaciones para Compras</label><textarea id="es-obs" rows="2">${esc(obs.replace(/\s*·?\s*✏️ Editado por.*$/,''))}</textarea></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditarSol('${jsq(id)}')">💾 Guardar cambios</button>`);
+}
+async function guardarEditarSol(id){
+  const s=(DB.solicitudes||[]).find(x=>x.id===id); if(!s) return;
+  if(gv('es-mat').length<3){ toast('Escribe el servicio o la descripción','error'); return; }
+  const dat={material:gv('es-mat'),detalle:gv('es-det'),cantidad:gv('es-cant'),costo_cotizado:gv('es-pre'),proveedor:gv('es-prov'),dias_entrega:gv('es-dias'),obs_compras:gv('es-obs')};
+  const r=await rpcC('calidad_editar_servicio',{p_id:id,p_data:dat},'✏️ Solicitud actualizada · Compras avisada'); if(!r) return;
+  closeModal();
+  try{ const o=opDe(s.id_prod); const dif=[]; if(s.material!==dat.material) dif.push('servicio: '+s.material+' → '+dat.material); if((s.proveedor||'')!==dat.proveedor) dif.push('proveedor: '+(s.proveedor||'—')+' → '+(dat.proveedor||'—')); if(String(s.cantidad??'')!==String(dat.cantidad)) dif.push('cant: '+(s.cantidad??'—')+' → '+(dat.cantidad||'—')); if((Number(s.costo_cotizado)||0)!==(Number(dat.costo_cotizado)||0)) dif.push('precio: '+fmt(s.costo_cotizado)+' → '+fmt(dat.costo_cotizado));
+    await sb.rpc('chat_enviar2',{p_id_prod:s.id_prod,p_op:o?String(o.op):null,p_ref:o?'OP-'+o.op+'-'+o.item_num:null,p_para:'compras',p_texto:'✏️ Calidad EDITÓ una solicitud de servicio externo (aún sin comprar) · '+(o?'OP-'+o.op+' · ítem '+(o.item_num??'—')+' · '+(o.empresa||'')+' · ':'')+dat.material+(dif.length?' · '+dif.join(' · '):''),p_accion:null,p_menciones:[]}); }catch(e){}
+  if(MOD==='solicitudes'||MOD==='externo') refreshCurrentView();
 }
 // Nueva solicitud: encabezado + líneas (bienes) como en el formato anterior
 let _SOL=null;
