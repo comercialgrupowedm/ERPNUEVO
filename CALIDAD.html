@@ -3169,7 +3169,7 @@ function raHtml(r){
   const pie=`<div style="position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:9px;color:#444;line-height:1.5">Dirección: ${esc(E.dir)}.<br>Teléfono: 379 7352 - 308 7376 - 345 1648 Celular: 300 886 0468<br>${esc(E.email)}<br>Cali - Valle</div>`;
   const acta=r.con_acta?`<div style="position:relative;min-height:240mm;font-size:12px;line-height:1.6"><div style="text-align:center;margin-bottom:10px"><img src="${LOGO_WEDM_URL}" style="height:50px"></div>
     <p style="margin-top:20px">Cali, ${esc(_raFechaLarga(f))}</p><p style="margin-top:22px">Señores<br>Zona Franca<br>Cordial Saludo</p>
-    <p style="text-align:center;font-weight:800;font-size:15px;margin:40px 0 30px">ACTA DE ENTREGA</p>
+    <p style="text-align:center;font-weight:700;font-size:inherit;margin:40px 0 30px">Acta de entrega</p>
     <p style="text-align:justify">${esc(r.acta_texto||_raActaDef(r.fmm)).replace(/\n/g,'<br>')}</p>
     <p style="margin-top:40px">Cordialmente</p><p style="margin-top:6px"><img src="${_RA_FIRMA}" style="height:70px;width:auto;display:block;margin-bottom:2px"><b>Mauricio Andrés García Posada</b><br>Gerente General<br>GRUPO WEDM</p>${pie}</div><div style="page-break-after:always"></div>`:'';
   const css=`*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;padding:14mm 18mm;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;border:1px solid #999}.azul{background:#1a3a6b!important;color:#fff!important;font-weight:700}.center{text-align:center}@page{size:letter portrait;margin:6mm}@media print{.no-print{display:none!important}}`;
