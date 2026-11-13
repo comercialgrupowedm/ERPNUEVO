@@ -1796,7 +1796,7 @@ async function guardarMatProd(pid,mid){
       if(!matEditable(cur)){ closeModal(); await prodRefreshAll(); toast('Ya está '+String(cur.estado).toLowerCase()+' en compras: no se puede editar','error'); afterAct(pid); return; }
       ant=cur;
     }
-    if(mid) await PATCH('prod_materiales',mid,row); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
+    if(mid) await sb.rpc('diseno_editar_material',{p_id:mid,p_data:row}); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
     if(ant&&ant.estado!=='PENDIENTE'){
       const chk=(await GET('prod_materiales','select=material,cantidad_kg,costo_cotizado,detalle&id=eq.'+encodeURIComponent(mid)))[0];
       if(!chk||chk.material!==row.material||Number(chk.cantidad_kg||0)!==Number(row.cantidad_kg||0)||Number(chk.costo_cotizado||0)!==Number(row.costo_cotizado||0)||(chk.detalle||null)!==(row.detalle||null)){ toast('❌ No se guardó el cambio (sin permiso sobre un pedido ya enviado)','error'); return; }

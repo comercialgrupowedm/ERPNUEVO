@@ -1787,6 +1787,14 @@ async function pasoOk(id,i){
   if(op.externo){ toast('Primero recibe la pieza del trabajo externo','error'); return; }
   const r=await rpcP('planeacion_avance_pasos',{p_id:id,p_pasos:{[i]:100}},'✅ Paso '+i+' OK · sigue el siguiente'); if(r) trasGuardar(id);
 }
+async function liberarOP(opn){
+  if(!soloEditor()) return;
+  const its=(DB.produccion||[]).filter(x=>x.op===opn&&!x.despachado&&x.estado!=='CANCELADO'); const ids=new Set(); const n=its.filter(x=>!ids.has(x.id)&&ids.add(x.id)).length;
+  if(!n){ toast('La OP no tiene ítems pendientes por liberar','warn'); return; }
+  if(!confirm('¿LIBERAR TODA la OP '+opn+'?\n\nSe marcan '+n+' ítem(s) con todas las etapas en 100% (diseño, MP, avance, producción, calidad) y quedan despachados / TERMINADOS, sin generar remisión.\n\nEsto saca la OP del control de producción.')) return;
+  const r=await rpcP('planeacion_liberar_op',{p_op:opn},'🚀 OP '+opn+' liberada completa');
+  if(r){ try{ closeDetail(); }catch(e){} try{ await recargar(); }catch(e){ try{ refreshCurrentView(); }catch(z){} } }
+}
 async function produccionOk(id){
   if(!soloEditor()) return; const op=opDe(id); if(!op) return;
   if(op.externo){ toast('La pieza sigue en trabajo externo: recíbela primero','error'); return; }
@@ -2185,6 +2193,7 @@ function detailOP(id){
     ${s?`<div style="font-size:11.5px;opacity:.85;margin-top:8px">▶ Proceso actual: <b>MQ${s.i} · ${esc(s.raw)}</b>${s.oper?' · 👷 '+esc(s.oper):''}</div>`:''}</div>`;
   const A=[['📈','#2563eb','AVANCE',`modalAvancePasos('${j}')`],...(puede('planeacion','administracion')?[['🖼️','#7c3aed','IMAGEN',`modalImagen('${j}')`]]:[]),['🏭','#0d9488','PRODUCCIÓN',`modalProduccion('${j}')`],['✅','#16a34a','CALIDAD',`modalCalidad('${j}')`],['🚚','#7b1fa2','SERVICIO EXT.',`modalExterno('${j}')`],['📥',op.externo?'#7b1fa2':'#94a3b8','RECIBIR EXTERNO',op.externo?`recibirExterno('${j}')`:`toast('Primero hay que enviar la pieza a trabajo externo')`],
            ['🧭','#1e3a5f','RUTA Y TIEMPOS',puede('planeacion','administracion')?`modalRutaEdit('${j}')`:`modalRuta('${j}')`],['🔄','#d97706','CAMBIAR ESTADO',`modalEstado('${j}')`],['⏱️','#0284c7','HORAS',`modalHoras('${j}')`],['👷','#db2777','OPERARIO',`modalOperarios('${j}')`],['🚚','#16a34a','PEDIR REMISIÓN',`pedirRemision('${j}')`]];
+  if(puede('planeacion','administracion')&&(DB.produccion||[]).some(x=>x.op===op.op&&x.id!==op.id&&!x.despachado&&x.estado!=='CANCELADO')||puede('planeacion','administracion')&&!op.despachado&&op.estado!=='CANCELADO') A.push(['🚀','#7c3aed','LIBERAR TODA LA OP',`liberarOP(${op.op})`]);
   if(puede('planeacion','administracion')) A.push(['✏️','#475569','EDITAR ÍTEM',`formEditarItem('${j}')`],['🗑','#dc2626','ELIMINAR ÍTEM',`eliminarItemOP('${j}')`]);
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
   const pe0=puede('planeacion','administracion');
