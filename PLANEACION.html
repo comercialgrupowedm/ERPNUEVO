@@ -1258,7 +1258,7 @@ async function rpcP(fn,params,okMsg){
 }
 
 // ── Helpers de presentación ──────────────────────────────────────────
-const opDe=id=>(DB.produccion||[]).find(x=>x.id===id)||(DB.todas||[]).find(x=>x.id===id)||null;
+const opDe=id=>(DB.produccion||[]).find(x=>x.id===id)||(DB.todas||[]).find(x=>x.id===id)||(DB._ext||[]).find(x=>x.id===id)||null;
 const ESTADOS_COLOR={'EN PROCESO':'azul','TERMINADO':'verde','PENDIENTE DESPACHO':'urg','CANCELADO':'rojo','PAUSADO':'gris','PENDIENTE DISEÑO':'naranja','PENDIENTE MP':'naranja','PENDIENTE MP Y DISEÑO':'naranja','TRABAJO EXTERNO':'morado'};
 function bEst(e){ return `<span class="badge ${ESTADOS_COLOR[e]||'gris'}">${esc(e||'—')}</span>`; }
 const PRIO_COLOR={'Muy alta':'rojo',Alta:'naranja',Media:'azul',Baja:'gris',Nula:'gris'};
@@ -2181,8 +2181,11 @@ function modalRuta(id){
 }
 
 // ── DETALLE DE OP ────────────────────────────────────────────────────
-function detailOP(id){
-  const op=opDe(id); if(!op){ toast('OP no encontrada','error'); return; }
+function detailOP(id,_r){
+  const op=opDe(id);
+  if(!op){
+    if(!_r){ GET('produccion','select='+PROD_SEL_P+'&id=eq.'+encodeURIComponent(id)).then(a=>{ if(a&&a[0]){ DB._ext=(DB._ext||[]).filter(x=>x.id!==id).concat([a[0]]); detailOP(id,1); } else toast('Ese ítem ya no existe. Actualiza la lista (↻).','error'); }).catch(()=>toast('No se pudo abrir el ítem. Actualiza la lista (↻).','error')); return; }
+    toast('Ese ítem ya no está en la lista activa (¿despachado?). Actualiza (↻).','error'); return; }
   try{chatCtx(op.id,op.op,'OP-'+op.id);}catch(e){}
   _DET_ID=id; const j=idq(op);
   const p=pctOp(op), s=pasoActual(op), d=diasPactada(op);
