@@ -6826,5 +6826,29 @@ window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.a
 </script>
 
 <script src="xl-tablas.js?v=1" defer></script>
+<!-- WEDM-TECLAS-H (flechas ← → desplazan la tabla/zona ancha cuando no se está escribiendo) -->
+<script>
+(function(){
+ var ult=null;
+ function esSc(el){ if(!el||el===document.body||el===document.documentElement) return false; var cs=getComputedStyle(el); return (cs.overflowX==='auto'||cs.overflowX==='scroll')&&el.scrollWidth>el.clientWidth+4&&el.offsetParent!==null; }
+ function sube(el){ while(el&&el!==document.body&&el!==document.documentElement){ if(esSc(el)) return el; el=el.parentElement; } return null; }
+ document.addEventListener('mouseover',function(e){ var s=sube(e.target); if(s) ult=s; },true);
+ document.addEventListener('mousedown',function(e){ var s=sube(e.target); if(s) ult=s; },true);
+ function elegir(){
+  var a=sube(document.activeElement); if(a) return a;
+  if(ult&&document.body.contains(ult)&&esSc(ult)) return ult;
+  var best=null,bw=0,all=document.querySelectorAll('div,section,main,table');
+  for(var i=0;i<all.length;i++){ var el=all[i]; if(esSc(el)&&el.scrollWidth>bw){ var r=el.getBoundingClientRect(); if(r.width>150&&r.height>40){ best=el; bw=el.scrollWidth; } } }
+  if(best) return best;
+  var d=document.scrollingElement; return d&&d.scrollWidth>d.clientWidth+4?d:null;
+ }
+ document.addEventListener('keydown',function(e){
+  if((e.key!=='ArrowRight'&&e.key!=='ArrowLeft')||e.ctrlKey||e.altKey||e.metaKey||e.shiftKey||e.defaultPrevented) return;
+  var t=e.target, tg=t&&t.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||(t&&t.isContentEditable)) return;
+  var s=elegir(); if(!s) return;
+  e.preventDefault(); s.scrollBy({left:(e.key==='ArrowRight'?1:-1)*Math.max(160,Math.round(s.clientWidth*0.25)),behavior:'smooth'});
+ });
+})();
+</script>
 </body>
 </html>
