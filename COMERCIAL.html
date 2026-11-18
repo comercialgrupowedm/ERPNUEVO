@@ -3689,6 +3689,7 @@ function formItem(itOrId,cotId){
   if(!cot){ toast('Selecciona una cotización primero','error'); return; }
   const clone=a=>JSON.parse(JSON.stringify(a||[]));
   _IT={id:it.id||null,cotId,isNew,mats:clone(it.mats),svcs:clone(it.svcs),prcs:clone(it.prcs),planos:[],precioManual:false,esMq:cot.origen==='MARQUILLA',tipoCot:cot.tipo||''};
+  (function(){ const u0=Number(it.unidades)||1; _IT.mats.forEach(m=>{ if(m&&m.especial&&m.kg_u==null&&nOr(m.kg)>0) m.kg_u=nOr(m.kg)/u0; }); })();
   if(!_IT.mats.length) _IT.mats.push(_MAT0()); if(!_IT.svcs.length) _IT.svcs.push(_SVC0()); if(!_IT.prcs.length) _IT.prcs.push(_PRC0());
   if(!isNew){ const calc=Math.round(nOr(it.presup_unit)*(1+nOr(it.margen_pct)/100)); _IT.precioManual=_IT.esMq||Math.abs(nOr(it.precio_unit)-calc)>1; }
   const nextNum=isNew?Math.max(0,...itemsDe(cotId).map(x=>Number(x.item)||0))+1:it.item;
@@ -3839,7 +3840,7 @@ function matRowHTML(m,i){
     <input id="mat${i}-text" list="mat-list" placeholder="Buscar material o 'ESPECIAL'..." value="${esc(m.nombre)}" oninput="itNameInput('mat',${i},this,event)" onchange="itNameCommit('mat',${i},this)" style="width:100%"></div>${_delBtn('mat',i)}</div>
     ${m.especial?`<div class="form-grid"><div class="field span2"><label>Descripción Mat Esp ${i+1}</label><input value="${esc(m.desc_esp)}" placeholder="Describe el material especial" oninput="itMatTxt(${i},'desc_esp',this.value)"></div>
       <div class="field span2"><label>Costo Mat ${i+1} Esp (Total) *</label><div class="money-row"><span class="money-sign">$</span><input type="number" id="mat${i}-costo_esp" value="${m.costo_esp||''}" placeholder="0" oninput="itMatNum(${i},'costo_esp',this.value)"></div></div>
-      <div class="field span2"><label>Cantidad Total Material ${i+1}</label><div style="display:flex;gap:6px"><input type="number" value="${m.kg||''}" placeholder="0" oninput="itMatNum(${i},'kg',this.value)" style="flex:1;min-width:0"><select style="width:auto" onchange="itMatUnd(${i},this.value)"><option value="kg" ${m.unidad==='und'?'':'selected'}>kg</option><option value="und" ${m.unidad==='und'?'selected':''}>unidades</option></select></div></div></div>`
+      <div class="field span2"><label>Cantidad por unidad — Material ${i+1}</label><div style="display:flex;gap:6px"><input type="number" step="any" value="${m.kg_u!=null?(Math.round(nOr(m.kg_u)*10000)/10000):(m.kg||'')}" placeholder="0" oninput="itMatNum(${i},'kg_u',this.value)" style="flex:1;min-width:0"><select style="width:auto" onchange="itMatUnd(${i},this.value);itMatKtot(${i})"><option value="kg" ${m.unidad==='und'?'':'selected'}>kg</option><option value="und" ${m.unidad==='und'?'selected':''}>unidades</option></select></div><div id="mat${i}-ktot" style="font-size:11.5px;color:var(--muted);margin-top:4px">${_ktotTxt(m)}</div></div></div>`
     :m.nombre?`<div style="background:var(--card2);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap">
       <span>Densidad: <strong>${Number(mt?.densidad||0).toFixed(5)}</strong> g/mm³</span><span>Precio/kg: <strong>${fmt(mt?.precio)}</strong></span><span>Volumen: <strong id="mat${i}-vol">—</strong> mm³</span><span>Peso: <strong id="mat${i}-peso">—</strong></span></div>
       <div class="form-grid"><div class="field"><label>Geometría</label><div class="btn-group-row">${['Cilindro','Platina'].map(g=>`<button type="button" class="btn-seg ${m.geo===g?'active':''}" onclick="itMatGeo(${i},'${g}')">${g}</button>`).join('')}</div></div>
@@ -3858,16 +3859,18 @@ function itMatName(i,v){
 }
 function itMatGeo(i,g){ _IT.mats[i].geo=g; _IT.mats[i].manual=false; itRenderRows('mat'); matCalc(i,true); recalcItem(); }
 function itMatTxt(i,f,v){ _IT.mats[i][f]=v; }
+function _ktotTxt(m){ const u=Number((document.getElementById('i3')||{}).value)||1; const q=m.kg_u!=null?nOr(m.kg_u):nOr(m.kg); const tot=Math.round(nOr(m.kg)*10000)/10000; return 'Total: <b>'+tot+' '+(m.unidad==='und'?'und':'kg')+'</b> ('+(Math.round(q*10000)/10000)+' × '+u+' unidad'+(u===1?'':'es')+' del ítem)'; }
+function itMatKtot(i){ const m=_IT&&_IT.mats[i]; const el=document.getElementById('mat'+i+'-ktot'); if(m&&el) el.innerHTML=_ktotTxt(m); }
 function itMatUnd(i,u){ if(_IT&&_IT.mats[i]) _IT.mats[i].unidad=(u==='und'?'und':'kg'); }
 function itMatNum(i,f,v){
   const m=_IT.mats[i]; m[f]=nOr(v);
-  if(m.especial){ if(f==='costo_esp') m.costo=Math.round(m.costo_esp*1.3); }
+  if(m.especial){ if(f==='costo_esp') m.costo=Math.round(m.costo_esp*1.3); if(f==='kg_u'){ m.kg=nOr(m.kg_u)*(Number((document.getElementById('i3')||{}).value)||1); itMatKtot(i); } }
   else matCalc(i,false);
   recalcItem();
 }
 function itMatCosto(i,v){ _IT.mats[i].costo=nOr(v); _IT.mats[i].manual=true; recalcItem(); }
 function matCalc(i,force,keep){
-  const m=_IT.mats[i]; if(!m||!m.nombre||m.especial){ if(m&&m.especial) m.costo=Math.round(nOr(m.costo_esp)*1.3); return; }
+  const m=_IT.mats[i]; if(!m||!m.nombre||m.especial){ if(m&&m.especial){ m.costo=Math.round(nOr(m.costo_esp)*1.3); if(m.kg_u!=null){ m.kg=nOr(m.kg_u)*(Number((document.getElementById('i3')||{}).value)||1); itMatKtot(i); } } return; }
   if(force) m.manual=false;
   const mt=DB.materiales.find(x=>x.material===m.nombre); const dens=nOr(mt?.densidad), pkg=nOr(mt?.precio); const cant=nOr(m.cant)||1;
   const vol=m.geo==='Cilindro'?Math.PI*Math.pow(nOr(m.dim1)/2,2)*nOr(m.largo):nOr(m.dim1)*nOr(m.largo)*nOr(m.ancho);
