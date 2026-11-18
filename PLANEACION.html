@@ -2224,12 +2224,32 @@ async function planosCargar(op){
     const q='select=id,tipo,nombre,mime,size,created_by,created_at&tipo=in.(plano,dwg)&or=(id_prod.eq.'+encodeURIComponent(op.id)+(op.id_item?',id_item.eq.'+encodeURIComponent(op.id_item):'')+')&order=created_at.desc';
     const rows=await GET('prod_archivos',q)||[];
     const b=document.getElementById('pl-box'); if(!b||b.dataset.id!==String(op.id)) return;
-    b.innerHTML=rows.length?rows.map(a=>{ const im=/^image\//.test(a.mime||''), pdf=/pdf/i.test(a.mime||''); const ic=a.tipo==='dwg'?'📐':(im?'🖼️':(pdf?'📄':'📎'));
+    b.innerHTML=(rows.length?rows.map(a=>{ const im=/^image\//.test(a.mime||''), pdf=/pdf/i.test(a.mime||''); const ic=a.tipo==='dwg'?'📐':(im?'🖼️':(pdf?'📄':'📎'));
       return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-size:22px">${ic}</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow-wrap:anywhere">${esc(a.nombre||'Plano')}</div><div style="font-size:11px;color:var(--muted)">${a.created_at?fmtDT(a.created_at):''}${a.created_by?' · '+esc(a.created_by):''}${a.tipo==='dwg'?' · DWG':''}</div></div><button class="btn btn-primary btn-sm" onclick="planoVer('${String(a.id).replace(/[^\w-]/g,'')}')">👁 Ver</button></div>`; }).join('')
-      :mutedP('Este ítem todavía no tiene plano cargado.');
+      :mutedP('Este ítem todavía no tiene plano cargado.'))+(puede('planeacion','administracion')?`<div style="margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="planoSubir('${esc(op.id)}')">📎 Subir plano</button></div>`:'');
   }catch(e){ const b=document.getElementById('pl-box'); if(b) b.innerHTML=mutedP('No se pudieron cargar los planos.'); }
 }
 function _dataBlobUrl(d){ try{ const m=/^data:([^;,]*)(;base64)?,(.*)$/s.exec(d||''); if(!m) return d; const bin=m[2]?atob(m[3]):decodeURIComponent(m[3]); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return URL.createObjectURL(new Blob([u],{type:m[1]||'application/octet-stream'})); }catch(e){ return d; } }
+function planoSubir(idp){
+  const i=document.createElement('input'); i.type='file'; i.accept='image/*,application/pdf'; i.style.display='none';
+  i.onchange=async()=>{ const f=i.files&&i.files[0]; i.remove(); if(!f) return;
+    try{
+      showBusy(); let data,mime;
+      if(/^image\//.test(f.type)){
+        data=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=()=>rej(new Error('No se pudo leer la imagen')); fr.onload=()=>{ const im=new Image(); im.onerror=()=>rej(new Error('Imagen no válida')); im.onload=()=>{ const k=Math.min(1,1600/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(im.width*k)); c.height=Math.max(1,Math.round(im.height*k)); c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.8)); }; im.src=fr.result; }; fr.readAsDataURL(f); });
+        mime='image/jpeg';
+      } else if(f.type==='application/pdf'){
+        if(f.size>3.5*1048576) throw new Error('El PDF pesa más de 3.5 MB');
+        data=await new Promise((a,b)=>{ const r=new FileReader(); r.onload=()=>a(r.result); r.onerror=()=>b(new Error('No se pudo leer el PDF')); r.readAsDataURL(f); }); mime='application/pdf';
+      } else throw new Error('Solo imágenes o PDF');
+      const h={...sb.h,'Prefer':'return=minimal','Content-Type':'application/json'};
+      const r=await fetch(SB_URL+'/rest/v1/prod_archivos',{method:'POST',headers:h,body:JSON.stringify({tipo:'plano',nombre:f.name||'plano',mime,size:Math.round(data.length*.75),data,created_by:me(),id_prod:idp})});
+      if(!r.ok){ if(sb._fail) await sb._fail(r,'subir archivos'); throw new Error('No se pudo subir ('+r.status+')'); }
+      toast('✅ Plano subido'); const op=opDe(idp); if(op) planosCargar(op);
+    }catch(e){ toast('❌ '+errMsg(e),'error'); } finally{ hideBusy(); }
+  };
+  document.body.appendChild(i); i.click();
+}
 async function planoVer(id){
   try{
     const r=await GET('prod_archivos','select=nombre,mime,data&id=eq.'+encodeURIComponent(id)); const a=r&&r[0]; if(!a||!a.data){ toast('Archivo no disponible','error'); return; }

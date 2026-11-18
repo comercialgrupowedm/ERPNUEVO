@@ -5109,6 +5109,10 @@ function usrModRol(){ // al marcar un módulo, si el rol no alcanza se marca el 
   if(document.querySelector('input[name=usm]:checked')?.value!=='sel') return; const rol=gv('us2');
   document.querySelectorAll('.usm-c:checked').forEach(c=>{ const m=c.value, g=MOD_GATE[m]; if(!g||g.includes(rol)) return; const r=MOD_ROLNEC[m]; const x=document.querySelector('.us6[value="'+r+'"]'); if(x&&!x.checked) x.checked=true; });
 }
+function usrExtraMod(el){ // al dar un acceso adicional, si «solo los que marque» está activo, marca también el módulo para que no quede bloqueado
+  if(!el.checked||document.querySelector('input[name=usm]:checked')?.value!=='sel') return;
+  const m=Object.keys(MOD_ROLNEC).find(k=>MOD_ROLNEC[k]===el.value); const c=m&&document.querySelector('.usm-c[value="'+m+'"]'); if(c&&!c.checked){ c.checked=true; toast('Se marcó también el módulo «'+m+'» (tiene restricción por módulos)'); }
+}
 function usrModSel(){ const c=document.querySelector('input[name=usm]:checked')?.value==='sel'; document.querySelectorAll('.usm-c').forEach(x=>{x.disabled=!c}); const b=document.getElementById('usm-box'); if(b) b.style.opacity=c?1:.45; }
 function formUsuario(nombre){
   const u=nombre?_USR.find(x=>x.nombre===nombre):null; const roles=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion','lectura']; const extras=['admin','comercial','diseno','compras','produccion','calidad','administracion','planeacion'];
@@ -5122,7 +5126,7 @@ function formUsuario(nombre){
     <div class="field"><label>Asesor (solo comerciales)</label><input id="us3" value="${esc(u?.asesor||'')}" placeholder="Nombre como aparece en cotizaciones"></div>
     <div class="field"><label>Clave / PIN (4 dígitos)${u?' — vacío = no cambiar':''}</label><input id="us4" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••"></div>
     <div class="field"><label>Estado</label><select id="us5"><option value="1" ${u&&!u.activo?'':'selected'}>Activo</option><option value="0" ${u&&!u.activo?'selected':''}>Inactivo</option></select></div>
-    <div class="field span2"><label>Accesos adicionales (además del rol)</label><div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${extras.map(r=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="us6" value="${r}" ${(u?.roles_extra||[]).includes(r)?'checked':''}> ${ROL_LABEL[r]}</label>`).join('')}</div></div>
+    <div class="field span2"><label>Accesos adicionales (además del rol)</label><div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0">${extras.map(r=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="us6" value="${r}" onchange="usrExtraMod(this)" ${(u?.roles_extra||[]).includes(r)?'checked':''}> ${ROL_LABEL[r]}</label>`).join('')}</div></div>
     ${modsHtml}</div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>`);
   setTimeout(usrModSel,0);
