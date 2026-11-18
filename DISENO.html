@@ -2055,7 +2055,7 @@ function _pmArmar(p,tec){
   return lines;
 }
 function _pmDeCotizado(q){
-  const it={tipo:'mat',nombre:q.nombre,geometria:q.geo==='Platina'?'Platina':'Cilindro',dim1:q.dim1||'',largo:q.largo||'',ancho:q.ancho||'',cant:Number(q.kg||0),unidad:'kg',
+  const it={tipo:'mat',nombre:q.nombre,geometria:q.geo==='Platina'?'Platina':'Cilindro',dim1:q.dim1||'',largo:q.largo||'',ancho:q.ancho||'',cant:Number(q.kg||0),unidad:(q.unidad==='und'?'und':'kg'),
     precio:Number(q.costo||0),especial:!!q.especial,notas:q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true}; it.detalle=_pmTexto(it); return it;
 }
 

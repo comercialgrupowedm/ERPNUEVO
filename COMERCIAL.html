@@ -3668,7 +3668,7 @@ function detailItem(id){
       <div class="dp-section"><h4>💵 Financiero</h4>${dr('Precio unitario',fmt(pu))}${dr('Precio × ítem',`<strong style="color:var(--gold);font-size:15px;font-family:var(--mono)">${fmt(pt)}</strong>`)}</div>
       <div class="dp-section"><h4>📎 Planos y documentos</h4><div id="it-planos">${mutedP('Cargando…')}</div></div></div>
     <div class="dp-tabpanel" data-panel="costos">
-      <div class="dp-section"><h4>🧱 Materiales</h4>${mats.length?mats.map(m=>dr(esc(m.nombre)+(m.especial?' (especial)':''),`<span style="font-family:var(--mono)">${fmt(m.costo)}</span>${m.kg?`<div style="font-size:10px;color:var(--muted)">${Number(m.kg).toFixed(3)} kg${m.geo?' · '+esc(m.geo):''}</div>`:''}`)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin materiales</p>'}</div>
+      <div class="dp-section"><h4>🧱 Materiales</h4>${mats.length?mats.map(m=>dr(esc(m.nombre)+(m.especial?' (especial)':''),`<span style="font-family:var(--mono)">${fmt(m.costo)}</span>${m.kg?`<div style="font-size:10px;color:var(--muted)">${m.unidad==='und'?Number(m.kg)+' und':Number(m.kg).toFixed(3)+' kg'}${m.geo?' · '+esc(m.geo):''}</div>`:''}`)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin materiales</p>'}</div>
       <div class="dp-section"><h4>🛠 Servicios externos <span style="font-size:10px;color:var(--warn)">×1.3</span></h4>${svcs.length?svcs.map(s=>dr(esc(s.nombre),`<span style="font-family:var(--mono)">${fmt(Number(s.costo||0)*1.3)}</span><div style="font-size:10px;color:var(--muted)">base ${fmt(s.costo)}${s.dias?' · '+s.dias+' días':''}</div>`)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin servicios</p>'}</div>
       <div class="dp-section"><h4>⚙️ Procesos</h4>${prcs.length?prcs.map(p=>dr(esc(p.nombre),`<span style="font-family:var(--mono)">${fmt(p.costo)}</span>${p.tarifa?`<div style="font-size:10px;color:var(--muted)">${p.tu==='hm'?fmtHM(p.tiempo)+' h ('+Number(p.tiempo||0).toFixed(2)+' h)':p.tu==='min'?(Math.round(Number(p.tiempo||0)*6000)/100)+' min ('+Number(p.tiempo||0).toFixed(2)+' h)':Number(p.tiempo||0).toFixed(2)+' h'}/und × ${fmt(p.tarifa)}/h</div>`:''}`)).join(''):'<p style="font-size:12px;color:var(--muted)">Sin procesos</p>'}</div>
       <div class="dp-section"><h4>🧮 Resumen de costo</h4>${_costRow('Materiales',nMat)}${_costRow('Servicios (×1.3)',nSvc)}${_costRow('Procesos',nPrc)}${it.diseno?_costRow('Diseño · '+esc(it.diseno),it.costo_diseno):''}${Number(it.costo_flete)?_costRow('Flete (×1.3)',Number(it.costo_flete)*1.3):''}
@@ -3839,7 +3839,7 @@ function matRowHTML(m,i){
     <input id="mat${i}-text" list="mat-list" placeholder="Buscar material o 'ESPECIAL'..." value="${esc(m.nombre)}" oninput="itNameInput('mat',${i},this,event)" onchange="itNameCommit('mat',${i},this)" style="width:100%"></div>${_delBtn('mat',i)}</div>
     ${m.especial?`<div class="form-grid"><div class="field span2"><label>Descripción Mat Esp ${i+1}</label><input value="${esc(m.desc_esp)}" placeholder="Describe el material especial" oninput="itMatTxt(${i},'desc_esp',this.value)"></div>
       <div class="field span2"><label>Costo Mat ${i+1} Esp (Total) *</label><div class="money-row"><span class="money-sign">$</span><input type="number" id="mat${i}-costo_esp" value="${m.costo_esp||''}" placeholder="0" oninput="itMatNum(${i},'costo_esp',this.value)"></div></div>
-      <div class="field span2"><label>Cantidad Total Material ${i+1} (kg)</label><input type="number" value="${m.kg||''}" placeholder="0" oninput="itMatNum(${i},'kg',this.value)"></div></div>`
+      <div class="field span2"><label>Cantidad Total Material ${i+1}</label><div style="display:flex;gap:6px"><input type="number" value="${m.kg||''}" placeholder="0" oninput="itMatNum(${i},'kg',this.value)" style="flex:1;min-width:0"><select style="width:auto" onchange="itMatUnd(${i},this.value)"><option value="kg" ${m.unidad==='und'?'':'selected'}>kg</option><option value="und" ${m.unidad==='und'?'selected':''}>unidades</option></select></div></div></div>`
     :m.nombre?`<div style="background:var(--card2);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap">
       <span>Densidad: <strong>${Number(mt?.densidad||0).toFixed(5)}</strong> g/mm³</span><span>Precio/kg: <strong>${fmt(mt?.precio)}</strong></span><span>Volumen: <strong id="mat${i}-vol">—</strong> mm³</span><span>Peso: <strong id="mat${i}-peso">—</strong></span></div>
       <div class="form-grid"><div class="field"><label>Geometría</label><div class="btn-group-row">${['Cilindro','Platina'].map(g=>`<button type="button" class="btn-seg ${m.geo===g?'active':''}" onclick="itMatGeo(${i},'${g}')">${g}</button>`).join('')}</div></div>
@@ -3858,6 +3858,7 @@ function itMatName(i,v){
 }
 function itMatGeo(i,g){ _IT.mats[i].geo=g; _IT.mats[i].manual=false; itRenderRows('mat'); matCalc(i,true); recalcItem(); }
 function itMatTxt(i,f,v){ _IT.mats[i][f]=v; }
+function itMatUnd(i,u){ if(_IT&&_IT.mats[i]) _IT.mats[i].unidad=(u==='und'?'und':'kg'); }
 function itMatNum(i,f,v){
   const m=_IT.mats[i]; m[f]=nOr(v);
   if(m.especial){ if(f==='costo_esp') m.costo=Math.round(m.costo_esp*1.3); }
@@ -4532,7 +4533,7 @@ function afterAct(id){ updateBadges(); refreshCurrentView(); if(id) detalleProd(
 const prodDe=id=>(idxBy(DB.produccion,'id','prod_id').get(id)||[])[0];
 const matsDe=id=>idxBy(DB.prodMats,'id_prod','mats_prod').get(id)||[];
 // Las líneas de servicio externo (las crea Diseño con el prefijo "SERVICIO: ") no se miden en kg
-const cantMat=m=>String(m.material||'').startsWith('SERVICIO')?'servicio externo':Number(m.cantidad_kg||0)+' kg';
+const cantMat=m=>String(m.material||'').startsWith('SERVICIO')?'servicio externo':((!(Number(m.cantidad_kg)>0)&&Number(m.cantidad)>0)?Number(m.cantidad)+' und':Number(m.cantidad_kg||0)+' kg');
 const repsDe=id=>idxBy(DB.reprocesos,'id_prod','reps_prod').get(id)||[];
 const remsDeOp=op=>idxBy(DB.remisiones,'op','rem_op').get(op)||[];
 function diasPactada(p){ if(!p.fecha_pactada) return null; const h=new Date(); h.setHours(0,0,0,0); return Math.round((new Date(p.fecha_pactada+'T00:00:00')-h)/86400000); }
@@ -5041,7 +5042,7 @@ function _pmArmar(p,tec){
     if(r.estado!=='PENDIENTE') return;
     const q=res[ri]>=0?quoted[res[ri]]:null;
     const it={tipo:'mat',id:r.id,nombre:r.material,geometria:q&&q.geo==='Platina'?'Platina':'Cilindro',dim1:q?q.dim1||'':'',largo:q?q.largo||'':'',ancho:q?q.ancho||'':'',
-      cant:Number(r.cantidad_kg||0),unidad:'kg',precio:Number(r.costo_cotizado||0),especial:!!(q&&q.especial),notas:q&&q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true};
+      cant:Number(r.cantidad_kg||0)||Number(r.cantidad||0),unidad:(Number(r.cantidad_kg||0)>0?'kg':(Number(r.cantidad||0)>0?'und':'kg')),precio:Number(r.costo_cotizado||0),especial:!!(q&&q.especial),notas:q&&q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true};
     it.detalle=r.detalle||_pmTexto(it); it._dm=!!r.detalle; lines.push(it);
   });
   // cotizado sin fila (se borró o nunca se creó). Si ya hubo una fusión (texto "1. …") no se ofrece, para no duplicar.
@@ -5056,7 +5057,7 @@ function _pmArmar(p,tec){
   return lines;
 }
 function _pmDeCotizado(q){
-  const it={tipo:'mat',nombre:q.nombre,geometria:q.geo==='Platina'?'Platina':'Cilindro',dim1:q.dim1||'',largo:q.largo||'',ancho:q.ancho||'',cant:Number(q.kg||0),unidad:'kg',
+  const it={tipo:'mat',nombre:q.nombre,geometria:q.geo==='Platina'?'Platina':'Cilindro',dim1:q.dim1||'',largo:q.largo||'',ancho:q.ancho||'',cant:Number(q.kg||0),unidad:(q.unidad==='und'?'und':'kg'),
     precio:Number(q.costo||0),especial:!!q.especial,notas:q.especial?(q.desc_esp||''):'',ref:q,_sel:true,_cm:true}; it.detalle=_pmTexto(it); return it;
 }
 
@@ -5150,7 +5151,7 @@ function _pmRender(){
       const sv=it.tipo==='fusion_svc', col=sv?'#0d9488':'var(--purple)';
       return `<div class="cmp-item-row fused" style="opacity:${op};${sv?'border-color:#0d9488':''}"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px"><input type="checkbox" ${it._sel!==false?'checked':''} onchange="_pmSel(${i},this.checked);_pmRender()" style="width:15px;height:15px"><span style="font-size:10px;font-weight:700;color:${col}">${sv?'🔧 SERVICIOS FUSIONADOS':'🧲 MATERIALES FUSIONADOS'} — EDITABLE</span></label>
         <textarea rows="${sv?4:5}" onchange="_pmUpd(${i},'fusedDesc',this.value)" style="font-family:var(--mono);font-size:11px;width:100%;border:1.5px solid ${col};border-radius:8px;padding:8px;background:var(--card);color:var(--text);resize:vertical">${esc(it.fusedDesc||'')}</textarea>
-        ${sv?'':`<div class="cmp-cost-row"><span>Cantidad total (kg)</span><input type="number" value="${it.cant||0}" onchange="_pmUpd(${i},'cant',this.value)" style="max-width:100px"></div>`}
+        ${sv?'':`<div class="cmp-cost-row"><span>Cantidad total</span><input type="number" value="${it.cant||0}" onchange="_pmUpd(${i},'cant',this.value)" style="max-width:100px"><select onchange="_pmUpd(${i},'unidad',this.value)" style="width:auto"><option value="kg" ${it.unidad==='und'?'':'selected'}>kg</option><option value="und" ${it.unidad==='und'?'selected':''}>unidades</option></select></div>`}
         <div class="cmp-cost-row"><span>💰 Costo cotizado $</span><input type="number" value="${it.precio||0}" onchange="_pmUpd(${i},'precio',this.value)"></div></div>`;
     }
     const mat=it.tipo==='mat', esp=_isEsp(it), plat=it.geometria==='Platina';
@@ -5162,7 +5163,7 @@ function _pmRender(){
     const especial=mat&&esp?`<div style="margin-top:6px"><div style="font-size:10px;color:var(--warn);text-transform:uppercase;font-weight:700;margin-bottom:3px">⚡ Descripción del material especial</div><textarea rows="2" placeholder="Ej: LÁMINA ALUMINIO 3MM 1200×2400" onchange="_pmUpd(${i},'notas',this.value)" style="width:100%;border:1.5px solid var(--warn);border-radius:8px;padding:8px;font-size:12px;background:var(--surface);color:var(--text)">${esc(it.notas||'')}</textarea></div>`:'';
     const svcF=!mat?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${inp('dias','Días',it.dias)}${inp('dureza','Dureza / especificación',it.dureza,'text')}</div><div style="margin-top:6px">${inp('notas','Descripción del servicio…',it.notas,'text')}</div>`:'';
     const notas=mat&&!esp?`<div style="margin-top:6px">${inp('notas','Notas / dureza…',it.notas,'text')}</div>`:'';
-    const cant=mat?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${inp('cant','Cantidad (kg)',it.cant)}<div style="display:flex;align-items:center;font-size:11px;color:var(--muted)">kg totales del ítem</div></div>`:'';
+    const cant=mat?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">${inp('cant','Cantidad',it.cant)}<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><select onchange="_pmUpd(${i},'unidad',this.value)" style="width:auto"><option value="kg" ${it.unidad==='und'?'':'selected'}>kg</option><option value="und" ${it.unidad==='und'?'selected':''}>unidades</option></select> totales del ítem</div></div>`:'';
     return `<div class="cmp-item-row" style="opacity:${op}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${it._sel!==false?'checked':''} onchange="_pmSel(${i},this.checked);this.closest('.cmp-item-row').style.opacity=this.checked?1:.5" style="width:15px;height:15px"><span style="font-size:10px;font-weight:700;color:var(--muted)">${mat?'🪨 MATERIAL':'🛠 SERVICIO'} #${i+1}${it.ref?' · de cotización':''}${it.id?'':it.ref?'':' · nuevo'}</span></label>
       <button type="button" onclick="_pmDel(${i})" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer">✕</button></div>
@@ -5199,7 +5200,7 @@ async function _pmConfirmar(){
       const svc=it.tipo==='svc'||it.tipo==='fusion_svc';
       const nombre=it.tipo==='fusion'?'ESPECIAL':it.tipo==='fusion_svc'?SVC_PFX+'VARIOS':svc?SVC_PFX+it.nombre:it.nombre;
       const base=it.tipo==='fusion'||it.tipo==='fusion_svc'?(it.fusedDesc||''):(it.detalle||_pmTexto(it));
-      const row={material:nombre,detalle:(it.tipo==='fusion'||it.tipo==='fusion_svc')?base:conObs(base)||null,cantidad_kg:svc?0:(Number(it.cant)||0),costo_cotizado:Number(it.precio)||0};
+      const row={material:nombre,detalle:(it.tipo==='fusion'||it.tipo==='fusion_svc')?base:conObs(base)||null,cantidad_kg:(svc||it.unidad==='und')?0:(Number(it.cant)||0),cantidad:(!svc&&it.unidad==='und')?(Number(it.cant)||0):null,unidad:(!svc&&it.unidad==='und')?'und':null,costo_cotizado:Number(it.precio)||0};
       if(it.id&&!_PM.fused) await PATCH('prod_materiales',it.id,row); else await POST('prod_materiales',{...row,id_prod:_PM.pid,estado:'PENDIENTE'});
     }
     await prodRefreshAll();
@@ -5216,7 +5217,7 @@ async function _pmConfirmar(){
 // ══ LOGIN (PIN validado en el servidor · interfaz de Diseño) ══
 async function prodMatSolicitar(id,sinConfirmar){ if(!sinConfirmar&&!confirm('¿Enviar los materiales pendientes a compras?')) return; if(await rpcAct('prod_mat_solicitar',{p_id:id},'📨 Materiales enviados a compras')) afterAct(id); }
 function pmCalc(){
-  const nom=gv('pm1'), kg=gn('pm2'), c=document.getElementById('pm3'); if(!c) return;
+  const nom=gv('pm1'), kg=(gv('pm2u')==='und'?0:gn('pm2')), c=document.getElementById('pm3'); if(!c) return;
   const cat=(DB.materiales||[]).find(x=>x.material===nom);
   if(cat&&kg>0&&(c.value===''||c.dataset.auto==='1')){ c.value=Math.round(kg*Number(cat.precio||0)); c.dataset.auto='1'; }
 }
@@ -5224,13 +5225,13 @@ function formMatProd(pid,mid){
   const m=mid?(DB.prodMats||[]).find(x=>x.id===mid):null;
   openModal(m?'Editar material':'Agregar material',`<div class="form-grid">
     <div class="field span2"><label>Material</label><input id="pm1" list="pm-list" value="${esc(m?.material||'')}" placeholder="Elige del catálogo o escribe" oninput="pmCalc()"><datalist id="pm-list">${(DB.materiales||[]).map(x=>`<option value="${esc(x.material)}">`).join('')}</datalist></div>
-    <div class="field"><label>Cantidad (kg)</label><input id="pm2" type="number" step="0.001" min="0" value="${m?m.cantidad_kg:''}" placeholder="0" oninput="pmCalc()"></div>
+    <div class="field"><label>Cantidad</label><div style="display:flex;gap:6px"><input id="pm2" type="number" step="0.001" min="0" value="${m?((!(Number(m.cantidad_kg)>0)&&Number(m.cantidad)>0)?m.cantidad:m.cantidad_kg):''}" placeholder="0" oninput="pmCalc()" style="flex:1;min-width:0"><select id="pm2u" style="width:auto" onchange="pmCalc()"><option value="kg" ${m&&!(Number(m.cantidad_kg)>0)&&Number(m.cantidad)>0?'':'selected'}>kg</option><option value="und" ${m&&!(Number(m.cantidad_kg)>0)&&Number(m.cantidad)>0?'selected':''}>unidades</option></select></div></div>
     <div class="field"><label>Costo cotizado ($)</label><input id="pm3" type="number" step="1" min="0" value="${m?m.costo_cotizado:''}" placeholder="0" oninput="this.dataset.auto='0'"></div>
     <div class="field span2"><label>Detalle / medidas</label><textarea id="pm4" placeholder="Ej: Ø200 × 100 mm">${esc(m?.detalle||'')}</textarea></div></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarMatProd('${pid}',${m?`'${m.id}'`:'null'})">Guardar</button>`);
 }
 async function guardarMatProd(pid,mid){
-  const row={material:gv('pm1'),cantidad_kg:gn('pm2'),costo_cotizado:gn('pm3'),detalle:gv('pm4')||null};
+  const _und=gv('pm2u')==='und'; const row={material:gv('pm1'),cantidad_kg:_und?0:gn('pm2'),cantidad:_und?gn('pm2'):null,unidad:_und?'und':null,costo_cotizado:gn('pm3'),detalle:gv('pm4')||null};
   if(!row.material){ toast('Escribe el material','error'); return; }
   try{
     if(mid) await PATCH('prod_materiales',mid,row); else await POST('prod_materiales',{...row,id_prod:pid,estado:'PENDIENTE'});
