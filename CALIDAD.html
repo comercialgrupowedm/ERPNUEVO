@@ -1438,8 +1438,11 @@ function trasGuardar(id){
   closeModal(); refreshCurrentView();
   if(_detailOpen&&_DET_ID===id){ if(opDe(id)) detailItem(id); else closeDetail(); }
 }
-function detailItem(id,foco){
-  const o=opDe(id); if(!o){ toast('Ítem no encontrado (puede estar despachado o cancelado)','error'); return; }
+function detailItem(id,foco,_r){
+  const o=opDe(id);
+  if(!o){
+    if(!_r){ GET('produccion','select='+PROD_SEL_C+'&id=eq.'+encodeURIComponent(id)).then(a=>{ if(a&&a[0]){ DB.extra=(DB.extra||[]).filter(x=>x.id!==id).concat([a[0]]); detailItem(id,foco,1); } else toast('Ese ítem ya no existe. Actualiza la lista (↻).','error'); }).catch(()=>toast('No se pudo abrir el ítem. Actualiza la lista (↻).','error')); return; }
+    toast('Ítem no encontrado. Actualiza la lista (↻).','error'); return; }
   try{chatCtx(o.id,o.op,'OP-'+o.id);}catch(e){}
   _DET_ID=id; const j=idq(o); const ap=aprobada(o); const reps=repsDe(id); const ab=reps.filter(r=>r.estado==='ABIERTO');
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${opTitulo(o)}</div><div class="cot-hero-empresa">${esc(o.empresa||'—')}</div><div class="cot-hero-sub" style="white-space:normal">${esc(o.descripcion||'')}</div></div><div class="cot-hero-right">${thumbProd(o,64)}</div></div>
