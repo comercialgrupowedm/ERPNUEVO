@@ -3688,7 +3688,7 @@ function formItem(itOrId,cotId){
   cotId=it.id_cotizacion||cotId||window._detailCotId; const cot=DB.cotizaciones.find(x=>x.id===cotId);
   if(!cot){ toast('Selecciona una cotización primero','error'); return; }
   const clone=a=>JSON.parse(JSON.stringify(a||[]));
-  _IT={id:it.id||null,cotId,isNew,mats:clone(it.mats),svcs:clone(it.svcs),prcs:clone(it.prcs),precioManual:false,esMq:cot.origen==='MARQUILLA',tipoCot:cot.tipo||''};
+  _IT={id:it.id||null,cotId,isNew,mats:clone(it.mats),svcs:clone(it.svcs),prcs:clone(it.prcs),planos:[],precioManual:false,esMq:cot.origen==='MARQUILLA',tipoCot:cot.tipo||''};
   if(!_IT.mats.length) _IT.mats.push(_MAT0()); if(!_IT.svcs.length) _IT.svcs.push(_SVC0()); if(!_IT.prcs.length) _IT.prcs.push(_PRC0());
   if(!isNew){ const calc=Math.round(nOr(it.presup_unit)*(1+nOr(it.margen_pct)/100)); _IT.precioManual=_IT.esMq||Math.abs(nOr(it.precio_unit)-calc)>1; }
   const nextNum=isNew?Math.max(0,...itemsDe(cotId).map(x=>Number(x.item)||0))+1:it.item;
@@ -3724,7 +3724,8 @@ function formItem(itOrId,cotId){
         <div class="field"><label>Sobremargen %</label><input type="number" id="imargen" value="${it.margen_pct||''}" placeholder="0" step="0.01" oninput="onMargenInput()"></div><div class="field"></div>
         <div class="field span2" id="margen-aviso-wrap" style="display:none"><div id="margen-aviso" style="font-size:11.5px;padding:8px 10px;border-radius:8px;font-weight:700"></div></div>
         <div class="field span2"><label>Precio Unitario ★</label><div class="money-row"><span class="money-sign">$</span><input type="number" id="ipunit" value="${it.precio_unit||0}" oninput="onPrecioInput()"></div></div>
-        <div class="field span2"><label>Precio × Item</label><div id="precio-x-item" style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--gold);padding:8px">${fmt(totalItem(it))}</div></div></div></div>`,
+        <div class="field span2"><label>Precio × Item</label><div id="precio-x-item" style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--gold);padding:8px">${fmt(totalItem(it))}</div></div>
+        <div class="field span2"><label>📎 Plano del ítem (opcional)</label><div id="it-pl-pend"></div><button type="button" class="btn btn-ghost btn-sm" onclick="itPlanoAdd()">📎 Subir plano</button><div style="font-size:11px;color:var(--muted);margin-top:4px">Imagen o PDF. Se sube al guardar el ítem y queda también en la OP.</div></div></div></div>`,
     itemFooterHtml(0));
   itRenderRows('mat'); itRenderRows('svc'); itRenderRows('prc'); _IT.mats.forEach((_,i)=>matCalc(i,false,!isNew)); _IT.prcs.forEach((_,i)=>prcCalc(i,!isNew)); chequearMargenUrgencia(); try{itSugerir();}catch(e){}
   try{ mqItInit(cot,it,isNew); }catch(e){}
@@ -3791,6 +3792,24 @@ function mqItCalc(){
   if(d&&!d.dataset.man||d&&d.dataset.mq==='1'){ d.value=[t.trim(),sz?'Tamaño Letra '+sz+' mm':'',String(gv('imq-ley')||'').trim()].filter(Boolean).join('\n'); d.dataset.mq='1'; d.dataset.man=''; }
   mqItProc(n);
   _IT.precioManual=true; const ip=document.getElementById('ipunit'); if(ip) ip.value=pc; onPrecioInput();
+}
+function itPlanoRender(){
+  const el=document.getElementById('it-pl-pend'); if(!el||!_IT) return; const a=_IT.planos||[];
+  el.innerHTML=a.length?a.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px">📄 <span style="overflow-wrap:anywhere;flex:1">${esc(f.name||'plano')}</span><button type="button" class="btn btn-ghost btn-sm" onclick="itPlanoDel(${i})" title="Quitar">✕</button></div>`).join(''):'';
+}
+function itPlanoAdd(){
+  pickFile('image/*,application/pdf',f=>{
+    if(!_IT) return;
+    if(!/^image\//.test(f.type)&&f.type!=='application/pdf'){ toast('Solo se aceptan imágenes o PDF','error'); return; }
+    if(f.type==='application/pdf'&&f.size>3.5*1024*1024){ toast('El PDF pesa más de 3.5 MB','error'); return; }
+    (_IT.planos=_IT.planos||[]).push(f); itPlanoRender();
+  });
+}
+function itPlanoDel(i){ if(_IT&&_IT.planos){ _IT.planos.splice(i,1); itPlanoRender(); } }
+async function itPlanosSubir(itemId,lista){
+  if(!itemId||!lista||!lista.length) return;
+  for(const f of lista){ await subirArchivo({id_item:itemId},'plano',f,null); }
+  try{ if(typeof cargarPlanosItem==='function'&&document.getElementById('it-planos')) cargarPlanosItem(itemId); }catch(e){}
 }
 function itemFooterHtml(idx){
   let h=`<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>`;
@@ -4005,11 +4024,11 @@ async function saveItem(){
     // Guardado rápido: la pantalla se actualiza al instante con los datos locales y el servidor se guarda en paralelo (un solo viaje en vez de dos seguidos)
     const _cotRow=DB.cotizaciones.find(x=>x.id===_IT.cotId), _cPrev=_cotRow?{precio_sin_iva:_cotRow.precio_sin_iva,iva:_cotRow.iva,precio_total:_cotRow.precio_total,descuento:_cotRow.descuento}:null;
     const _totCot=()=>{ const its=itemsDe(_IT.cotId); const sin=its.reduce((s,it)=>s+totalItem(it),0); const iva=Math.round(sin*IVA_PCT/100); return {precio_sin_iva:sin,iva,precio_total:sin+iva,descuento:Math.round(sin*Number((_cotRow||{}).descuento_pct||0)/100)}; };
-    const _cotId0=_IT.cotId, _itId0=_IT.id;
+    const _cotId0=_IT.cotId, _itId0=_IT.id; let _newItId=null; const _plN=(_IT.planos||[]).slice();
     if(_itId0){
       const i=DB.items.findIndex(x=>x.id===_itId0), prev=i>=0?{...DB.items[i]}:null; if(i>=0) Object.assign(DB.items[i],row); delete _IDX.items_cot;
       const vals=(_cotRow&&itemsDe(_cotId0).length)?_totCot():null; if(vals&&_cotRow) Object.assign(_cotRow,vals);
-      toast('✅ Ítem actualizado'); closeModal(); refreshCurrentView(); detailCot(_cotId0);
+      const _plE=(_IT.planos||[]).slice(); toast('✅ Ítem actualizado'); closeModal(); refreshCurrentView(); detailCot(_cotId0); if(_plE.length) itPlanosSubir(_itId0,_plE);
       _bgGuardando(Promise.all([sb.patch('items','id='+eq(_itId0),row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null])).then(([r,rc])=>{ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0&&r&&r[0]) Object.assign(DB.items[j],r[0]); delete _IDX.items_cot; if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); })
         .catch(e=>{ if(prev){ const j=DB.items.findIndex(x=>x.id===_itId0); if(j>=0) Object.assign(DB.items[j],prev); delete _IDX.items_cot; } if(_cotRow&&_cPrev) Object.assign(_cotRow,_cPrev); toast('❌ No se guardó el cambio del ítem: '+e.message,'error'); refreshCurrentView(); detailCot(_cotId0); });
       return;
@@ -4017,9 +4036,10 @@ async function saveItem(){
     else{
       const tmp={...row,id:'__tmp__'}; DB.items.push(tmp); const vals=_cotRow?_totCot():null; DB.items.splice(DB.items.indexOf(tmp),1);
       const [r,rc]=await Promise.all([sb.post('items',row),vals?sb.patch('cotizaciones','id='+eq(_cotId0),vals):null]);
-      DB.items.push(r[0]||row); if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); else if(vals&&_cotRow) Object.assign(_cotRow,vals); toast('✅ Ítem agregado');
+      _newItId=(r[0]||{}).id; DB.items.push(r[0]||row); if(rc&&rc[0]&&_cotRow) Object.assign(_cotRow,rc[0]); else if(vals&&_cotRow) Object.assign(_cotRow,vals); toast('✅ Ítem agregado');
     }
     const cotId=_IT.cotId, esNuevo=!_IT.id; closeModal(); refreshCurrentView(); detailCot(cotId);
+    if(_plN.length&&_newItId) itPlanosSubir(_newItId,_plN);
     // Ítem nuevo en una cotización aprobada que ya tiene OP → ofrecer enviarlo a producción
     try{ const cc=DB.cotizaciones.find(x=>x.id===cotId); const opx=esNuevo&&cc&&_normEstado(cc.estado)==='APROBADA'&&typeof opDeCot==='function'&&opDeCot(cotId);
       if(opx&&puede('comercial','administracion')) setTimeout(()=>{ if(confirm('Esta cotización ya tiene la OP-'+opx+'.\n\n¿Enviar el ítem nuevo a producción ahora (agregarlo a la OP)?')) formCrearOP(cotId); },400); }catch(_){}
