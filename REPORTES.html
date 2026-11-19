@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="app-build" content="20261118-220943">
+<title>Reportes · Grupo WEDM</title>
+<style>
+:root{--accent:#2563eb;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button{font:inherit;cursor:pointer}
+#top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top))}
+#top h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:7px 11px;font-size:13px}
+#areas{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 4px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:19}
+.ab{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;color:var(--text)}
+.ab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#reps{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.rb{flex:0 0 auto;border:1px solid var(--line);background:#f8fafd;border-radius:8px;padding:6px 11px;font-size:13px;color:var(--text)}
+.rb.on{background:#e8f0ff;border-color:var(--accent);color:var(--accent);font-weight:600}
+#fil{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px}
+#fil label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+#fil input[type=date]{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:inherit;background:#fff}
+.pre{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;font-size:12px}
+.pre.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+#main{padding:4px 12px 90px;max-width:1280px;margin:0 auto}
+.rh{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin:6px 0 10px}
+.rh h2{margin:0;font-size:18px;flex:1 1 260px}
+.rh p{margin:2px 0 0;color:var(--muted);font-size:12.5px;flex:1 1 100%}
+.act button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;margin-left:6px}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0 14px}
+.k{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.k .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.k .v{font-size:22px;font-weight:700;margin-top:3px}
+.k .s{font-size:11.5px;color:var(--muted);margin-top:2px}
+.k.red .v{color:var(--danger)}.k.grn .v{color:var(--ok)}.k.amb .v{color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;margin-bottom:14px}
+.card h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.3px;color:var(--navy)}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.bars .br{display:grid;grid-template-columns:minmax(90px,170px) 1fr 80px;gap:8px;align-items:center;margin:5px 0;font-size:12.5px}
+.bl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt{background:#eef2f8;border-radius:6px;height:14px;overflow:hidden}
+.bf{height:100%;border-radius:6px}
+.bv{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.tw{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{position:sticky;top:0;background:#f1f5fb;text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+td{padding:7px 9px;border-bottom:1px solid #f0f3f8;vertical-align:top}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:#fafcff}
+.more{display:block;margin:8px auto 0;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px}
+.tg{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:600}
+.tg.r{background:#fee2e2;color:#b91c1c}.tg.a{background:#fef3c7;color:#92400e}.tg.v{background:#dcfce7;color:#166534}.tg.g{background:#eef2f8;color:#475569}
+.note{font-size:12px;color:var(--muted);margin:6px 0}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-top:10px}
+.hc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.hc h3{margin:0 0 8px;font-size:16px}
+.hc a{display:block;padding:7px 0;border-top:1px solid var(--line);color:var(--accent);text-decoration:none;font-size:13.5px}
+.hc a small{display:block;color:var(--muted);font-size:11.5px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:60}
+#toast.show{opacity:1}
+#login{position:fixed;inset:0;background:var(--navy);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.lb{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:420px;text-align:center}
+.lb h2{margin:0 0 2px}.lb p{margin:0 0 14px;color:var(--muted);font-size:13px}
+.ug{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:46vh;overflow:auto}
+.ub{border:1px solid var(--line);background:#f8fafd;border-radius:10px;padding:10px 6px;font-weight:600}
+.ub small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+.dots{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--navy)}
+.dots i.f{background:var(--navy)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:260px;margin:0 auto}
+.pad button{border:1px solid var(--line);background:#f8fafd;border-radius:10px;padding:13px;font-size:18px;font-weight:600}
+#lerr{color:var(--danger);min-height:18px;font-size:13px;margin-top:8px}
+.back{background:none;border:0;color:var(--accent);margin-top:8px}
+@media print{#top,#areas,#reps,#fil,.act,.more,#toast{display:none!important}body{background:#fff}.tw{max-height:none;overflow:visible}.card,.k{break-inside:avoid}#main{padding:0}#pt{display:block!important}}
+#pt{display:none;font-size:12px;color:#555;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="lb">
+    <div id="ls-user"><h2>📊 Reportes</h2><p>Grupo WEDM · elige tu usuario</p><div class="ug" id="ug"><div class="empty">Cargando…</div></div></div>
+    <div id="ls-pin" style="display:none"><h2 id="lname"></h2><p id="lrol"></p><div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+      <div class="pad"><button onclick="pinP(1)">1</button><button onclick="pinP(2)">2</button><button onclick="pinP(3)">3</button><button onclick="pinP(4)">4</button><button onclick="pinP(5)">5</button><button onclick="pinP(6)">6</button><button onclick="pinP(7)">7</button><button onclick="pinP(8)">8</button><button onclick="pinP(9)">9</button><button onclick="pinBack()">←</button><button onclick="pinP(0)">0</button><button onclick="pinDel()">⌫</button></div>
+      <div id="lerr"></div><button class="back" onclick="pinBack()">‹ Cambiar usuario</button></div>
+  </div>
+</div>
+<div id="top"><h1>📊 Reportes · Grupo WEDM</h1><button onclick="location.hash='';go('')">Inicio</button><button onclick="logout()">Salir</button></div>
+<div id="areas"></div>
+<div id="reps"></div>
+<div id="fil"></div>
+<div id="main"></div>
+<div id="toast"></div>
+<script>
+const SB_URL='https://rarjcuoapvrfqrzuhsbi.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcmpjdW9hcHZyZnFyenVoc2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3OTM4MDcsImV4cCI6MjEwNTM2OTgwN30.6ftoBVT9gPOOcuqUf8UY3aiIoyB3ZJFhpp_1Hyfu_js';
+const SESS_KEY='_wedm_rep_s';
+const sb={tok:null,
+  get h(){const h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};if(this.tok)h['x-session-token']=this.tok;return h;},
+  async get(t,q){const c=new AbortController(),tm=setTimeout(()=>c.abort(),30000);
+    try{const r=await fetch(SB_URL+'/rest/v1/'+t+(q?'?'+q:''),{headers:this.h,signal:c.signal});clearTimeout(tm);
+      if(!r.ok){if(r.status===401||r.status===403){let v=false;try{v=(await this.rpc('sesion_valida'))===false;}catch(e){} if(v){forceLogout('Sesión vencida — ingresa de nuevo');throw new Error('Sesión vencida');} throw new Error('Sin permiso para leer '+t);} let m='';try{m=(await r.json()).message||'';}catch(e){} throw new Error(m||('Error '+r.status));}
+      return r.json();}catch(e){clearTimeout(tm);throw e;}},
+  async rpc(fn,p={}){const r=await fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:this.h,body:JSON.stringify(p)});if(!r.ok)throw new Error(await r.text());return r.json();}
+};
+async function GETALL(t,q){const ps=1000;let out=[],off=0;
+  for(;;){const res=await Promise.all([0,1,2].map(i=>sb.get(t,q+'&limit='+ps+'&offset='+(off+i*ps))));let fin=false;
+    for(const r of res){out=out.concat(r);if(r.length<ps){fin=true;break;}}
+    if(fin)break;off+=3*ps;}
+  return out;}
+/* ── sesión ── */
+let S=null;try{S=JSON.parse(localStorage.getItem(SESS_KEY)||'null');}catch(e){}
+if(S&&S.token)sb.tok=S.token;
+const AREAS=[
+ {k:'comercial',n:'💼 Comercial',roles:['comercial','administracion']},
+ {k:'diseno',n:'🎨 Diseño',roles:['diseno','administracion','planeacion']},
+ {k:'calidad',n:'🔍 Calidad',roles:['calidad','administracion']},
+ {k:'produccion',n:'🏭 Producción',roles:['produccion','planeacion','administracion','calidad']},
+ {k:'planeacion',n:'📅 Planeación',roles:['planeacion','administracion','produccion']}
+];
+const ROLES_REP=[...new Set(AREAS.flatMap(a=>a.roles))].concat(['admin','desarrollador']);
+const misRoles=()=>S&&S.roles&&S.roles.length?S.roles:[S&&S.rol].filter(Boolean);
+const esAdmin=()=>{const r=misRoles();return r.includes('admin')||r.includes('desarrollador');};
+const puede=(...ro)=>esAdmin()||misRoles().some(x=>ro.includes(x));
+const areasOk=()=>AREAS.filter(a=>puede(...a.roles));
+const soloMios=()=>!esAdmin()&&!misRoles().includes('administracion')&&misRoles().includes('comercial')&&!!(S&&S.asesor);
+/* ── utilidades ── */
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function num(v,d=0){if(v==null||v===''||isNaN(v))return '—';const s=Number(v).toFixed(d);const p=s.split('.');return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(p[1]?','+p[1]:'');}
+const fM=v=>v==null?'—':'$'+num(Math.round(v));
+const fP=v=>v==null||isNaN(v)?'—':num(v,1)+'%';
+const fH=v=>num(v,1)+' h';
+const ymd=d=>String(d||'').slice(0,10);
+const fD=v=>{const s=ymd(v);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'—';};
+const MES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const fMes=v=>/^\d{4}-\d{2}$/.test(v)?MES[+v.slice(5)-1]+' '+v.slice(0,4):v;
+const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.className='show';clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);};
+const todayS=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const diasDe=f=>{const s=ymd(f);if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;const h=new Date();h.setHours(0,0,0,0);return Math.round((new Date(s+'T00:00:00')-h)/864e5);};
+const difDias=(a,b)=>{const x=ymd(a),y=ymd(b);if(!/^\d{4}-\d{2}-\d{2}$/.test(x)||!/^\d{4}-\d{2}-\d{2}$/.test(y))return null;return Math.round((new Date(y+'T00:00:00')-new Date(x+'T00:00:00'))/864e5);};
+const sum=(a,f)=>a.reduce((s,x)=>s+(+f(x)||0),0);
+const avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+const med=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const pct=(a,b)=>b?a/b*100:null;
+function group(arr,kf){const m=new Map();for(const x of arr){const k=kf(x);if(!m.has(k))m.set(k,[]);m.get(k).push(x);}return m;}
+const normDis=s=>{s=String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\./g,' ').replace(/\s+/g,' ').trim().toUpperCase();return s||'(SIN ASIGNAR)';};
+const nomDis=k=>k.replace(/^([A-Z]) /,'$1. ');
+const famMaq=m=>{m=String(m||'').trim();if(!m)return '(sin máquina)';return m.replace(/\s*#.*$/,'').replace(/\s*\(.*\)\s*$/,'').trim()||m;};
+const trunc=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
+const COT_OK=e=>e==='APROBADO'||e==='APROBADA';
+const FIN=['TERMINADO','DESPACHADO','CANCELADO','PAUSADO'];
+const ACT=['EN PROCESO','TRABAJO EXTERNO','PENDIENTE MP','PENDIENTE DISEÑO','PENDIENTE MP Y DISEÑO'];
+/* ── filtros de fecha ── */
+const F={desde:todayS().slice(0,4)+'-01-01',hasta:todayS(),pre:'anio'};
+const inR=d=>{const s=ymd(d);return !!s&&s>=F.desde&&s<=F.hasta;};
+const mesDe=d=>ymd(d).slice(0,7);
+function setPre(p){const y=+todayS().slice(0,4),m=+todayS().slice(5,7),t=todayS();F.pre=p;
+  if(p==='mes'){F.desde=t.slice(0,8)+'01';F.hasta=t;}
+  else if(p==='trim'){const q=Math.floor((m-1)/3)*3+1;F.desde=y+'-'+String(q).padStart(2,'0')+'-01';F.hasta=t;}
+  else if(p==='anio'){F.desde=y+'-01-01';F.hasta=t;}
+  else if(p==='ant'){F.desde=(y-1)+'-01-01';F.hasta=(y-1)+'-12-31';}
+  else if(p==='todo'){F.desde='2020-01-01';F.hasta=t;}
+  renderFil();if(CUR)run(CUR);}
+function setFecha(k,v){F[k]=v;F.pre='';renderFil();if(CUR)run(CUR);}
+function renderFil(){const ps=[['mes','Este mes'],['trim','Trimestre'],['anio','Año actual'],['ant','Año anterior'],['todo','Todo']];
+  const r=CUR&&REP[CUR];const usa=!r||r.fecha!==false;
+  document.getElementById('fil').innerHTML=usa?`<label>Desde<input type="date" value="${F.desde}" onchange="setFecha('desde',this.value)"></label><label>Hasta<input type="date" value="${F.hasta}" onchange="setFecha('hasta',this.value)"></label>`+ps.map(p=>`<button class="pre ${F.pre===p[0]?'on':''}" onclick="setPre('${p[0]}')">${p[1]}</button>`).join(''):`<span class="note">Este reporte muestra la situación actual (no depende del rango de fechas).</span>`;}
+/* ── tablas, barras, KPIs ── */
+let EXP=[],TB={};
+function kpis(a){return `<div class="kp">`+a.map(k=>`<div class="k ${k[3]||''}"><div class="l">${esc(k[0])}</div><div class="v">${k[1]}</div>${k[2]?`<div class="s">${esc(k[2])}</div>`:''}</div>`).join('')+`</div>`;}
+function bars(rows,f=v=>num(v),max){if(!rows.length)return '<div class="empty">Sin datos en el rango</div>';const m=max||Math.max(1,...rows.map(r=>r[1]));
+  return `<div class="bars">`+rows.map(r=>`<div class="br"><div class="bl" title="${esc(r[0])}">${esc(r[0])}</div><div class="bt"><div class="bf" style="width:${Math.max(0,r[1])/m*100}%;background:${r[2]||'var(--accent)'}"></div></div><div class="bv">${f(r[1])}</div></div>`).join('')+`</div>`;}
+const card=(t,h)=>`<div class="card"><h3>${t}</h3>${h}</div>`;
+/* cols: [{h,f,r}] ; rows: arrays con valores crudos */
+function tbl(title,cols,rows,o={}){const id='t'+EXP.length;
+  EXP.push({title,cols,rows});TB[id]={cols,rows,n:o.limit||50,s:o.sort||null,t:o.total||null};
+  if(o.sort)sortRows(id,o.sort[0],o.sort[1],true);
+  return `<div id="w${id}">${tblHtml(id)}</div>`;}
+function sortRows(id,c,d,silent){const T=TB[id];T.s=[c,d];T.rows=[...T.rows].sort((a,b)=>{const x=a[c],y=b[c];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'es'))*d;});
+  EXP[+id.slice(1)].rows=T.rows;}
+function tblHtml(id){const T=TB[id];if(!T.rows.length)return '<div class="empty">Sin registros en el rango</div>';
+  const th=T.cols.map((c,i)=>`<th class="${c.r?'r':''}" onclick="tSort('${id}',${i})">${esc(c.h)}${T.s&&T.s[0]===i?(T.s[1]>0?' ▲':' ▼'):''}</th>`).join('');
+  const rows=T.rows.slice(0,T.n).map(r=>`<tr>`+T.cols.map((c,i)=>`<td class="${c.r?'r':''}">${c.f?c.f(r[i],r):esc(r[i]==null?'—':r[i])}</td>`).join('')+`</tr>`).join('');
+  return `<div class="tw"><table><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table></div>`+(T.rows.length>T.n?`<button class="more" onclick="tMore('${id}')">Ver más (${T.n} de ${T.rows.length})</button>`:`<div class="note">${T.rows.length} registro(s)</div>`);}
+function tSort(id,c){const T=TB[id];const d=T.s&&T.s[0]===c?-T.s[1]:(typeof (T.rows.find(r=>r[c]!=null)||[])[c]==='number'?-1:1);sortRows(id,c,d);document.getElementById('w'+id).innerHTML=tblHtml(id);}
+function tMore(id){TB[id].n+=100;document.getElementById('w'+id).innerHTML=tblHtml(id);}
+const C=(h,f)=>({h,f});
+const cN=h=>({h,f:v=>num(v),r:true});
+const cN1=h=>({h,f:v=>num(v,1),r:true});
+const cM=h=>({h,f:v=>fM(v),r:true});
+const cP=h=>({h,f:v=>fP(v),r:true});
+const cH=h=>({h,f:v=>fH(v),r:true});
+const cD=h=>({h,f:v=>fD(v)});
+const cT=(h,n)=>({h,f:v=>esc(trunc(v,n||60))});
+const tagD=d=>d==null?'<span class="tg g">sin fecha</span>':d<0?`<span class="tg r">vencida ${-d} d</span>`:d===0?'<span class="tg a">hoy</span>':d<=5?`<span class="tg a">${d} d</span>`:`<span class="tg v">${d} d</span>`;
+const cDias=h=>({h,f:v=>tagD(v),r:true});
+/* ── carga de datos ── */
+const D={};
+const LOAD={
+ cot:async()=>{let r=await GETALL('cotizaciones','select=id,cotizacion,tipo,asesor,empresa,estado,fecha_emision,precio_sin_iva,descripcion_proyecto&order=id.asc');
+   if(soloMios()){const a=String(S.asesor).toLowerCase().trim();r=r.filter(c=>String(c.asesor||'').toLowerCase().trim()===a);}return r;},
+ prod:()=>GETALL('produccion','select=id,op,item_num,cot_num,descripcion,unidades,empresa,asesor,tipo,disenador,estado,avance,diseno_ok,diseno_fecha,diseno_por,terminado,calidad_estado,calidad_ok,calidad_fecha,calidad_por,despachado,despacho_fecha,cant_despachada,fecha_inicio,fecha_pactada,fecha_entrega_prod,created_at,es_garantia,hrs_ingenieria,hrs_cnc,hrs_torno,hrs_fresadora,hrs_banco,hrs_edm,hrs_rectificadora,hrs_hilo,hrs_soldadura,avance_ingenieria,avance_cnc,avance_torno,avance_fresadora,avance_banco,avance_edm,avance_rectificadora,avance_hilo,avance_soldadura&order=id.asc'),
+ nc:()=>GETALL('nc_registros','select=id,accion_no,fecha_reporte,fuente,proceso_area,maquina,cliente,op,descripcion,tipo_reporte,fecha_prevista_cierre,fecha_real_cierre,costos,responsable_nc&order=id.asc'),
+ repro:()=>GETALL('prod_reprocesos','select=id,id_prod,cantidad,motivo,estado,responsable,created_at,tipo_nc,proceso&order=id.asc'),
+ cert:()=>GETALL('certificados_conformidad','select=id,numero,op,empresa,estado,fecha_emision,inspector,cantidad&order=id.asc'),
+ mat:()=>GETALL('prod_materiales','select=id,id_prod,material,estado,proveedor,solicitado_at,comprado_at,recibido_at,motivo_rechazo,cantidad_kg,cantidad,unidad&order=id.asc'),
+ rem:()=>GETALL('remisiones','select=id,numero,op,empresa,estado,despachada_fecha,fecha,libre&order=id.asc')
+};
+async function need(...ks){for(const k of ks){if(k==='rt'){const key=F.desde+'|'+F.hasta;if(!D.rt||D.rtk!==key){D.rt=await GETALL('registro_tiempos','select=id,fecha,colaborador,maquina,tipo_registro,op,duracion_horas,tipo_parada&fecha=gte.'+F.desde+'&fecha=lte.'+F.hasta+'&order=id.asc');D.rtk=key;}}
+  else if(!D[k])D[k]=await LOAD[k]();}}
+function refrescar(){Object.keys(D).forEach(k=>delete D[k]);if(CUR)run(CUR);toast('Datos recargados');}
+/* ── REPORTES ── */
+const REP={};
+function R(id,area,t,d,need_,fn,o={}){REP[id]=Object.assign({id,area,t,d,need:need_,fn},o);}
+/* COMERCIAL */
+R('c1','comercial','Resumen de cotizaciones y cierre','Cotizaciones emitidas en el rango, aprobadas, canceladas y en espera. Valores antes de IVA.',['cot'],()=>{
+  const rows=D.cot.filter(c=>inR(c.fecha_emision)),ap=rows.filter(c=>COT_OK(c.estado)),ca=rows.filter(c=>c.estado==='CANCELADO'),es=rows.filter(c=>c.estado==='EN ESPERA');
+  const v=a=>sum(a,c=>c.precio_sin_iva);
+  const gm=group(rows,c=>mesDe(c.fecha_emision));const ms=[...gm.keys()].sort();
+  const mr=ms.map(m=>{const a=gm.get(m),p=a.filter(c=>COT_OK(c.estado));return [m,a.length,p.length,pct(p.length,a.length),v(a),v(p)];});
+  return kpis([['Cotizaciones',num(rows.length),'emitidas en el rango'],['Aprobadas',num(ap.length),fP(pct(ap.length,rows.length))+' del total','grn'],['En espera',num(es.length),fM(v(es))+' potencial','amb'],['Canceladas',num(ca.length),'','red'],['Valor cotizado',fM(v(rows)),'sin IVA'],['Valor aprobado',fM(v(ap)),'sin IVA','grn'],['Ticket promedio aprobado',fM(ap.length?v(ap)/ap.length:null),'por cotización']])
+   +card('Valor aprobado por mes',bars(mr.map(r=>[fMes(r[0]),r[5],'var(--ok)']),fM))
+   +card('Detalle por mes',tbl('Resumen por mes',[{h:'Mes',f:v=>fMes(v)},cN('Cotizaciones'),cN('Aprobadas'),cP('% aprobación'),cM('Valor cotizado'),cM('Valor aprobado')],mr,{sort:[0,1],limit:60}));});
+R('c2','comercial','Desempeño por asesor','Cotizado vs aprobado por asesor. Un comercial solo ve lo suyo.',['cot'],()=>{
+  const rows=D.cot.filter(c=>inR(c.fecha_emision));
+  const r=[...group(rows,c=>c.asesor||'(sin asesor)')].map(([k,a])=>{const p=a.filter(c=>COT_OK(c.estado));return [k,a.length,p.length,a.filter(c=>c.estado==='CANCELADO').length,a.filter(c=>c.estado==='EN ESPERA').length,pct(p.length,a.length),sum(a,c=>c.precio_sin_iva),sum(p,c=>c.precio_sin_iva)];});
+  r.sort((a,b)=>b[7]-a[7]);
+  return card('Valor aprobado por asesor',bars(r.map(x=>[x[0],x[7],'var(--ok)']),fM))+card('Detalle',tbl('Por asesor',[C('Asesor'),cN('Cotizaciones'),cN('Aprobadas'),cN('Canceladas'),cN('En espera'),cP('% aprobación'),cM('Valor cotizado'),cM('Valor aprobado')],r,{sort:[7,-1]}));});
+R('c3','comercial','Clientes principales','Clientes por valor aprobado en el rango.',['cot'],()=>{
+  const rows=D.cot.filter(c=>inR(c.fecha_emision));
+  const r=[...group(rows,c=>c.empresa||'(sin cliente)')].map(([k,a])=>{const p=a.filter(c=>COT_OK(c.estado));return [k,a.length,p.length,pct(p.length,a.length),sum(a,c=>c.precio_sin_iva),sum(p,c=>c.precio_sin_iva),a.map(c=>ymd(c.fecha_emision)).sort().pop()];});
+  r.sort((a,b)=>b[5]-a[5]);const tot=sum(r,x=>x[5]);
+  return kpis([['Clientes con cotizaciones',num(r.length)],['Clientes con aprobadas',num(r.filter(x=>x[2]>0).length),'','grn'],['Top 10 = % del aprobado',fP(pct(sum(r.slice(0,10),x=>x[5]),tot)),'concentración']])
+   +card('Top 15 por valor aprobado',bars(r.slice(0,15).map(x=>[x[0],x[5],'var(--accent)']),fM))
+   +card('Todos los clientes',tbl('Clientes',[C('Cliente'),cN('Cotizaciones'),cN('Aprobadas'),cP('% aprobación'),cM('Valor cotizado'),cM('Valor aprobado'),cD('Última cotización')],r,{sort:[5,-1]}));});
+R('c4','comercial','Cotizaciones por tipo','Distribución por tipo de cotización (PE, UR, SE…).',['cot'],()=>{
+  const rows=D.cot.filter(c=>inR(c.fecha_emision));
+  const r=[...group(rows,c=>c.tipo||'(sin tipo)')].map(([k,a])=>{const p=a.filter(c=>COT_OK(c.estado));return [k,a.length,p.length,pct(p.length,a.length),sum(a,c=>c.precio_sin_iva),sum(p,c=>c.precio_sin_iva)];}).sort((a,b)=>b[5]-a[5]);
+  return card('Valor aprobado por tipo',bars(r.map(x=>[x[0],x[5]]),fM))+card('Detalle',tbl('Por tipo',[C('Tipo'),cN('Cotizaciones'),cN('Aprobadas'),cP('% aprobación'),cM('Valor cotizado'),cM('Valor aprobado')],r,{sort:[5,-1]}));});
+R('c5','comercial','Cotizaciones en espera (antigüedad)','Cotizaciones EN ESPERA emitidas en el rango, con los días que llevan sin respuesta.',['cot'],()=>{
+  const rows=D.cot.filter(c=>c.estado==='EN ESPERA'&&inR(c.fecha_emision)).map(c=>[c.cotizacion,c.empresa,c.asesor,c.fecha_emision,-diasDe(c.fecha_emision),+c.precio_sin_iva||0,c.descripcion_proyecto]);
+  const B=[['0–15 días',0,15],['16–30',16,30],['31–60',31,60],['61–90',61,90],['Más de 90',91,1e9]].map(b=>[b[0],rows.filter(r=>r[4]>=b[1]&&r[4]<=b[2]).length]);
+  return kpis([['En espera',num(rows.length),'','amb'],['Valor en espera',fM(sum(rows,r=>r[5])),'sin IVA'],['Más de 30 días',num(rows.filter(r=>r[4]>30).length),'conviene hacer seguimiento','red']])
+   +card('Antigüedad',bars(B.map(b=>[b[0],b[1],'var(--warn)'])))
+   +card('Detalle',tbl('En espera',[C('COT #'),C('Cliente'),C('Asesor'),cD('Emisión'),{h:'Días',f:v=>num(v),r:true},cM('Valor'),cT('Proyecto',50)],rows,{sort:[4,-1]}));});
+/* DISEÑO */
+const pendDis=o=>!o.diseno_ok&&!FIN.includes(o.estado);
+R('d1','diseno','Carga por diseñador','Ítems asignados en el rango (por fecha de inicio), diseñados en el rango y pendientes hoy.',['prod'],()=>{
+  const g=group(D.prod,o=>normDis(o.disenador));
+  const r=[...g].map(([k,a])=>{const asig=a.filter(o=>inR(o.fecha_inicio||o.created_at));const dis=a.filter(o=>o.diseno_ok&&inR(o.diseno_fecha));const pen=a.filter(pendDis);return [nomDis(k),asig.length,dis.length,pen.length,sum(asig,o=>o.hrs_ingenieria)];}).filter(x=>x[1]||x[2]||x[3]).sort((a,b)=>b[1]-a[1]);
+  return kpis([['Ítems asignados',num(sum(r,x=>x[1])),'en el rango'],['Diseñados',num(sum(r,x=>x[2])),'en el rango','grn'],['Pendientes hoy',num(sum(r,x=>x[3])),'sin diseño terminado','amb']])
+   +card('Ítems asignados por diseñador',bars(r.map(x=>[x[0],x[1]])))
+   +card('Detalle',tbl('Carga por diseñador',[C('Diseñador'),cN('Asignados'),cN('Diseñados'),cN('Pendientes hoy'),cH('Horas ingeniería plan.')],r,{sort:[1,-1]}))
+   +'<div class="note">Los nombres con distinta escritura (F.GIRALDO / F. GIRALDO, GOMEZ / GÓMEZ) se agrupan como una sola persona.</div>';});
+R('d2','diseno','Ítems pendientes de diseño','Situación actual: ítems vigentes con el diseño sin terminar.',['prod'],()=>{
+  const r=D.prod.filter(pendDis).map(o=>{const a=-diasDe(o.fecha_inicio||o.created_at);const e=diasDe(o.fecha_entrega_prod||o.fecha_pactada);return [o.op,o.item_num,o.empresa,o.descripcion,nomDis(normDis(o.disenador)),o.estado,a,e];});
+  const by=[...group(r,x=>x[4])].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]);
+  return kpis([['Pendientes',num(r.length),'','amb'],['Con más de 7 días',num(r.filter(x=>x[6]>7).length),'desde el inicio de la OP','red'],['Entrega vencida',num(r.filter(x=>x[7]!=null&&x[7]<0).length),'','red']])
+   +card('Pendientes por diseñador',bars(by.map(x=>[x[0],x[1],'var(--warn)'])))
+   +card('Detalle',tbl('Pendientes de diseño',[C('OP'),C('Ítem'),C('Cliente'),cT('Descripción',55),C('Diseñador'),C('Estado'),{h:'Días desde inicio',f:v=>num(v),r:true},cDias('Entrega')],r,{sort:[6,-1]}));},{fecha:false});
+R('d3','diseno','Tiempo de diseño','Días entre el inicio de la OP y el diseño terminado, para lo diseñado en el rango.',['prod'],()=>{
+  const rows=[];let omit=0;D.prod.filter(o=>o.diseno_ok&&inR(o.diseno_fecha)).forEach(o=>{const d=difDias(o.fecha_inicio||o.created_at,o.diseno_fecha);if(d==null||d<0||d>365){omit++;return;}rows.push([normDis(o.disenador),d]);});
+  const r=[...group(rows,x=>x[0])].map(([k,a])=>{const v=a.map(x=>x[1]);return [nomDis(k),v.length,avg(v),med(v),Math.max(...v),pct(v.filter(x=>x<=3).length,v.length)];}).sort((a,b)=>b[1]-a[1]);
+  return kpis([['Ítems medidos',num(rows.length)],['Promedio',num(avg(rows.map(x=>x[1])),1)+' d'],['Mediana',num(med(rows.map(x=>x[1])),1)+' d'],['Resueltos en ≤ 3 días',fP(pct(rows.filter(x=>x[1]<=3).length,rows.length)),'','grn']])
+   +card('Promedio de días por diseñador',bars(r.filter(x=>x[1]>=3).map(x=>[x[0],x[2],'var(--accent)']),v=>num(v,1)+' d'))
+   +card('Detalle',tbl('Tiempo de diseño',[C('Diseñador'),cN('Ítems'),cN1('Promedio (d)'),cN1('Mediana (d)'),cN('Máximo (d)'),cP('% en ≤ 3 días')],r,{sort:[1,-1]}))
+   +`<div class="note">${omit} ítem(s) omitidos por fechas incompletas o fuera de rango (0–365 días).</div>`;});
+/* CALIDAD */
+R('q1','calidad','No conformidades','Acciones/NC reportadas en el rango, por fuente, área y mes.',['nc'],()=>{
+  const rows=D.nc.filter(n=>inR(n.fecha_reporte)),ab=rows.filter(n=>!n.fecha_real_cierre);
+  const venc=ab.filter(n=>{const d=diasDe(n.fecha_prevista_cierre);return d!=null&&d<0;});
+  const top=(kf,n)=>[...group(rows,kf)].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]).slice(0,n||8);
+  const gm=[...group(rows,n=>mesDe(n.fecha_reporte))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[fMes(k),a.length,'var(--danger)']);
+  const det=rows.map(n=>[n.accion_no,n.fecha_reporte,n.fuente,n.proceso_area,n.maquina,n.cliente,n.op,n.descripcion,n.fecha_real_cierre]);
+  return kpis([['No conformidades',num(rows.length),'en el rango'],['Abiertas',num(ab.length),'sin fecha de cierre real','amb'],['Cerradas',num(rows.length-ab.length),fP(pct(rows.length-ab.length,rows.length)),'grn'],['Con plazo vencido',num(venc.length),'abiertas con fecha prevista pasada','red'],['Costo registrado',fM(sum(rows,n=>n.costos)),'según campo costos']])
+   +`<div class="g2">`+card('Por fuente',bars(top(n=>n.fuente||'(sin fuente)',8).map(x=>[x[0],x[1],'var(--danger)'])))+card('Por proceso / área',bars(top(n=>n.proceso_area||'(sin área)',8).map(x=>[x[0],x[1],'var(--warn)'])))+`</div>`
+   +card('Por mes',bars(gm))
+   +card('Detalle',tbl('No conformidades',[C('Acción #'),cD('Fecha'),cT('Fuente',40),C('Área'),C('Máquina'),C('Cliente'),C('OP'),cT('Descripción',70),cD('Cierre real')],det,{sort:[1,-1]}));});
+R('q2','calidad','NC por máquina y cliente','Dónde se concentran las no conformidades.',['nc'],()=>{
+  const rows=D.nc.filter(n=>inR(n.fecha_reporte));
+  const tp=(kf)=>[...group(rows,kf)].map(([k,a])=>[k,a.length,sum(a,n=>n.costos)]).sort((a,b)=>b[1]-a[1]);
+  return `<div class="g2">`+card('Por máquina',tbl('NC por máquina',[C('Máquina'),cN('NC'),cM('Costo')],tp(n=>famMaq(n.maquina)),{sort:[1,-1],limit:15}))+card('Por cliente',tbl('NC por cliente',[C('Cliente'),cN('NC'),cM('Costo')],tp(n=>n.cliente||'(sin cliente)'),{sort:[1,-1],limit:15}))+`</div>`;});
+R('q3','calidad','Reprocesos','Reprocesos registrados (módulo Calidad) y horas de «Reproceso» en el registro de tiempos.',['repro','rt'],()=>{
+  const rp=D.repro.filter(r=>inR(r.created_at)).map(r=>[fD(r.created_at),r.id_prod,r.cantidad,r.tipo_nc,r.proceso,r.motivo,r.estado]);
+  const rt=D.rt.filter(r=>/reproceso/i.test(r.tipo_registro||''));
+  const hm=[...group(rt,r=>famMaq(r.maquina))].map(([k,a])=>[k,a.length,sum(a,r=>r.duracion_horas)]).sort((a,b)=>b[2]-a[2]);
+  return kpis([['Reprocesos registrados',num(rp.length)],['Registros de tiempo «Reproceso»',num(rt.length)],['Horas en reproceso',fH(sum(rt,r=>r.duracion_horas)),'','red']])
+   +card('Horas de reproceso por máquina',bars(hm.map(x=>[x[0],x[2],'var(--danger)']),v=>num(v,1)+' h'))
+   +card('Reprocesos del módulo de Calidad',tbl('Reprocesos',[C('Fecha'),C('ID OP'),cN('Cant.'),C('Tipo'),C('Proceso'),cT('Motivo',60),C('Estado')],rp,{}));});
+R('q4','calidad','Inspección y liberación','Ítems aprobados por Calidad en el rango y los que están esperando inspección hoy.',['prod'],()=>{
+  const ok=D.prod.filter(o=>o.calidad_estado==='APROBADA'&&inR(o.calidad_fecha));
+  const pen=D.prod.filter(o=>o.terminado&&!o.calidad_ok&&!o.despachado&&!['CANCELADO','DESPACHADO'].includes(o.estado));
+  const gp=[...group(ok,o=>o.calidad_por||'(sin dato)')].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]);
+  const gm=[...group(ok,o=>mesDe(o.calidad_fecha))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[fMes(k),a.length,'var(--ok)']);
+  const pr=pen.map(o=>[o.op,o.item_num,o.empresa,o.descripcion,o.estado,diasDe(o.fecha_pactada)]);
+  return kpis([['Aprobados en el rango',num(ok.length),'','grn'],['Esperando inspección hoy',num(pen.length),'terminados sin aprobar','amb']])
+   +`<div class="g2">`+card('Aprobados por inspector',bars(gp.map(x=>[x[0],x[1]])))+card('Aprobados por mes',bars(gm))+`</div>`
+   +card('Esperando inspección (situación actual)',tbl('Pendientes de calidad',[C('OP'),C('Ítem'),C('Cliente'),cT('Descripción',55),C('Estado'),cDias('Entrega pactada')],pr,{sort:[5,1]}));});
+R('q5','calidad','Certificados de conformidad','Certificados emitidos y anulados en el rango.',['cert'],()=>{
+  const rows=D.cert.filter(c=>inR(c.fecha_emision)),em=rows.filter(c=>c.estado==='EMITIDO');
+  const gm=[...group(em,c=>mesDe(c.fecha_emision))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[fMes(k),a.length]);
+  const ge=[...group(em,c=>c.empresa||'(sin cliente)')].map(([k,a])=>[k,a.length,sum(a,c=>c.cantidad)]).sort((a,b)=>b[1]-a[1]);
+  return kpis([['Emitidos',num(em.length),'','grn'],['Anulados',num(rows.length-em.length),'','red']])
+   +`<div class="g2">`+card('Emitidos por mes',bars(gm))+card('Por cliente',tbl('Certificados por cliente',[C('Cliente'),cN('Certificados'),cN('Piezas')],ge,{sort:[1,-1],limit:15}))+`</div>`;});
+R('q6','calidad','Materiales rechazados','Materiales rechazados en recepción (solicitados en el rango).',['mat'],()=>{
+  const rows=D.mat.filter(m=>m.estado==='RECHAZADO'&&inR(m.solicitado_at));
+  const gp=[...group(rows,m=>m.proveedor||'(sin proveedor)')].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]);
+  const det=rows.map(m=>[fD(m.solicitado_at),m.material,m.proveedor,m.cantidad_kg||m.cantidad,m.motivo_rechazo]);
+  const tot=D.mat.filter(m=>inR(m.solicitado_at)).length;
+  return kpis([['Materiales rechazados',num(rows.length),fP(pct(rows.length,tot))+' de lo solicitado','red']])
+   +card('Rechazos por proveedor',bars(gp.slice(0,12).map(x=>[x[0],x[1],'var(--danger)'])))
+   +card('Detalle',tbl('Materiales rechazados',[C('Fecha'),cT('Material',50),C('Proveedor'),cN1('Cantidad'),cT('Motivo',70)],det,{}));});
+/* PRODUCCIÓN */
+R('p1','produccion','Estado de la producción y despachos','Estado actual de todos los ítems y despachos del rango.',['prod'],()=>{
+  const est=[...group(D.prod,o=>o.estado||'(sin estado)')].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]);
+  const des=D.prod.filter(o=>o.despacho_fecha&&inR(o.despacho_fecha));
+  const gm=[...group(des,o=>mesDe(o.despacho_fecha))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[k,a.length,sum(a,o=>o.cant_despachada||o.unidades)]);
+  const act=D.prod.filter(o=>ACT.includes(o.estado));
+  return kpis([['Ítems en curso',num(act.length),'EN PROCESO, externo y pendientes'],['En proceso',num(D.prod.filter(o=>o.estado==='EN PROCESO').length),'','grn'],['Despachados en el rango',num(des.length),'ítems'],['Avance promedio en curso',fP(avg(act.map(o=>+o.avance||0))),'']])
+   +card('Ítems por estado (hoy)',bars(est.map(x=>[x[0],x[1],ACT.includes(x[0])?'var(--accent)':'#94a3b8'])))
+   +card('Despachos por mes',tbl('Despachos por mes',[{h:'Mes',f:v=>fMes(v)},cN('Ítems'),cN('Unidades')],gm,{sort:[0,1]}));});
+R('p2','produccion','Cumplimiento de entregas','Ítems despachados en el rango: a tiempo (despacho ≤ fecha pactada) o tarde.',['prod'],()=>{
+  const rows=D.prod.filter(o=>o.despacho_fecha&&o.fecha_pactada&&inR(o.despacho_fecha)).map(o=>({o,d:difDias(o.fecha_pactada,o.despacho_fecha)})).filter(x=>x.d!=null);
+  const ok=rows.filter(x=>x.d<=0),tarde=rows.filter(x=>x.d>0);
+  const gm=[...group(rows,x=>mesDe(x.o.despacho_fecha))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[fMes(k),a.length,pct(a.filter(x=>x.d<=0).length,a.length),avg(a.filter(x=>x.d>0).map(x=>x.d))]);
+  const gt=[...group(rows,x=>String(x.o.tipo||'').slice(0,2)||'(s/t)')].map(([k,a])=>[k,a.length,pct(a.filter(x=>x.d<=0).length,a.length)]).sort((a,b)=>b[1]-a[1]);
+  const peor=tarde.sort((a,b)=>b.d-a.d).map(x=>[x.o.op,x.o.item_num,x.o.empresa,x.o.descripcion,x.o.fecha_pactada,x.o.despacho_fecha,x.d]);
+  return kpis([['Ítems despachados',num(rows.length)],['A tiempo',fP(pct(ok.length,rows.length)),num(ok.length)+' ítems','grn'],['Tarde',fP(pct(tarde.length,rows.length)),num(tarde.length)+' ítems','red'],['Atraso promedio (tarde)',num(avg(tarde.map(x=>x.d)),1)+' d']])
+   +card('% a tiempo por mes',bars(gm.map(x=>[x[0],x[2]==null?0:x[2],x[2]>=80?'var(--ok)':x[2]>=60?'var(--warn)':'var(--danger)']),v=>fP(v),100))
+   +`<div class="g2">`+card('Por tipo de OP',tbl('Cumplimiento por tipo',[C('Tipo'),cN('Ítems'),cP('% a tiempo')],gt,{sort:[1,-1]}))+card('Detalle por mes',tbl('Cumplimiento por mes',[C('Mes'),cN('Ítems'),cP('% a tiempo'),cN1('Atraso prom. (d)')],gm,{}))+`</div>`
+   +card('Mayores atrasos',tbl('Mayores atrasos',[C('OP'),C('Ítem'),C('Cliente'),cT('Descripción',50),cD('Pactada'),cD('Despacho'),{h:'Días tarde',f:v=>num(v),r:true}],peor,{limit:25}));});
+R('p3','produccion','Horas por máquina y paradas','Registro de tiempos del rango: trabajo en OP, paradas, mantenimiento y reproceso.',['rt'],()=>{
+  const rt=D.rt,trab=rt.filter(r=>/trabajo normal/i.test(r.tipo_registro||'')),par=rt.filter(r=>/parada/i.test(r.tipo_registro||''));
+  const hm=[...group(trab,r=>famMaq(r.maquina))].map(([k,a])=>[k,a.length,sum(a,r=>r.duracion_horas),new Set(a.map(r=>r.op)).size]).sort((a,b)=>b[2]-a[2]);
+  const det=[...group(trab,r=>String(r.maquina||'(sin máquina)').trim())].map(([k,a])=>[k,a.length,sum(a,r=>r.duracion_horas)]).sort((a,b)=>b[2]-a[2]);
+  const gp=[...group(par,r=>String(r.tipo_parada||'(sin motivo)').trim().toUpperCase())].map(([k,a])=>[k,a.length,sum(a,r=>r.duracion_horas)]).sort((a,b)=>b[2]-a[2]);
+  return kpis([['Horas en OP',fH(sum(trab,r=>r.duracion_horas)),num(trab.length)+' registros','grn'],['Horas de parada',fH(sum(par,r=>r.duracion_horas)),num(par.length)+' registros','amb'],['Mantenimiento',fH(sum(rt.filter(r=>/mantenimiento/i.test(r.tipo_registro||'')),r=>r.duracion_horas))],['Reproceso',fH(sum(rt.filter(r=>/reproceso/i.test(r.tipo_registro||'')),r=>r.duracion_horas)),'','red']])
+   +`<div class="g2">`+card('Horas trabajadas por tipo de máquina',bars(hm.map(x=>[x[0],x[2]]),v=>num(v,1)+' h'))+card('Principales motivos de parada (horas)',bars(gp.slice(0,10).map(x=>[trunc(x[0],34),x[2],'var(--warn)']),v=>num(v,1)+' h'))+`</div>`
+   +card('Detalle por máquina',tbl('Horas por máquina',[C('Máquina'),cN('Registros'),cH('Horas')],det,{sort:[2,-1],limit:30}))
+   +card('Todos los motivos de parada',tbl('Paradas',[C('Motivo'),cN('Registros'),cH('Horas')],gp,{sort:[2,-1],limit:20}));});
+R('p4','produccion','Horas por colaborador','Horas registradas por persona en el rango.',['rt'],()=>{
+  const r=[...group(D.rt,x=>String(x.colaborador||'(sin nombre)').trim())].map(([k,a])=>{const h=f=>sum(a.filter(x=>f.test(x.tipo_registro||'')),x=>x.duracion_horas);return [k,new Set(a.map(x=>x.fecha)).size,h(/trabajo normal/i),h(/parada/i),h(/mantenimiento/i),h(/reproceso/i),sum(a,x=>x.duracion_horas)];}).sort((a,b)=>b[6]-a[6]);
+  return card('Horas totales por colaborador',bars(r.slice(0,15).map(x=>[x[0],x[6]]),v=>num(v,1)+' h'))
+   +card('Detalle',tbl('Horas por colaborador',[C('Colaborador'),cN('Días con registro'),cH('En OP'),cH('Paradas'),cH('Mantenimiento'),cH('Reproceso'),cH('Total')],r,{sort:[6,-1]}))
+   +'<div class="note">Estas horas salen del registro de tiempos; si el colaborador escribe distinto su nombre aparecerá como filas separadas.</div>';});
+R('p5','produccion','Remisiones y despachos','Remisiones despachadas en el rango, por mes y por cliente.',['rem'],()=>{
+  const rows=D.rem.filter(r=>r.estado==='DESPACHADA'&&inR(r.despachada_fecha||r.fecha));
+  const gm=[...group(rows,r=>mesDe(r.despachada_fecha||r.fecha))].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,a])=>[fMes(k),a.length]);
+  const gc=[...group(rows,r=>r.empresa||'(sin cliente)')].map(([k,a])=>[k,a.length]).sort((a,b)=>b[1]-a[1]);
+  return kpis([['Remisiones despachadas',num(rows.length),'','grn'],['Clientes atendidos',num(gc.length)],['Pendientes (generadas)',num(D.rem.filter(r=>r.estado==='GENERADA').length),'situación actual','amb']])
+   +`<div class="g2">`+card('Por mes',bars(gm))+card('Por cliente',tbl('Remisiones por cliente',[C('Cliente'),cN('Remisiones')],gc,{sort:[1,-1],limit:15}))+`</div>`;});
+/* PLANEACIÓN */
+const MAQS=[['ingenieria','Ingeniería'],['cnc','CNC'],['torno','Torno'],['fresadora','Fresadora'],['banco','Banco'],['edm','EDM'],['rectificadora','Rectificadora'],['hilo','Hilo'],['soldadura','Soldadura']];
+const entrega=o=>o.fecha_entrega_prod||o.fecha_pactada;
+R('l1','planeacion','Cartera vigente y atrasos','Situación actual de los ítems en curso según su fecha de entrega de producción (o pactada).',['prod'],()=>{
+  const a=D.prod.filter(o=>ACT.includes(o.estado)).map(o=>({o,d:diasDe(entrega(o))}));
+  const bk=[['Vencidos >15 d',x=>x.d!=null&&x.d<-15,'#991b1b'],['Vencidos 8–15 d',x=>x.d!=null&&x.d>=-15&&x.d<-7,'var(--danger)'],['Vencidos 1–7 d',x=>x.d!=null&&x.d>=-7&&x.d<0,'#f97316'],['Hoy',x=>x.d===0,'var(--warn)'],['1–5 días',x=>x.d>=1&&x.d<=5,'#eab308'],['6–15 días',x=>x.d>=6&&x.d<=15,'var(--ok)'],['Más de 15 días',x=>x.d>15,'#15803d'],['Sin fecha',x=>x.d==null,'#94a3b8']];
+  const venc=a.filter(x=>x.d!=null&&x.d<0).sort((p,q)=>p.d-q.d).map(x=>[x.o.op,x.o.item_num,x.o.empresa,x.o.descripcion,x.o.estado,+x.o.avance||0,x.d]);
+  return kpis([['Ítems en curso',num(a.length)],['Vencidos',num(venc.length),fP(pct(venc.length,a.length)),'red'],['Vencen en ≤ 5 días',num(a.filter(x=>x.d!=null&&x.d>=0&&x.d<=5).length),'','amb'],['Avance promedio',fP(avg(a.map(x=>+x.o.avance||0)))]])
+   +card('Cartera por días a la entrega',bars(bk.map(b=>[b[0],a.filter(b[1]).length,b[2]])))
+   +card('Ítems vencidos',tbl('Ítems vencidos',[C('OP'),C('Ítem'),C('Cliente'),cT('Descripción',50),C('Estado'),cN('% avance'),cDias('Entrega')],venc,{limit:30}));},{fecha:false});
+R('l2','planeacion','Carga pendiente por máquina','Horas planeadas que faltan por producir (horas × (1 − avance)) en los ítems en curso.',['prod'],()=>{
+  const a=D.prod.filter(o=>ACT.includes(o.estado));
+  const r=MAQS.map(([k,n])=>{const u=a.filter(o=>+o['hrs_'+k]>0);const tot=sum(u,o=>o['hrs_'+k]);const pen=sum(u,o=>(+o['hrs_'+k])*(1-Math.min(100,+o['avance_'+k]||0)/100));return [n,u.length,tot,pen,pct(tot-pen,tot)];}).filter(x=>x[1]>0).sort((x,y)=>y[3]-x[3]);
+  return kpis([['Horas pendientes',fH(sum(r,x=>x[3])),'todas las máquinas'],['Horas planeadas',fH(sum(r,x=>x[2]))]])
+   +card('Horas pendientes por máquina',bars(r.map(x=>[x[0],x[3],'var(--accent)']),v=>num(v,0)+' h'))
+   +card('Detalle',tbl('Carga por máquina',[C('Máquina'),cN('Ítems'),cH('Horas planeadas'),cH('Horas pendientes'),cP('% avanzado')],r,{sort:[3,-1]}))
+   +'<div class="note">Soldadura, EDM e Hilo dependen de que el ítem tenga horas planeadas cargadas.</div>';},{fecha:false});
+R('l3','planeacion','Entregas por semana','Ítems en curso agrupados por la semana de su fecha de entrega (atrasados aparte).',['prod'],()=>{
+  const a=D.prod.filter(o=>ACT.includes(o.estado)).map(o=>({o,d:diasDe(entrega(o))}));
+  const wk=d=>d==null?'Sin fecha':d<0?'Atrasados':d>=56?'Más de 8 semanas':'Semana +'+Math.floor(d/7);
+  const ord=['Atrasados'].concat(Array.from({length:8},(_,i)=>'Semana +'+i),['Más de 8 semanas','Sin fecha']);
+  const g=group(a,x=>wk(x.d));
+  const r=ord.filter(k=>g.has(k)).map(k=>{const u=g.get(k);return [k,u.length,sum(u,x=>MAQS.reduce((s,m)=>s+(+x.o['hrs_'+m[0]]||0)*(1-Math.min(100,+x.o['avance_'+m[0]]||0)/100),0))];});
+  return card('Ítems por semana de entrega',bars(r.map(x=>[x[0],x[1],x[0]==='Atrasados'?'var(--danger)':'var(--accent)'])))+card('Detalle',tbl('Entregas por semana',[C('Semana'),cN('Ítems'),cH('Horas pendientes')],r,{}))+'<div class="note">«Semana +0» = próximos 7 días.</div>';},{fecha:false});
+R('l4','planeacion','Materiales que frenan la producción','Materiales solicitados o comprados que aún no se reciben, de ítems en curso.',['mat','prod'],()=>{
+  const pm=new Map(D.prod.map(o=>[o.id,o]));
+  const r=D.mat.filter(m=>['SOLICITADO','COMPRADO'].includes(m.estado)).map(m=>({m,o:pm.get(m.id_prod)})).filter(x=>x.o&&ACT.includes(x.o.estado)).map(x=>[x.o.op,x.o.item_num,x.o.empresa,x.m.material,x.m.proveedor,x.m.estado,-diasDe(x.m.solicitado_at),diasDe(entrega(x.o))]);
+  return kpis([['Materiales sin recibir',num(r.length),'de ítems en curso','amb'],['Solicitados hace >7 días',num(r.filter(x=>x[6]>7).length),'','red'],['Con entrega ya vencida',num(r.filter(x=>x[7]!=null&&x[7]<0).length),'','red']])
+   +card('Detalle',tbl('Materiales pendientes',[C('OP'),C('Ítem'),C('Cliente'),cT('Material',45),C('Proveedor'),C('Estado'),{h:'Días solicitado',f:v=>num(v),r:true},cDias('Entrega ítem')],r,{sort:[6,-1]}));},{fecha:false});
+/* ── navegación ── */
+let CUR='',AREA='';
+function go(id){if(id&&REP[id]&&!puede(...AREAS.find(x=>x.k===REP[id].area).roles))id='';CUR=id&&REP[id]?id:'';const a=CUR?REP[CUR].area:(AREA||'');if(CUR)AREA=a;renderNav();if(CUR)run(CUR);else home();}
+function renderNav(){const ar=areasOk();
+  document.getElementById('areas').innerHTML=ar.map(a=>`<button class="ab ${AREA===a.k?'on':''}" onclick="pickArea('${a.k}')">${a.n}</button>`).join('');
+  const rs=Object.values(REP).filter(r=>r.area===AREA);
+  document.getElementById('reps').style.display=AREA?'flex':'none';
+  document.getElementById('reps').innerHTML=rs.map(r=>`<button class="rb ${CUR===r.id?'on':''}" onclick="location.hash='${r.id}'">${esc(r.t)}</button>`).join('');
+  renderFil();document.getElementById('fil').style.display=CUR?'flex':'none';}
+function pickArea(k){AREA=k;const f=Object.values(REP).find(r=>r.area===k);location.hash=f.id;}
+function home(){AREA='';renderNav();document.getElementById('reps').style.display='none';
+  document.getElementById('main').innerHTML=`<div class="rh"><h2>Centro de reportes</h2><p>Elige un área y un reporte. Todo es de solo lectura: ningún reporte modifica datos. Los valores en pesos son antes de IVA.</p></div><div class="home">`+areasOk().map(a=>`<div class="hc"><h3>${a.n}</h3>`+Object.values(REP).filter(r=>r.area===a.k).map(r=>`<a href="#${r.id}">${esc(r.t)}<small>${esc(r.d)}</small></a>`).join('')+`</div>`).join('')+`</div>`;}
+let _run=0;
+async function run(id){const r=REP[id];if(!r)return;const my=++_run;const m=document.getElementById('main');
+  m.innerHTML=`<div class="empty">⏳ Cargando datos…</div>`;
+  try{await need(...r.need);if(my!==_run)return;EXP=[];TB={};const body=r.fn();
+    m.innerHTML=`<div class="rh"><h2>${esc(r.t)}</h2><div class="act"><button onclick="exportar()">⬇ Excel (CSV)</button><button onclick="window.print()">🖨 Imprimir / PDF</button><button onclick="refrescar()">↻ Actualizar</button></div><p>${esc(r.d)}</p></div><div id="pt">Grupo WEDM · ${esc(r.t)} · ${r.fecha===false?'situación al '+fD(todayS()):fD(F.desde)+' a '+fD(F.hasta)} · generado por ${esc(S&&S.nombre)}</div>`+body;
+  }catch(e){if(my===_run)m.innerHTML=`<div class="empty">⚠️ ${esc(e.message||e)}<br><button class="more" onclick="run('${id}')">Reintentar</button></div>`;}}
+function exportar(){if(!EXP.length){toast('No hay tablas para exportar');return;}
+  const q=v=>{v=v==null?'':String(v);return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  let out=[`Reporte;${q(REP[CUR].t)}`,`Rango;${F.desde} a ${F.hasta}`,''];
+  EXP.forEach(t=>{out.push(q(t.title));out.push(t.cols.map(c=>q(c.h)).join(';'));t.rows.forEach(r=>out.push(r.map((v,i)=>q(typeof v==='number'?String(Math.round(v*100)/100).replace('.',','):v)).join(';')));out.push('');});
+  const b=new Blob(['﻿'+out.join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='reporte_'+CUR+'_'+todayS()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+window.addEventListener('hashchange',()=>{if(S)go(location.hash.slice(1));});
+/* ── login ── */
+let USERS=[],LU=null,PIN='',busy=false;
+async function cargarUsers(){try{const r=await sb.rpc('listar_usuarios');if(Array.isArray(r))USERS=r;}catch(e){}
+  const ok=USERS.filter(u=>{const ro=[u.rol].concat(u.roles_extra||[]);if(!ro.some(x=>ROLES_REP.includes(x)))return false;return u.modulos==null||u.modulos.includes('reportes')||u.rol==='admin';}).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
+  document.getElementById('ug').innerHTML=ok.length?ok.map(u=>`<button class="ub" data-u="${esc(u.nombre)}" onclick="pickUser(this.dataset.u)">${esc(u.nombre)}<small>${esc(u.rol)}</small></button>`).join(''):`<div class="empty">No se pudo cargar la lista.<br><button class="more" onclick="cargarUsers()">Reintentar</button></div>`;}
+function pickUser(n){LU=n;PIN='';const u=USERS.find(x=>x.nombre===n)||{};document.getElementById('ls-user').style.display='none';document.getElementById('ls-pin').style.display='block';document.getElementById('lname').textContent=n;document.getElementById('lrol').textContent=u.rol||'';document.getElementById('lerr').textContent='';dots();}
+function pinBack(){LU=null;PIN='';document.getElementById('ls-pin').style.display='none';document.getElementById('ls-user').style.display='block';}
+function dots(){document.querySelectorAll('#dots i').forEach((d,i)=>d.className=i<PIN.length?'f':'');}
+function pinP(d){if(busy||PIN.length>=4)return;PIN+=d;dots();if(PIN.length===4)setTimeout(doLogin,100);}
+function pinDel(){if(busy)return;PIN=PIN.slice(0,-1);dots();}
+document.addEventListener('keydown',e=>{if(document.getElementById('ls-pin').style.display!=='block')return;if(/^\d$/.test(e.key))pinP(e.key);else if(e.key==='Backspace')pinDel();});
+async function doLogin(){if(!LU||busy)return;busy=true;const err=document.getElementById('lerr');
+  try{const r=await sb.rpc('login_usuario',{p_nombre:LU,p_pin:PIN});
+    if(!r||!r.ok){err.textContent=(r&&r.msg)||'Clave incorrecta';PIN='';dots();return;}
+    if(!(r.roles||[r.rol]).some(x=>ROLES_REP.includes(x))){err.textContent='Sin acceso al módulo de Reportes';PIN='';dots();return;}
+    S={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};sb.tok=r.token;
+    try{localStorage.setItem(SESS_KEY,JSON.stringify(S));}catch(e){}
+    try{const m=await sb.rpc('mis_modulos');if(m&&m.restringido&&!(m.modulos||[]).includes('reportes')&&S.rol!=='admin'){forceLogout('Sin acceso a este módulo (definido por el administrador)');return;}}catch(e){}
+    arrancar();
+  }catch(e){err.textContent='Sin conexión — intenta de nuevo';PIN='';dots();}finally{busy=false;}}
+async function logout(){try{await sb.rpc('logout_usuario');}catch(e){}forceLogout();}
+function forceLogout(msg){S=null;sb.tok=null;try{localStorage.removeItem(SESS_KEY);}catch(e){}Object.keys(D).forEach(k=>delete D[k]);CUR='';AREA='';
+  document.getElementById('main').innerHTML='';document.getElementById('areas').innerHTML='';document.getElementById('reps').style.display='none';document.getElementById('fil').style.display='none';
+  document.getElementById('login').style.display='flex';pinBack();cargarUsers();if(msg)toast(msg);}
+function arrancar(){document.getElementById('login').style.display='none';if(!areasOk().length){forceLogout('Tu rol no tiene reportes asignados');return;}
+  const h=location.hash.slice(1);if(h&&REP[h]&&puede(...AREAS.find(a=>a.k===REP[h].area).roles))go(h);else{location.hash='';go('');}}
+(async function init(){
+  if(S&&S.token){let v=true;try{v=await sb.rpc('sesion_valida');}catch(e){}
+    if(v!==false&&(S.roles||[S.rol]).some(x=>ROLES_REP.includes(x))){arrancar();return;}
+    S=null;sb.tok=null;try{localStorage.removeItem(SESS_KEY);}catch(e){}}
+  document.getElementById('login').style.display='flex';cargarUsers();})();
+</script>
+</body>
+</html>
