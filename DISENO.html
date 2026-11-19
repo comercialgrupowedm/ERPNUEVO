@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261024-081851">
+<meta name="app-build" content="20261119-151135">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -6850,6 +6850,57 @@ window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.a
   var s=elegir(); if(!s) return;
   e.preventDefault(); s.scrollBy({left:(e.key==='ArrowRight'?1:-1)*Math.max(160,Math.round(s.clientWidth*0.25)),behavior:'smooth'});
  });
+})();
+</script>
+<!-- WEDM-DROP: arrastrar y soltar archivos en los botones de «Subir plano / DWG / orden de compra» -->
+<style id="wdrop-css">.wdrop-on{outline:2px dashed #2563eb!important;outline-offset:-2px;background-color:rgba(37,99,235,.07)!important}</style>
+<script id="wdrop-js">
+(function(){
+  if(window.__wdDrop) return; window.__wdDrop=1;
+  var KIND={itPlanoAdd:'plano',itemSubirPlano:'plano',prodSubirPlano:'plano',pmSubirPlano:'plano',planoSubir:'plano',pmSubirDwg:'dwg',ocPick:'oc',ocuPick:'oc',qaScanSubir:'scan'};
+  var RX=/^\s*([A-Za-z_]\w*)\s*\(/, EXT_DWG=/\.(dwg|dxf|step|stp|igs|iges|zip)$/i;
+  function say(m,t){ try{ if(typeof toast==='function') toast(m,t||'ok'); else alert(m); }catch(e){} }
+  function accOk(acc,f){ if(!acc) return true; var n=String(f.name||'').toLowerCase(), ty=String(f.type||'').toLowerCase();
+    return String(acc).toLowerCase().split(',').some(function(t){ t=t.trim(); if(!t) return false; if(t.slice(-2)==='/*') return ty.indexOf(t.slice(0,-1))===0; if(t.charAt(0)==='.') return n.slice(-t.length)===t; return ty===t; }); }
+  /* Durante una suelta, el «click» de un <input type=file> recibe el archivo en vez de abrir la ventana */
+  var _clk=HTMLInputElement.prototype.click;
+  HTMLInputElement.prototype.click=function(){
+    var D=window.__WD_DROP;
+    if(D&&!D.done&&this.type==='file'){ if(!accOk(this.accept,D.file)) return;
+      D.done=true; try{ var dt=new DataTransfer(); dt.items.add(D.file); this.files=dt.files; }catch(e){ D.done=false; return _clk.apply(this,arguments); }
+      this.dispatchEvent(new Event('change',{bubbles:true})); return; }
+    return _clk.apply(this,arguments); };
+  function cands(root){ var out=[], all=[].slice.call(root.querySelectorAll?root.querySelectorAll('[onclick]'):[]);
+    if(root.hasAttribute&&root.hasAttribute('onclick')) all.unshift(root);
+    all.forEach(function(b){ var s=(b.getAttribute('onclick')||'').trim(), m=RX.exec(s); if(m&&KIND[m[1]]&&!b.disabled&&b.offsetParent!==null) out.push({k:KIND[m[1]],s:s,b:b}); }); return out; }
+  function zone(t){ for(var el=t;el&&el.nodeType===1&&el!==document.documentElement;el=el.parentElement){ var c=cands(el); if(c.length) return {el:el,c:c}; } return null; }
+  function ambig(c){ var seen={}; for(var i=0;i<c.length;i++){ var o=seen[c[i].k]; if(o!==undefined&&o!==c[i].s) return true; seen[c[i].k]=c[i].s; } return false; }
+  function hasFiles(e){ var t=e.dataTransfer&&e.dataTransfer.types; return !!t&&[].indexOf.call(t,'Files')>=0; }
+  var cur=null,lastT=null,tm=null;
+  function clear(){ if(cur){ cur.classList.remove('wdrop-on'); cur=null; } lastT=null; }
+  function mark(t){ if(t===lastT) return; lastT=t; if(cur){ cur.classList.remove('wdrop-on'); cur=null; }
+    var z=zone(t); if(z&&!ambig(z.c)){ cur=z.el; cur.classList.add('wdrop-on'); } }
+  document.addEventListener('dragover',function(e){ if(e.defaultPrevented||!hasFiles(e)) return; var t=e.target; if(t&&t.tagName==='INPUT'&&t.type==='file') return;
+    e.preventDefault(); try{ e.dataTransfer.dropEffect='copy'; }catch(x){} mark(t); clearTimeout(tm); tm=setTimeout(clear,350); });
+  document.addEventListener('dragleave',function(e){ if(!e.relatedTarget) clear(); });
+  function esperar(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  async function subir(f,c){
+    var kinds=EXT_DWG.test(f.name||'')?['dwg']:['plano','scan','oc','dwg'];
+    for(var i=0;i<kinds.length;i++){ var ks=c.filter(function(x){ return x.k===kinds[i]; }); if(!ks.length) continue;
+      var D={file:f,done:false}; window.__WD_DROP=D;
+      try{ ks[0].b.click(); }catch(e){}
+      for(var w=0;w<12&&!D.done;w++) await esperar(100);
+      if(window.__WD_DROP===D) window.__WD_DROP=null; if(D.done) return true; }
+    return false; }
+  document.addEventListener('drop',async function(e){
+    if(e.defaultPrevented||!hasFiles(e)) return; var t=e.target; if(t&&t.tagName==='INPUT'&&t.type==='file') return;
+    e.preventDefault(); var files=[].slice.call(e.dataTransfer.files||[]); clear(); if(!files.length) return;
+    var z=zone(t);
+    if(!z){ say('Suelta el archivo sobre el detalle donde está el botón «Subir plano»','error'); return; }
+    if(ambig(z.c)){ say('Hay varios lugares para subir aquí: suéltalo directamente sobre el recuadro del plano del ítem','error'); return; }
+    var n=0,mal=[]; for(var i=0;i<files.length;i++){ var ok=await subir(files[i],z.c); if(ok) n++; else mal.push(files[i].name||'archivo'); await esperar(250); }
+    if(mal.length) say('No se aceptó aquí: '+mal.join(', ')+' (tipo de archivo no permitido en este lugar)','error');
+  });
 })();
 </script>
 </body>
