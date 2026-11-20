@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261118-220943">
+<meta name="app-build" content="20261120-122754">
 <title>Reportes · Grupo WEDM</title>
 <style>
 :root{--accent:#2563eb;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -81,10 +81,11 @@ tr:hover td{background:#fafcff}
 <body>
 <div id="login">
   <div class="lb">
-    <div id="ls-user"><h2>📊 Reportes</h2><p>Grupo WEDM · elige tu usuario</p><div class="ug" id="ug"><div class="empty">Cargando…</div></div></div>
+    <div id="ls-user"><h2>📊 Reportes</h2><p>Grupo WEDM · elige tu usuario</p><div class="ug" id="ug"><div class="empty">Cargando…</div></div><button class="back" style="opacity:.5;font-size:12px" onclick="devOpen()">⚙️</button></div>
     <div id="ls-pin" style="display:none"><h2 id="lname"></h2><p id="lrol"></p><div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
       <div class="pad"><button onclick="pinP(1)">1</button><button onclick="pinP(2)">2</button><button onclick="pinP(3)">3</button><button onclick="pinP(4)">4</button><button onclick="pinP(5)">5</button><button onclick="pinP(6)">6</button><button onclick="pinP(7)">7</button><button onclick="pinP(8)">8</button><button onclick="pinP(9)">9</button><button onclick="pinBack()">←</button><button onclick="pinP(0)">0</button><button onclick="pinDel()">⌫</button></div>
       <div id="lerr"></div><button class="back" onclick="pinBack()">‹ Cambiar usuario</button></div>
+    <div id="ls-dev" style="display:none"><h2>⚙️ Desarrollador</h2><p>Usuario y clave</p><input id="dvu" placeholder="Usuario" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px"><input id="dvp" type="password" placeholder="Clave" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"><div id="dverr" style="color:var(--danger);min-height:18px;font-size:13px;margin:8px 0"></div><button class="pre on" onclick="doLoginDev()" style="width:100%;padding:10px">Entrar</button><button class="back" onclick="devBack()">‹ Volver</button></div>
   </div>
 </div>
 <div id="top"><h1>📊 Reportes · Grupo WEDM</h1><button onclick="location.hash='';go('')">Inicio</button><button onclick="logout()">Salir</button></div>
@@ -120,6 +121,10 @@ const AREAS=[
  {k:'produccion',n:'🏭 Producción',roles:['produccion','planeacion','administracion','calidad']},
  {k:'planeacion',n:'📅 Planeación',roles:['planeacion','administracion','produccion']}
 ];
+/* Acceso EXCLUSIVO: solo Diego Muñoz (y la cuenta desarrollador, que mantiene el módulo) */
+const _nn=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const PERMITIDOS=['diegomunoz'];
+const permitido=(nombre,rol,roles)=>PERMITIDOS.includes(_nn(nombre))||rol==='desarrollador'||(roles||[]).includes('desarrollador');
 const ROLES_REP=[...new Set(AREAS.flatMap(a=>a.roles))].concat(['admin','desarrollador']);
 const misRoles=()=>S&&S.roles&&S.roles.length?S.roles:[S&&S.rol].filter(Boolean);
 const esAdmin=()=>{const r=misRoles();return r.includes('admin')||r.includes('desarrollador');};
@@ -407,10 +412,20 @@ window.addEventListener('hashchange',()=>{if(S)go(location.hash.slice(1));});
 /* ── login ── */
 let USERS=[],LU=null,PIN='',busy=false;
 async function cargarUsers(){try{const r=await sb.rpc('listar_usuarios');if(Array.isArray(r))USERS=r;}catch(e){}
-  const ok=USERS.filter(u=>{const ro=[u.rol].concat(u.roles_extra||[]);if(!ro.some(x=>ROLES_REP.includes(x)))return false;return u.modulos==null||u.modulos.includes('reportes')||u.rol==='admin';}).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
+  const ok=USERS.filter(u=>permitido(u.nombre,u.rol,u.roles_extra)).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
   document.getElementById('ug').innerHTML=ok.length?ok.map(u=>`<button class="ub" data-u="${esc(u.nombre)}" onclick="pickUser(this.dataset.u)">${esc(u.nombre)}<small>${esc(u.rol)}</small></button>`).join(''):`<div class="empty">No se pudo cargar la lista.<br><button class="more" onclick="cargarUsers()">Reintentar</button></div>`;}
+function devOpen(){document.getElementById('ls-user').style.display='none';document.getElementById('ls-dev').style.display='block';document.getElementById('dverr').textContent='';}
+function devBack(){document.getElementById('ls-dev').style.display='none';document.getElementById('ls-user').style.display='block';}
+async function doLoginDev(){if(busy)return;const u=document.getElementById('dvu').value.trim(),p=document.getElementById('dvp').value,er=document.getElementById('dverr');if(!u||!p){er.textContent='Escribe usuario y clave';return;}
+  busy=true;er.textContent='Verificando…';
+  try{const r=await sb.rpc('login_usuario',{p_nombre:u,p_pin:p});
+    if(!r||!r.ok){er.textContent=(r&&r.msg)||'Usuario o clave incorrectos';return;}
+    if(!permitido(r.nombre,r.rol,r.roles)){er.textContent='Reportes es de uso exclusivo de Diego Muñoz';sb.tok=r.token;try{await sb.rpc('logout_usuario');}catch(e){}sb.tok=null;return;}
+    S={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};sb.tok=r.token;
+    try{localStorage.setItem(SESS_KEY,JSON.stringify(S));}catch(e){}arrancar();
+  }catch(e){er.textContent='Sin conexión — intenta de nuevo';}finally{busy=false;}}
 function pickUser(n){LU=n;PIN='';const u=USERS.find(x=>x.nombre===n)||{};document.getElementById('ls-user').style.display='none';document.getElementById('ls-pin').style.display='block';document.getElementById('lname').textContent=n;document.getElementById('lrol').textContent=u.rol||'';document.getElementById('lerr').textContent='';dots();}
-function pinBack(){LU=null;PIN='';document.getElementById('ls-pin').style.display='none';document.getElementById('ls-user').style.display='block';}
+function pinBack(){LU=null;PIN='';document.getElementById('ls-pin').style.display='none';document.getElementById('ls-dev').style.display='none';document.getElementById('ls-user').style.display='block';}
 function dots(){document.querySelectorAll('#dots i').forEach((d,i)=>d.className=i<PIN.length?'f':'');}
 function pinP(d){if(busy||PIN.length>=4)return;PIN+=d;dots();if(PIN.length===4)setTimeout(doLogin,100);}
 function pinDel(){if(busy)return;PIN=PIN.slice(0,-1);dots();}
@@ -418,10 +433,10 @@ document.addEventListener('keydown',e=>{if(document.getElementById('ls-pin').sty
 async function doLogin(){if(!LU||busy)return;busy=true;const err=document.getElementById('lerr');
   try{const r=await sb.rpc('login_usuario',{p_nombre:LU,p_pin:PIN});
     if(!r||!r.ok){err.textContent=(r&&r.msg)||'Clave incorrecta';PIN='';dots();return;}
-    if(!(r.roles||[r.rol]).some(x=>ROLES_REP.includes(x))){err.textContent='Sin acceso al módulo de Reportes';PIN='';dots();return;}
+    if(!permitido(r.nombre,r.rol,r.roles)){err.textContent='Reportes es de uso exclusivo de Diego Muñoz';PIN='';dots();try{sb.tok=r.token;await sb.rpc('logout_usuario');}catch(e){}sb.tok=null;return;}
     S={nombre:r.nombre,asesor:r.asesor||'',rol:r.rol,roles:(r.roles&&r.roles.length?r.roles:[r.rol]),token:r.token,ts:Date.now()};sb.tok=r.token;
     try{localStorage.setItem(SESS_KEY,JSON.stringify(S));}catch(e){}
-    try{const m=await sb.rpc('mis_modulos');if(m&&m.restringido&&!(m.modulos||[]).includes('reportes')&&S.rol!=='admin'){forceLogout('Sin acceso a este módulo (definido por el administrador)');return;}}catch(e){}
+    
     arrancar();
   }catch(e){err.textContent='Sin conexión — intenta de nuevo';PIN='';dots();}finally{busy=false;}}
 async function logout(){try{await sb.rpc('logout_usuario');}catch(e){}forceLogout();}
@@ -432,7 +447,7 @@ function arrancar(){document.getElementById('login').style.display='none';if(!ar
   const h=location.hash.slice(1);if(h&&REP[h]&&puede(...AREAS.find(a=>a.k===REP[h].area).roles))go(h);else{location.hash='';go('');}}
 (async function init(){
   if(S&&S.token){let v=true;try{v=await sb.rpc('sesion_valida');}catch(e){}
-    if(v!==false&&(S.roles||[S.rol]).some(x=>ROLES_REP.includes(x))){arrancar();return;}
+    if(v!==false&&permitido(S.nombre,S.rol,S.roles)){arrancar();return;}
     S=null;sb.tok=null;try{localStorage.removeItem(SESS_KEY);}catch(e){}}
   document.getElementById('login').style.display='flex';cargarUsers();})();
 </script>
