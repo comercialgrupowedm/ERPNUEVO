@@ -2711,20 +2711,20 @@ function detailRem(id){
     <div class="cm-h" style="margin-top:14px">Líneas (${ls.length})</div>
     ${ls.length?ls.map(l=>{ const o=l.id_prod?opDe(l.id_prod):null; return `<div class="cm-line"><div class="cm-t">${l.item!=null?'Ítem '+esc(String(l.item))+' · ':''}${esc(String(l.descripcion||'').slice(0,90))}${o?`<small>${bCal(o)}</small>`:''}</div><b style="font-family:var(--mono)">${esc(String(l.cantidad??''))}</b></div>`; }).join(''):mutedP('Aún sin líneas seleccionadas.')}
     ${m.observaciones?dr('Observaciones',esc(m.observaciones)):''}${m.oc_cliente?dr('OC cliente',esc(m.oc_cliente)):''}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&(puede('calidad')||_esLogi())?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
 }
 
 function remAcciones(m){
   const b=[]; const j=jsq(m.id);
   if((m.lineas||[]).length&&REM_TRAMITE.includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docDespacho('${j}')">🖨️ Formato despacho</button>`);
   if(m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docRemision('${j}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list':'📄 PDF'}</button>`);
-  if(m.estado==='GENERADA'&&(puede('calidad')||_esLogi())) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
+  if(m.estado==='GENERADA'&&(puede('calidad'))) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
   else if(m.estado==='GENERADA') b.push(`<span style="font-size:11px;color:var(--muted);align-self:center">Solo el rol calidad puede despacharla</span>`);
   return b.length?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">${b.join('')}</div>`:'';
 }
 async function remDespachar(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
-  if(!puede('calidad')&&!_esLogi()){ toast('Solo calidad o logística puede marcar la remisión como despachada','error'); return; }
+  if(!puede('calidad')){ toast('Solo calidad puede marcar la remisión como despachada','error'); return; }
   if(!confirm(`¿Confirmas que la mercancía de REM-${m.numero} (OP-${m.op}) ya salió?\n\nSe descuentan las unidades de producción y no se puede deshacer.`)) return;
   const r=await rpcC('remision_despachar',{p_id:id},'🚚 Remisión despachada');
   if(r){ closeModal(); refreshCurrentView(); }

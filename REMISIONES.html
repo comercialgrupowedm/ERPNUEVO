@@ -2057,7 +2057,7 @@ setInterval(async()=>{
 // ═══ FORMULARIO LIBRE (sin pasos obligatorios) — se elige entre este y el flujo por pasos ═══
 const REM_EST_LIBRE={BORRADOR:['Borrador','gris'],ENVIADA:['Enviada','naranja'],RECIBIDA:['Recibida','azul'],FACTURADA:['Facturada','verde'],ANULADA:['Anulada','rojo']};
 Object.assign(REM_EST,REM_EST_LIBRE);
-const puedeLibre=()=>puede('comercial','administracion','calidad')||_esLogi();
+const puedeLibre=()=>puede('comercial','administracion','calidad');
 let _RL=null;   // estado del formulario libre abierto
 function nuevaRemModal(){
   openModal('➕ Nueva remisión',`<div style="display:flex;flex-direction:column;gap:10px">
