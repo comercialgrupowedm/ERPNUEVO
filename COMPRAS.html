@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261121-100038">
+<meta name="app-build" content="20261121-110946">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2056,6 +2056,7 @@ function irDespachos(){
   try{ closeSidebar(); }catch(e){}
   // se comparte la sesión con Calidad (mismo equipo): Calidad muestra solo Despacho, Remisiones y rótulos
   try{ localStorage.setItem('_wedm_cal_s',JSON.stringify(_SESSION)); }catch(e){}
+  try{ wedmBack('COMPRAS.html','Compras','CALIDAD.html'); }catch(e){}
   location.href='CALIDAD.html#despacho';
 }
 function csvParse(text){
@@ -5129,5 +5130,37 @@ window.addEventListener('resize',pos);if(window.visualViewport){visualViewport.a
  });
 })();
 </script>
+<!-- WEDM-VOLVER (botón «Volver» al módulo desde el que se llegó) -->
+<style>
+#back-btn{display:flex;align-items:center;height:34px;padding:0 11px;border-radius:11px;background:#fef3c7;border:1.5px solid #f59e0b;color:#92400e;font-weight:800;font-size:12.5px;text-decoration:none;white-space:nowrap;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#back-btn:active{transform:scale(.95)}
+.nav-item.nav-back{background:#fef3c7;color:#92400e;margin:4px 8px 6px;border-radius:10px;font-weight:700}
+@media(max-width:400px){#back-btn{padding:0 8px;font-size:11.5px}}
+</style>
+<script>
+(function(){
+ var K='_wedm_back';
+ function rd(){ try{ return JSON.parse(sessionStorage.getItem(K)||'[]'); }catch(e){ return []; } }
+ function wr(a){ try{ sessionStorage.setItem(K,JSON.stringify(a)); }catch(e){} }
+ window.wedmBack=function(url,label,to){ var a=rd(); a.push({url:url,label:label,to:to}); wr(a); };
+ var me=(location.pathname.split('/').pop()||'index.html').toLowerCase();
+ function cur(){ var a=rd(), e=a[a.length-1]; return e&&String(e.to).toLowerCase()===me?e:null; }
+ function volver(){ var a=rd(), e=a.pop(); wr(a); if(e) location.href=e.url; }
+ function init(){
+  var e=cur(), b=document.getElementById('back-btn'), n=document.getElementById('nav-back');
+  if(!e){ if(b) b.remove(); if(n) n.remove(); return; }
+  var h=document.getElementById('home-btn');
+  if(!b&&h){ b=document.createElement('a'); b.id='back-btn'; b.href='#'; b.onclick=function(ev){ ev.preventDefault(); volver(); }; h.insertAdjacentElement('afterend',b); }
+  if(b){ b.textContent='← '+e.label; b.title='Volver a '+e.label; }
+  var nh=document.getElementById('nav-home');
+  if(!n&&nh){ n=document.createElement('div'); n.className='nav-item nav-back'; n.id='nav-back'; n.onclick=volver; nh.insertAdjacentElement('afterend',n); }
+  if(n) n.innerHTML='<span class="nav-icon">↩️</span>Volver a '+String(e.label).replace(/</g,'&lt;');
+ }
+ document.addEventListener('click',function(ev){ var t=ev.target&&ev.target.closest&&ev.target.closest('#home-btn,#nav-home'); if(t) wr([]); },true);
+ if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+ setInterval(init,1500);
+})();
+</script>
+<!-- /WEDM-VOLVER -->
 </body>
 </html>
