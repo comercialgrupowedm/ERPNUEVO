@@ -621,6 +621,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <link rel="manifest" href="app/calidad.webmanifest">
 <link rel="apple-touch-icon" href="app/calidad-180.png">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Calidad"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style id="sinrem-css">html.sinrem .nav-item[data-m="remisiones"],html.sinrem .nav-item[data-m="remamcor"],html.sinrem .bn-item[data-m="remisiones"],html.sinrem .bn-item[data-m="remamcor"]{display:none!important}</style>
 <style id="logi-css">html.logi #sidebar .nav-item[data-m]:not([data-m="despacho"]):not([data-m="remisiones"]):not([data-m="remamcor"]){display:none!important}</style>
 </head>
 <body>
@@ -865,7 +866,7 @@ async function loginCerrar(){
 }
 function endSession(msg){
   _SESSION=null; sb.tok=null; try{ localStorage.removeItem(SESS_KEY); }catch(e){}
-  document.documentElement.classList.remove('logi');
+  document.documentElement.classList.remove('logi','sinrem');
   Object.keys(DB).forEach(k=>delete DB[k]); _SYNC.init=false;
   closeSidebar(); closeModal(); _navFromNav=true; closeDetail(); _navFromNav=false;
   const c=document.getElementById('content'); if(c) c.innerHTML='';
@@ -1178,6 +1179,8 @@ function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar
 const LOGI_USUARIOS=['dramirez'];   // nombres (sin tildes, puntos ni espacios) que usan este perfil; para agregar a alguien se añade aquí
 const _esLogi=()=>!!_SESSION&&!puede('calidad','administracion')&&_misRoles().includes('compras')&&LOGI_USUARIOS.includes(_normNom(_SESSION.nombre));
 const LOGI_VISTAS=['despacho','remisiones','remamcor','buscar'];
+/*WEDM-SINREM*/ // Calidad (no admin/desarrollador) NO accede a remisiones: las pide logística (Daniel) desde Compras → Despachos
+const _sinRem=()=>!!_SESSION&&!_esAdmin()&&!_esLogi();
 const puedeDesp=()=>puedeCal()||_esLogi();
 // Columnas de producción que usa el módulo. formato_qa completo se carga aparte (pesa); aquí solo el resultado y quién inspeccionó.
 const PROD_SEL_C='id,id_item,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
@@ -1463,7 +1466,7 @@ function detailItem(id,foco,_r){
   if(cal&&o.terminado&&!ap) A.push(['⚠️','#dc2626','RECHAZAR / REPROCESO',`modalRechazo('${j}')`]);
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
   if(cal&&ap) A.push(['↩️','#64748b','DEVOLVER APROBACIÓN',`revertirItem('${j}')`]);
-  if((cal||(_esLogi()&&vivo(o)))&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
+  if((cal||(_esLogi()&&vivo(o)))&&!_sinRem()&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
   if(cal) A.push(['🚨','#ea580c','REPORTAR REPROCESO (NC)',`ncReportar('${j}')`]);
@@ -2096,10 +2099,10 @@ function despacho(){
   const banner=moduleBanner('📦','Pendiente Despacho','Aprobados por calidad que aún no salen · las aprobaciones más antiguas primero',
     chipsH([['todas','Todos',cnt.todas],['sinrem','Sin remisión',cnt.sinrem],['conrem','Remisión en trámite',cnt.conrem],['sincert','Sin certificado',cnt.sincert],...(cnt.hered?[['hered','Heredadas por confirmar',cnt.hered]]:[])],_desF.chip,'desChip'));
   const nota=`<div class="callout">ℹ️ Calidad <b>solicita</b> la remisión por OP (📦 Solicitar remisión): eliges los ítems y cantidades, y administración solo la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
-  const fb=`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`+filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
+  const fb=_sinRem()?'':`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`+filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+nota+fb+empty('Sin ítems pendientes de despacho','📦')); return; }
   const desA=o=>{ const j=idq(o); const c=certVigente(o.id);
-    const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
+    const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!_sinRem()&&!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
     if(_esLogi()) return heredada(o)?actBtn('📋 Detalle',`detailItem('${j}')`):pedir;   // logística: solo pedir remisión / ver detalle
     return puedeCal()?actBtn(c?'🏅 Ver certificado':'🏅 Certificado',c?`detailCert('${jsq(c.id)}')`:`editorCert(null,'${j}')`)+pedir+actBtn('↩️ Devolver',`revertirItem('${j}')`):''; };
   const card=o=>{ const c=certVigente(o.id); const d=diasDesde(o.calidad_fecha);
@@ -2156,6 +2159,7 @@ async function remRowsOP(op){
   });
 }
 function solicitarRemisionOP(op){
+  if(_sinRem()){ toast('Las remisiones las solicita logística (Compras → Despachos)','error'); return; }
   if(!puedeDesp()&&!soloCal()) return;
   // Abre el formulario libre de Remisiones (más completo): pasa la sesión y la OP
   try{ localStorage.setItem('_wedm_rem_s',JSON.stringify(_SESSION)); }catch(e){}
@@ -2680,7 +2684,7 @@ function remisiones(){
   const banner=moduleBanner('📄','Remisiones','Estado de las remisiones y despacho de las generadas',
     chipsH([['despachar','Generadas (por despachar)',cnt.despachar],['tramite','En trámite',cnt.tramite],['desp','Despachadas',cnt.desp],['canc','Canceladas',cnt.canc],['todas','Todas',cnt.todas],['libres','📝 Formulario libre',libres]],_remF.chip,'remChip'));
   const nota=`<div class="callout">ℹ️ Aquí calidad hace <b>su paso</b> de la remisión: cuando administración la <b>genera</b>, imprimes el <b>formato de despacho</b>, verificas lo que sale y tocas <b>🚚 Despachar</b>. Seleccionar, generar, editar o cancelar se hace en el módulo de <b>Remisiones</b> (comercial y administración); la remisión se solicita con el botón <b>📦 Solicitar remisión</b>.${sinRem.length?` Hay <b>${sinRem.length}</b> OP con ítems aprobados por calidad y <b>sin remisión en trámite</b> <a style="color:var(--accent);cursor:pointer;font-weight:700" onclick="_desF.chip='sinrem';nav('despacho')">ver →</a>`:''}</div>`;
-  const nuevo=`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`;
+  const nuevo=_sinRem()?'':`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`;
   const fb=nuevo+filtroBusqueda('rem-q',_remF.q,"remSet('q',this.value)",data.length+'/'+all.length,'🔍 Buscar REM, OP, cliente, proyecto, OC…');
   if(!data.length){ setContent(banner+nota+fb+empty('Sin remisiones en esta vista','📄')); return; }
   const card=m=>{ const ls=m.lineas||[]; const und=ls.reduce((a,l)=>a+(Number(l.cantidad)||0),0);
@@ -2711,20 +2715,20 @@ function detailRem(id){
     <div class="cm-h" style="margin-top:14px">Líneas (${ls.length})</div>
     ${ls.length?ls.map(l=>{ const o=l.id_prod?opDe(l.id_prod):null; return `<div class="cm-line"><div class="cm-t">${l.item!=null?'Ítem '+esc(String(l.item))+' · ':''}${esc(String(l.descripcion||'').slice(0,90))}${o?`<small>${bCal(o)}</small>`:''}</div><b style="font-family:var(--mono)">${esc(String(l.cantidad??''))}</b></div>`; }).join(''):mutedP('Aún sin líneas seleccionadas.')}
     ${m.observaciones?dr('Observaciones',esc(m.observaciones)):''}${m.oc_cliente?dr('OC cliente',esc(m.oc_cliente)):''}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')&&!_sinRem()?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
 }
 
 function remAcciones(m){
   const b=[]; const j=jsq(m.id);
   if((m.lineas||[]).length&&REM_TRAMITE.includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docDespacho('${j}')">🖨️ Formato despacho</button>`);
   if(m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docRemision('${j}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list':'📄 PDF'}</button>`);
-  if(m.estado==='GENERADA'&&(puede('calidad'))) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
+  if(m.estado==='GENERADA'&&puede('calidad')&&!_sinRem()) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
   else if(m.estado==='GENERADA') b.push(`<span style="font-size:11px;color:var(--muted);align-self:center">Solo el rol calidad puede despacharla</span>`);
   return b.length?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">${b.join('')}</div>`:'';
 }
 async function remDespachar(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
-  if(!puede('calidad')){ toast('Solo calidad puede marcar la remisión como despachada','error'); return; }
+  if(!puede('calidad')||_sinRem()){ toast('Solo logística puede marcar la remisión como despachada','error'); return; }
   if(!confirm(`¿Confirmas que la mercancía de REM-${m.numero} (OP-${m.op}) ya salió?\n\nSe descuentan las unidades de producción y no se puede deshacer.`)) return;
   const r=await rpcC('remision_despachar',{p_id:id},'🚚 Remisión despachada');
   if(r){ closeModal(); refreshCurrentView(); }
@@ -3259,6 +3263,7 @@ function tiPintar(){
 
 function nav(m,keep){
   if(_esLogi()&&!LOGI_VISTAS.includes(m)) m='despacho';
+  if(_sinRem()&&(m==='remisiones'||m==='remamcor')) m='despacho';
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
   document.querySelectorAll('.bn-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -3292,6 +3297,7 @@ async function iniciarApp(){
     if(!ok){ endSession('Sesión vencida — ingresa de nuevo'); return; }
     if(!_misRoles().some(x=>ROLES_CAL.includes(x))&&!_esLogi()){ endSession('Sin acceso al módulo de Calidad'); return; }
     if(_esLogi()) document.documentElement.classList.add('logi');
+    if(_sinRem()) document.documentElement.classList.add('sinrem');
     setSplash(15,'Cargando calidad…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   updateBadges(); hideSplash();
