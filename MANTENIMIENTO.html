@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261121-105958">
+<meta name="app-build" content="20261121-110357">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -106,7 +106,7 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;display:none;align-items:center;justify-content:center}
 #lb.on{display:flex}#lb img{max-width:96vw;max-height:92vh}
 @media(max-width:560px){.dl{grid-template-columns:1fr}.rep{grid-template-columns:1fr 1fr}}
-@media print{#bnav,#mn-ov,#top,#tabs,.rh .btn,#toast,.mf,.mh button,.th .x,.dz{display:none!important}body{background:#fff}#mod{position:static;background:none;display:block}.box{max-width:none;height:auto}.mb{overflow:visible}#main{display:none}}
+@media print{#home-btn,#sync0-btn,#erp-inst,#upd-bar,#bnav,#mn-ov,#top,#tabs,.rh .btn,#toast,.mf,.mh button,.th .x,.dz{display:none!important}body{background:#fff}#mod{position:static;background:none;display:block}.box{max-width:none;height:auto}.mb{overflow:visible}#main{display:none}}
 #tabs{display:none!important}
 #bnav{position:fixed;left:0;right:0;bottom:0;height:58px;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;z-index:15;padding-bottom:env(safe-area-inset-bottom)}
 #bn-menu{display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:none;font-weight:800;font-size:11px;letter-spacing:.4px;color:var(--navy);padding:4px 26px}
@@ -120,8 +120,14 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 .mn-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
 .mn-circle{width:50px;height:50px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:25px}
 .mn-t{padding:6px 6px 0;font-weight:800;font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.2px}
+.mn-sec{padding:12px 12px 0;max-width:1280px;margin:0 auto;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+a.mn-card{text-decoration:none;color:inherit}
 #top .vt{font-size:12px;font-weight:600;opacity:.8;margin-left:8px;white-space:nowrap}
 </style>
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="app/mantenimiento.webmanifest">
+<link rel="apple-touch-icon" href="app/mantenimiento-180.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Mantenimiento"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div id="login">
@@ -133,7 +139,7 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
     <div id="ls-dev" style="display:none"><h2>⚙️ Desarrollador</h2><p>Usuario y clave</p><input id="dvu" placeholder="Usuario" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px"><input id="dvp" type="password" placeholder="Clave" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"><div id="dverr" style="color:var(--danger);min-height:18px;font-size:13px;margin:8px 0"></div><button class="btn p" onclick="doLoginDev()" style="width:100%;padding:10px">Entrar</button><button class="back" onclick="devBack()">‹ Volver</button></div>
   </div>
 </div>
-<div id="top"><h1>🛠️ Mantenimiento<span class="vt" id="vt"></span></h1><button onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
+<div id="top"><h1>🛠️ Mantenimiento<span class="vt" id="vt"></span></h1><a id="home-btn" href="index.html" title="Ir al inicio (todos los módulos)" aria-label="Ir al inicio">🏠</a><button id="sync0-btn" onclick="syncCero()" title="Sincronizar desde cero">🔄</button><button id="refresh-btn" onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
 <div id="tabs"></div>
 <div id="main"></div>
 <div id="bnav"><button id="bn-menu" onclick="mnToggle()"><span class="ic">▾</span><span>MENÚ</span></button></div>
@@ -141,6 +147,55 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 <div id="mod"><div class="box"><div class="mh"><h3 id="mt"></h3><button class="btn" onclick="cerrar()">✕</button></div><div class="mb" id="mbody"></div><div class="mf" id="mfoot"></div></div></div>
 <div id="lb" onclick="this.classList.remove('on')"><img id="lbi" alt=""></div>
 <div id="toast"></div>
+<style>
+#top #home-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;text-decoration:none;font-size:16px;flex-shrink:0}
+#top #erp-inst{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;width:34px;height:34px;font-size:15px;padding:0;flex-shrink:0}
+#top #sync0-btn{padding:7px 10px}
+@media(max-width:420px){#top{gap:6px;padding-left:8px;padding-right:8px}#top h1 .vt{display:none}}
+</style>
+<script>
+function syncCero(){if(!confirm('¿Sincronizar desde cero?\nSe vuelve a descargar todo y la pantalla se reinicia.'))return;
+  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,.85);color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px system-ui,sans-serif;text-align:center;padding:20px';o.textContent='🔄 Sincronizando desde cero…';document.body.appendChild(o);
+  if(window.wedmRecargaLimpia)wedmRecargaLimpia();else location.reload();}
+</script>
+<style>
+#erp-inst{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(148,163,184,.55);background:transparent;font-size:16px;cursor:pointer;flex-shrink:0;color:inherit;-webkit-tap-highlight-color:transparent}
+#erp-inst.fl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:auto;padding:0 16px;height:40px;background:#fff;color:#1e293b;border:0;box-shadow:0 4px 18px rgba(0,0,0,.28);border-radius:99px;font-weight:800;font-size:13.5px;gap:7px;z-index:100000}
+#erp-ov{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:100001;display:none;align-items:flex-end;justify-content:center}
+#erp-ov.open{display:flex}#erp-ov>div{background:#fff;color:#1e293b;width:min(480px,100%);border-radius:20px 20px 0 0;padding:20px 18px 24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+</style>
+<script>
+(function(){
+ var MAP={INDEX:['WEDM ERP','index'],COMERCIAL:['Comercial','comercial'],DISENO:['Diseño','diseno'],COMPRAS:['Compras','compras'],REMISIONES:['Remisiones','remisiones'],PLANEACION:['Planeación','planeacion'],CALIDAD:['Calidad','calidad'],DESARROLLADOR:['Desarrollador','desarrollador'],MANTENIMIENTO:['Mantenimiento','mantenimiento']};
+ var f=(location.pathname.split('/').pop()||'index.html').replace(/\.html?$/i,'').toUpperCase(); var cfg=MAP[f]||MAP.INDEX, isIndex=!MAP[f]||f==='INDEX';
+ var dp=null, ua=navigator.userAgent||'', ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1), android=/android/i.test(ua);
+ var std=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+ function boton(){ if(std) return null; var b=document.getElementById('erp-inst');
+  if(!b){ b=document.createElement('button'); b.id='erp-inst'; b.type='button'; b.title='Instalar '+cfg[0]+' en el celular'; b.setAttribute('aria-label',b.title); b.onclick=instalar; }
+  var h=document.getElementById('home-btn'), rf=document.getElementById('refresh-btn'), lo=!!document.getElementById('login-overlay'), ancla=(!lo&&h&&h.offsetParent)?h:null, antes=(!lo&&!ancla&&rf&&rf.offsetParent)?rf:null;
+  if(!isIndex&&ancla){ if(b.previousElementSibling!==ancla){ b.className=''; b.textContent='📲'; ancla.insertAdjacentElement('afterend',b); } }
+  else if(!isIndex&&antes){ if(b.nextElementSibling!==antes){ b.className=''; b.textContent='📲'; antes.insertAdjacentElement('beforebegin',b); } }
+  else if(b.className!=='fl'||b.parentNode!==document.body){ b.className='fl'; b.innerHTML='📲 Instalar '+(isIndex?'la app':cfg[0]); document.body.appendChild(b); }
+  return b; }
+ function ver(){ if(std||!(ios||android||dp)) return; var b=boton(); if(b) b.style.display='flex'; }
+ function init(){ ver(); setInterval(ver,1500); }
+ window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); dp=e; ver(); });
+ window.addEventListener('appinstalled',function(){ dp=null; var b=document.getElementById('erp-inst'); if(b) b.style.display='none'; });
+ function ov(h){ var o=document.getElementById('erp-ov'); if(!o){ o=document.createElement('div'); o.id='erp-ov'; o.onclick=function(e){ if(e.target===o) o.classList.remove('open'); }; document.body.appendChild(o); } o.innerHTML='<div>'+h+'<button type="button" style="width:100%;margin-top:14px;height:46px;border:0;border-radius:12px;background:#0f2443;color:#fff;font-size:15px;font-weight:800;cursor:pointer" onclick="document.getElementById(\'erp-ov\').classList.remove(\'open\')">Entendido</button></div>'; o.classList.add('open'); }
+ async function instalar(){
+  if(dp){ try{ dp.prompt(); var r=await dp.userChoice; if(r&&r.outcome==='accepted'){ var b=document.getElementById('erp-inst'); if(b) b.style.display='none'; } }catch(e){} dp=null; return; }
+  var sf=ios&&!/crios|fxios|edgios/i.test(ua);
+  var desk=!ios&&!android;
+  var pasos=desk?'<li>Mira a la derecha de la barra de direcciones: si ves un ícono de <b>monitor con flecha</b> ⬇, tócalo y elige <b>Instalar</b>.</li><li>Si no lo ves, abre el menú <b>⋮</b> de Chrome o <b>…</b> de Edge → <b>Transmitir, guardar y compartir</b> → <b>Instalar página como aplicación…</b></li><li>Si en vez de instalar dice <b>Abrir</b>, es porque Chrome cree que ya la tienes: entra a <b>chrome://apps</b>, clic derecho en la app anterior → <b>Desinstalar</b>, cierra Chrome y vuelve a intentar.</li>':ios?'<li>Toca el botón <b>Compartir</b> ⬆️ '+(sf?'(barra de abajo de Safari)':'(arriba o abajo del navegador)')+'.</li><li>Desliza y elige <b>Añadir a pantalla de inicio</b> ➕.</li><li>Toca <b>Añadir</b>.</li>'
+   :'<li>Toca el menú <b>⋮</b> del navegador (arriba a la derecha).</li><li>Elige <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>).</li><li>Confirma con <b>Instalar</b>.</li>';
+  ov('<div style="text-align:center"><div style="font-size:34px">📲</div><div style="font-size:17px;font-weight:800">Instalar «'+cfg[0]+'»'+(desk?' en este computador':' en tu celular')+'</div><div style="font-size:12.5px;color:#64748b;margin-top:2px">Se abre como una app, a pantalla completa'+(isIndex?'. Desde el inicio entras a todos los módulos. Si solo necesitas uno, ábrelo y toca 📲 allí.':'. Solo este módulo.')+'</div></div><ol style="margin:12px 4px 0 22px;font-size:14px;line-height:1.7">'+pasos+'</ol>'); }
+ window.erpInstalar=instalar;
+ function ocultaNav(){ var n=document.getElementById('nav-inst'); if(n&&std) n.style.display='none'; }
+ window.addEventListener('appinstalled',function(){ var n=document.getElementById('nav-inst'); if(n) n.style.display='none'; });
+ if(document.readyState!=='loading'){ init(); ocultaNav(); } else document.addEventListener('DOMContentLoaded',function(){ init(); ocultaNav(); });
+ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw-erp.js',{updateViaCache:'none'}).then(function(g){ try{ g.update(); }catch(e){} }).catch(function(){}); }); }
+})();
+</script>
 <script>
 const SB_URL='https://rarjcuoapvrfqrzuhsbi.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcmpjdW9hcHZyZnFyenVoc2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3OTM4MDcsImV4cCI6MjEwNTM2OTgwN30.6ftoBVT9gPOOcuqUf8UY3aiIoyB3ZJFhpp_1Hyfu_js';
@@ -204,7 +259,12 @@ let V='inicio';
 /*WEDM-MENU*/
 function mnCerrar(){const o=$('mn-ov');if(o)o.classList.remove('open');const b=$('bn-menu');if(b)b.classList.remove('on');}
 function mnToggle(){const o=$('mn-ov');if(!S)return;if(o.classList.contains('open'))return mnCerrar();
-  o.innerHTML='<div class="mn-grid">'+VISTAS.map(([k,n])=>{const i=n.indexOf(' ');return `<div class="mn-card ${V===k?'on':''}" onclick="go('${k}')"><div class="mn-circle">${n.slice(0,i)}</div><div class="mn-t">${esc(n.slice(i+1))}</div></div>`;}).join('')+'</div>';
+  o.innerHTML='<div class="mn-grid">'+VISTAS.map(([k,n])=>{const i=n.indexOf(' ');return `<div class="mn-card ${V===k?'on':''}" onclick="go('${k}')"><div class="mn-circle">${n.slice(0,i)}</div><div class="mn-t">${esc(n.slice(i+1))}</div></div>`;}).join('')+'</div><div class="mn-sec">Aplicación</div><div class="mn-grid">'+
+    `<a class="mn-card" href="index.html"><div class="mn-circle">🏠</div><div class="mn-t">Ir al inicio</div></a>`+
+    `<div class="mn-card" onclick="mnCerrar();syncCero()"><div class="mn-circle">🔄</div><div class="mn-t">Sincronizar desde cero</div></div>`+
+    `<div class="mn-card" id="mn-inst" onclick="mnCerrar();erpInstalar()"><div class="mn-circle">📲</div><div class="mn-t">Instalar esta app</div></div>`+
+    `<div class="mn-card" onclick="mnCerrar();logout()"><div class="mn-circle">🚪</div><div class="mn-t">Cerrar sesión</div></div></div>`;
+  if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true){const x=$('mn-inst');if(x)x.remove();}
   o.classList.add('open');$('bn-menu').classList.add('on');}
 function go(v){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
 window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){V=h;render();}}});
@@ -463,6 +523,41 @@ function arrancar(){$('login').style.display='none';const h=location.hash.slice(
     if(v!==false&&permitido(S.rol,S.roles)){arrancar();return;}
     S=null;sb.tok=null;try{localStorage.removeItem(SESS_KEY);}catch(e){}}
   $('login').style.display='flex';cargarUsers();})();
+</script>
+<script id="updchk">
+/* Aviso de versión nueva + recarga limpia (evita quedarse con archivos viejos en caché) */
+(function(){
+  function cur(){ var m=document.querySelector('meta[name="app-build"]'); return m?m.content:''; }
+  window.wedmRecargaLimpia=async function(){
+    try{ if(navigator.serviceWorker){ var rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(function(r){ return r.unregister(); })); } }catch(e){}
+    try{ if(window.caches){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){ return caches.delete(k); })); } }catch(e){}
+    var u=new URL(location.href); u.searchParams.set('v',String(Date.now())); location.replace(u.toString());
+  };
+  var shown=false, last=0;
+  function mostrar(){
+    if(shown||!document.body) return; shown=true;
+    var b=document.createElement('div'); b.id='upd-bar';
+    b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483100;background:#1d4ed8;color:#fff;padding:9px 14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font:600 13px system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.3)';
+    b.innerHTML='<span>🔄 Hay una versión nueva de la aplicación.</span><button id="upd-go" style="background:#fff;color:#1d4ed8;border:0;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer">Actualizar ahora</button><button id="upd-x" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:8px;padding:6px 10px;cursor:pointer">Después</button>';
+    document.body.appendChild(b);
+    document.getElementById('upd-go').onclick=function(){ this.disabled=true; this.textContent='Actualizando…'; wedmRecargaLimpia(); };
+    document.getElementById('upd-x').onclick=function(){ b.remove(); shown=false; last=Date.now()+10*60*1000; };
+  }
+  async function chk(){
+    if(shown||!/^https?:$/.test(location.protocol)||navigator.onLine===false||Date.now()<last) return;
+    last=Date.now()+60*1000;
+    try{
+      var r=await fetch(location.pathname+'?_chk='+Date.now(),{cache:'no-store',credentials:'omit'});
+      if(!r.ok||!r.body) return;
+      var rd=r.body.getReader(), dec=new TextDecoder(), t='', m=null;
+      while(!m){ var x=await rd.read(); if(x.done) break; t+=dec.decode(x.value,{stream:true}); m=t.match(/<meta name="app-build" content="([^"]*)"/); if(t.length>60000) break; }
+      try{ rd.cancel(); }catch(e){}
+      if(m&&cur()&&m[1]!==cur()) mostrar();
+    }catch(e){}
+  }
+  window.addEventListener('load',function(){ setTimeout(chk,6000); setInterval(chk,4*60*1000); });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) chk(); });
+})();
 </script>
 </body>
 </html>
