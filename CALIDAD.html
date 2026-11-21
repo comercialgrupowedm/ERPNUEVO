@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261121-110946">
+<meta name="app-build" content="20261121-111522">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2098,7 +2098,9 @@ function despacho(){
   }).sort((a,b)=>String(a.calidad_fecha||'').localeCompare(String(b.calidad_fecha||'')));
   const banner=moduleBanner('📦','Pendiente Despacho','Aprobados por calidad que aún no salen · las aprobaciones más antiguas primero',
     chipsH([['todas','Todos',cnt.todas],['sinrem','Sin remisión',cnt.sinrem],['conrem','Remisión en trámite',cnt.conrem],['sincert','Sin certificado',cnt.sincert],...(cnt.hered?[['hered','Heredadas por confirmar',cnt.hered]]:[])],_desF.chip,'desChip'));
-  const nota=`<div class="callout">ℹ️ Calidad <b>solicita</b> la remisión por OP (📦 Solicitar remisión): eliges los ítems y cantidades, y administración solo la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
+  const nota=_esLogi()?`<div class="callout">ℹ️ Logística <b>pide</b> la remisión por OP (📦 Solicitar remisión o <b>Pedir remisión</b> en cada ítem): eliges los ítems y cantidades, y administración solo la genera (en Remisiones). Aquí ves lo aprobado por calidad que aún no sale. Los ítems con <b>aprobación heredada</b> los confirma Calidad antes.</div>`
+    :_sinRem()?`<div class="callout">ℹ️ Los ítems aprobados pasan a <b>logística</b> (Compras → Despachos), que pide la remisión; administración la genera. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`
+    :`<div class="callout">ℹ️ Calidad <b>solicita</b> la remisión por OP (📦 Solicitar remisión): eliges los ítems y cantidades, y administración solo la genera (en Remisiones). Cuando esté <b>generada</b>, la despachas desde la pestaña <b>📄 Remisiones</b> de este módulo. Aquí también emites el <b>certificado de conformidad</b> o <b>devuelves la aprobación</b> si hace falta.</div>`;
   const fb=_sinRem()?'':`<div style="margin:0 0 10px"><button class="btn btn-primary" onclick="solicitarRemisionOP()">📦 Solicitar remisión</button></div>`+filtroBusqueda('des-q',_desF.q,"desSet('q',this.value)",data.length+'/'+base.length);
   if(!data.length){ setContent(banner+nota+fb+empty('Sin ítems pendientes de despacho','📦')); return; }
   const desA=o=>{ const j=idq(o); const c=certVigente(o.id);
@@ -2158,15 +2160,29 @@ async function remRowsOP(op){
     return {id:o.id,item:o.item_num,descripcion:o.descripcion,disp,total:o.unidades,gar:o.es_garantia,bloq,parcial:sale>0};
   });
 }
-function solicitarRemisionOP(op){
+async function solicitarRemisionOP(op){
   if(_sinRem()){ toast('Las remisiones las solicita logística (Compras → Despachos)','error'); return; }
   if(!puedeDesp()&&!soloCal()) return;
+  // Logística: elige los ítems y cantidades aquí mismo (sin salir de Calidad); administración solo la genera
+  if(_esLogi()){
+    if(!op){ remOpPreguntar(); return; }
+    showBusy(); let rows=[]; try{ rows=await remRowsOP(Number(op)); }catch(e){} finally{ hideBusy(); }
+    if(!rows.length){ toast('No se encontró la OP-'+Number(op),'warn'); return; }
+    remSelPedirModal(Number(op),rows,{rpc:rpcC});
+    return;
+  }
   // Abre el formulario libre de Remisiones (más completo): pasa la sesión y la OP
   try{ localStorage.setItem('_wedm_rem_s',JSON.stringify(_SESSION)); }catch(e){}
   try{ wedmBack('CALIDAD.html'+(location.hash||''),'Calidad','REMISIONES.html'); }catch(e){}
   location.href='REMISIONES.html#libre'+(op?'-'+Number(op):'');
 }
 async function pedirRemision(op){ return solicitarRemisionOP(op); }
+function remOpPreguntar(){
+  openModal('📦 Solicitar remisión',`<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Escribe el número de la OP. Después eliges los ítems y las cantidades.</div><div class="form-grid"><div class="field"><label>N° de OP</label><input id="rq-op" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter')remOpPreguntarOk()"></div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="remOpPreguntarOk()">Continuar</button>`);
+  setTimeout(()=>{ const i=document.getElementById('rq-op'); if(i) i.focus(); },50);
+}
+function remOpPreguntarOk(){ const v=Number(((document.getElementById('rq-op')||{}).value||'').replace(/\D/g,'')); if(!v){ toast('Escribe el número de la OP','error'); return; } closeModal(); solicitarRemisionOP(v); }
 
 // ── PESTAÑA: SOLICITUDES EXTERNAS (formato COMPRAS-FO-002) ─────────────
 // Decisión: en el sistema nuevo un servicio externo que se le pide a Compras es una línea de prod_materiales con tipo
