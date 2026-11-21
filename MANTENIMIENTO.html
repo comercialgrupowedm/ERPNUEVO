@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261121-104942">
+<meta name="app-build" content="20261121-105958">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -60,7 +60,7 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 .li{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
 .li:first-of-type{border-top:0}
 .li small{display:block;color:var(--muted);font-size:11.5px}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:90;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:90;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 #login{position:fixed;inset:0;background:var(--navy);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
 .lb{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:420px;text-align:center}
@@ -106,7 +106,21 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;display:none;align-items:center;justify-content:center}
 #lb.on{display:flex}#lb img{max-width:96vw;max-height:92vh}
 @media(max-width:560px){.dl{grid-template-columns:1fr}.rep{grid-template-columns:1fr 1fr}}
-@media print{#top,#tabs,.rh .btn,#toast,.mf,.mh button,.th .x,.dz{display:none!important}body{background:#fff}#mod{position:static;background:none;display:block}.box{max-width:none;height:auto}.mb{overflow:visible}#main{display:none}}
+@media print{#bnav,#mn-ov,#top,#tabs,.rh .btn,#toast,.mf,.mh button,.th .x,.dz{display:none!important}body{background:#fff}#mod{position:static;background:none;display:block}.box{max-width:none;height:auto}.mb{overflow:visible}#main{display:none}}
+#tabs{display:none!important}
+#bnav{position:fixed;left:0;right:0;bottom:0;height:58px;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;align-items:center;z-index:15;padding-bottom:env(safe-area-inset-bottom)}
+#bn-menu{display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:none;font-weight:800;font-size:11px;letter-spacing:.4px;color:var(--navy);padding:4px 26px}
+#bn-menu .ic{font-size:18px;line-height:1}
+#bn-menu.on{color:var(--accent)}
+#mn-ov{position:fixed;left:0;right:0;top:52px;bottom:58px;background:var(--bg);overflow:auto;display:none;z-index:14;-webkit-overflow-scrolling:touch}
+#mn-ov.open{display:block}
+.mn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;padding:10px;max-width:1280px;margin:0 auto}
+.mn-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:10px 4px 9px;-webkit-tap-highlight-color:transparent}
+.mn-card:active{transform:scale(.97)}
+.mn-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.mn-circle{width:50px;height:50px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:25px}
+.mn-t{padding:6px 6px 0;font-weight:800;font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.2px}
+#top .vt{font-size:12px;font-weight:600;opacity:.8;margin-left:8px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -119,9 +133,11 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
     <div id="ls-dev" style="display:none"><h2>⚙️ Desarrollador</h2><p>Usuario y clave</p><input id="dvu" placeholder="Usuario" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px"><input id="dvp" type="password" placeholder="Clave" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"><div id="dverr" style="color:var(--danger);min-height:18px;font-size:13px;margin:8px 0"></div><button class="btn p" onclick="doLoginDev()" style="width:100%;padding:10px">Entrar</button><button class="back" onclick="devBack()">‹ Volver</button></div>
   </div>
 </div>
-<div id="top"><h1>🛠️ Mantenimiento · Grupo WEDM</h1><button onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
+<div id="top"><h1>🛠️ Mantenimiento<span class="vt" id="vt"></span></h1><button onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
 <div id="tabs"></div>
 <div id="main"></div>
+<div id="bnav"><button id="bn-menu" onclick="mnToggle()"><span class="ic">▾</span><span>MENÚ</span></button></div>
+<div id="mn-ov"></div>
 <div id="mod"><div class="box"><div class="mh"><h3 id="mt"></h3><button class="btn" onclick="cerrar()">✕</button></div><div class="mb" id="mbody"></div><div class="mf" id="mfoot"></div></div></div>
 <div id="lb" onclick="this.classList.remove('on')"><img id="lbi" alt=""></div>
 <div id="toast"></div>
@@ -185,9 +201,15 @@ async function cargar(manual){if(_loading)return;_loading=true;
 /* ── navegación ── */
 const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos']];
 let V='inicio';
-function go(v){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;if(location.hash.slice(1)!==v)location.hash=v;render();}
+/*WEDM-MENU*/
+function mnCerrar(){const o=$('mn-ov');if(o)o.classList.remove('open');const b=$('bn-menu');if(b)b.classList.remove('on');}
+function mnToggle(){const o=$('mn-ov');if(!S)return;if(o.classList.contains('open'))return mnCerrar();
+  o.innerHTML='<div class="mn-grid">'+VISTAS.map(([k,n])=>{const i=n.indexOf(' ');return `<div class="mn-card ${V===k?'on':''}" onclick="go('${k}')"><div class="mn-circle">${n.slice(0,i)}</div><div class="mn-t">${esc(n.slice(i+1))}</div></div>`;}).join('')+'</div>';
+  o.classList.add('open');$('bn-menu').classList.add('on');}
+function go(v){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
 window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){V=h;render();}}});
 function render(){if(!S)return;
+  {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=n.slice(n.indexOf(' ')+1);}
   $('tabs').innerHTML=VISTAS.map(([k,n])=>`<button class="tb ${V===k?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
   const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh}[V];
   try{$('main').innerHTML=f();}catch(e){$('main').innerHTML='<div class="empty">⚠️ '+esc(e.message)+'</div>';console.error(e);}
