@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261121-111429">
+<meta name="app-build" content="20261121-112456">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -118,6 +118,9 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 .mn-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:10px 4px 9px;-webkit-tap-highlight-color:transparent}
 .mn-card:active{transform:scale(.97)}
 .mn-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.mn-card.pr{opacity:.55}
+.mn-b{position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:var(--muted)}
+.mn-b.pr{background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;font-size:10px}
 .mn-circle{width:50px;height:50px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:25px}
 .mn-t{padding:6px 6px 0;font-weight:800;font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.2px}
 .mn-sec{padding:12px 12px 0;max-width:1280px;margin:0 auto;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
@@ -257,19 +260,58 @@ async function cargar(manual){if(_loading)return;_loading=true;
 const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos']];
 let V='inicio';
 /*WEDM-MENU*/
-function mnCerrar(){const o=$('mn-ov');if(o)o.classList.remove('open');const b=$('bn-menu');if(b)b.classList.remove('on');}
-function mnToggle(){const o=$('mn-ov');if(!S)return;if(o.classList.contains('open'))return mnCerrar();
-  o.innerHTML='<div class="mn-grid">'+VISTAS.map(([k,n])=>{const i=n.indexOf(' ');return `<div class="mn-card ${V===k?'on':''}" onclick="go('${k}')"><div class="mn-circle">${n.slice(0,i)}</div><div class="mn-t">${esc(n.slice(i+1))}</div></div>`;}).join('')+'</div><div class="mn-sec">Aplicación</div><div class="mn-grid">'+
+/* Árbol del menú (igual que en AppSheet): Mantenimiento ▸ …, Inventario ▸ … (con submenús), Calendario, Repuestos.
+   v = pantalla, f = filtro de tipo en Equipos, pronto = todavía no construido. */
+const MENU=[
+ {ic:'🏠',t:'Inicio',v:'inicio'},
+ {ic:'🔧',t:'Mantenimiento',hijos:[
+   {ic:'🔧',t:'Mantenimientos',v:'mant'},
+   {ic:'👷',t:'Personal de mant.',v:'personal'},
+   {ic:'🏍️',t:'Mant. vehículos',v:'veh'}]},
+ {ic:'📦',t:'Inventario',hijos:[
+   {ic:'⚙️',t:'Inv. máquinas',v:'equipos',f:'MANT. MAQUINAS'},
+   {ic:'💻',t:'Inv. equipos electrónicos',v:'equipos',f:'EQUIPOS ELECTRONICOS'},
+   {ic:'🏍️',t:'Inv. vehículos',v:'veh'},
+   {ic:'🔩',t:'Inv. herramientas de corte',hijos:[
+     {ic:'🕳️',t:'Brocas y escariadores',pronto:1},{ic:'🔶',t:'Insertos',pronto:1},{ic:'🧽',t:'Lijas',pronto:1},{ic:'🔧',t:'Machuelos',pronto:1}]},
+   {ic:'❄️',t:'Inv. aire acond. y ventiladores',v:'equipos',f:'AC O VENTILADORES'},
+   {ic:'🛠️',t:'Inv. herramientas manuales',v:'equipos',f:'HERRAMIENTAS MANUALES'},
+   {ic:'🔌',t:'Inv. herramientas eléctricas',v:'equipos',f:'HERRAMIENTAS ELECTICAS MANUALES'},
+   {ic:'📏',t:'Herramientas control calidad',v:'equipos',f:'EQUIPOS DE METROLOGIA'},
+   {ic:'🧰',t:'Inventario de equipos',v:'equipos',f:'MANT. EQUIPOS'},
+   {ic:'🧱',t:'Inv. materiales',pronto:1},
+   {ic:'🔋',t:'Herramientas de carga',pronto:1},
+   {ic:'📋',t:'Todos los equipos y activos',v:'equipos'}]},
+ {ic:'📅',t:'Calendario / programa',pronto:1},
+ {ic:'🧩',t:'Repuestos',pronto:1}];
+let MNP=[],VLBL='';
+const mnNodo=()=>{let n={hijos:MENU};MNP.forEach(i=>{n=n.hijos[i];});return n;};
+const mnRuta=()=>{let n={hijos:MENU};const r=[];MNP.forEach(i=>{n=n.hijos[i];r.push(n.t);});return r;};
+function mnCerrar(){const o=$('mn-ov');if(o)o.classList.remove('open');const b=$('bn-menu');if(b)b.classList.remove('on');MNP=[];}
+function mnPaint(){const o=$('mn-ov'),n=mnNodo();
+  const head=MNP.length?`<div class="mn-sec" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn s" onclick="mnAtras()">‹ Atrás</button><span>${esc(mnRuta().join(' › '))}</span></div>`:'';
+  const cards=n.hijos.map((x,i)=>{const on=!x.hijos&&!x.pronto&&x.v===V&&(x.v!=='equipos'||(x.f||'')===(FILT.eq.te||''));
+    return `<div class="mn-card ${on?'on':''} ${x.pronto?'pr':''}" onclick="mnClick(${i})"><div class="mn-circle">${x.ic}</div><div class="mn-t">${esc(x.t)}</div>${x.hijos?'<span class="mn-b">▸</span>':''}${x.pronto?'<span class="mn-b pr">Pronto</span>':''}</div>`;}).join('');
+  const app=MNP.length?'':'<div class="mn-sec">Aplicación</div><div class="mn-grid">'+
     `<a class="mn-card" href="index.html"><div class="mn-circle">🏠</div><div class="mn-t">Ir al inicio</div></a>`+
     `<div class="mn-card" onclick="mnCerrar();syncCero()"><div class="mn-circle">🔄</div><div class="mn-t">Sincronizar desde cero</div></div>`+
     `<div class="mn-card" id="mn-inst" onclick="mnCerrar();erpInstalar()"><div class="mn-circle">📲</div><div class="mn-t">Instalar esta app</div></div>`+
     `<div class="mn-card" onclick="mnCerrar();logout()"><div class="mn-circle">🚪</div><div class="mn-t">Cerrar sesión</div></div></div>`;
-  if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true){const x=$('mn-inst');if(x)x.remove();}
-  o.classList.add('open');$('bn-menu').classList.add('on');}
-function go(v){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
-window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){V=h;render();}}});
+  o.innerHTML=head+'<div class="mn-grid">'+cards+'</div>'+app;o.scrollTop=0;
+  if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true){const x=$('mn-inst');if(x)x.remove();}}
+function mnToggle(){const o=$('mn-ov');if(!S)return;if(o.classList.contains('open'))return mnCerrar();
+  MNP=[];mnPaint();o.classList.add('open');$('bn-menu').classList.add('on');}
+function mnAtras(){MNP.pop();mnPaint();}
+function mnClick(i){const x=mnNodo().hijos[i];if(!x)return;
+  if(x.hijos){MNP.push(i);mnPaint();return;}
+  if(x.pronto){toast('🚧 '+x.t+': todavía no está construido');return;}
+  const lbl=[...mnRuta(),x.t].join(' › ');
+  if(x.v==='equipos'){FILT.eq=x.f?{te:x.f}:{};QS.eq='';}
+  go(x.v,lbl);}
+function go(v,lbl){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;VLBL=lbl||'';mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
+window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){V=h;VLBL='';render();}}});
 function render(){if(!S)return;
-  {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=n.slice(n.indexOf(' ')+1);}
+  {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=VLBL||n.slice(n.indexOf(' ')+1);}
   $('tabs').innerHTML=VISTAS.map(([k,n])=>`<button class="tb ${V===k?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
   const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh}[V];
   try{$('main').innerHTML=f();}catch(e){$('main').innerHTML='<div class="empty">⚠️ '+esc(e.message)+'</div>';console.error(e);}

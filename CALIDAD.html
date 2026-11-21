@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261121-111522">
+<meta name="app-build" content="20261121-112735">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2732,16 +2732,26 @@ function detailRem(id){
     <div class="cm-h" style="margin-top:14px">Líneas (${ls.length})</div>
     ${ls.length?ls.map(l=>{ const o=l.id_prod?opDe(l.id_prod):null; return `<div class="cm-line"><div class="cm-t">${l.item!=null?'Ítem '+esc(String(l.item))+' · ':''}${esc(String(l.descripcion||'').slice(0,90))}${o?`<small>${bCal(o)}</small>`:''}</div><b style="font-family:var(--mono)">${esc(String(l.cantidad??''))}</b></div>`; }).join(''):mutedP('Aún sin líneas seleccionadas.')}
     ${m.observaciones?dr('Observaciones',esc(m.observaciones)):''}${m.oc_cliente?dr('OC cliente',esc(m.oc_cliente)):''}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')&&!_sinRem()?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${puedeCancelarPed(m)?`<button class="btn btn-ghost" style="color:#b91c1c;border-color:#fca5a5" onclick="remCancelarPedido('${jsq(m.id)}')">❌ Cancelar mi pedido</button>`:''}${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')&&!_sinRem()?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
 }
 
 function remAcciones(m){
   const b=[]; const j=jsq(m.id);
   if((m.lineas||[]).length&&REM_TRAMITE.includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docDespacho('${j}')">🖨️ Formato despacho</button>`);
   if(m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docRemision('${j}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list':'📄 PDF'}</button>`);
+  if(puedeCancelarPed(m)) b.push(`<button class="btn btn-ghost btn-sm" style="color:#b91c1c;border-color:#fca5a5" onclick="event.stopPropagation();remCancelarPedido('${j}')">❌ Cancelar mi pedido</button>`);
   if(m.estado==='GENERADA'&&puede('calidad')&&!_sinRem()) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
   else if(m.estado==='GENERADA') b.push(`<span style="font-size:11px;color:var(--muted);align-self:center">Solo el rol calidad puede despacharla</span>`);
   return b.length?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">${b.join('')}</div>`:'';
+}
+// Logística cancela su propio pedido mientras administración no lo haya generado (la base lo vuelve a validar)
+const puedeCancelarPed=m=>!!_SESSION&&_esLogi()&&['PEDIDA','SELECCIONADA'].includes(m.estado)&&m.pedida_por===_SESSION.nombre;
+async function remCancelarPedido(id){
+  const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
+  if(!puedeCancelarPed(m)){ toast('Solo quien pidió la remisión puede cancelarla, y antes de que administración la genere','error'); return; }
+  if(!confirm(`¿Cancelar tu pedido de remisión de la OP-${m.op}?\n\nLos ítems quedan otra vez disponibles para pedir.`)) return;
+  const r=await rpcC('remision_cancelar_pedido',{p_id:id},'❌ Pedido cancelado');
+  if(r){ closeModal(); refreshCurrentView(); }
 }
 async function remDespachar(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
