@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261024-081851">
+<meta name="app-build" content="20261121-100019">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -546,6 +546,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <link rel="manifest" href="app/remisiones.webmanifest">
 <link rel="apple-touch-icon" href="app/remisiones-180.png">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Remisiones"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style id="logi-css">html.logi #sidebar .nav-item[data-m]:not([data-m="dashboard"]):not([data-m="remisiones"]){display:none!important}</style>
 </head>
 <body>
 <div id="prog-bar-top"><div id="prog-bar-top-fill"></div></div>
@@ -738,6 +739,10 @@ const _esAdmin  = () => rolActual()==='admin' || rolActual()==='desarrollador';
 const _misRoles = () => (_SESSION&&_SESSION.roles&&_SESSION.roles.length)?_SESSION.roles:[_SESSION?.rol].filter(Boolean);   // rol principal + roles adicionales
 const puede = (...roles) => _esAdmin() || _misRoles().some(x=>roles.includes(x));
 const _normNom = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');   // nombres: sin tildes, puntos ni espacios
+/*WEDM-LOGI*/ // Perfil «logística» (rol Compras): solo Inicio y Remisiones (incluye el formulario libre). Entra desde Compras → Despachos / Calidad.
+const LOGI_USUARIOS=['dramirez'];   // nombres (sin tildes, puntos ni espacios) que usan este perfil; para agregar a alguien se añade aquí
+const _esLogi=()=>!!_SESSION&&!puede('administracion')&&_misRoles().includes('compras')&&LOGI_USUARIOS.includes(_normNom(_SESSION.nombre));
+const LOGI_VISTAS=['remisiones','dashboard'];
 const _norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
 // El comercial guarda en la OP el NOMBRE del usuario con rol Diseño; el asesor se acepta como alias.
 const _misNombres = () => [_SESSION?.nombre,_SESSION?.asesor].filter(Boolean).map(_normNom);
@@ -776,6 +781,7 @@ async function loginCerrar(){
 }
 function endSession(msg){
   _SESSION=null; sb.tok=null; try{ localStorage.removeItem(SESS_KEY); }catch(e){}
+  document.documentElement.classList.remove('logi');
   Object.keys(DB).forEach(k=>delete DB[k]); _SYNC.init=false;
   closeSidebar(); closeModal(); _navFromNav=true; closeDetail(); _navFromNav=false;
   const c=document.getElementById('content'); if(c) c.innerHTML='';
@@ -1987,6 +1993,7 @@ async function papBorrar(id){
 }
 function refreshCurrentView(){ const mods={papelera,dashboard,remisiones,porpedir,marquillas,mqlista,cotizaciones,elementos}; if(MOD!=='cotizaciones'&&MOD!=='elementos') embedSalir(); if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
+  if(_esLogi()&&!LOGI_VISTAS.includes(m)) m='remisiones';
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
   document.querySelectorAll('.bn-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -2021,6 +2028,7 @@ async function iniciarApp(){
   try{
     let ok=true; try{ ok=(await sb.rpc('sesion_valida'))!==false; }catch(e){}
     if(!ok){ endSession('Sesión vencida — ingresa de nuevo'); return; }
+    if(_esLogi()) document.documentElement.classList.add('logi');
     setSplash(15,'Cargando remisiones…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   avisarNuevas(); updateBadges(); hideSplash();
@@ -2049,7 +2057,7 @@ setInterval(async()=>{
 // ═══ FORMULARIO LIBRE (sin pasos obligatorios) — se elige entre este y el flujo por pasos ═══
 const REM_EST_LIBRE={BORRADOR:['Borrador','gris'],ENVIADA:['Enviada','naranja'],RECIBIDA:['Recibida','azul'],FACTURADA:['Facturada','verde'],ANULADA:['Anulada','rojo']};
 Object.assign(REM_EST,REM_EST_LIBRE);
-const puedeLibre=()=>puede('comercial','administracion','calidad');
+const puedeLibre=()=>puede('comercial','administracion','calidad')||_esLogi();
 let _RL=null;   // estado del formulario libre abierto
 function nuevaRemModal(){
   openModal('➕ Nueva remisión',`<div style="display:flex;flex-direction:column;gap:10px">

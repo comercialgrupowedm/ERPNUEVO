@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261024-081851">
+<meta name="app-build" content="20261121-100038">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -606,6 +606,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="almacen" onclick="nav('almacen')"><span class="nav-icon">🏪</span>Almacén<span class="nav-badge" id="b-alm" style="display:none">0</span></div>
     <div class="nav-item" data-m="inventario" onclick="nav('inventario')"><span class="nav-icon">📦</span>Inventario de materiales</div>
     <div class="nav-item" data-m="sexterno" onclick="nav('sexterno')"><span class="nav-icon">🚚</span>Servicio externo</div>
+    <div class="nav-item" data-m="despachos" id="nav-desp" style="display:none" onclick="irDespachos()"><span class="nav-icon">🚛</span>Despachos</div>
     <div class="nav-item" data-m="proveedores" onclick="nav('proveedores')"><span class="nav-icon">🏭</span>Proveedores</div>
     <div class="nav-item" data-m="sugeridos" onclick="nav('sugeridos')"><span class="nav-icon">💡</span>Materiales sugeridos</div>
     <div class="nav-item" data-m="resumen" onclick="nav('resumen')"><span class="nav-icon">📑</span>Resumen</div>
@@ -2022,6 +2023,7 @@ async function iniciarApp(){
     setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   const nsub=document.getElementById('nav-subir'); if(nsub) nsub.style.display=puedeImportar()?'':'none';
+  const nds=document.getElementById('nav-desp'); if(nds) nds.style.display=puedeDespachos()?'':'none';
   avisarNuevas(); updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
   nav(TITLES[h]?h:'dashboard');
@@ -2046,6 +2048,16 @@ setInterval(async()=>{
 
 // ═══ SUBIR DATOS DEL SISTEMA ANTERIOR (proveedores, órdenes y compras) ═══
 const puedeImportar=()=>!!_SESSION&&['admin','desarrollador'].includes(_SESSION.rol);
+/*WEDM-LOGI*/ // «Despachos»: pendiente de despacho, rótulos y remisiones (se usan las pantallas de Calidad / Remisiones con el perfil logística).
+const DESP_USUARIOS=['dramirez'];   // nombres (sin tildes, puntos ni espacios) con perfil logística; para agregar a alguien se añade aquí y en CALIDAD y REMISIONES
+const puedeDespachos=()=>!!_SESSION&&(_esAdmin()||DESP_USUARIOS.includes(_normNom(_SESSION.nombre)));
+function irDespachos(){
+  if(!puedeDespachos()){ toast('Tu usuario no tiene el módulo de despachos','error'); return; }
+  try{ closeSidebar(); }catch(e){}
+  // se comparte la sesión con Calidad (mismo equipo): Calidad muestra solo Despacho, Remisiones y rótulos
+  try{ localStorage.setItem('_wedm_cal_s',JSON.stringify(_SESSION)); }catch(e){}
+  location.href='CALIDAD.html#despacho';
+}
 function csvParse(text){
   const rows=[]; let row=[],cur='',q=false; const s=String(text||'').replace(/^\uFEFF/,'');
   for(let i=0;i<s.length;i++){ const c=s[i];

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261120-114529">
+<meta name="app-build" content="20261121-100000">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -621,6 +621,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
 <link rel="manifest" href="app/calidad.webmanifest">
 <link rel="apple-touch-icon" href="app/calidad-180.png">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Calidad"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style id="logi-css">html.logi #sidebar .nav-item[data-m]:not([data-m="despacho"]):not([data-m="remisiones"]):not([data-m="remamcor"]){display:none!important}</style>
 </head>
 <body>
 <div id="prog-bar-top"><div id="prog-bar-top-fill"></div></div>
@@ -864,6 +865,7 @@ async function loginCerrar(){
 }
 function endSession(msg){
   _SESSION=null; sb.tok=null; try{ localStorage.removeItem(SESS_KEY); }catch(e){}
+  document.documentElement.classList.remove('logi');
   Object.keys(DB).forEach(k=>delete DB[k]); _SYNC.init=false;
   closeSidebar(); closeModal(); _navFromNav=true; closeDetail(); _navFromNav=false;
   const c=document.getElementById('content'); if(c) c.innerHTML='';
@@ -1172,6 +1174,11 @@ const TITLES={papelera:'Papelera',dashboard:'Inicio',pendiente:'Pendiente Calida
 const PG_BASE=(window.innerWidth<700?20:25);
 const puedeCal=()=>puede('calidad','administracion');
 function soloCal(){ if(puedeCal()) return true; toast('Tu rol no puede registrar en Calidad','error'); return false; }
+/*WEDM-LOGI*/ // Perfil «logística» (rol Compras): solo Despacho, Remisiones y rótulos. Entra desde el botón «Despachos» de Compras con su sesión.
+const LOGI_USUARIOS=['dramirez'];   // nombres (sin tildes, puntos ni espacios) que usan este perfil; para agregar a alguien se añade aquí
+const _esLogi=()=>!!_SESSION&&!puede('calidad','administracion')&&_misRoles().includes('compras')&&LOGI_USUARIOS.includes(_normNom(_SESSION.nombre));
+const LOGI_VISTAS=['despacho','remisiones','remamcor','buscar'];
+const puedeDesp=()=>puedeCal()||_esLogi();
 // Columnas de producción que usa el módulo. formato_qa completo se carga aparte (pesa); aquí solo el resultado y quién inspeccionó.
 const PROD_SEL_C='id,id_item,op,item_num,cot_num,empresa,asesor,descripcion,unidades,cant_despachada,estado,prioridad,tipo,fecha_pactada,semana,disenador,avance'
   +',diseno_ok,diseno_fecha,diseno_por,mp_ok,mp_fecha,mp_por,terminado,entrega_prod_fecha,fecha_entrega_prod,terminado_por'
@@ -1449,18 +1456,19 @@ function detailItem(id,foco,_r){
     <div class="cot-hero-badges">${bCal(o)}${bEst(o.estado)}${bGar(o)}${o.externo?'<span class="badge">🚚 Externo</span>':''}${o.despachado?'<span class="badge">🚀 Despachado</span>':''}</div>
     <div style="font-size:11.5px;opacity:.85;margin-top:10px">${esc(String(o.unidades??'—'))} und · despachadas ${esc(String(o.cant_despachada??0))} · Cot. ${esc(String(o.cot_num??'—'))}${o.asesor?' · '+esc(o.asesor):''}</div></div>`;
   const cal=puedeCal()&&vivo(o);
-  const A=[];
+  let A=[];
   A.push(['📋','#14532d','INSPECCIÓN QA',`abrirInspeccion('${j}')`]);
   A.push(['🏷','#0f172a','RÓTULO',`rotuloProd('${j}')`]);
   if(cal&&o.terminado&&!ap&&!ab.length) A.push(['✅','#16a34a','APROBAR',`aprobarItem('${j}')`]);
   if(cal&&o.terminado&&!ap) A.push(['⚠️','#dc2626','RECHAZAR / REPROCESO',`modalRechazo('${j}')`]);
   if(cal&&heredada(o)&&o.terminado&&!ab.length) A.push(['☑️','#16a34a','CONFIRMAR APROBACIÓN',`aprobarItem('${j}')`]);
   if(cal&&ap) A.push(['↩️','#64748b','DEVOLVER APROBACIÓN',`revertirItem('${j}')`]);
-  if(cal&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
+  if((cal||(_esLogi()&&vivo(o)))&&ap&&!o.despachado&&!heredada(o)) A.push(['📦','#0d9488',remTramite(o.op)?'REMISIÓN EN TRÁMITE':'PEDIR REMISIÓN',remTramite(o.op)?`toast('La remisión de esta OP ya está pedida o en trámite (ver pestaña Remisiones)','info')`:(dispDe(o)>0?`pedirRemision(${Number(o.op)})`:`toast('No hay unidades por despachar','warn')`)]);
   if(cal) A.push(['🚚','#7b1fa2',enExterno(o)?'SERVICIO EXT. (RECIBIR)':'SERVICIO EXT.',`modalExterno('${j}')`]);
   if(cal) A.push(['📝','#0284c7','SOLICITAR SERVICIO',`modalSolicitud('${j}')`]);
   if(cal) A.push(['🚨','#ea580c','REPORTAR REPROCESO (NC)',`ncReportar('${j}')`]);
   if(puedeCal()) A.push(['🏅','#b7791f','CERTIFICADO',certVigente(id)?`detailCert('${jsq(certVigente(id).id)}')`:`editorCert(null,'${j}')`]);
+  if(_esLogi()) A=A.filter(a=>/RÓTULO|REMISIÓN/.test(a[2]));   // logística: solo rótulo y remisión
   const grid=`<div class="cot-action-grid">${A.map(([ic,c,l,fn])=>`<button class="cot-action-btn" onclick="${fn}"><span class="cot-action-ic" style="background:${c}">${ic}</span><span class="cot-action-lbl">${l}</span></button>`).join('')}</div>`;
   const tl=`<div class="dp-section"><h4>🗓️ Etapas</h4>${timelineEtapas(o)}</div>`;
   const f=fEntrega(o);
@@ -1945,7 +1953,7 @@ function rotuloProd(id,k){
     <div class="field"><label>Ancho (mm)</label><input id="rp-w" type="number" min="40" value="${z.w}"></div><div class="field"><label>Alto (mm)</label><input id="rp-h" type="number" min="25" value="${z.h}"></div>
     <div class="field"><label>Copias</label><input id="rp-n" type="number" min="1" max="50" value="1"></div>
     <div class="field span2"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13px"><input type="checkbox" id="rp-nota" style="width:auto" ${(P.nota!=null?P.nota:mod==='mosat')?'checked':''}> Agregar rótulo «Nota: en caso de requerir inspección…» (Mosat) — sale uno por cada copia</label></div></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${puedeCal()?`<button class="btn btn-ghost" onclick="rotuloProdGuardar('${jsq(id)}')">💾 Guardar</button>`:''}<button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${puedeDesp()?`<button class="btn btn-ghost" onclick="rotuloProdGuardar('${jsq(id)}')">💾 Guardar</button>`:''}<button class="btn btn-primary" onclick="rotuloProdImp()">🏷 Imprimir rótulo</button>`);
   rotuloProdVer(); setTimeout(rotuloProdVer,120);
 }
 async function rotuloProdGuardar(id){
@@ -2092,6 +2100,7 @@ function despacho(){
   if(!data.length){ setContent(banner+nota+fb+empty('Sin ítems pendientes de despacho','📦')); return; }
   const desA=o=>{ const j=idq(o); const c=certVigente(o.id);
     const pedir=heredada(o)?actBtn('☑️ Confirmar aprobación',`aprobarItem('${j}')`):(!remTramite(o.op)&&dispDe(o)>0?actBtn('📦 Pedir remisión',`pedirRemision(${Number(o.op)})`):actBtn('📋 Detalle',`detailItem('${j}')`));
+    if(_esLogi()) return heredada(o)?actBtn('📋 Detalle',`detailItem('${j}')`):pedir;   // logística: solo pedir remisión / ver detalle
     return puedeCal()?actBtn(c?'🏅 Ver certificado':'🏅 Certificado',c?`detailCert('${jsq(c.id)}')`:`editorCert(null,'${j}')`)+pedir+actBtn('↩️ Devolver',`revertirItem('${j}')`):''; };
   const card=o=>{ const c=certVigente(o.id); const d=diasDesde(o.calidad_fecha);
     const extra=`<div class="lc-meta" style="font-size:11px;color:var(--muted)">✅ Aprobado ${o.calidad_fecha?fmtF(o.calidad_fecha):'(sin fecha)'}${o.calidad_por?' · '+esc(o.calidad_por):''}${d!=null?` · hace ${d} d`:''}</div>
@@ -2147,7 +2156,7 @@ async function remRowsOP(op){
   });
 }
 function solicitarRemisionOP(op){
-  if(!soloCal()) return;
+  if(!puedeDesp()&&!soloCal()) return;
   // Abre el formulario libre de Remisiones (más completo): pasa la sesión y la OP
   try{ localStorage.setItem('_wedm_rem_s',JSON.stringify(_SESSION)); }catch(e){}
   location.href='REMISIONES.html#libre'+(op?'-'+Number(op):'');
@@ -2702,20 +2711,20 @@ function detailRem(id){
     <div class="cm-h" style="margin-top:14px">Líneas (${ls.length})</div>
     ${ls.length?ls.map(l=>{ const o=l.id_prod?opDe(l.id_prod):null; return `<div class="cm-line"><div class="cm-t">${l.item!=null?'Ítem '+esc(String(l.item))+' · ':''}${esc(String(l.descripcion||'').slice(0,90))}${o?`<small>${bCal(o)}</small>`:''}</div><b style="font-family:var(--mono)">${esc(String(l.cantidad??''))}</b></div>`; }).join(''):mutedP('Aún sin líneas seleccionadas.')}
     ${m.observaciones?dr('Observaciones',esc(m.observaciones)):''}${m.oc_cliente?dr('OC cliente',esc(m.oc_cliente)):''}`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&puede('calidad')?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
+    `<button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>${ls.length?`<button class="btn btn-ghost" onclick="docDespacho('${jsq(m.id)}')">🖨️ Formato de despacho</button>`:''}${m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)?`<button class="btn btn-ghost" onclick="docRemision('${jsq(m.id)}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list (PDF)':'📄 Remisión (PDF)'}</button>`:''}${m.estado==='GENERADA'&&(puede('calidad')||_esLogi())?`<button class="btn btn-primary" onclick="remDespachar('${jsq(m.id)}')">🚚 Despachar</button>`:''}`);
 }
 
 function remAcciones(m){
   const b=[]; const j=jsq(m.id);
   if((m.lineas||[]).length&&REM_TRAMITE.includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docDespacho('${j}')">🖨️ Formato despacho</button>`);
   if(m.numero&&['GENERADA','DESPACHADA'].includes(m.estado)) b.push(`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();docRemision('${j}')">${/MOSAT/i.test(m.empresa||'')?'📄 Packing list':'📄 PDF'}</button>`);
-  if(m.estado==='GENERADA'&&puede('calidad')) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
+  if(m.estado==='GENERADA'&&(puede('calidad')||_esLogi())) b.push(`<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="event.stopPropagation();remDespachar('${j}')">🚚 Despachar</button>`);
   else if(m.estado==='GENERADA') b.push(`<span style="font-size:11px;color:var(--muted);align-self:center">Solo el rol calidad puede despacharla</span>`);
   return b.length?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">${b.join('')}</div>`:'';
 }
 async function remDespachar(id){
   const m=(DB.remisiones||[]).find(x=>x.id===id); if(!m) return;
-  if(!puede('calidad')){ toast('Solo el rol calidad puede marcar la remisión como despachada','error'); return; }
+  if(!puede('calidad')&&!_esLogi()){ toast('Solo calidad o logística puede marcar la remisión como despachada','error'); return; }
   if(!confirm(`¿Confirmas que la mercancía de REM-${m.numero} (OP-${m.op}) ya salió?\n\nSe descuentan las unidades de producción y no se puede deshacer.`)) return;
   const r=await rpcC('remision_despachar',{p_id:id},'🚚 Remisión despachada');
   if(r){ closeModal(); refreshCurrentView(); }
@@ -3249,6 +3258,7 @@ function tiPintar(){
 }
 
 function nav(m,keep){
+  if(_esLogi()&&!LOGI_VISTAS.includes(m)) m='despacho';
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
   document.querySelectorAll('.nav-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
   document.querySelectorAll('.bn-item[data-m]').forEach(n=>n.classList.toggle('active',n.dataset.m===m));
@@ -3280,12 +3290,13 @@ async function iniciarApp(){
   try{
     let ok=true; try{ ok=(await sb.rpc('sesion_valida'))!==false; }catch(e){}
     if(!ok){ endSession('Sesión vencida — ingresa de nuevo'); return; }
-    if(!_misRoles().some(x=>ROLES_CAL.includes(x))){ endSession('Sin acceso al módulo de Calidad'); return; }
+    if(!_misRoles().some(x=>ROLES_CAL.includes(x))&&!_esLogi()){ endSession('Sin acceso al módulo de Calidad'); return; }
+    if(_esLogi()) document.documentElement.classList.add('logi');
     setSplash(15,'Cargando calidad…'); await Promise.all([cargarTodo(),cargarUsuarios()]); setSplash(100,'✅ ¡Listo!');
   }catch(e){ hideSplash(); setContent(errorView(e)); return; }
   updateBadges(); hideSplash();
   const h=(location.hash||'').replace('#','').replace('-detail','');
-  nav(TITLES[h]&&h!=='buscar'?h:'dashboard');
+  nav(_esLogi()?(LOGI_VISTAS.includes(h)?h:'despacho'):(TITLES[h]&&h!=='buscar'?h:'dashboard'));
 }
 document.addEventListener('DOMContentLoaded',()=>{
   if(typeof LOGO_B64_PNG!=='undefined'&&LOGO_B64_PNG){ ['splash-logo-img','topbar-logo','sb-logo-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_B64_PNG; }); }
