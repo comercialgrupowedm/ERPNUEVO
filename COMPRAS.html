@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261121-110946">
+<meta name="app-build" content="20261123-154045">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -1413,6 +1413,7 @@ function abrirEditar(id){
     ${comprado?`<div class="field"><label>Fecha de compra</label><input type="date" id="me-fc" value="${String(m.fecha_compra||'').slice(0,10)}"></div>${fld('# Factura','me-fact',m.factura||'')}`:''}
     <div class="field span2"><label>Observaciones</label><textarea id="me-obs">${esc(m.obs_compras||'')}</textarea></div></div>
     <div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">📐 ARCHIVOS DWG / CORTE LÁSER (de Diseño)</div><div id="me-dwg" style="font-size:12px;color:var(--muted)">Cargando…</div></div>
+    ${m.alm_estado==='SALIO'?`<div style="margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:9px 11px;font-size:12.5px">📦 Este material figura como <b>entregado desde almacén</b>${m.alm_por?' por '+esc(m.alm_por):''}. Si fue un error, quita esa anotación y vuelve a salir en los pedidos por comprar.<div style="margin-top:7px"><button class="btn btn-sm btn-ghost" style="color:#b91c1c;border-color:#fca5a5" onclick="almRevertir('${m.id}')">↩ Quitar «salió de almacén»</button></div></div>`:''}
     ${m.estado==='SOLICITADO'&&puedeAut()?`<div style="margin-top:12px"><button class="btn btn-sm btn-ghost" onclick="_SEL.clear();_SEL.add('${m.id}');closeModal();autorizarSel(${m.autorizado_por?'false':'true'})">${m.autorizado_por?'↩ Quitar autorización':'✔ Autorizar compra'}</button></div>`:''}`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditar('${id}')">💾 Guardar cambios</button>`);
   setTimeout(()=>cargarDwgPedido(id),30);
@@ -3260,10 +3261,17 @@ async function almacen(){
     const stock=mt.length?`<div style="margin-top:6px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:6px 9px;font-size:12px"><b>📦 En inventario:</b> ${mt.slice(0,3).map(i=>`${esc(i.material)}${i.detalle?' ('+esc(i.detalle)+')':''} — <b>${Number(i.cantidad)} ${esc(i.unidad)}</b>${i.ubicacion?' · '+esc(i.ubicacion):''}`).join('<br>')}</div>`:`<div style="margin-top:6px;font-size:12px;color:var(--muted)">Sin coincidencia en el inventario.</div>`;
     return `<div class="list-card" style="cursor:default"><div class="lc-top"><div style="display:flex;gap:10px;flex:1;min-width:0">${imgSrcOP(p,120)?imgTag(p,120,'','lc-thumb'):'<div class="lc-thumb ph">🪨</div>'}<div style="min-width:0"><div class="lc-id">OP-${esc(p.op??'—')} · ÍTEM ${esc(p.item_num??'—')}</div><div class="lc-title" style="white-space:normal">${esc(m.material||'—')}</div><div class="lc-sub" style="white-space:normal">${esc(cantTxt(m))}${m.detalle?' · '+esc(m.detalle):''}</div></div></div><div style="text-align:right;flex-shrink:0"><span class="badge ${e[1]}">${e[0]}</span><div style="font-size:11px;color:var(--muted);margin-top:4px">${fmtDTs(m.solicitado_at)}</div></div></div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px">${esc(p.empresa||'')}${p.descripcion?' · '+esc(String(p.descripcion).slice(0,70)):''}${m.solicitado_por?' · pidió '+esc(m.solicitado_por):''}${p.fecha_pactada?' · entrega '+fmtDate(p.fecha_pactada):''}</div>
-      ${m.alm_estado==='SALIO'?`<div style="font-size:11.5px;margin-top:4px">📦 Entregó ${esc(m.alm_por||'')} · ${fmtDT(m.alm_at)}</div>`:stock}
+      ${m.alm_estado==='SALIO'?`<div style="font-size:11.5px;margin-top:4px">📦 Entregó ${esc(m.alm_por||'')} · ${fmtDT(m.alm_at)}${puedeAlmC()&&!m.id_oc?` <button class="btn btn-ghost btn-sm" style="color:#b91c1c;margin-left:6px" onclick="almRevertir('${esc(m.id)}')">↩ Fue un error</button>`:''}</div>`:stock}
       ${can&&puedeAlmC()?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">${m.alm_estado==='NO HAY'?'':`<button class="btn btn-ghost btn-sm" onclick="almNoHay('${esc(m.id)}')">🛒 No hay · pasar a compras</button>`}${puedeAlm()?`<button class="btn btn-primary btn-sm" onclick="almEntregar('${esc(m.id)}')">✅ Sí hay en planta · recibir</button>`:''}</div>`:''}</div>`; };
   setContent(banner+chips+_srch('alm',_ALM.q,'almQ','Buscar OP, material, cliente, quién pidió…')+(rows.length?`<div class="card-list" style="display:grid;grid-template-columns:1fr;gap:10px">${pg.map(card).join('')}</div>`+pgMore('alm',rows):empty(_ALM.f==='rev'?'No hay materiales por revisar 🎉':'Sin resultados','🏪')));
 }
+// Deshacer «salió de almacén»: el material vuelve a pedidos por comprar (y si descontó inventario, se devuelve)
+function almRevertir(id){
+  const m=linDe(id); if(!m) return;
+  openModal('↩ Quitar «salió de almacén»',`<div style="font-size:13px;margin-bottom:10px"><b>${esc(m.material||'—')}</b> · ${esc(cantTxt(m))}<br>Deja de figurar como entregado desde almacén y vuelve a <b>Pedidos por comprar</b>.${m.id_inv?' Lo que se descontó del inventario se devuelve.':''}</div><div class="field"><label>Motivo (opcional)</label><input id="ar-obs" placeholder="Ej.: se marcó por error"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="almRevertirOk('${esc(id)}')">↩ Devolver a por comprar</button>`);
+}
+async function almRevertirOk(id){ const o=(document.getElementById('ar-obs')||{}).value||''; closeModal(); if(await rpcC('alm_revertir',{p_id:id,p_obs:o},'↩ Volvió a por comprar')){ try{ afterC(); }catch(e){ refreshCurrentView(); } } }
 function almSet(k){ _ALM.f=k; pgReset(); almacen(); }
 function almQ(v){ _ALM.q=v; clearTimeout(window._almT); window._almT=setTimeout(()=>{ pgReset(); almacen().then(_keepFocus); },350); }
 async function almNoHay(id){

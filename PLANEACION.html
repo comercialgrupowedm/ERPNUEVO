@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261119-151135">
+<meta name="app-build" content="20261123-154055">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -2190,7 +2190,7 @@ function detailOP(id,_r){
   _DET_ID=id; const j=idq(op);
   const p=pctOp(op), s=pasoActual(op), d=diasPactada(op);
   const hero=`<div class="cot-hero"><div class="cot-hero-top"><div class="cot-hero-left"><div class="cot-hero-id">${opTitulo(op)}</div><div class="cot-hero-empresa">${esc(op.empresa||'—')}</div><div class="cot-hero-sub" style="white-space:normal">${esc(op.descripcion||'')}</div></div><div class="cot-hero-right">${thumbProd(op,64)}</div></div>
-    <div class="cot-hero-badges">${bEst(op.estado)}${bPrio(op.prioridad)}${scoreBadge(op)}${op.externo?'<span class="badge">🚚 Externo</span>':''}${d!=null&&!op.despachado?diasTag(d):''}</div>
+    <div class="cot-hero-badges">${op.cot_num?`<span class="badge azul" title="Cotización">COT-${esc(String(op.cot_num))}</span>`:''}${bEst(op.estado)}${bPrio(op.prioridad)}${scoreBadge(op)}${op.externo?'<span class="badge">🚚 Externo</span>':''}${d!=null&&!op.despachado?diasTag(d):''}</div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-top:12px;opacity:.9"><span>Avance global</span><b style="font-family:var(--mono);font-size:16px">${p}%</b></div>
     <div class="progreso-bar" style="background:rgba(255,255,255,.2)"><div class="progreso-fill ${p>=100?'ok':''}" style="width:${p}%"></div></div>
     ${s?`<div style="font-size:11.5px;opacity:.85;margin-top:8px">▶ Proceso actual: <b>MQ${s.i} · ${esc(s.raw)}</b>${s.oper?' · 👷 '+esc(s.oper):''}</div>`:''}</div>`;
@@ -2205,6 +2205,7 @@ function detailOP(id,_r){
   const tl=`<div class="dp-section"><h4>🗓️ Línea de tiempo — Etapas</h4>${timelineEtapas(op)}<div style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="modalEtapas('${j}')">Ver etapas →</button></div></div>`;
   const scoreH=scoreDetalle(op);
   const info=`<div class="dp-section"><h4>📌 Datos de la OP</h4>
+    ${dr('Cotización',op.cot_num?'<b>COT-'+esc(String(op.cot_num))+'</b>':'—')}
     ${dr('Fecha pactada',fmtDate(op.fecha_pactada)+(d!=null&&!op.despachado?' · '+diasTag(d):''))}
     ${dr('Semana',op.semana||'—')}${dr('Diseñador',esc(op.disenador||'—'))}${dr('Asesor',esc(op.asesor||'—'))}
     ${dr('Unidades',(op.unidades??'—')+' · Despachadas: '+(op.cant_despachada??0))}
