@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="20261123-154045">
+<meta name="app-build" content="20261124-115853">
 <script>/* WEDM-ERRBAR: muestra en pantalla cualquier error de JavaScript (para diagnosticar desde el celular) */
 (function(){var n=0;function show(m){try{var dbg=false;try{dbg=localStorage.getItem('wedm_debug')==='1'}catch(e){}if(!dbg){try{console.error(m)}catch(e){}return}n++;if(n>3)return;var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7f1d1d;color:#fff;font:11px/1.35 monospace;padding:8px 10px;max-height:40vh;overflow:auto;white-space:pre-wrap;word-break:break-all';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}catch(x){}}
 window.addEventListener('error',function(e){if(e.target&&e.target!==window)return;show('⚠ '+(e.message||'error')+' @'+(e.lineno||'?')+':'+(e.colno||'?'))});
@@ -605,6 +605,7 @@ input[type=text],input:not([type]),input[type=search],input[type=email],input[ty
     <div class="nav-item" data-m="opmp" onclick="nav('opmp')"><span class="nav-icon">🧱</span>OP pendientes de MP<span class="nav-badge" id="b-opmp" style="display:none">0</span></div>
     <div class="nav-item" data-m="almacen" onclick="nav('almacen')"><span class="nav-icon">🏪</span>Almacén<span class="nav-badge" id="b-alm" style="display:none">0</span></div>
     <div class="nav-item" data-m="inventario" onclick="nav('inventario')"><span class="nav-icon">📦</span>Inventario de materiales</div>
+    <div class="nav-item" data-m="invmant" onclick="nav('invmant')"><span class="nav-icon">🛠️</span>Inventario mantenimiento</div>
     <div class="nav-item" data-m="sexterno" onclick="nav('sexterno')"><span class="nav-icon">🚚</span>Servicio externo</div>
     <div class="nav-item" data-m="despachos" id="nav-desp" style="display:none" onclick="irDespachos()"><span class="nav-icon">🚛</span>Despachos</div>
     <div class="nav-item" data-m="proveedores" onclick="nav('proveedores')"><span class="nav-icon">🏭</span>Proveedores</div>
@@ -1096,7 +1097,7 @@ async function doLogin(){
 //  ERP COMPRAS · GRUPO WEDM  — mismo backend y misma estructura que Comercial y Diseño
 // ═══════════════════════════════════════════════════════════════════
 const DB={}; const _SYNC={init:false}; let MOD='dashboard';
-const TITLES={papelera:'Papelera',dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores',resumen:'Resumen de compras',sugeridos:'Materiales sugeridos',opmp:'OP pendientes de MP',almacen:'Almacén',inventario:'Inventario de materiales',sexterno:'Servicio externo',subir:'Subir datos anteriores'};
+const TITLES={papelera:'Papelera',dashboard:'Inicio',pedidos:'Pedidos de compra',ordenes:'Órdenes de compra',proveedores:'Proveedores',resumen:'Resumen de compras',sugeridos:'Materiales sugeridos',opmp:'OP pendientes de MP',almacen:'Almacén',inventario:'Inventario de materiales',invmant:'Inventario mantenimiento',sexterno:'Servicio externo',subir:'Subir datos anteriores'};
 const PG_BASE=(window.innerWidth<700?20:25);
 const EST={ALMACEN:['En almacén (por revisar)','gris'],SOLICITADO:['Por comprar','naranja'],COMPRADO:['Comprado','azul'],RECIBIDO:['Recibido','verde'],RECHAZADO:['Rechazado','rojo']};
 const PROD_SEL='id,op,item_num,cot_num,empresa,descripcion,unidades,asesor,disenador,fecha_pactada,prioridad,imagen_thumb,imagen_drive_id,mp_ok,diseno_ok,despachado,estado,es_garantia';
@@ -1978,7 +1979,7 @@ async function papBorrar(id){
   try{ showBusy(); await sb.rpc('papelera_vaciar',{p_mod:PAP_MOD,p_id:id}); hideBusy(); toast('Eliminado definitivamente'); papelera(); }
   catch(e){ hideBusy(); toast('❌ '+errMsg(e),'error'); }
 }
-function refreshCurrentView(){ const mods={papelera,dashboard,pedidos,ordenes,proveedores,opmp,almacen,inventario,sexterno,sugeridos,resumen,subir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
+function refreshCurrentView(){ const mods={papelera,dashboard,pedidos,ordenes,proveedores,opmp,almacen,inventario,invmant,sexterno,sugeridos,resumen,subir}; if(mods[MOD]){ try{ const r=mods[MOD](); if(r&&r.catch) r.catch(_vistaError); }catch(e){ _vistaError(e); } } }
 function nav(m,keep){
   if(m==='subir'&&!puedeImportar()){ toast('Solo el administrador puede subir datos','error'); return; }
   MOD=m; document.getElementById('page-title').textContent=TITLES[m]||m;
@@ -3308,6 +3309,25 @@ async function inventario(){
   const tbl=`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>Material</th><th>Medidas / detalle</th><th>Hay</th><th>Ubicación</th><th>Mínimo</th><th>Actualizado</th><th></th></tr></thead><tbody>${pg.map(i=>`<tr><td style="white-space:nowrap">${i.foto?`<img src="${esc(i.foto)}" onclick="invFoto('${esc(i.id)}')" style="width:38px;height:38px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:8px;cursor:zoom-in">`:''}<b>${esc(i.material)}</b></td><td style="white-space:normal;min-width:140px">${esc(i.detalle||'—')}</td><td><b style="font-family:var(--mono);${bajo(i)?'color:#b45309':''}">${Number(i.cantidad)} ${esc(i.unidad)}</b>${sin(i)?' <span class="badge rojo">Sin stock</span>':bajo(i)?' <span class="badge naranja">Bajo</span>':''}</td><td>${esc(i.ubicacion||'—')}</td><td>${i.stock_min!=null?Number(i.stock_min):'—'}</td><td style="font-size:11px">${fmtDTs(i.updated_at)}${i.updated_por?'<br>'+esc(i.updated_por):''}</td><td style="white-space:nowrap">${can?`<button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','ENTRADA')">➕</button> <button class="btn btn-ghost btn-sm" onclick="invMov('${esc(i.id)}','SALIDA')">➖</button> <button class="btn btn-ghost btn-sm" onclick="invForm('${esc(i.id)}')">✏️</button> `:''}<button class="btn btn-ghost btn-sm" onclick="invEtiquetas(['${esc(i.id)}'])" title="Etiqueta QR">🏷</button> <button class="btn btn-ghost btn-sm" onclick="invHist('${esc(i.id)}')">🕘</button></td></tr>`).join('')}</tbody></table></div></div>`;
   setContent(banner+`<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${can?'<button class="btn btn-primary" onclick="invForm()">＋ Nuevo material</button>':''}<button class="btn btn-primary" onclick="invCamara()">📷 Escanear QR</button><button class="btn btn-ghost" onclick="invEtiquetas(${esc(JSON.stringify(rows.map(x=>x.id)))})">🏷 Etiquetas QR (${rows.length})</button><input placeholder="🔫 Lector: haz clic y escanea" autocomplete="off" style="flex:1 1 200px;max-width:280px;padding:8px 10px;border:1px solid var(--border);border-radius:10px" onkeydown="if(event.key==='Enter'){invLector(this)}"></div>`+chips+_srch('inv',_INV.q,'invQ','Buscar material, medidas, ubicación…')+(rows.length?tbl+pgMore('inv',rows):empty('Aún no hay materiales en el inventario','📦')));
 }
+// ── INVENTARIO MANTENIMIENTO (solo lectura: corte, materiales, herramientas de carga) ──
+const _IM={t:'corte',q:'',d:{}};
+async function invmant(){
+  const banner=moduleBanner('🛠️','Inventario mantenimiento','Herramientas de corte, materiales y herramientas de carga · solo consulta','','linear-gradient(135deg,#1e3a8a,#0f766e)');
+  const t=_IM.t; if(!_IM.d[t]){ try{ _IM.d[t]=await sb.rpc('compras_mant_inv',{p_tipo:t})||[]; }catch(e){ _IM.d[t]=[]; toast('No se pudo cargar: '+(e.message||e),'error'); } }
+  let rows=_IM.d[t]; const q=_IM.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(q.length) rows=rows.filter(r=>{ const x=Object.values(r).join(' ').toLowerCase(); return q.every(w=>x.includes(w)); });
+  const im=u=>u?`<img src="${esc(u)}" loading="lazy" onerror="this.style.display='none'" style="width:38px;height:38px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:8px">`:'';
+  const med=r=>[r.diametro&&'Ø'+r.diametro,r.largo&&'L '+r.largo,r.ancho&&'A '+r.ancho,r.espesor&&'E '+r.espesor].filter(Boolean).join(' × ')||'—';
+  let head,body;
+  if(t==='corte'){ head='<th>Código</th><th>Ítem</th><th>Categoría</th><th>Ubicación</th><th>Hay</th>'; body=r=>`<td>${esc(r.codigo||'')}</td><td>${im(r.imagen)}<b>${esc(r.nombre||r.item||'')}</b></td><td>${esc(r.categoria||'—')}</td><td>${esc(r.ubicacion||'—')}</td><td><b style="font-family:var(--mono)">${Number(r.stock)||0}</b>${Number(r.stock)<=0?' <span class="badge rojo">Sin stock</span>':''}</td>`; }
+  else if(t==='mat'){ head='<th>Material</th><th>Geometría</th><th>Medidas</th><th>Hay</th><th>Ubicación</th><th>Obs.</th>'; body=r=>`<td>${im(r.imagen)}<b>${esc(r.material||'')}</b></td><td>${esc(r.geometria||'—')}</td><td>${esc(med(r))}</td><td><b style="font-family:var(--mono)">${Number(r.cantidad)||0}</b>${Number(r.cantidad)<=0?' <span class="badge rojo">Sin stock</span>':''}</td><td>${esc(r.ubicacion||'—')}</td><td style="white-space:normal">${esc(r.observaciones||'')}</td>`; }
+  else { head='<th>Herramienta</th><th>Tipo</th><th>Marca</th><th>Capacidad</th><th>Serial</th><th>Estado</th><th>Obs.</th>'; body=r=>`<td>${im(r.imagen)}<b>${esc(r.nombre||'')}</b></td><td>${esc(r.tipo||'—')}</td><td>${esc(r.marca||'—')}</td><td>${esc(r.capacidad||'—')}</td><td>${esc(r.serial||'—')}</td><td>${esc(r.estado||'—')}</td><td style="white-space:normal">${esc(r.observaciones||'')}</td>`; }
+  const chips=_kchips([['corte','🕳️ Herramientas de corte',_IM.d.corte?_IM.d.corte.length:null],['mat','🧱 Materiales',_IM.d.mat?_IM.d.mat.length:null],['hc','🔋 Herramientas de carga',_IM.d.hc?_IM.d.hc.length:null]],t,'imSet');
+  const pg=pgSlice('im',rows);
+  setContent(banner+chips+_srch('im',_IM.q,'imQ','Buscar…')+(rows.length?`<div class="tbl-wrap"><div class="tbl-scroll"><table class="data-tbl"><thead><tr>${head}</tr></thead><tbody>${pg.map(r=>`<tr>${body(r)}</tr>`).join('')}</tbody></table></div></div>`+pgMore('im',rows):empty('Sin registros','🛠️')));
+}
+function imSet(k){ _IM.t=k; _IM.q=''; pgReset(); invmant(); }
+function imQ(v){ _IM.q=v; clearTimeout(window._imT); window._imT=setTimeout(()=>{ pgReset(); invmant().then(_keepFocus); },350); }
 function invSet(k){ _INV.f=k; pgReset(); inventario(); }
 function invQ(v){ _INV.q=v; clearTimeout(window._invT); window._invT=setTimeout(()=>{ pgReset(); inventario().then(_keepFocus); },350); }
 async function invForm(id){

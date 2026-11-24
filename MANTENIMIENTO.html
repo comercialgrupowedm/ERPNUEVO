@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261124-114630">
+<meta name="app-build" content="20261124-115459">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -258,25 +258,25 @@ const tgEst=e=>e==='BUENO'?'<span class="tg v">🟢 Bueno</span>':e==='REGULAR'?
 const tgTipo=t=>t==='PREVENTIVO'?'<span class="tg b">Preventivo</span>':t==='CORRECTIVO'?'<span class="tg a">Correctivo</span>':'<span class="tg g">—</span>';
 const TIPOS_EQ=['AC O VENTILADORES','EQUIPOS DE METROLOGIA','EQUIPOS ELECTRONICOS','HERRAMIENTAS MANUALES','HERRAMIENTAS ELECTICAS MANUALES','MANT. LOCATIVO','MANT. MAQUINAS','MANT. EQUIPOS'];
 /* ── datos ── */
-const D={eq:[],per:[],veh:[],mant:[],rep:[],vm:[],prog:[],rst:[]};
+const D={eq:[],per:[],veh:[],mant:[],rep:[],vm:[],prog:[],rst:[],cor:[],mat:[],hc:[]};
 const perById=()=>Object.fromEntries(D.per.map(p=>[p.id,p]));
 const eqByCod=()=>Object.fromEntries(D.eq.map(e=>[e.codigo,e]));
 const vehById=()=>Object.fromEntries(D.veh.map(v=>[v.id,v]));
 let _loading=false;
 async function cargar(manual){if(_loading)return;_loading=true;
-  try{const [eq,per,veh,mant,rep,vm,prog,rst]=await Promise.all([
+  try{const [eq,per,veh,mant,rep,vm,prog,rst,cor,mat,hc]=await Promise.all([
     GETALL('mant_equipos','select=*&order=codigo.asc,id.asc'),
     GETALL('mant_personal','select=*&order=nombre.asc,id.asc'),
     GETALL('mant_vehiculos','select=*&order=codigo.asc,id.asc'),
     GETALL('mant_mantenimientos','select=*&order=fecha_inicial.desc.nullslast,id.asc'),
     GETALL('mant_repuestos','select=*&order=created_at.asc,id.asc'),
     GETALL('mant_veh_mantenimientos','select=*&order=fecha.desc.nullslast,id.asc'),
-    GETALL('mant_programacion','select=*&order=fecha_inicio.asc.nullslast,id.asc'),GETALL('mant_repuestos_stock','select=*&order=nombre.asc,id.asc')]);
-    Object.assign(D,{eq,per,veh,mant,rep,vm,prog,rst});if(manual)toast('Datos actualizados');
+    GETALL('mant_programacion','select=*&order=fecha_inicio.asc.nullslast,id.asc'),GETALL('mant_repuestos_stock','select=*&order=nombre.asc,id.asc'),GETALL('mant_corte','select=*&order=nombre.asc,id.asc'),GETALL('mant_materiales','select=*&order=material.asc,id.asc'),GETALL('mant_hcarga','select=*&order=nombre.asc,id.asc')]);
+    Object.assign(D,{eq,per,veh,mant,rep,vm,prog,rst,cor,mat,hc});if(manual)toast('Datos actualizados');
   }catch(e){toast('⚠️ '+(e.message||e));}finally{_loading=false;}
   render();}
 /* ── navegación ── */
-const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos'],['cal','📅 Calendario'],['rep','🧩 Repuestos']];
+const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos'],['cal','📅 Calendario'],['rep','🧩 Repuestos'],['corte','🔩 Herr. de corte'],['mat','🧱 Materiales'],['hc','🔋 Herr. de carga']];
 let V='inicio';
 /*WEDM-MENU*/
 /* Árbol del menú (igual que en AppSheet): Mantenimiento ▸ …, Inventario ▸ … (con submenús), Calendario, Repuestos.
@@ -292,14 +292,14 @@ const MENU=[
    {ic:'💻',t:'Inv. equipos electrónicos',v:'equipos',f:'EQUIPOS ELECTRONICOS'},
    {ic:'🏍️',t:'Inv. vehículos',v:'veh'},
    {ic:'🔩',t:'Inv. herramientas de corte',hijos:[
-     {ic:'🕳️',t:'Brocas y escariadores',pronto:1},{ic:'🔶',t:'Insertos',pronto:1},{ic:'🧽',t:'Lijas',pronto:1},{ic:'🔧',t:'Machuelos',pronto:1}]},
+     {ic:'🕳️',t:'Brocas y escariadores',v:'corte',g:'brocas'},{ic:'🔶',t:'Insertos',v:'corte',g:'insertos'},{ic:'🧽',t:'Lijas',v:'corte',g:'lijas'},{ic:'🔧',t:'Machuelos',v:'corte',g:'machuelos'},{ic:'📦',t:'Otros',v:'corte',g:'otros'},{ic:'🔩',t:'Todas',v:'corte',g:''}]},
    {ic:'❄️',t:'Inv. aire acond. y ventiladores',v:'equipos',f:'AC O VENTILADORES'},
    {ic:'🛠️',t:'Inv. herramientas manuales',v:'equipos',f:'HERRAMIENTAS MANUALES'},
    {ic:'🔌',t:'Inv. herramientas eléctricas',v:'equipos',f:'HERRAMIENTAS ELECTICAS MANUALES'},
    {ic:'📏',t:'Herramientas control calidad',v:'equipos',f:'EQUIPOS DE METROLOGIA'},
    {ic:'🧰',t:'Inventario de equipos',v:'equipos',f:'MANT. EQUIPOS'},
-   {ic:'🧱',t:'Inv. materiales',pronto:1},
-   {ic:'🔋',t:'Herramientas de carga',pronto:1},
+   {ic:'🧱',t:'Inv. materiales',v:'mat'},
+   {ic:'🔋',t:'Herramientas de carga',v:'hc'},
    {ic:'📋',t:'Todos los equipos y activos',v:'equipos'}]},
  {ic:'📅',t:'Calendario / programa',v:'cal'},
  {ic:'🧩',t:'Repuestos',v:'rep'}];
@@ -326,6 +326,7 @@ function mnClick(i){const x=mnNodo().hijos[i];if(!x)return;
   if(x.pronto){toast('🚧 '+x.t+': todavía no está construido');return;}
   const lbl=[...mnRuta(),x.t].join(' › ');
   if(x.v==='equipos'){FILT.eq=x.f?{te:x.f}:{};QS.eq='';}
+  if(x.v==='corte'){CORTE.g=x.g||'';CORTE.est='';QS.cor='';}
   go(x.v,lbl);}
 const HIST=[];
 function atras(){if($('mod').classList.contains('on')){cerrar();return;}const p=HIST.pop();if(p){V=p.v;VLBL=p.l;if(location.hash.slice(1)!==V)location.hash=V;render();window.scrollTo(0,0);}else if(V!=='inicio')go('inicio');}
@@ -334,7 +335,7 @@ window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);i
 function render(){if(!S)return;
   {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=VLBL||n.slice(n.indexOf(' ')+1);}
   $('tabs').innerHTML=VISTAS.map(([k,n])=>`<button class="tb ${V===k?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
-  const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh,cal:vCal,rep:vRep}[V];
+  const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh,cal:vCal,rep:vRep,corte:vCorte,mat:vMat,hc:vHc}[V];
   try{$('main').innerHTML=f();}catch(e){$('main').innerHTML='<div class="empty">⚠️ '+esc(e.message)+'</div>';console.error(e);}
   {const b=$('back-btn');if(b)b.style.visibility=(V==='inicio'&&!HIST.length&&!$('mod').classList.contains('on'))?'hidden':'visible';}
   afterRender();}
@@ -583,6 +584,76 @@ function detRep(id){const r=D.rst.find(x=>x.id===id);if(!r)return;
   abrir(esc(r.nombre||'Repuesto'),`${r.imagen?`<img ${IMG(r.imagen)} style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line);margin-bottom:10px">`:''}<dl class="dl"><dt>Descripción</dt><dd>${esc(r.descripcion||'—')}</dd><dt>Referencia</dt><dd>${esc(r.referencia||'—')}</dd><dt>Cantidad</dt><dd><b>${Number(r.cantidad)||0}</b></dd><dt>Estado</dt><dd>${tgRep(r.estado)}</dd><dt>Ubicación</dt><dd>${esc(r.ubicacion||'—')}</dd><dt>Se usa en</dt><dd>${esc(r.equipos||'—')}</dd><dt>Observaciones</dt><dd>${esc(r.observaciones||'—')}</dd></dl>`,
    `<button class="btn p" onclick="formRep('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_repuestos_stock','${id}')">🗑</button>`);}
 function formRep(id){const r=D.rst.find(x=>x.id===id);formGen(r?'Editar repuesto':'Nuevo repuesto','mant_repuestos_stock',r,[{k:'nombre',l:'Repuesto',req:1},{k:'descripcion',l:'Descripción'},{k:'referencia',l:'Referencia'},{k:'cantidad',l:'Cantidad',t:'number'},{k:'estado',l:'Estado',t:'chips',o:['NUEVO','USADO','DAÑADO'],def:'NUEVO'},{k:'ubicacion',l:'Ubicación'},{k:'equipos',l:'Máquina(s) o equipo(s) donde se usa (códigos separados por coma)'},{k:'observaciones',l:'Observaciones',t:'area'},{k:'imagen',l:'Foto del repuesto',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}]);}
+/* ── HERRAMIENTAS DE CORTE ── */
+const CORTE={g:'',est:''};
+const CORTE_G={brocas:'Brocas y escariadores',insertos:'Insertos',lijas:'Lijas',machuelos:'Machuelos',otros:'Otros'};
+function grpCorte(r){const n=String(r.nombre||'');
+  if(/^broca |escaria|escariad/i.test(n))return 'brocas';if(/inserto|calzo|lama |tornillo|esparrago/i.test(n))return 'insertos';
+  if(/lija/i.test(n))return 'lijas';if(/machuelo|volvedor|mach\./i.test(n))return 'machuelos';return 'otros';}
+function vCorte(){const g=CORTE.g,all=D.cor.filter(r=>r.activo!==false&&(!g||(r.grupo||grpCorte(r))===g));
+  const rows=all.filter(r=>(!CORTE.est||(CORTE.est==='a'?!(Number(r.stock)>0):Number(r.stock)>0))&&buscar('cor',[r.codigo,r.item,r.nombre,r.ubicacion,r.categoria].join(' ')));
+  const und=all.reduce((a,r)=>a+(Number(r.stock)||0),0),agot=all.filter(r=>!(Number(r.stock)>0)).length;
+  const cols=[{k:'i',h:'Código',h2:r=>`<b>${esc(r.item||r.codigo||'')}</b>`,s:r=>r.item||''},{k:'n',h:'Producto',f:r=>r.nombre||'',s:r=>r.nombre||''},{k:'u',h:'Ubicación',f:r=>r.ubicacion||'—'},
+   {k:'s',h:'Stock',r:1,h2:r=>`<b style="${Number(r.stock)>0?'':'color:var(--danger,#dc2626)'}">${Number(r.stock)||0}</b>`,s:r=>Number(r.stock)||0},
+   {k:'a',h:'Movimiento',h2:r=>`<span style="white-space:nowrap"><button class="btn s" onclick="event.stopPropagation();movCorte('${r.id}','ENTRADA')">＋ Entrada</button> <button class="btn s" onclick="event.stopPropagation();movCorte('${r.id}','SALIDA')">− Salida</button></span>`,s:()=>''}];
+  const tit=g?CORTE_G[g]:'Herramientas de corte';
+  return `<div class="rh"><h2>🔩 ${esc(tit)}</h2><button class="btn" onclick="histCorte()">📜 Movimientos</button><button class="btn p" onclick="formCorte()">＋ Nueva</button></div>
+  <div class="kp"><div class="k"><div class="l">Referencias</div><div class="v">${all.length}</div><div class="s">${und} unidades en stock</div></div><div class="k ${agot?'red':'grn'}" style="cursor:pointer" onclick="CORTE.est='a';render()"><div class="l">Agotadas</div><div class="v">${agot}</div><div class="s">con stock 0</div></div></div>
+  <div class="fl">${qInput('cor')}<label>Estado<select onchange="CORTE.est=this.value;render()"><option value="">Todas</option><option value="c" ${CORTE.est==='c'?'selected':''}>Con stock</option><option value="a" ${CORTE.est==='a'?'selected':''}>Agotadas</option></select></label></div>
+  ${all.length?'':'<div class="note">Todavía no hay registros en este grupo. Usa “＋ Nueva” para agregar.</div>'}${tabla('cor',cols,rows,r=>`detCorte('${r.id}')`)}`;}
+function movCorte(id,tipo){const r=D.cor.find(x=>x.id===id);if(!r)return;const sal=tipo==='SALIDA';
+  const pers=[...new Set([...D.per.map(p=>p.nombre),...(window._CORPERS||[])])].filter(Boolean);
+  abrir(`${sal?'➖ Salida':'➕ Entrada'} · ${esc(r.item||r.codigo||'')}`,`<div class="note"><b>${esc(r.nombre||'')}</b><br>Stock actual: <b>${Number(r.stock)||0}</b></div>
+   <div class="fg"><label>Cantidad *</label><input id="f_cant" type="number" inputmode="numeric" min="1" step="1" placeholder="0"></div>
+   <div class="fg"><label>${sal?'Persona que retira *':'Persona que entrega / recibe'}</label><input id="f_pers" list="corpers" placeholder="Nombre" autocomplete="off"><datalist id="corpers">${pers.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+   <div class="fg"><label>Nota (opcional)</label><input id="f_nota" placeholder="Para qué máquina / OP, proveedor, etc."></div>`,
+   `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn p" id="btnG" onclick="guardarMovCorte('${id}','${tipo}')">💾 Guardar</button>`);setTimeout(()=>{const i=$('f_cant');if(i)i.focus();},50);}
+async function guardarMovCorte(id,tipo){const c=Number($('f_cant').value),per=$('f_pers').value.trim(),nota=$('f_nota').value.trim();
+  if(!(c>0)){toast('Escribe la cantidad');return;}if(tipo==='SALIDA'&&!per){toast('Indica quién retira');return;}
+  const b=$('btnG');b.disabled=true;
+  try{const r=await sb.rpc('mant_corte_mov',{p_id:id,p_tipo:tipo,p_cant:c,p_persona:per||null,p_nota:nota||null});const x=D.cor.find(y=>y.id===id);if(x)x.stock=r.stock;
+   window._CORPERS=[...new Set([...(window._CORPERS||[]),per].filter(Boolean))];toast(`✓ ${tipo==='ENTRADA'?'Entrada':'Salida'} registrada · stock ${r.stock}`);cerrar();render();}
+  catch(e){b.disabled=false;toast('⚠️ '+(e.message||e));}}
+const fHoraCor=t=>{if(!t)return '—';const d=new Date(t);return isNaN(d)?'—':d.toLocaleString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
+const movFila=m=>`<div class="li"><div>${m.tipo==='ENTRADA'?'<span class="tg v">Entrada</span>':'<span class="tg r">Salida</span>'} <b>${Number(m.cantidad)}</b>${m.persona?' · '+esc(m.persona):''}<small>${fHoraCor(m.fecha)}${m.nota?' · '+esc(m.nota):''}${m.stock_despues!=null?' · quedó '+Number(m.stock_despues):''}</small></div></div>`;
+async function detCorte(id){const r=D.cor.find(x=>x.id===id);if(!r)return;
+  abrir(esc(r.item||r.codigo||'Herramienta'),`<dl class="dl"><dt>Producto</dt><dd>${esc(r.nombre||'—')}</dd><dt>Código</dt><dd>${esc(r.item||'—')} · #${esc(r.codigo||'')}</dd><dt>Grupo</dt><dd>${esc(CORTE_G[r.grupo||grpCorte(r)]||'')}</dd><dt>Categoría</dt><dd>${esc(r.categoria||'—')}</dd><dt>Ubicación</dt><dd>${esc(r.ubicacion||'—')}</dd><dt>Stock</dt><dd><b style="font-size:18px">${Number(r.stock)||0}</b></dd></dl>
+   <h3 style="margin:14px 0 6px;font-size:13px">Últimos movimientos</h3><div id="movs"><div class="empty">Cargando…</div></div>`,
+   `<button class="btn p" onclick="movCorte('${id}','ENTRADA')">＋ Entrada</button><button class="btn" onclick="movCorte('${id}','SALIDA')">− Salida</button><button class="btn" onclick="formCorte('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_corte','${id}')">🗑</button>`);
+  try{const m=await sb.get('mant_corte_mov','select=*&corte_id=eq.'+id+'&order=fecha.desc,id.asc&limit=50');const el=$('movs');if(el)el.innerHTML=m.map(movFila).join('')||'<div class="empty">Sin movimientos registrados todavía</div>';}catch(e){const el=$('movs');if(el)el.innerHTML='<div class="empty">⚠️ '+esc(e.message||e)+'</div>';}}
+async function histCorte(){abrir('📜 Movimientos recientes','<div class="empty">Cargando…</div>','<button class="btn" onclick="cerrar()">Cerrar</button>');
+  try{const m=await sb.get('mant_corte_mov','select=*&order=fecha.desc,id.asc&limit=100');const N=Object.fromEntries(D.cor.map(x=>[x.id,x]));
+   window._CORPERS=[...new Set([...(window._CORPERS||[]),...m.map(x=>x.persona).filter(Boolean)])];
+   $('mbody').innerHTML=m.map(x=>`<div class="li" style="display:block"><b>${esc((N[x.corte_id]||{}).item||'')}</b> <small>${esc((N[x.corte_id]||{}).nombre||'')}</small></div>`+movFila(x)).join('')||'<div class="empty">Aún no hay movimientos</div>';}
+  catch(e){$('mbody').innerHTML='<div class="empty">⚠️ '+esc(e.message||e)+'</div>';}}
+function formCorte(id){const r=D.cor.find(x=>x.id===id);const spec=[{k:'item',l:'Código',req:1},{k:'nombre',l:'Producto',req:1},{k:'categoria',l:'Categoría'},{k:'ubicacion',l:'Ubicación'}];
+  if(!r)spec.push({k:'stock',l:'Stock inicial',t:'number'});spec.push({k:'imagen',l:'Foto',t:'img'},{k:'activo',l:'Activo',t:'check',def:true});
+  formGen(r?'Editar herramienta':'Nueva herramienta','mant_corte',r,spec);}
+/* ── MATERIALES (inventario de materia prima) ── */
+const thumb=(u,w)=>u?`<img ${IMG(u)} onclick="event.stopPropagation();verImg(this)" style="width:${w}px;height:${w}px;object-fit:cover;border-radius:8px;cursor:zoom-in">`:'<span style="color:var(--muted)">—</span>';
+const medMat=m=>[m.diametro?'Ø'+m.diametro:'',m.largo?'L '+m.largo:'',m.ancho?'A '+m.ancho:'',m.espesor?'E '+m.espesor:''].filter(Boolean).join(' × ');
+function vMat(){const act=D.mat.filter(r=>r.activo!==false),rows=act.filter(r=>buscar('mat',[r.material,r.geometria,r.diametro,r.largo,r.ancho,r.espesor,r.ubicacion,r.observaciones].join(' ')));
+  const und=act.reduce((a,r)=>a+(Number(r.cantidad)||0),0),tipos=new Set(act.map(r=>r.material)).size;
+  const cols=[{k:'i',h:'Foto',h2:r=>thumb(r.imagen,46),s:r=>r.imagen?0:1},{k:'m',h:'Material',h2:r=>`<b>${esc(r.material||'')}</b>`,s:r=>r.material||''},{k:'g',h:'Geometría',f:r=>r.geometria||'—'},{k:'d',h:'Medidas (mm)',f:r=>medMat(r)||'—'},{k:'u',h:'Ubicación',f:r=>r.ubicacion||'—'},
+   {k:'c',h:'Cantidad',r:1,h2:r=>`<span style="white-space:nowrap"><button class="btn s" onclick="event.stopPropagation();stkMat('${r.id}',-1)">−</button> <b style="display:inline-block;min-width:26px;text-align:center;${Number(r.cantidad)>0?'':'color:var(--danger,#dc2626)'}">${Number(r.cantidad)||0}</b> <button class="btn s" onclick="event.stopPropagation();stkMat('${r.id}',1)">＋</button></span>`,s:r=>Number(r.cantidad)||0}];
+  return `<div class="rh"><h2>🧱 Inventario de materiales</h2><button class="btn p" onclick="formMat()">＋ Agregar material</button></div>
+  <div class="kp"><div class="k"><div class="l">Piezas</div><div class="v">${act.length}</div><div class="s">${und} unidades · ${tipos} materiales</div></div></div>
+  <div class="fl">${qInput('mat')}</div>${tabla('mat',cols,rows,r=>`detMat('${r.id}')`)}`;}
+async function stkMat(id,d){try{const r=await sb.rpc('mant_mat_stock',{p_id:id,p_delta:d});const x=D.mat.find(y=>y.id===id);if(x)x.cantidad=r.cantidad;render();}catch(e){toast('⚠️ '+(e.message||e));}}
+function detMat(id){const r=D.mat.find(x=>x.id===id);if(!r)return;
+  abrir(esc(r.material||'Material'),`${r.imagen?`<img ${IMG(r.imagen)} onclick="verImg(this)" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--line);margin-bottom:10px;cursor:zoom-in">`:''}<dl class="dl"><dt>Geometría</dt><dd>${esc(r.geometria||'—')}</dd><dt>Diámetro (mm)</dt><dd>${esc(r.diametro||'—')}</dd><dt>Largo (mm)</dt><dd>${esc(r.largo||'—')}</dd><dt>Ancho (mm)</dt><dd>${esc(r.ancho||'—')}</dd><dt>Espesor (mm)</dt><dd>${esc(r.espesor||'—')}</dd><dt>Cantidad</dt><dd><b>${Number(r.cantidad)||0}</b></dd><dt>Ubicación</dt><dd>${esc(r.ubicacion||'—')}</dd><dt>Costo</dt><dd>${r.costo!=null?'$ '+Number(r.costo).toLocaleString('es-CO'):'—'}</dd><dt>Fecha de registro</dt><dd>${fDT(r.fecha)}</dd><dt>Observaciones</dt><dd>${esc(r.observaciones||'—')}</dd></dl>`,
+   `<button class="btn p" onclick="formMat('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_materiales','${id}')">🗑</button>`);}
+function formMat(id){const r=D.mat.find(x=>x.id===id);formGen(r?'Editar material':'Nuevo material','mant_materiales',r,[{k:'material',l:'Material',req:1},{k:'geometria',l:'Geometría',t:'chips',o:['Cilindro','Platina','Lámina','Tubo','Otro']},{k:'diametro',l:'Diámetro (mm)',attr:'inputmode="decimal"'},{k:'largo',l:'Largo (mm)',attr:'inputmode="decimal"'},{k:'ancho',l:'Ancho (mm)',attr:'inputmode="decimal"'},{k:'espesor',l:'Espesor (mm)',attr:'inputmode="decimal"'},{k:'cantidad',l:'Cantidad',t:'number'},{k:'ubicacion',l:'Ubicación'},{k:'costo',l:'Costo del material',t:'number'},{k:'observaciones',l:'Observaciones',t:'area'},{k:'imagen',l:'Foto',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}]);}
+/* ── HERRAMIENTAS DE CARGA ── */
+function vHc(){const act=D.hc.filter(r=>r.activo!==false),rows=act.filter(r=>buscar('hc',[r.nombre,r.tipo,r.marca,r.serial,r.capacidad,r.estado].join(' ')));
+  const cols=[{k:'i',h:'Foto',h2:r=>thumb(r.imagen,46),s:r=>r.imagen?0:1},{k:'n',h:'Nombre',h2:r=>`<b>${esc(r.nombre||'')}</b>`,s:r=>r.nombre||''},{k:'t',h:'Tipo',f:r=>r.tipo||'—'},{k:'c',h:'Capacidad',f:r=>r.capacidad||'—'},{k:'m',h:'Marca',f:r=>r.marca||'—'},{k:'s',h:'Serial',f:r=>r.serial||'—'},{k:'e',h:'Estado',f:r=>r.estado||'—'}];
+  return `<div class="rh"><h2>🔋 Herramientas de carga</h2><button class="btn p" onclick="formHc()">＋ Agregar</button></div>
+  <div class="kp"><div class="k"><div class="l">Equipos de carga</div><div class="v">${act.length}</div><div class="s">carretas, mesas, plumas, prensas, puente grúa</div></div></div>
+  <div class="fl">${qInput('hc')}</div>${tabla('hc',cols,rows,r=>`detHc('${r.id}')`)}`;}
+function detHc(id){const r=D.hc.find(x=>x.id===id);if(!r)return;
+  abrir(esc(r.nombre||'Herramienta de carga'),`${r.imagen?`<img ${IMG(r.imagen)} onclick="verImg(this)" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--line);margin-bottom:10px;cursor:zoom-in">`:''}<dl class="dl"><dt>Tipo</dt><dd>${esc(r.tipo||'—')}</dd><dt>Capacidad</dt><dd>${esc(r.capacidad||'—')}</dd><dt>Marca</dt><dd>${esc(r.marca||'—')}</dd><dt>Serial</dt><dd>${esc(r.serial||'—')}</dd><dt>Tipo de aceite</dt><dd>${esc(r.tipo_aceite||'—')}</dd><dt>Estado</dt><dd>${esc(r.estado||'—')}</dd><dt>Dimensiones</dt><dd>${esc(r.dimensiones||'—')}</dd><dt>Observaciones</dt><dd>${esc(r.observaciones||'—')}</dd></dl>`,
+   `<button class="btn p" onclick="formHc('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_hcarga','${id}')">🗑</button>`);}
+function formHc(id){const r=D.hc.find(x=>x.id===id);formGen(r?'Editar herramienta de carga':'Nueva herramienta de carga','mant_hcarga',r,[{k:'nombre',l:'Nombre',req:1},{k:'tipo',l:'Tipo'},{k:'capacidad',l:'Capacidad (peso)'},{k:'marca',l:'Marca'},{k:'serial',l:'Serial'},{k:'tipo_aceite',l:'Tipo de aceite'},{k:'estado',l:'Estado',t:'chips',o:['🟢 BUENO','🟡 REGULAR','🔴 MALO']},{k:'dimensiones',l:'Dimensiones'},{k:'observaciones',l:'Observaciones',t:'area'},{k:'imagen',l:'Foto',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}]);}
 /* ── modal ── */
 function abrir(t,b,f){$('mt').innerHTML=t;$('mbody').innerHTML=b;$('mfoot').innerHTML=f||'';$('mod').classList.add('on');$('mbody').scrollTop=0;}
 function cerrar(){$('mod').classList.remove('on');FOTOS=null;}
