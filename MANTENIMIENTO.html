@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261124-113815">
+<meta name="app-build" content="20261124-114302">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -443,7 +443,7 @@ function vVeh(){const V2=vehById();
 function runtVeh(id){const v=D.veh.find(x=>x.id===id);if(!v)return;const pl=String(v.placa||'').trim();
   try{navigator.clipboard&&navigator.clipboard.writeText(pl);}catch(e){}
   toast(pl?'Placa '+pl+' copiada. En el RUNT pégala y pon también el documento del propietario.':'Este vehículo no tiene placa');
-  window.open('https://www.runt.gov.co/actores/ciudadano/consulta-de-vehiculos-por-placa','_blank','noopener');}
+  window.open('https://portalpublico.runt.gov.co/#/consulta-vehiculo/consulta/consulta-ciudadana','_blank','noopener');}
 function actFechaVeh(id,campo){const v=D.veh.find(x=>x.id===id);if(!v)return;const n=campo==='soat'?'SOAT':'Tecnomecánica',ant=v[campo]?String(v[campo]).slice(0,10):'';
   let sug='';if(ant){const d=new Date(ant+'T12:00:00');d.setFullYear(d.getFullYear()+1);sug=isoD(d);}
   abrir(`Actualizar ${n} · ${esc(v.placa||v.codigo||'')}`,`<div class="note">Fecha de vencimiento actual: <b>${ant?fD(ant):'sin fecha'}</b></div><div class="fg"><label>Nueva fecha de vencimiento del ${n}</label><input type="date" id="f_nvf" value="${sug}"></div>`,
