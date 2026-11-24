@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261124-114302">
+<meta name="app-build" content="20261124-114630">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -159,7 +159,7 @@ a.mn-card{text-decoration:none;color:inherit}
     <div id="ls-dev" style="display:none"><h2>⚙️ Desarrollador</h2><p>Usuario y clave</p><input id="dvu" placeholder="Usuario" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px"><input id="dvp" type="password" placeholder="Clave" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px"><div id="dverr" style="color:var(--danger);min-height:18px;font-size:13px;margin:8px 0"></div><button class="btn p" onclick="doLoginDev()" style="width:100%;padding:10px">Entrar</button><button class="back" onclick="devBack()">‹ Volver</button></div>
   </div>
 </div>
-<div id="top"><h1>🛠️ Mantenimiento<span class="vt" id="vt"></span></h1><a id="home-btn" href="index.html" title="Ir al inicio (todos los módulos)" aria-label="Ir al inicio">🏠</a><button id="sync0-btn" onclick="syncCero()" title="Sincronizar desde cero">🔄</button><button id="refresh-btn" onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
+<div id="top"><button id="back-btn" onclick="atras()" title="Atrás" aria-label="Atrás">←</button><h1 onclick="go('inicio')" style="cursor:pointer" title="Ir al inicio de Mantenimiento">🛠️ Mantenimiento<span class="vt" id="vt"></span></h1><a id="home-btn" href="index.html" title="Ir al inicio (todos los módulos)" aria-label="Ir al inicio">🏠</a><button id="sync0-btn" onclick="syncCero()" title="Sincronizar desde cero">🔄</button><button id="refresh-btn" onclick="cargar(true)" title="Actualizar">↻</button><button onclick="logout()">Salir</button></div>
 <div id="tabs"></div>
 <div id="main"></div>
 <div id="bnav"><button id="bn-menu" onclick="mnToggle()"><span class="ic">▾</span><span>MENÚ</span></button></div>
@@ -168,6 +168,7 @@ a.mn-card{text-decoration:none;color:inherit}
 <div id="lb" onclick="this.classList.remove('on')"><img id="lbi" alt=""></div>
 <div id="toast"></div>
 <style>
+#top #back-btn{width:36px;height:34px;padding:0!important;font-size:19px;line-height:1;flex-shrink:0;font-weight:700}
 #top #home-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;text-decoration:none;font-size:16px;flex-shrink:0}
 #top #erp-inst{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;width:34px;height:34px;font-size:15px;padding:0;flex-shrink:0}
 #top #sync0-btn{padding:7px 10px}
@@ -326,13 +327,16 @@ function mnClick(i){const x=mnNodo().hijos[i];if(!x)return;
   const lbl=[...mnRuta(),x.t].join(' › ');
   if(x.v==='equipos'){FILT.eq=x.f?{te:x.f}:{};QS.eq='';}
   go(x.v,lbl);}
-function go(v,lbl){if(!VISTAS.some(x=>x[0]===v))v='inicio';V=v;VLBL=lbl||'';mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
-window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){V=h;VLBL='';render();}}});
+const HIST=[];
+function atras(){if($('mod').classList.contains('on')){cerrar();return;}const p=HIST.pop();if(p){V=p.v;VLBL=p.l;if(location.hash.slice(1)!==V)location.hash=V;render();window.scrollTo(0,0);}else if(V!=='inicio')go('inicio');}
+function go(v,lbl){if(!VISTAS.some(x=>x[0]===v))v='inicio';if(v!==V||(lbl||'')!==VLBL)HIST.push({v:V,l:VLBL});if(HIST.length>40)HIST.shift();V=v;VLBL=lbl||'';mnCerrar();if(location.hash.slice(1)!==v)location.hash=v;render();}
+window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);if(h!==V&&VISTAS.some(x=>x[0]===h)){if(HIST.length&&HIST[HIST.length-1].v===h)HIST.pop();V=h;VLBL='';render();}}});
 function render(){if(!S)return;
   {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=VLBL||n.slice(n.indexOf(' ')+1);}
   $('tabs').innerHTML=VISTAS.map(([k,n])=>`<button class="tb ${V===k?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
   const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh,cal:vCal,rep:vRep}[V];
   try{$('main').innerHTML=f();}catch(e){$('main').innerHTML='<div class="empty">⚠️ '+esc(e.message)+'</div>';console.error(e);}
+  {const b=$('back-btn');if(b)b.style.visibility=(V==='inicio'&&!HIST.length&&!$('mod').classList.contains('on'))?'hidden':'visible';}
   afterRender();}
 function afterRender(){}
 /* ── tablas ── */
