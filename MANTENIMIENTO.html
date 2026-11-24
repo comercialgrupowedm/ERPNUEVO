@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261124-111336">
+<meta name="app-build" content="20261124-113008">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -126,6 +126,23 @@ tr.cl{cursor:pointer}tr.cl:hover td{background:#f4fbfa}
 .mn-sec{padding:12px 12px 0;max-width:1280px;margin:0 auto;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 a.mn-card{text-decoration:none;color:inherit}
 #top .vt{font-size:12px;font-weight:600;opacity:.8;margin-left:8px;white-space:nowrap}
+.cal-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}.cal-h h3{margin:0;min-width:150px;text-align:center;font-size:17px}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.cal-hd{background:#f4f7fb;font-size:11.5px;font-weight:800;text-align:center;padding:6px 0;color:var(--muted);text-transform:uppercase}
+.cal-d{min-height:100px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:4px;cursor:pointer;overflow:hidden}
+.cal-d:nth-child(7n+1){border-left:0}.cal-d.o{background:#f8fafc}.cal-d.o .cal-n{color:#a0aec0}
+.cal-n{font-size:12.5px;font-weight:800;margin-bottom:2px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
+.cal-d.t .cal-n{background:var(--accent);color:#fff;border-radius:999px}.cal-d.s{outline:2px solid var(--accent);outline-offset:-2px}
+.cal-e{font-size:11px;line-height:1.25;border-radius:5px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cal-e.p{background:#dbeafe;color:#1e40af}.cal-e.v{background:#fee2e2;color:#991b1b}.cal-e.r{background:#dcfce7;color:#166534}.cal-e.x{background:#fef3c7;color:#92400e;border:1px dashed #d97706}
+.cal-m{font-size:10.5px;color:var(--muted);font-weight:700}
+.cal-dots{display:none;gap:3px;flex-wrap:wrap}.cal-dots i{width:7px;height:7px;border-radius:50%;display:block}
+.cal-dots i.p{background:#2563eb}.cal-dots i.v{background:#dc2626}.cal-dots i.r{background:#16a34a}.cal-dots i.x{background:#d97706}
+.cal-lg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin:8px 0}
+.cal-lg span::before{content:'';display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.cal-lg .p::before{background:#93c5fd}.cal-lg .v::before{background:#fca5a5}.cal-lg .r::before{background:#86efac}.cal-lg .x::before{background:#fcd34d}
+.cal-mh{font-weight:800;font-size:13px;text-transform:uppercase;color:var(--muted);padding:10px 0 2px}
+@media(max-width:700px){.cal-d{min-height:54px;padding:3px}.cal-evs{display:none}.cal-dots{display:flex}.cal-h h3{min-width:120px}}
 </style>
 <meta name="theme-color" content="#0f766e">
 <link rel="manifest" href="app/mantenimiento.webmanifest">
@@ -240,24 +257,25 @@ const tgEst=e=>e==='BUENO'?'<span class="tg v">🟢 Bueno</span>':e==='REGULAR'?
 const tgTipo=t=>t==='PREVENTIVO'?'<span class="tg b">Preventivo</span>':t==='CORRECTIVO'?'<span class="tg a">Correctivo</span>':'<span class="tg g">—</span>';
 const TIPOS_EQ=['AC O VENTILADORES','EQUIPOS DE METROLOGIA','EQUIPOS ELECTRONICOS','HERRAMIENTAS MANUALES','HERRAMIENTAS ELECTICAS MANUALES','MANT. LOCATIVO','MANT. MAQUINAS','MANT. EQUIPOS'];
 /* ── datos ── */
-const D={eq:[],per:[],veh:[],mant:[],rep:[],vm:[]};
+const D={eq:[],per:[],veh:[],mant:[],rep:[],vm:[],prog:[],rst:[]};
 const perById=()=>Object.fromEntries(D.per.map(p=>[p.id,p]));
 const eqByCod=()=>Object.fromEntries(D.eq.map(e=>[e.codigo,e]));
 const vehById=()=>Object.fromEntries(D.veh.map(v=>[v.id,v]));
 let _loading=false;
 async function cargar(manual){if(_loading)return;_loading=true;
-  try{const [eq,per,veh,mant,rep,vm]=await Promise.all([
+  try{const [eq,per,veh,mant,rep,vm,prog,rst]=await Promise.all([
     GETALL('mant_equipos','select=*&order=codigo.asc,id.asc'),
     GETALL('mant_personal','select=*&order=nombre.asc,id.asc'),
     GETALL('mant_vehiculos','select=*&order=codigo.asc,id.asc'),
     GETALL('mant_mantenimientos','select=*&order=fecha_inicial.desc.nullslast,id.asc'),
     GETALL('mant_repuestos','select=*&order=created_at.asc,id.asc'),
-    GETALL('mant_veh_mantenimientos','select=*&order=fecha.desc.nullslast,id.asc')]);
-    Object.assign(D,{eq,per,veh,mant,rep,vm});if(manual)toast('Datos actualizados');
+    GETALL('mant_veh_mantenimientos','select=*&order=fecha.desc.nullslast,id.asc'),
+    GETALL('mant_programacion','select=*&order=fecha_inicio.asc.nullslast,id.asc'),GETALL('mant_repuestos_stock','select=*&order=nombre.asc,id.asc')]);
+    Object.assign(D,{eq,per,veh,mant,rep,vm,prog,rst});if(manual)toast('Datos actualizados');
   }catch(e){toast('⚠️ '+(e.message||e));}finally{_loading=false;}
   render();}
 /* ── navegación ── */
-const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos']];
+const VISTAS=[['inicio','🏠 Inicio'],['mant','🔧 Mantenimientos'],['equipos','📋 Equipos'],['personal','👷 Personal'],['veh','🏍️ Vehículos'],['cal','📅 Calendario'],['rep','🧩 Repuestos']];
 let V='inicio';
 /*WEDM-MENU*/
 /* Árbol del menú (igual que en AppSheet): Mantenimiento ▸ …, Inventario ▸ … (con submenús), Calendario, Repuestos.
@@ -282,8 +300,8 @@ const MENU=[
    {ic:'🧱',t:'Inv. materiales',pronto:1},
    {ic:'🔋',t:'Herramientas de carga',pronto:1},
    {ic:'📋',t:'Todos los equipos y activos',v:'equipos'}]},
- {ic:'📅',t:'Calendario / programa',pronto:1},
- {ic:'🧩',t:'Repuestos',pronto:1}];
+ {ic:'📅',t:'Calendario / programa',v:'cal'},
+ {ic:'🧩',t:'Repuestos',v:'rep'}];
 let MNP=[],VLBL='';
 const mnNodo=()=>{let n={hijos:MENU};MNP.forEach(i=>{n=n.hijos[i];});return n;};
 const mnRuta=()=>{let n={hijos:MENU};const r=[];MNP.forEach(i=>{n=n.hijos[i];r.push(n.t);});return r;};
@@ -313,7 +331,7 @@ window.addEventListener('hashchange',()=>{if(S){const h=location.hash.slice(1);i
 function render(){if(!S)return;
   {const n=(VISTAS.find(x=>x[0]===V)||[0,''])[1];const t=$('vt');if(t)t.textContent=VLBL||n.slice(n.indexOf(' ')+1);}
   $('tabs').innerHTML=VISTAS.map(([k,n])=>`<button class="tb ${V===k?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
-  const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh}[V];
+  const f={inicio:vInicio,mant:vMant,equipos:vEquipos,personal:vPersonal,veh:vVeh,cal:vCal,rep:vRep}[V];
   try{$('main').innerHTML=f();}catch(e){$('main').innerHTML='<div class="empty">⚠️ '+esc(e.message)+'</div>';console.error(e);}
   afterRender();}
 function afterRender(){}
@@ -352,7 +370,7 @@ function vInicio(){
   const resp={};mm.forEach(m=>{const r=m.responsable||'Sin responsable';resp[r]=(resp[r]||0)+1;});
   const fallas={};D.mant.filter(m=>m.tipo_mant==='CORRECTIVO'&&m.equipo_codigo).forEach(m=>fallas[m.equipo_codigo]=(fallas[m.equipo_codigo]||0)+1);
   const ult=D.mant.slice(0,8);
-  return `<div class="rh"><h2>Resumen ${y}</h2><button class="btn p" onclick="formMant()">＋ Registrar mantenimiento</button></div>
+  return `<div class="rh"><h2>Resumen ${y}</h2><button class="btn p" onclick="formMant()">＋ Registrar mantenimiento</button><button class="btn" onclick="go('cal')">📅 Calendario</button></div>
   <div class="kp"><div class="k"><div class="l">Mantenimientos</div><div class="v">${mm.length}</div><div class="s">${pre} preventivos · ${cor} correctivos</div></div>
   <div class="k ${venc?'red':'grn'}"><div class="l">Programados vencidos</div><div class="v">${venc}</div><div class="s">${pend.length} pendientes en total</div></div>
   <div class="k ${malos?'amb':'grn'}"><div class="l">Equipos en mal estado</div><div class="v">${malos}</div><div class="s">de ${D.eq.length} en catálogo</div></div>
@@ -396,14 +414,14 @@ function expCSV(){const rows=filtMant();if(!rows.length){toast('No hay registros
 /* ── EQUIPOS ── */
 function vEquipos(){const f=FILT.eq;const cnt={},ult={};D.mant.forEach(m=>{if(!m.equipo_codigo)return;cnt[m.equipo_codigo]=(cnt[m.equipo_codigo]||0)+1;if(!ult[m.equipo_codigo]||String(m.fecha_inicial)>String(ult[m.equipo_codigo]))ult[m.equipo_codigo]=m.fecha_inicial;});
   const rows=D.eq.filter(e=>(!f.te||e.tipo===f.te)&&(!f.es||e.estado===f.es)&&buscar('eq',[e.codigo,e.nombre,e.marca,e.modelo,e.serie,e.ubicacion,e.categoria].join(' ')));
-  const cols=[{k:'c',h:'Código',h2:e=>`<b>${esc(e.codigo)}</b>`,s:e=>e.codigo},{k:'n',h:'Nombre',f:e=>e.nombre||''},{k:'t',h:'Tipo',f:e=>e.tipo||''},{k:'m',h:'Marca / modelo',f:e=>[e.marca,e.modelo].filter(Boolean).join(' ')},{k:'s',h:'Serie',f:e=>e.serie||''},{k:'u',h:'Ubicación',f:e=>e.ubicacion||''},{k:'e',h:'Estado',h2:e=>tgEst(e.estado),s:e=>e.estado||''},{k:'q',h:'Mant.',r:1,f:e=>cnt[e.codigo]||0},{k:'l',h:'Último',f:e=>ult[e.codigo]?fD(ult[e.codigo]):'—',s:e=>ult[e.codigo]||''}];
+  const cols=[{k:'f',h:'Foto',h2:e=>[e.foto,e.foto2].filter(Boolean).map(u=>`<img ${IMG(u)} onclick="event.stopPropagation();verImg(this)" style="width:46px;height:46px;object-fit:cover;border-radius:8px;margin-right:4px;cursor:zoom-in">`).join('')||'<span style="color:var(--muted)">—</span>',s:e=>e.foto?0:1},{k:'c',h:'Código',h2:e=>`<b>${esc(e.codigo)}</b>`,s:e=>e.codigo},{k:'n',h:'Nombre',f:e=>e.nombre||''},{k:'t',h:'Tipo',f:e=>e.tipo||''},{k:'m',h:'Marca / modelo',f:e=>[e.marca,e.modelo].filter(Boolean).join(' ')},{k:'s',h:'Serie',f:e=>e.serie||''},{k:'u',h:'Ubicación',f:e=>e.ubicacion||''},{k:'e',h:'Estado',h2:e=>tgEst(e.estado),s:e=>e.estado||''},{k:'q',h:'Mant.',r:1,f:e=>cnt[e.codigo]||0},{k:'l',h:'Último',f:e=>ult[e.codigo]?fD(ult[e.codigo]):'—',s:e=>ult[e.codigo]||''}];
   return `<div class="rh"><h2>Equipos y activos</h2><button class="btn p" onclick="formEquipo()">＋ Agregar</button></div>
   <div class="fl">${qInput('eq')}<label>Tipo<select onchange="FILT.eq.te=this.value;render()">${optsH(TIPOS_EQ,f.te)}</select></label><label>Estado<select onchange="FILT.eq.es=this.value;render()">${optsH(['BUENO','REGULAR','MALO'],f.es)}</select></label><button class="btn" onclick="FILT.eq={};QS.eq='';render()">Limpiar</button></div>
   ${tabla('eq',cols,rows,e=>`detEquipo('${e.id}')`,100)}`;}
 function detEquipo(id){const e=D.eq.find(x=>x.id===id);if(!e)return;
   const h=D.mant.filter(m=>m.equipo_codigo===e.codigo);const pn=pendientes().find(p=>p.cod===e.codigo);
   abrir(`${esc(e.codigo)} · ${esc(e.nombre||'')}`,
-   `${e.foto?`<img src="${esc(e.foto)}" referrerpolicy="no-referrer" style="display:block;max-width:100%;max-height:220px;margin:0 auto 12px;border-radius:12px;border:1px solid var(--line)" onerror="this.remove()">`:''}<dl class="dl"><dt>Tipo</dt><dd>${esc(e.tipo||'—')}</dd><dt>Marca / modelo</dt><dd>${esc([e.marca,e.modelo].filter(Boolean).join(' ')||'—')}</dd><dt>Serie</dt><dd>${esc(e.serie||'—')}</dd><dt>Ubicación</dt><dd>${esc(e.ubicacion||'—')}</dd><dt>Estado</dt><dd>${tgEst(e.estado)}</dd><dt>Próximo mant.</dt><dd>${pn?fD(pn.fecha)+' '+tgDias(pn.d):'—'}</dd></dl>
+   `${galDet(e)}<dl class="dl"><dt>Tipo</dt><dd>${esc(e.tipo||'—')}</dd><dt>Marca / modelo</dt><dd>${esc([e.marca,e.modelo].filter(Boolean).join(' ')||'—')}</dd><dt>Serie</dt><dd>${esc(e.serie||'—')}</dd><dt>Ubicación</dt><dd>${esc(e.ubicacion||'—')}</dd><dt>Estado</dt><dd>${tgEst(e.estado)}</dd><dt>Próximo mant.</dt><dd>${pn?fD(pn.fecha)+' '+tgDias(pn.d):'—'}</dd></dl>
    <div id="fotosDet"></div><h3 style="margin:16px 0 6px;font-size:13px">Historial (${h.length})</h3>${h.map(m=>`<div class="li" style="cursor:pointer" onclick="detMant('${m.id}')"><div>${tgTipo(m.tipo_mant)} <b>${fD(m.fecha_inicial)}</b><small>${esc(m.responsable||'')} · ${esc((m.falla||m.actividades||'').slice(0,80))}</small></div></div>`).join('')||'<div class="empty">Sin mantenimientos registrados</div>'}`,
    `<button class="btn" onclick="window.print()">🖨 Imprimir</button><button class="btn p" onclick="formMant(null,'${esc(e.codigo)}')">＋ Registrar mantenimiento</button><button class="btn" onclick="formEquipo('${e.id}')">✏️ Editar</button>${esAdmin()?`<button class="btn d" onclick="eliminar('mant_equipos','${e.id}')">🗑</button>`:''}`);
   cargarFotosDet('mant_equipos',id);}
@@ -433,6 +451,117 @@ function detMant(id){const m=D.mant.find(x=>x.id===id);if(!m)return;const e=eqBy
   const hi=m.hora_inicio?` · ${m.hora_inicio}`:'';
   abrir(`${esc(m.equipo_codigo||'Mantenimiento')} ${tgTipo(m.tipo_mant)}`,`<dl class="dl"><dt>Equipo</dt><dd>${esc((m.equipo_codigo||'—')+(e.nombre?' · '+e.nombre:''))}</dd><dt>Tipo de equipo</dt><dd>${esc(m.tipo_equipo||'—')}</dd><dt>Serial</dt><dd>${esc(m.serial||'—')}</dd><dt>Inicio</dt><dd>${fDT(m.fecha_inicial)}</dd><dt>Fin</dt><dd>${fDT(m.fecha_final)}</dd><dt>Responsable</dt><dd>${esc(m.responsable||'—')}</dd><dt>Estado anterior</dt><dd>${tgEst(m.estado_anterior)}</dd><dt>Falla / diagnóstico</dt><dd>${esc(m.falla||'—')}</dd><dt>Actividades</dt><dd>${esc(m.actividades||'—')}</dd><dt>Repuestos</dt><dd>${rp.map(r=>`• ${esc(r.repuesto||'')}${r.descripcion?' — '+esc(r.descripcion):''}${Number(r.costo)?' ('+fM(r.costo)+')':''}`).join('\n')||'—'}</dd><dt>Costo total</dt><dd><b>${fM(m.costo_total)}</b></dd><dt>Próximo mant.</dt><dd>${m.proximo_mant?fD(m.proximo_mant):'—'}</dd><dt>Observaciones</dt><dd>${esc(m.observaciones||'—')}</dd><dt>Registrado por</dt><dd>${esc(m.creado_por||'—')}</dd></dl><div id="fotosDet"></div>`,
   `<button class="btn" onclick="window.print()">🖨 Imprimir</button><button class="btn p" onclick="formMant('${id}')">✏️ Editar</button>${esAdmin()?`<button class="btn d" onclick="eliminar('mant_mantenimientos','${id}')">🗑</button>`:''}`);cargarFotosDet('mant_mantenimientos',id);}
+/* fotos de un equipo (principal + segunda): se muestran juntas para poder identificarlo */
+const fotosEq=(e,w,h)=>{const l=[e&&e.foto,e&&e.foto2].filter(Boolean);if(!l.length)return '';if(l.length>1){w=Math.round(w*.78);h=Math.round(h*.78);}
+  return `<div style="display:flex;gap:6px;flex-shrink:0">${l.map(u=>`<img ${IMG(u)} onclick="verImg(this)" style="width:${w}px;height:${h}px;object-fit:cover;border-radius:10px;cursor:zoom-in">`).join('')}</div>`;};
+const galDet=e=>{const l=[e.foto,e.foto2].filter(Boolean);if(!l.length)return '';return `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">${l.map(u=>`<img ${IMG(u)} onclick="verImg(this)" style="${l.length>1?'width:calc(50% - 4px);height:190px;object-fit:cover':'max-width:100%;max-height:220px'};border-radius:12px;border:1px solid var(--line);cursor:zoom-in">`).join('')}</div>`;};
+function verImg(el){const i=$('lbi');if(!i)return;i.src=el.src;$('lb').classList.add('on');}
+/* imágenes de Drive: si la miniatura falla se prueban otras 2 formas de la URL antes de rendirse */
+const driveId=u=>{const m=String(u||'').match(/[?&]id=([\w-]+)|\/d\/([\w-]+)/);return m?(m[1]||m[2]):null;};
+const IMG=u=>`src="${esc(u)}" data-u="${esc(u)}" data-n="0" referrerpolicy="no-referrer" onerror="imgFail(this)"`;
+function imgFail(el){const u=el.dataset.u,id=driveId(u),n=Number(el.dataset.n||0)+1;el.dataset.n=n;
+  const c=id?['https://lh3.googleusercontent.com/d/'+id+'=w800','https://drive.google.com/uc?export=view&id='+id]:[];
+  if(n<=c.length){el.src=c[n-1];return;}
+  const b=document.createElement('div');b.className='imgx';b.textContent='📷 No se pudo cargar la foto';b.style.cssText='font-size:12px;color:var(--muted);padding:8px;text-align:center';
+  if(el.style.width||el.parentNode&&el.parentNode.style&&el.parentNode.style.display==='flex'){b.textContent='📷';b.style.cssText='width:96px;height:78px;display:flex;align-items:center;justify-content:center;background:#eef2f8;border-radius:10px;font-size:24px;flex-shrink:0';}
+  el.replaceWith(b);}
+/* ── CALENDARIO / PROGRAMA ── */
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],DSEM=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const CAL={y:new Date().getFullYear(),m:new Date().getMonth(),sel:isoD(new Date()),modo:'mes',est:''};
+function progEst(p){if(p.realizado)return 'r';const d=dias(p.fecha_fin||p.fecha_inicio);return d!=null&&d<0?'v':'p';}
+function calEventos(){const out=[];
+  D.prog.forEach(p=>{const a=dObj(p.fecha_inicio);if(!a)return;let b=dObj(p.fecha_fin)||a;if(b<a)b=a;const n=Math.min(31,Math.round((b-a)/864e5)),st=progEst(p);
+    for(let i=0;i<=n;i++){const d=new Date(a.getFullYear(),a.getMonth(),a.getDate()+i);out.push({k:'p',id:p.id,fecha:isoD(d),st,p,first:i===0});}});
+  const cov=new Set(D.prog.map(p=>p.mant_id).filter(Boolean));
+  pendientes().forEach(x=>{const f=String(x.fecha).slice(0,10);if(cov.has(x.m.id))return;if(D.prog.some(p=>p.equipo_codigo===x.cod&&p.fecha_inicio===f))return;
+    out.push({k:'v',id:x.m.id,fecha:f,st:x.d<0?'v':'x',cod:x.cod,m:x.m,first:true});});
+  return out;}
+const evCod=e=>e.k==='p'?(e.p.equipo_codigo||''):e.cod;
+const evLabel=e=>e.k==='p'?((e.p.equipo_codigo?e.p.equipo_codigo+' · ':'')+(e.p.tarea||'Mantenimiento')):(e.cod+' · Próx. mant.');
+const evTxt=e=>e.k==='p'?[e.p.equipo_codigo,(eqByCod()[e.p.equipo_codigo]||{}).nombre,e.p.tarea,e.p.empresa,e.p.tecnico,e.p.descripcion].join(' '):[e.cod,(eqByCod()[e.cod]||{}).nombre,'proximo mantenimiento'].join(' ');
+function calFiltro(e){const s=CAL.est;if(s==='p'&&!(e.st==='p'||e.st==='x'))return false;if(s==='v'&&e.st!=='v')return false;if(s==='r'&&e.st!=='r')return false;return buscar('cal',evTxt(e));}
+const evTag=st=>st==='r'?'<span class="tg v">Realizado</span>':st==='v'?'<span class="tg r">Vencido</span>':st==='x'?'<span class="tg a">Próximo sin programar</span>':'<span class="tg b">Pendiente</span>';
+const evClick=e=>e.k==='p'?`detProg('${e.id}')`:`detProx('${e.id}')`;
+function evRow(e,conFecha){const p=e.p,eq=eqByCod()[evCod(e)]||{};
+  const sub=e.k==='p'?[(conFecha?fD(e.fecha)+' · ':'')+((p.hora_inicio&&p.hora_fin)?p.hora_inicio+'–'+p.hora_fin:''),p.empresa||p.tecnico||''].filter(Boolean).join(' · '):((conFecha?fD(e.fecha)+' · ':'')+'Fecha sugerida por el último mantenimiento');
+  return `<div class="li" style="cursor:pointer" onclick="${evClick(e)}"><div><b>${esc(evCod(e)||'—')}</b> ${esc(e.k==='p'?(p.tarea||''):'')}<small>${esc(eq.nombre?eq.nombre+' · ':'')}${esc(sub)}</small></div>${evTag(e.st)}</div>`;}
+function calNav(dm){CAL.m+=dm;if(CAL.m<0){CAL.m=11;CAL.y--;}if(CAL.m>11){CAL.m=0;CAL.y++;}render();}
+function calHoy(){const d=new Date();CAL.y=d.getFullYear();CAL.m=d.getMonth();CAL.sel=isoD(d);render();}
+function calSel(iso){const d=dObj(iso);CAL.sel=iso;if(d.getMonth()!==CAL.m||d.getFullYear()!==CAL.y){CAL.y=d.getFullYear();CAL.m=d.getMonth();}render();}
+function vCal(){const ev=calEventos().filter(calFiltro),por={};ev.forEach(e=>(por[e.fecha]=por[e.fecha]||[]).push(e));
+  const y=CAL.y,m=CAL.m,off=(new Date(y,m,1).getDay()+6)%7,ini=new Date(y,m,1-off),hoyIso=isoD(new Date());
+  const mesIni=isoD(new Date(y,m,1)),mesFin=isoD(new Date(y,m+1,0));
+  const delMes=D.prog.filter(p=>p.fecha_inicio>=mesIni&&p.fecha_inicio<=mesFin),venc=D.prog.filter(p=>progEst(p)==='v').length,sinProg=calEventos().filter(e=>e.k==='v'&&e.st==='v').length;
+  const prox30=D.prog.filter(p=>!p.realizado&&(dias(p.fecha_inicio)||0)>=0&&dias(p.fecha_inicio)<=30).length;
+  const kp=`<div class="kp"><div class="k"><div class="l">${MESES[m]}</div><div class="v">${delMes.length}</div><div class="s">${delMes.filter(p=>p.realizado).length} realizados</div></div><div class="k ${venc?'red':'grn'}"><div class="l">Vencidos</div><div class="v">${venc}</div><div class="s">programados sin marcar como realizados</div></div><div class="k ${prox30?'amb':'grn'}"><div class="l">Próximos 30 días</div><div class="v">${prox30}</div><div class="s">${sinProg?sinProg+' próximos sin programar':'al día'}</div></div></div>`;
+  const nav=`<div class="cal-h"><button class="btn" onclick="calNav(-1)">‹</button><h3>${MESES[m]} ${y}</h3><button class="btn" onclick="calNav(1)">›</button><button class="btn" onclick="calHoy()">Hoy</button>
+    <div class="chs" style="margin-left:auto"><button class="ch ${CAL.modo==='mes'?'on':''}" onclick="CAL.modo='mes';render()">📅 Mes</button><button class="ch ${CAL.modo==='lista'?'on':''}" onclick="CAL.modo='lista';render()">☰ Lista</button></div></div>
+    <div class="fl">${qInput('cal')}<label>Estado<select onchange="CAL.est=this.value;render()"><option value="">Todos</option><option value="p" ${CAL.est==='p'?'selected':''}>Pendientes</option><option value="v" ${CAL.est==='v'?'selected':''}>Vencidos</option><option value="r" ${CAL.est==='r'?'selected':''}>Realizados</option></select></label></div>`;
+  const head=`<div class="rh"><h2>Calendario de mantenimiento</h2><button class="btn p" onclick="formProg()">＋ Programar mantenimiento</button></div>`;
+  const lg='<div class="cal-lg"><span class="p">Pendiente</span><span class="v">Vencido</span><span class="r">Realizado</span><span class="x">Próximo sin programar</span></div>';
+  if(CAL.modo==='lista'){
+    const lst=ev.filter(e=>e.first).sort((a,b)=>a.fecha.localeCompare(b.fecha));let html='',cur='';
+    lst.slice(0,LIM.cal||200).forEach(e=>{const k=e.fecha.slice(0,7);if(k!==cur){cur=k;const d=dObj(e.fecha);html+=`<div class="cal-mh">${MESES[d.getMonth()]} ${d.getFullYear()}</div>`;}html+=evRow(e,true);});
+    return head+kp+nav+lg+`<div class="card">${html||'<div class="empty">Sin programaciones</div>'}</div>${lst.length>(LIM.cal||200)?`<button class="more" onclick="LIM.cal=(LIM.cal||200)+200;render()">Mostrar más</button>`:''}`;}
+  let cells=DSEM.map(d=>`<div class="cal-hd">${d}</div>`).join('');
+  for(let i=0;i<42;i++){const d=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+i),iso=isoD(d),l=por[iso]||[];
+    cells+=`<div class="cal-d ${d.getMonth()!==m?'o':''} ${iso===hoyIso?'t':''} ${iso===CAL.sel?'s':''}" onclick="calSel('${iso}')"><div class="cal-n">${d.getDate()}</div><div class="cal-evs">${l.slice(0,3).map(e=>`<div class="cal-e ${e.st}" title="${esc(evLabel(e))}">${esc(evLabel(e))}</div>`).join('')}${l.length>3?`<div class="cal-m">+${l.length-3} más</div>`:''}</div><div class="cal-dots">${l.slice(0,4).map(e=>`<i class="${e.st}"></i>`).join('')}</div></div>`;}
+  const dsel=dObj(CAL.sel),lsel=por[CAL.sel]||[];
+  const ag=`<div class="card" style="margin-top:12px"><div class="rh" style="margin:0 0 6px"><h3 style="margin:0">${DSEM[(dsel.getDay()+6)%7]} ${fD(CAL.sel)}</h3><button class="btn s" onclick="formProg()">＋ Programar este día</button></div>${lsel.map(e=>evRow(e,false)).join('')||'<div class="empty">Nada programado este día</div>'}</div>`;
+  return head+kp+nav+lg+`<div class="cal-g">${cells}</div>`+ag;}
+const mesMas=(d,n)=>{const t=new Date(d.getFullYear(),d.getMonth()+n,1),u=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();return new Date(t.getFullYear(),t.getMonth(),Math.min(d.getDate(),u));};
+const eqMini=e=>e?`<div style="display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px">${fotosEq(e,96,78)}<div style="min-width:0"><b>${esc(e.codigo)}</b><div style="font-size:12.5px;color:var(--muted)">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</div>${e.ubicacion?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.ubicacion)}</div>`:''}</div></div>`:'';
+function detProg(id){const p=D.prog.find(x=>x.id===id);if(!p)return;const e=eqByCod()[p.equipo_codigo],st=progEst(p),tel=String(p.contacto||'').replace(/[^\d+]/g,'');let wa=tel.replace('+','');if(wa.length===10)wa='57'+wa;
+  const hor=(p.hora_inicio&&p.hora_fin)?` · ${esc(p.hora_inicio)} a ${esc(p.hora_fin)}`:'';const fin=p.fecha_fin&&p.fecha_fin!==p.fecha_inicio?` – ${fD(p.fecha_fin)}`:'';
+  abrir(`${esc(p.tarea||'Mantenimiento programado')} ${evTag(st)}`,
+   `${eqMini(e)}<dl class="dl"><dt>Equipo</dt><dd>${esc((p.equipo_codigo||'—')+(e&&e.nombre?' · '+e.nombre:''))}</dd><dt>Fecha</dt><dd>${fD(p.fecha_inicio)}${fin}${hor}</dd><dt>Tipo</dt><dd>${tgTipo(p.tipo_mant)}</dd><dt>Empresa</dt><dd>${esc(p.empresa||'—')}</dd><dt>Técnico</dt><dd>${esc(p.tecnico||p.encargado||'—')}</dd><dt>Contacto</dt><dd>${tel?`${esc(p.contacto)} <a class="btn s" href="tel:${esc(tel)}">📞</a> <a class="btn s" target="_blank" rel="noopener" href="https://wa.me/${esc(wa)}">💬</a>`:'—'}</dd><dt>Se repite</dt><dd>${p.frecuencia_meses?'Cada '+p.frecuencia_meses+(p.frecuencia_meses>1?' meses':' mes'):'No'}</dd><dt>Estado</dt><dd>${p.realizado?'Realizado el '+fD(p.fecha_realizacion):(st==='v'?'Vencido hace '+(-dias(p.fecha_fin||p.fecha_inicio))+' día(s)':'Pendiente')}</dd><dt>Descripción</dt><dd>${esc(p.descripcion||'—')}</dd><dt>Registro</dt><dd>${p.mant_id&&D.mant.some(x=>x.id===p.mant_id)?`<a href="javascript:void 0" onclick="detMant('${p.mant_id}')">Ver mantenimiento relacionado</a>`:'—'}</dd></dl>`,
+   `${p.realizado?`<button class="btn" onclick="reabrirProg('${id}')">↩ Reabrir</button>`:`<button class="btn p" onclick="realizarProg('${id}')">✅ Marcar realizado</button>`}<button class="btn" onclick="formProg('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_programacion','${id}')">🗑</button>`);}
+function detProx(mid){const m=D.mant.find(x=>x.id===mid);if(!m)return;const e=eqByCod()[m.equipo_codigo];const d=dias(m.proximo_mant);
+  abrir(`${esc(m.equipo_codigo||'')} · Próximo mantenimiento ${tgDias(d)}`,`${eqMini(e)}<dl class="dl"><dt>Fecha sugerida</dt><dd>${fD(m.proximo_mant)}</dd><dt>Último mantenimiento</dt><dd>${fD(m.fecha_inicial)} · ${esc(m.responsable||'')}</dd><dt>Actividades</dt><dd>${esc(m.actividades||m.falla||'—')}</dd></dl><div class="note">Esta fecha viene del último mantenimiento registrado y todavía no tiene una programación.</div>`,
+   `<button class="btn p" onclick="formProg(null,{equipo_codigo:'${esc(m.equipo_codigo||'')}',fecha_inicio:'${String(m.proximo_mant).slice(0,10)}',mant_id:'${m.id}',tipo_mant:'${m.tipo_mant||'PREVENTIVO'}',tarea:'Mantenimiento preventivo'})">📅 Programarlo</button><button class="btn" onclick="formMant(null,'${esc(m.equipo_codigo||'')}')">🔧 Registrar mantenimiento</button><button class="btn" onclick="detMant('${m.id}')">Ver el último</button>`);}
+let FORMP={};
+function formProg(id,pre){const r=D.prog.find(x=>x.id===id)||Object.assign({fecha_inicio:CAL.sel||isoD(new Date()),hora_inicio:'08:00',hora_fin:'11:00',tipo_mant:'PREVENTIVO'},pre||{});FORMP=r;FM={tipo_mant:r.tipo_mant||null};FOTOS=null;
+  const spec=[{k:'tarea',l:'Tarea / actividad',req:1},{k:'tipo_mant',l:'Tipo',t:'chips',o:['PREVENTIVO','CORRECTIVO']},{k:'fecha_inicio',l:'Fecha',t:'date',req:1},{k:'fecha_fin',l:'Fecha final (si dura varios días)',t:'date'},{k:'hora_inicio',l:'Hora de inicio',t:'time'},{k:'hora_fin',l:'Hora final',t:'time'},{k:'tecnico_id',l:'Técnico / responsable',t:'sel',o:D.per.map(p=>[p.id,p.nombre+(p.empresa?' — '+p.empresa:'')])},{k:'empresa',l:'Empresa'},{k:'contacto',l:'Teléfono de contacto',attr:'inputmode="tel"'},{k:'frecuencia_meses',l:'Se repite cada… (al marcar realizado se programa la siguiente)',t:'sel',o:[...Array(12)].map((_,i)=>[i+1,(i+1)+(i?' meses':' mes')])},{k:'descripcion',l:'Descripción / notas',t:'area'}];
+  window._SPECP=spec;
+  const eqo=D.eq.map(e=>`<option value="${esc(e.codigo)}">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</option>`).join('');
+  abrir(id?'Editar programación':'Programar mantenimiento',`<div class="fg"><label>Equipo / activo (código)</label><input id="f_equipo_codigo" list="eqdl2" value="${esc(r.equipo_codigo||'')}" onchange="eqCard()" placeholder="Escribe o elige…" autocomplete="off"><datalist id="eqdl2">${eqo}</datalist></div><div id="eqCard"></div>`+spec.map(f=>campo(f,r[f.k])).join(''),
+   `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn p" id="btnG" onclick="guardarProg('${id||''}')">💾 Guardar</button>`);
+  eqCard();const t=$('f_tecnico_id');if(t)t.onchange=()=>{const p=perById()[t.value];if(p){if(!$('f_empresa').value)$('f_empresa').value=p.empresa||'';if(!$('f_contacto').value)$('f_contacto').value=p.telefono||'';}};}
+async function guardarProg(id){const btn=$('btnG');if(btn.disabled)return;
+  try{const data=leer(window._SPECP);data.equipo_codigo=$('f_equipo_codigo').value.trim()||null;
+    if(!data.fecha_fin||data.fecha_fin<data.fecha_inicio)data.fecha_fin=data.fecha_inicio;
+    const per=perById()[data.tecnico_id];data.tecnico=per?per.nombre:null;
+    if(per){if(!data.empresa&&per.empresa)data.empresa=per.empresa;if(!data.contacto&&per.telefono)data.contacto=per.telefono;}
+    if(FORMP&&FORMP.mant_id)data.mant_id=FORMP.mant_id;
+    btn.disabled=true;await sb.rpc('mant_upsert',{p_tabla:'mant_programacion',p_id:id||null,p_data:data});toast('✓ Programación guardada');cerrar();
+    const d=dObj(data.fecha_inicio);if(d){CAL.y=d.getFullYear();CAL.m=d.getMonth();CAL.sel=data.fecha_inicio;}
+    await cargar();}catch(e){toast('⚠️ '+(e.message||e));btn.disabled=false;}}
+function realizarProg(id){const p=D.prog.find(x=>x.id===id);if(!p)return;const f=Number(p.frecuencia_meses)||0,sig=f&&dObj(p.fecha_inicio)?mesMas(dObj(p.fecha_inicio),f):null;
+  abrir('Marcar como realizado',`<div class="fg"><label>Fecha en que se realizó</label><input id="rp_f" type="date" value="${isoD(new Date())}"></div>${sig?`<div class="fg"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rp_gen" checked style="width:auto"> Programar automáticamente la siguiente (cada ${f} ${f>1?'meses':'mes'}): <b>${fD(sig)}</b></label></div>`:''}<div class="fg"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rp_reg" checked style="width:auto"> Registrar ahora el mantenimiento realizado (abre el formulario con los datos ya puestos)</label></div>`,
+   `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn p" id="btnG" onclick="confirmarRealizado('${id}')">✅ Confirmar</button>`);}
+async function confirmarRealizado(id){const btn=$('btnG');if(btn.disabled)return;const p=D.prog.find(x=>x.id===id);const f=$('rp_f').value||isoD(new Date()),gen=$('rp_gen')?$('rp_gen').checked:false,reg=$('rp_reg').checked;
+  try{btn.disabled=true;const r=await sb.rpc('mant_prog_realizar',{p_id:id,p_fecha:f,p_generar:gen});cerrar();await cargar();toast(r.siguiente?'✓ Realizado · se programó la siguiente':'✓ Marcado como realizado');
+    if(reg&&p){formMant(null,p.equipo_codigo||'');if(p.tipo_mant){const b=document.querySelector('#f_tipo_mant .ch[data-v="'+p.tipo_mant+'"]');if(b&&!b.classList.contains('on'))b.click();}
+      const hh=v=>{const a=String(v||'').split(':');return a.length>=2?p2(a[0])+':'+p2(a[1]):'';};const i=$('f_fecha_inicial'),j=$('f_fecha_final');if(i)i.value=f+'T'+(hh(p.hora_inicio)||'08:00');if(j)j.value=f+'T'+(hh(p.hora_fin)||'11:00');
+      if(p.tecnico_id){const b=document.querySelector('#f_responsable_id .ch[data-v="'+p.tecnico_id+'"]');if(b&&!b.classList.contains('on'))b.click();}}}
+  catch(e){toast('⚠️ '+(e.message||e));btn.disabled=false;}}
+async function reabrirProg(id){try{await sb.rpc('mant_prog_reabrir',{p_id:id});toast('Reabierto');cerrar();await cargar();}catch(e){toast('⚠️ '+(e.message||e));}}
+/* ── REPUESTOS (inventario de repuestos de máquinas y equipos) ── */
+const tgRep=e=>e==='NUEVO'?'<span class="tg v">🟢 Nuevo</span>':e==='USADO'?'<span class="tg a">🟡 Usado</span>':e==='DAÑADO'?'<span class="tg r">🔴 Dañado</span>':'<span class="tg g">—</span>';
+function vRep(){const rows=D.rst.filter(r=>r.activo!==false&&buscar('rst',[r.nombre,r.descripcion,r.referencia,r.ubicacion,r.equipos,r.observaciones].join(' ')));
+  const und=D.rst.reduce((a,r)=>a+(Number(r.cantidad)||0),0),agot=D.rst.filter(r=>!(Number(r.cantidad)>0)).length;
+  const cols=[{k:'i',h:'',h2:r=>r.imagen?`<img ${IMG(r.imagen)} style="width:38px;height:38px;object-fit:cover;border-radius:8px">`:'',s:()=>''},
+   {k:'n',h:'Repuesto',h2:r=>`<b>${esc(r.nombre||'')}</b>`,s:r=>r.nombre||''},{k:'d',h:'Descripción',f:r=>r.descripcion||''},{k:'r',h:'Referencia',f:r=>r.referencia||''},{k:'e',h:'Para',f:r=>r.equipos||'—'},{k:'u',h:'Ubicación',f:r=>r.ubicacion||''},
+   {k:'c',h:'Cantidad',r:1,h2:r=>`<span style="white-space:nowrap"><button class="btn s" onclick="event.stopPropagation();stkRep('${r.id}',-1)">−</button> <b style="display:inline-block;min-width:26px;text-align:center;${Number(r.cantidad)>0?'':'color:var(--danger,#dc2626)'}">${Number(r.cantidad)||0}</b> <button class="btn s" onclick="event.stopPropagation();stkRep('${r.id}',1)">＋</button></span>`,s:r=>Number(r.cantidad)||0},
+   {k:'s',h:'Estado',h2:r=>tgRep(r.estado),s:r=>r.estado||''}];
+  return `<div class="rh"><h2>Repuestos</h2><button class="btn p" onclick="formRep()">＋ Agregar repuesto</button></div>
+  <div class="kp"><div class="k"><div class="l">Tipos de repuesto</div><div class="v">${D.rst.length}</div><div class="s">${und} unidades en total</div></div><div class="k ${agot?'red':'grn'}"><div class="l">Agotados</div><div class="v">${agot}</div><div class="s">con cantidad 0</div></div></div>
+  <div class="fl">${qInput('rst')}</div>${tabla('rst',cols,rows,r=>`detRep('${r.id}')`)}`;}
+async function stkRep(id,d){try{const r=await sb.rpc('mant_repuesto_stock',{p_id:id,p_delta:d});const x=D.rst.find(y=>y.id===id);if(x)x.cantidad=r.cantidad;render();}catch(e){toast('⚠️ '+(e.message||e));}}
+function detRep(id){const r=D.rst.find(x=>x.id===id);if(!r)return;
+  abrir(esc(r.nombre||'Repuesto'),`${r.imagen?`<img ${IMG(r.imagen)} style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line);margin-bottom:10px">`:''}<dl class="dl"><dt>Descripción</dt><dd>${esc(r.descripcion||'—')}</dd><dt>Referencia</dt><dd>${esc(r.referencia||'—')}</dd><dt>Cantidad</dt><dd><b>${Number(r.cantidad)||0}</b></dd><dt>Estado</dt><dd>${tgRep(r.estado)}</dd><dt>Ubicación</dt><dd>${esc(r.ubicacion||'—')}</dd><dt>Se usa en</dt><dd>${esc(r.equipos||'—')}</dd><dt>Observaciones</dt><dd>${esc(r.observaciones||'—')}</dd></dl>`,
+   `<button class="btn p" onclick="formRep('${id}')">✏️ Editar</button><button class="btn d" onclick="eliminar('mant_repuestos_stock','${id}')">🗑</button>`);}
+function formRep(id){const r=D.rst.find(x=>x.id===id);formGen(r?'Editar repuesto':'Nuevo repuesto','mant_repuestos_stock',r,[{k:'nombre',l:'Repuesto',req:1},{k:'descripcion',l:'Descripción'},{k:'referencia',l:'Referencia'},{k:'cantidad',l:'Cantidad',t:'number'},{k:'estado',l:'Estado',t:'chips',o:['NUEVO','USADO','DAÑADO'],def:'NUEVO'},{k:'ubicacion',l:'Ubicación'},{k:'equipos',l:'Máquina(s) o equipo(s) donde se usa (códigos separados por coma)'},{k:'observaciones',l:'Observaciones',t:'area'},{k:'imagen',l:'Foto del repuesto',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}]);}
 /* ── modal ── */
 function abrir(t,b,f){$('mt').innerHTML=t;$('mbody').innerHTML=b;$('mfoot').innerHTML=f||'';$('mod').classList.add('on');$('mbody').scrollTop=0;}
 function cerrar(){$('mod').classList.remove('on');FOTOS=null;}
@@ -471,7 +600,7 @@ function campo(f,v){const id='f_'+f.k,val=v==null?'':v;const req=f.req?' *':'';
   if(f.t==='check')return `<div class="fg"><label><input type="checkbox" id="${id}" ${val?'checked':''} style="width:auto"> ${f.l}</label></div>`;
   return `<div class="fg"><label>${f.l}${req}</label><input id="${id}" type="${f.t||'text'}" value="${esc(val)}" ${f.t==='number'?'inputmode="decimal" step="any" placeholder="0"':''} ${f.attr||''}></div>`;}
 /* imagen principal de un registro (equipos): URL de Drive o foto subida (dataURL comprimida) */
-const imgBox=k=>FM[k]?`<img src="${esc(FM[k])}" referrerpolicy="no-referrer" style="max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)" onerror="this.outerHTML='<div class=empty>No se pudo cargar la imagen</div>'">`:'<div class="empty">Sin foto</div>';
+const imgBox=k=>FM[k]?`<img ${IMG(FM[k])} style="max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)">`:'<div class="empty">Sin foto</div>';
 async function imgPick(k,file){if(!file)return;try{FM[k]=await dataImg(file);$('f_'+k).innerHTML=imgBox(k);}catch(e){toast('⚠️ '+(e.message||e));}}
 function imgQuitar(k){FM[k]=null;$('f_'+k).innerHTML=imgBox(k);}
 function chip(k,b){const v=b.dataset.v;FM[k]=FM[k]===v?null:v;b.parentNode.querySelectorAll('.ch').forEach(x=>x.classList.toggle('on',x.dataset.v===FM[k]));if(k==='tipo_equipo')eqList();if(k==='responsable_id')respOtro();}
@@ -490,7 +619,7 @@ function formGen(titulo,tabla,rec,spec,tipos){rec=rec||{};FM={};spec.forEach(f=>
 const toLocal=v=>{const d=dObj(v);return d?`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`:'';};
 const ESTADOS=['BUENO','REGULAR','MALO'];
 function formPersonal(id){const r=D.per.find(x=>x.id===id);formGen(r?'Editar personal':'Nuevo personal','mant_personal',r,[{k:'nombre',l:'Nombre',req:1},{k:'empresa',l:'Empresa'},{k:'codigo',l:'Código'},{k:'especialidad',l:'Mantenimiento especializado',t:'area'},{k:'direccion',l:'Dirección'},{k:'telefono',l:'Teléfono',attr:'inputmode="tel"'},{k:'correo',l:'Correo',t:'email'}]);}
-function formEquipo(id){const r=D.eq.find(x=>x.id===id);formGen(r?'Editar equipo':'Nuevo equipo','mant_equipos',r,[{k:'codigo',l:'Código',req:1},{k:'nombre',l:'Nombre'},{k:'tipo',l:'Tipo de equipo',t:'sel',o:TIPOS_EQ},{k:'categoria',l:'Categoría'},{k:'marca',l:'Marca'},{k:'modelo',l:'Modelo'},{k:'serie',l:'Serie / serial'},{k:'ubicacion',l:'Ubicación'},{k:'estado',l:'Estado',t:'chips',o:ESTADOS},{k:'foto',l:'Foto principal del equipo (sale al registrar mantenimientos)',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}],[{t:'foto',l:'Fotos adicionales'}]);}
+function formEquipo(id){const r=D.eq.find(x=>x.id===id);formGen(r?'Editar equipo':'Nuevo equipo','mant_equipos',r,[{k:'codigo',l:'Código',req:1},{k:'nombre',l:'Nombre'},{k:'tipo',l:'Tipo de equipo',t:'sel',o:TIPOS_EQ},{k:'categoria',l:'Categoría'},{k:'marca',l:'Marca'},{k:'modelo',l:'Modelo'},{k:'serie',l:'Serie / serial'},{k:'ubicacion',l:'Ubicación'},{k:'estado',l:'Estado',t:'chips',o:ESTADOS},{k:'foto',l:'Foto principal del equipo (sale al registrar mantenimientos)',t:'img'},{k:'foto2',l:'Segunda foto del equipo (opcional)',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}],[{t:'foto',l:'Fotos adicionales'}]);}
 function formVeh(id){const r=D.veh.find(x=>x.id===id);formGen(r?'Editar vehículo':'Nuevo vehículo','mant_vehiculos',r,[{k:'codigo',l:'Código',req:1},{k:'marca',l:'Marca'},{k:'tipo',l:'Tipo de vehículo'},{k:'placa',l:'Placa'},{k:'cilindraje',l:'Cilindraje'},{k:'modelo',l:'Modelo (año)'},{k:'fecha_compra',l:'Fecha de compra',t:'date'},{k:'serial_motor',l:'Serial motor'},{k:'serial_chasis',l:'Serial chasis'},{k:'ref_llanta_del',l:'Ref. llantas delanteras'},{k:'ref_llanta_tras',l:'Ref. llantas traseras'},{k:'ref_aceite',l:'Ref. aceite'},{k:'refrigerante',l:'Usa refrigerante',t:'check'},{k:'soat',l:'SOAT vence',t:'date'},{k:'tecnomecanica',l:'Tecnomecánica vence',t:'date'},{k:'ultimo_cambio_aceite',l:'Último cambio de aceite',t:'date'}],[{t:'foto',l:'Foto'},{t:'doc',l:'Tabla de mantenimiento / documentos'}]);}
 function formVM(id,vid){const r=D.vm.find(x=>x.id===id)||{vehiculo_id:vid||null,fecha:isoD(new Date())};
   const spec=[{k:'vehiculo_id',l:'Vehículo',t:'sel',req:1,o:D.veh.map(v=>[v.id,(v.placa||'')+' · '+(v.marca||'')])},{k:'tipo_mant',l:'Tipo de mantenimiento',t:'chips',o:['PREVENTIVO','CORRECTIVO']},{k:'fecha',l:'Fecha',t:'date',req:1},{k:'responsable',l:'Responsable',t:'sel',o:D.per.map(p=>p.nombre)},{k:'descripcion',l:'Descripción del mantenimiento',t:'area',req:1},{k:'repuestos',l:'Repuestos utilizados',t:'area'},{k:'diagnostico',l:'Diagnóstico / falla detectada',t:'area'},{k:'servicio_externo',l:'Servicio externo'},{k:'costo_mano_obra',l:'Costo mano de obra',t:'number'},{k:'costo_repuestos',l:'Costo de repuestos',t:'number'},{k:'costo_total',l:'Costo total',t:'number'},{k:'proximo',l:'Próximo mantenimiento',t:'date'}];
@@ -501,8 +630,9 @@ function formVM(id,vid){const r=D.vm.find(x=>x.id===id)||{vehiculo_id:vid||null,
 let MP=[],STEP=1;
 function eqList(){const dl=$('eqdl');if(!dl)return;const t=FM.tipo_equipo;dl.innerHTML=D.eq.filter(e=>!t||e.tipo===t).map(e=>`<option value="${esc(e.codigo)}">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</option>`).join('');}
 function eqCard(){const el=$('eqCard');if(!el)return;const e=eqByCod()[$('f_equipo_codigo').value.trim()];
-  el.innerHTML=e?`<div style="display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px">${e.foto?`<img src="${esc(e.foto)}" referrerpolicy="no-referrer" style="width:110px;height:90px;object-fit:cover;border-radius:10px;flex-shrink:0" onerror="this.remove()">`:''}<div style="min-width:0"><b>${esc(e.codigo)}</b><div style="font-size:12.5px;color:var(--muted)">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</div>${e.ubicacion?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.ubicacion)}</div>`:''}</div></div>`:'';}
-function eqPick(){const c=$('f_equipo_codigo').value.trim(),e=eqByCod()[c];eqCard();if(e){if(e.serie&&!$('f_serial').value)$('f_serial').value=e.serie;if(e.tipo&&!FM.tipo_equipo){FM.tipo_equipo=e.tipo;document.querySelectorAll('#f_tipo_equipo .ch').forEach(x=>x.classList.toggle('on',x.dataset.v===e.tipo));eqList();}
+  el.innerHTML=e?`<div style="display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px">${fotosEq(e,110,90)}<div style="min-width:0"><b>${esc(e.codigo)}</b><div style="font-size:12.5px;color:var(--muted)">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</div>${e.ubicacion?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.ubicacion)}</div>`:''}</div></div>`:'';}
+function serAuto(e){const i=$('f_serial');if(!i||!e)return;if(!i.value||i.dataset.auto==='1'){i.value=e.serie||e.codigo||'';i.dataset.auto='1';}}
+function eqPick(){const c=$('f_equipo_codigo').value.trim(),e=eqByCod()[c];eqCard();if(e){serAuto(e);if(e.tipo&&!FM.tipo_equipo){FM.tipo_equipo=e.tipo;document.querySelectorAll('#f_tipo_equipo .ch').forEach(x=>x.classList.toggle('on',x.dataset.v===e.tipo));eqList();}
   const ult=D.mant.find(m=>m.equipo_codigo===c);if(ult&&ult.estado_anterior&&!FM.estado_anterior&&false){}}}
 function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:m.tipo_equipo||((eqByCod()[cod]||{}).tipo)||null,tipo_mant:m.tipo_mant||null,estado_anterior:m.estado_anterior||'BUENO',responsable_id:m.responsable_id||null,relaciona:!!m.relaciona_costos};
   MP=D.rep.filter(r=>r.mant_id===m.id).map(r=>({id:r.id,repuesto:r.repuesto||'',descripcion:r.descripcion||'',costo:Number(r.costo)||0}));STEP=1;
@@ -511,7 +641,7 @@ function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:
   abrir(m.id?'Editar mantenimiento':'Registrar mantenimiento',`<div class="st"><button id="s1" class="on" onclick="paso(1)">1 · Registrar</button><button id="s2" onclick="paso(2)">2 · Datos</button></div>
   <div id="p1">${ch('tipo_equipo',TIPOS_EQ,'Tipo de equipo')}
   <div class="fg"><label>Equipo / activo (código)</label><input id="f_equipo_codigo" list="eqdl" value="${esc(m.equipo_codigo||cod||'')}" onchange="eqPick()" placeholder="Escribe o elige…" autocomplete="off"><datalist id="eqdl"></datalist></div>
-  <div class="fg"><label>Código / serial</label><input id="f_serial" value="${esc(m.serial||'')}"></div>
+  <div class="fg"><label>Código / serial</label><input id="f_serial" value="${esc(m.serial||'')}" oninput="this.dataset.auto=''"></div>
   <div id="eqCard"></div>
   ${ch('tipo_mant',['PREVENTIVO','CORRECTIVO'],'Tipo de mantenimiento')}
   <div class="fg"><label>Fecha inicial *</label><input id="f_fecha_inicial" type="datetime-local" value="${toLocal(m.fecha_inicial)||now}"></div>
@@ -527,7 +657,7 @@ function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:
   <div class="fg"><label>Próximo mantenimiento</label><input id="f_proximo_mant" type="date" value="${m.proximo_mant||''}"></div>
   <div class="fg"><label>Observaciones</label><textarea id="f_observaciones">${esc(m.observaciones||'')}</textarea></div>${fotosHtml()}</div>`,
   `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn" id="bAnt" onclick="paso(1)" style="display:none">‹ Antes</button><button class="btn p" id="bSig" onclick="paso(2)">Siguiente ›</button><button class="btn p" id="btnG" onclick="guardarMant('${m.id||''}')" style="display:none">💾 Guardar</button>`);
-  eqList();eqCard();repsPaint();fotosPaint();respOtro();}
+  eqList();eqCard();repsPaint();fotosPaint();respOtro();if(!m.id){const e0=eqByCod()[(cod||'').trim()];if(e0)serAuto(e0);}}
 function paso(n){STEP=n;$('p1').style.display=n===1?'':'none';$('p2').style.display=n===2?'':'none';$('s1').classList.toggle('on',n===1);$('s2').classList.toggle('on',n===2);$('bAnt').style.display=n===2?'':'none';$('bSig').style.display=n===1?'':'none';$('btnG').style.display=n===2?'':'none';$('mbody').scrollTop=0;}
 function relac(v){FM.relaciona=v;$('rc0').classList.toggle('on',!v);$('rc1').classList.toggle('on',v);$('cg').style.display=v?'':'none';}
 function repsPaint(){$('reps').innerHTML=MP.map((r,i)=>`<div class="rep"><input placeholder="Repuesto" value="${esc(r.repuesto)}" oninput="MP[${i}].repuesto=this.value"><input placeholder="Descripción" value="${esc(r.descripcion)}" oninput="MP[${i}].descripcion=this.value"><input placeholder="Costo" type="number" inputmode="decimal" value="${r.costo||''}" oninput="MP[${i}].costo=Number(this.value)||0"><button type="button" class="btn s d" onclick="MP.splice(${i},1);repsPaint()">✕</button></div>`).join('');}
