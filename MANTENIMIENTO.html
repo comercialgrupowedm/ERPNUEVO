@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-build" content="20261121-112456">
+<meta name="app-build" content="20261124-111336">
 <title>Mantenimiento · Grupo WEDM</title>
 <style>
 :root{--accent:#0d9488;--navy:#0f2443;--bg:#f3f5f9;--surface:#fff;--text:#1b2433;--muted:#6b7689;--line:#e3e8f0;--danger:#dc2626;--warn:#d97706;--ok:#16a34a;--r:12px}
@@ -403,7 +403,7 @@ function vEquipos(){const f=FILT.eq;const cnt={},ult={};D.mant.forEach(m=>{if(!m
 function detEquipo(id){const e=D.eq.find(x=>x.id===id);if(!e)return;
   const h=D.mant.filter(m=>m.equipo_codigo===e.codigo);const pn=pendientes().find(p=>p.cod===e.codigo);
   abrir(`${esc(e.codigo)} · ${esc(e.nombre||'')}`,
-   `<dl class="dl"><dt>Tipo</dt><dd>${esc(e.tipo||'—')}</dd><dt>Marca / modelo</dt><dd>${esc([e.marca,e.modelo].filter(Boolean).join(' ')||'—')}</dd><dt>Serie</dt><dd>${esc(e.serie||'—')}</dd><dt>Ubicación</dt><dd>${esc(e.ubicacion||'—')}</dd><dt>Estado</dt><dd>${tgEst(e.estado)}</dd><dt>Próximo mant.</dt><dd>${pn?fD(pn.fecha)+' '+tgDias(pn.d):'—'}</dd></dl>
+   `${e.foto?`<img src="${esc(e.foto)}" referrerpolicy="no-referrer" style="display:block;max-width:100%;max-height:220px;margin:0 auto 12px;border-radius:12px;border:1px solid var(--line)" onerror="this.remove()">`:''}<dl class="dl"><dt>Tipo</dt><dd>${esc(e.tipo||'—')}</dd><dt>Marca / modelo</dt><dd>${esc([e.marca,e.modelo].filter(Boolean).join(' ')||'—')}</dd><dt>Serie</dt><dd>${esc(e.serie||'—')}</dd><dt>Ubicación</dt><dd>${esc(e.ubicacion||'—')}</dd><dt>Estado</dt><dd>${tgEst(e.estado)}</dd><dt>Próximo mant.</dt><dd>${pn?fD(pn.fecha)+' '+tgDias(pn.d):'—'}</dd></dl>
    <div id="fotosDet"></div><h3 style="margin:16px 0 6px;font-size:13px">Historial (${h.length})</h3>${h.map(m=>`<div class="li" style="cursor:pointer" onclick="detMant('${m.id}')"><div>${tgTipo(m.tipo_mant)} <b>${fD(m.fecha_inicial)}</b><small>${esc(m.responsable||'')} · ${esc((m.falla||m.actividades||'').slice(0,80))}</small></div></div>`).join('')||'<div class="empty">Sin mantenimientos registrados</div>'}`,
    `<button class="btn" onclick="window.print()">🖨 Imprimir</button><button class="btn p" onclick="formMant(null,'${esc(e.codigo)}')">＋ Registrar mantenimiento</button><button class="btn" onclick="formEquipo('${e.id}')">✏️ Editar</button>${esAdmin()?`<button class="btn d" onclick="eliminar('mant_equipos','${e.id}')">🗑</button>`:''}`);
   cargarFotosDet('mant_equipos',id);}
@@ -467,25 +467,30 @@ function campo(f,v){const id='f_'+f.k,val=v==null?'':v;const req=f.req?' *':'';
   if(f.t==='chips')return `<div class="fg"><label>${f.l}${req}</label><div class="chs" id="${id}">${f.o.map(o=>`<button type="button" class="ch ${FM[f.k]===o?'on':''}" onclick="chip('${f.k}',this)" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
   if(f.t==='area')return `<div class="fg"><label>${f.l}${req}</label><textarea id="${id}">${esc(val)}</textarea></div>`;
   if(f.t==='sel')return `<div class="fg"><label>${f.l}${req}</label><select id="${id}"><option value=""></option>${f.o.map(o=>{const ov=Array.isArray(o)?o[0]:o,ol=Array.isArray(o)?o[1]:o;return `<option value="${esc(ov)}" ${String(ov)===String(val)?'selected':''}>${esc(ol)}</option>`;}).join('')}</select></div>`;
+  if(f.t==='img')return `<div class="fg"><label>${f.l}</label><div id="${id}">${imgBox(f.k)}</div><div style="display:flex;gap:6px;margin-top:6px"><label class="btn" style="margin:0;cursor:pointer">📷 Subir / cambiar foto<input type="file" accept="image/*" hidden onchange="imgPick('${f.k}',this.files[0]);this.value=''"></label><button type="button" class="btn d" onclick="imgQuitar('${f.k}')">Quitar</button></div></div>`;
   if(f.t==='check')return `<div class="fg"><label><input type="checkbox" id="${id}" ${val?'checked':''} style="width:auto"> ${f.l}</label></div>`;
   return `<div class="fg"><label>${f.l}${req}</label><input id="${id}" type="${f.t||'text'}" value="${esc(val)}" ${f.t==='number'?'inputmode="decimal" step="any" placeholder="0"':''} ${f.attr||''}></div>`;}
+/* imagen principal de un registro (equipos): URL de Drive o foto subida (dataURL comprimida) */
+const imgBox=k=>FM[k]?`<img src="${esc(FM[k])}" referrerpolicy="no-referrer" style="max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)" onerror="this.outerHTML='<div class=empty>No se pudo cargar la imagen</div>'">`:'<div class="empty">Sin foto</div>';
+async function imgPick(k,file){if(!file)return;try{FM[k]=await dataImg(file);$('f_'+k).innerHTML=imgBox(k);}catch(e){toast('⚠️ '+(e.message||e));}}
+function imgQuitar(k){FM[k]=null;$('f_'+k).innerHTML=imgBox(k);}
 function chip(k,b){const v=b.dataset.v;FM[k]=FM[k]===v?null:v;b.parentNode.querySelectorAll('.ch').forEach(x=>x.classList.toggle('on',x.dataset.v===FM[k]));if(k==='tipo_equipo')eqList();if(k==='responsable_id')respOtro();}
 function esOtro(){const p=perById()[FM.responsable_id];return !!p&&/^otro$/i.test((p.nombre||'').trim());}
 function respOtro(){const g=$('g_resp_otro');if(!g)return;const o=esOtro();g.style.display=o?'':'none';if(o)setTimeout(()=>{const i=$('f_resp_otro');if(i&&!i.value)i.focus();},30);}
 function leer(spec){const o={};for(const f of spec){const el=$('f_'+f.k);let v;
-  if(f.t==='chips')v=FM[f.k]||null;else if(f.t==='check')v=!!(el&&el.checked);else{v=el?el.value.trim():'';if(v==='')v=null;else if(f.t==='number')v=Number(String(v).replace(',','.'));else if(f.t==='datetime-local')v=new Date(v).toISOString();}
+  if(f.t==='chips'||f.t==='img')v=FM[f.k]||null;else if(f.t==='check')v=!!(el&&el.checked);else{v=el?el.value.trim():'';if(v==='')v=null;else if(f.t==='number')v=Number(String(v).replace(',','.'));else if(f.t==='datetime-local')v=new Date(v).toISOString();}
   if(f.req&&(v==null||v===''))throw new Error('Falta: '+f.l);if(f.t==='number'&&v!=null&&isNaN(v))throw new Error('Número no válido: '+f.l);o[f.k]=v;}return o;}
 async function guardarGen(tabla,id,spec,fotoTipos){const btn=$('btnG');if(btn.disabled)return;btn.disabled=true;
   try{const data=leer(spec);const r=await sb.rpc('mant_upsert',{p_tabla:tabla,p_id:id||null,p_data:data});await fotosGuardar(r.id);toast('✓ Guardado');cerrar();await cargar();}
   catch(e){toast('⚠️ '+(e.message||e));btn.disabled=false;}}
-function formGen(titulo,tabla,rec,spec,tipos){rec=rec||{};FM={};spec.forEach(f=>{if(f.t==='chips')FM[f.k]=rec[f.k]||f.def||null;});
+function formGen(titulo,tabla,rec,spec,tipos){rec=rec||{};FM={};spec.forEach(f=>{if(f.t==='chips'||f.t==='img')FM[f.k]=rec[f.k]||f.def||null;});
   FOTOS=null;if(tipos)fotosInit(tabla,rec.id,tipos);
   abrir(titulo,spec.map(f=>campo(f,f.t==='datetime-local'?toLocal(rec[f.k])||f.def:(rec[f.k]!=null?rec[f.k]:f.def))).join('')+(tipos?fotosHtml():''),
    `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn p" id="btnG" onclick="guardarGen('${tabla}',${rec.id?`'${rec.id}'`:'null'},window._SPEC,null)">💾 Guardar</button>`);window._SPEC=spec;if(tipos)fotosPaint();}
 const toLocal=v=>{const d=dObj(v);return d?`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`:'';};
 const ESTADOS=['BUENO','REGULAR','MALO'];
 function formPersonal(id){const r=D.per.find(x=>x.id===id);formGen(r?'Editar personal':'Nuevo personal','mant_personal',r,[{k:'nombre',l:'Nombre',req:1},{k:'empresa',l:'Empresa'},{k:'codigo',l:'Código'},{k:'especialidad',l:'Mantenimiento especializado',t:'area'},{k:'direccion',l:'Dirección'},{k:'telefono',l:'Teléfono',attr:'inputmode="tel"'},{k:'correo',l:'Correo',t:'email'}]);}
-function formEquipo(id){const r=D.eq.find(x=>x.id===id);formGen(r?'Editar equipo':'Nuevo equipo','mant_equipos',r,[{k:'codigo',l:'Código',req:1},{k:'nombre',l:'Nombre'},{k:'tipo',l:'Tipo de equipo',t:'sel',o:TIPOS_EQ},{k:'categoria',l:'Categoría'},{k:'marca',l:'Marca'},{k:'modelo',l:'Modelo'},{k:'serie',l:'Serie / serial'},{k:'ubicacion',l:'Ubicación'},{k:'estado',l:'Estado',t:'chips',o:ESTADOS},{k:'activo',l:'Activo',t:'check',def:true}],[{t:'foto',l:'Fotos'}]);}
+function formEquipo(id){const r=D.eq.find(x=>x.id===id);formGen(r?'Editar equipo':'Nuevo equipo','mant_equipos',r,[{k:'codigo',l:'Código',req:1},{k:'nombre',l:'Nombre'},{k:'tipo',l:'Tipo de equipo',t:'sel',o:TIPOS_EQ},{k:'categoria',l:'Categoría'},{k:'marca',l:'Marca'},{k:'modelo',l:'Modelo'},{k:'serie',l:'Serie / serial'},{k:'ubicacion',l:'Ubicación'},{k:'estado',l:'Estado',t:'chips',o:ESTADOS},{k:'foto',l:'Foto principal del equipo (sale al registrar mantenimientos)',t:'img'},{k:'activo',l:'Activo',t:'check',def:true}],[{t:'foto',l:'Fotos adicionales'}]);}
 function formVeh(id){const r=D.veh.find(x=>x.id===id);formGen(r?'Editar vehículo':'Nuevo vehículo','mant_vehiculos',r,[{k:'codigo',l:'Código',req:1},{k:'marca',l:'Marca'},{k:'tipo',l:'Tipo de vehículo'},{k:'placa',l:'Placa'},{k:'cilindraje',l:'Cilindraje'},{k:'modelo',l:'Modelo (año)'},{k:'fecha_compra',l:'Fecha de compra',t:'date'},{k:'serial_motor',l:'Serial motor'},{k:'serial_chasis',l:'Serial chasis'},{k:'ref_llanta_del',l:'Ref. llantas delanteras'},{k:'ref_llanta_tras',l:'Ref. llantas traseras'},{k:'ref_aceite',l:'Ref. aceite'},{k:'refrigerante',l:'Usa refrigerante',t:'check'},{k:'soat',l:'SOAT vence',t:'date'},{k:'tecnomecanica',l:'Tecnomecánica vence',t:'date'},{k:'ultimo_cambio_aceite',l:'Último cambio de aceite',t:'date'}],[{t:'foto',l:'Foto'},{t:'doc',l:'Tabla de mantenimiento / documentos'}]);}
 function formVM(id,vid){const r=D.vm.find(x=>x.id===id)||{vehiculo_id:vid||null,fecha:isoD(new Date())};
   const spec=[{k:'vehiculo_id',l:'Vehículo',t:'sel',req:1,o:D.veh.map(v=>[v.id,(v.placa||'')+' · '+(v.marca||'')])},{k:'tipo_mant',l:'Tipo de mantenimiento',t:'chips',o:['PREVENTIVO','CORRECTIVO']},{k:'fecha',l:'Fecha',t:'date',req:1},{k:'responsable',l:'Responsable',t:'sel',o:D.per.map(p=>p.nombre)},{k:'descripcion',l:'Descripción del mantenimiento',t:'area',req:1},{k:'repuestos',l:'Repuestos utilizados',t:'area'},{k:'diagnostico',l:'Diagnóstico / falla detectada',t:'area'},{k:'servicio_externo',l:'Servicio externo'},{k:'costo_mano_obra',l:'Costo mano de obra',t:'number'},{k:'costo_repuestos',l:'Costo de repuestos',t:'number'},{k:'costo_total',l:'Costo total',t:'number'},{k:'proximo',l:'Próximo mantenimiento',t:'date'}];
@@ -495,7 +500,9 @@ function formVM(id,vid){const r=D.vm.find(x=>x.id===id)||{vehiculo_id:vid||null,
 /* ── formulario de mantenimiento (2 pasos) ── */
 let MP=[],STEP=1;
 function eqList(){const dl=$('eqdl');if(!dl)return;const t=FM.tipo_equipo;dl.innerHTML=D.eq.filter(e=>!t||e.tipo===t).map(e=>`<option value="${esc(e.codigo)}">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</option>`).join('');}
-function eqPick(){const c=$('f_equipo_codigo').value.trim(),e=eqByCod()[c];if(e){if(e.serie&&!$('f_serial').value)$('f_serial').value=e.serie;if(e.tipo&&!FM.tipo_equipo){FM.tipo_equipo=e.tipo;document.querySelectorAll('#f_tipo_equipo .ch').forEach(x=>x.classList.toggle('on',x.dataset.v===e.tipo));eqList();}
+function eqCard(){const el=$('eqCard');if(!el)return;const e=eqByCod()[$('f_equipo_codigo').value.trim()];
+  el.innerHTML=e?`<div style="display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px">${e.foto?`<img src="${esc(e.foto)}" referrerpolicy="no-referrer" style="width:110px;height:90px;object-fit:cover;border-radius:10px;flex-shrink:0" onerror="this.remove()">`:''}<div style="min-width:0"><b>${esc(e.codigo)}</b><div style="font-size:12.5px;color:var(--muted)">${esc([e.nombre,e.marca,e.modelo].filter(Boolean).join(' · '))}</div>${e.ubicacion?`<div style="font-size:12px;color:var(--muted)">📍 ${esc(e.ubicacion)}</div>`:''}</div></div>`:'';}
+function eqPick(){const c=$('f_equipo_codigo').value.trim(),e=eqByCod()[c];eqCard();if(e){if(e.serie&&!$('f_serial').value)$('f_serial').value=e.serie;if(e.tipo&&!FM.tipo_equipo){FM.tipo_equipo=e.tipo;document.querySelectorAll('#f_tipo_equipo .ch').forEach(x=>x.classList.toggle('on',x.dataset.v===e.tipo));eqList();}
   const ult=D.mant.find(m=>m.equipo_codigo===c);if(ult&&ult.estado_anterior&&!FM.estado_anterior&&false){}}}
 function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:m.tipo_equipo||((eqByCod()[cod]||{}).tipo)||null,tipo_mant:m.tipo_mant||null,estado_anterior:m.estado_anterior||'BUENO',responsable_id:m.responsable_id||null,relaciona:!!m.relaciona_costos};
   MP=D.rep.filter(r=>r.mant_id===m.id).map(r=>({id:r.id,repuesto:r.repuesto||'',descripcion:r.descripcion||'',costo:Number(r.costo)||0}));STEP=1;
@@ -505,6 +512,7 @@ function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:
   <div id="p1">${ch('tipo_equipo',TIPOS_EQ,'Tipo de equipo')}
   <div class="fg"><label>Equipo / activo (código)</label><input id="f_equipo_codigo" list="eqdl" value="${esc(m.equipo_codigo||cod||'')}" onchange="eqPick()" placeholder="Escribe o elige…" autocomplete="off"><datalist id="eqdl"></datalist></div>
   <div class="fg"><label>Código / serial</label><input id="f_serial" value="${esc(m.serial||'')}"></div>
+  <div id="eqCard"></div>
   ${ch('tipo_mant',['PREVENTIVO','CORRECTIVO'],'Tipo de mantenimiento')}
   <div class="fg"><label>Fecha inicial *</label><input id="f_fecha_inicial" type="datetime-local" value="${toLocal(m.fecha_inicial)||now}"></div>
   <div class="fg"><label>Fecha final</label><input id="f_fecha_final" type="datetime-local" value="${toLocal(m.fecha_final)||(m.id?'':now)}"></div>
@@ -519,7 +527,7 @@ function formMant(id,cod){const m=D.mant.find(x=>x.id===id)||{};FM={tipo_equipo:
   <div class="fg"><label>Próximo mantenimiento</label><input id="f_proximo_mant" type="date" value="${m.proximo_mant||''}"></div>
   <div class="fg"><label>Observaciones</label><textarea id="f_observaciones">${esc(m.observaciones||'')}</textarea></div>${fotosHtml()}</div>`,
   `<button class="btn" onclick="cerrar()">Cancelar</button><button class="btn" id="bAnt" onclick="paso(1)" style="display:none">‹ Antes</button><button class="btn p" id="bSig" onclick="paso(2)">Siguiente ›</button><button class="btn p" id="btnG" onclick="guardarMant('${m.id||''}')" style="display:none">💾 Guardar</button>`);
-  eqList();repsPaint();fotosPaint();respOtro();}
+  eqList();eqCard();repsPaint();fotosPaint();respOtro();}
 function paso(n){STEP=n;$('p1').style.display=n===1?'':'none';$('p2').style.display=n===2?'':'none';$('s1').classList.toggle('on',n===1);$('s2').classList.toggle('on',n===2);$('bAnt').style.display=n===2?'':'none';$('bSig').style.display=n===1?'':'none';$('btnG').style.display=n===2?'':'none';$('mbody').scrollTop=0;}
 function relac(v){FM.relaciona=v;$('rc0').classList.toggle('on',!v);$('rc1').classList.toggle('on',v);$('cg').style.display=v?'':'none';}
 function repsPaint(){$('reps').innerHTML=MP.map((r,i)=>`<div class="rep"><input placeholder="Repuesto" value="${esc(r.repuesto)}" oninput="MP[${i}].repuesto=this.value"><input placeholder="Descripción" value="${esc(r.descripcion)}" oninput="MP[${i}].descripcion=this.value"><input placeholder="Costo" type="number" inputmode="decimal" value="${r.costo||''}" oninput="MP[${i}].costo=Number(this.value)||0"><button type="button" class="btn s d" onclick="MP.splice(${i},1);repsPaint()">✕</button></div>`).join('');}
